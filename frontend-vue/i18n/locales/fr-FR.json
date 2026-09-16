@@ -1,0 +1,240 @@
+{
+  "page": {
+    "api": {
+      "category_name": "API",
+      "summary": {
+        "title": "Vue d'ensemble",
+        "description": "Santé, trafic et erreurs unifiés — Résumé & Monitoring au même endroit.",
+        "filter_placeholder": "Filtrer par URI…",
+        "beta": {
+          "title": "Ce module est en bêta",
+          "description": "Aujourd'hui la console API est en lecture seule — elle permet d'inspecter, surveiller et tester vos routes. Dans une prochaine version, vous pourrez **éditer les routes directement**, ajuster leurs paramètres, **configurer leur documentation sans coder**, et **composer ce que fait chaque route avec des blocs logiques visuels** — en reliant déclencheurs, conditions et actions sur un canevas de nœuds, sans écrire de code. Antelope développe activement cette fonctionnalité ; elle arrivera avec le **Module Builder**, la future façon de configurer toute la plateforme sans écrire de code."
+        },
+        "kpis": {
+          "total_routes": "Total routes",
+          "errors_24h": "Erreurs (24h)",
+          "slow_routes": "Routes lentes",
+          "avg_latency": "Latence moy.",
+          "routes_with_errors_24h": "Routes en erreur",
+          "calls_today": "Appels aujourd'hui"
+        },
+        "history": {
+          "title": "Trafic & erreurs",
+          "subtitle": "Requêtes vs erreurs sur la période",
+          "requests": "Requêtes",
+          "errors": "Erreurs",
+          "empty": "Aucun trafic enregistré sur cette période."
+        },
+        "breakdown": {
+          "title": "Répartition des statuts",
+          "subtitle": "Réponses sur la période",
+          "by_day": "Par jour",
+          "donut": "Donut",
+          "success": "Succès",
+          "client": "Erreur client",
+          "server": "Erreur serveur",
+          "high_error_day": "Jour à fort taux d'erreur (≥30%)",
+          "responses": "réponses",
+          "empty": "Aucune réponse enregistrée sur cette période."
+        },
+        "watch": {
+          "title": "À surveiller",
+          "subtitle": "Routes surveillées + taux d'erreur les plus élevés, fusionnés",
+          "severity_critical": "Critique",
+          "severity_warning": "Alerte",
+          "requests_24h": "req / 24h",
+          "empty_title": "Toutes les routes vont bien",
+          "empty_description": "Rien à signaler ces dernières 24 heures."
+        },
+        "slowest": {
+          "title": "Routes les plus lentes",
+          "subtitle": "Temps de réponse moyen le plus élevé",
+          "empty": "Aucune latence enregistrée sur cette période."
+        },
+        "recent": {
+          "title": "Requêtes récentes",
+          "subtitle": "Échantillon en direct du trafic entrant",
+          "col_time": "Heure",
+          "col_method": "Méthode",
+          "col_path": "Chemin",
+          "col_status": "Statut",
+          "col_ms": "ms",
+          "empty": "Aucune requête correspondante."
+        },
+        "activity": {
+          "title": "Activité récente",
+          "subtitle": "Nouvelles routes enregistrées et événements du module",
+          "route_created": "Route enregistrée",
+          "error": "Erreur serveur sur",
+          "empty_description": "Les enregistrements de routes et les erreurs récentes apparaîtront ici.",
+          "ago_now": "à l'instant",
+          "ago_minutes": "il y a {n} min",
+          "ago_hours": "il y a {n} h",
+          "ago_days": "il y a {n} j"
+        }
+      },
+      "routes": {
+        "title": "Routes",
+        "description": "Inspectez les routes API enregistrées, leurs paramètres et leurs middlewares",
+        "tree_title": "Routes API",
+        "tree_refresh": "Rafraîchir l'arbre",
+        "filter_placeholder": "Filtrer les routes…",
+        "no_match": "Aucune route ne correspond au filtre.",
+        "placeholder": {
+          "title": "Sélectionnez une route",
+          "description": "Choisissez une route ou un dossier à gauche pour consulter sa documentation, sa configuration et ses statistiques."
+        },
+        "tabs": {
+          "documentation": "Documentation",
+          "tester": "Testeur",
+          "configuration": "Configuration",
+          "statistics": "Statistiques"
+        },
+        "doc": {
+          "handler_label": "Handler",
+          "authentication": "Authentification",
+          "path_params": "Paramètres d'URL",
+          "path_params_description": "Valeurs extraites du gabarit d'URL (par ex. :id).",
+          "query_params": "Paramètres de requête",
+          "query_params_description": "Valeurs lues dans la chaîne de requête.",
+          "headers": "En-têtes",
+          "headers_description": "Valeurs lues dans les en-têtes de la requête.",
+          "body": "Corps",
+          "body_description": "Champs JSON du corps. Inférés — le schéma complet attend un point de stockage.",
+          "raw_body": "Corps brut",
+          "raw_body_description": "Buffer brut, disponible au handler sans parsing.",
+          "context": "Contexte",
+          "context_description": "Contexte de requête injecté tel quel dans le handler.",
+          "result": "Résultat",
+          "result_description": "Objet réponse, disponible aux handlers de type postfix.",
+          "stream": "Flux",
+          "stream_description": "Flux d'écriture pour réponses en streaming.",
+          "connection": "Connexion",
+          "connection_description": "Connexion websocket.",
+          "unknown_params": "Autres paramètres",
+          "unknown_params_description": "Paramètres avec un provider personnalisé non classé. La source du provider est consultable ci-dessous.",
+          "col_name": "Nom",
+          "col_type": "Type",
+          "col_index": "Index",
+          "col_modifiers": "Modificateurs",
+          "col_source": "Source",
+          "col_status": "Statut",
+          "col_reason": "Raison",
+          "unnamed": "(sans nom)",
+          "show_source": "Voir la source du provider",
+          "no_authentication": "Aucun middleware d'authentification ne s'applique à cette route.",
+          "error_responses": "Réponses d'erreur",
+          "error_responses_description": "Inférées des appels assert(...) et HTTPResult(...) dans la source du handler.",
+          "narrative": "Documentation narrative",
+          "narrative_pending_title": "La documentation narrative n'est pas encore stockée",
+          "narrative_pending_description": "Lorsqu'un point de stockage existera, la documentation rédigée pour cette route apparaîtra ici.",
+          "response": "Réponse",
+          "response_pending_title": "L'introspection du schéma de réponse n'est pas encore disponible",
+          "response_pending_description": "Les versions futures afficheront ici les formes de réponses et les codes d'état."
+        },
+        "config": {
+          "parameters": "Paramètres",
+          "parameters_description": "Vue en lecture seule de chaque paramètre reçu par le handler, par index.",
+          "no_parameters_title": "Aucun paramètre",
+          "no_parameters_description": "Ce handler ne prend aucun paramètre.",
+          "properties": "Membres de classe",
+          "properties_description": "Propriétés déclarées sur la classe du contrôleur. Chacune est calculée à chaque requête via un décorateur.",
+          "no_properties_title": "Aucun membre de classe",
+          "no_properties_description": "Aucune propriété décorée sur ce contrôleur.",
+          "middleware": "Middlewares applicables",
+          "middleware_route_description": "Handlers prefix, postfix et monitor exécutés pour cette route.",
+          "no_middleware_title": "Aucun middleware",
+          "no_middleware_description": "Aucun prefix, postfix ou monitor n'est applicable à cette portée.",
+          "modifiers": "modificateurs",
+          "auth_badge": "auth"
+        },
+        "tester": {
+          "send": "Envoyer",
+          "use_current_user": "Utiliser ma session",
+          "use_current_user_description": "Joindre le jeton Bearer et l'en-tête de namespace de l'utilisateur courant à la requête.",
+          "auth_unavailable": "Aucune session — connectez-vous pour activer.",
+          "path_params": "Paramètres d'URL",
+          "headers": "En-têtes",
+          "header_name": "nom",
+          "header_value": "valeur",
+          "add_header": "Ajouter un en-tête",
+          "no_headers": "Aucun en-tête. Utilisez le bouton ci-dessus pour en ajouter.",
+          "body": "Corps",
+          "response": "Réponse",
+          "response_headers": "En-têtes",
+          "response_body": "Corps",
+          "network_error": "Erreur réseau",
+          "history": "Tentatives récentes",
+          "clear_history": "Vider"
+        },
+        "stats": {
+          "kpi_requests": "Requêtes",
+          "kpi_avg_latency": "Latence moy.",
+          "kpi_max_latency": "Latence max",
+          "kpi_error_rate": "Taux d'erreur",
+          "chart_counts_title": "Requêtes par statut",
+          "chart_latency_title": "Temps de réponse",
+          "chart_empty": "Aucune donnée enregistrée sur cette période.",
+          "recent_title": "Requêtes récentes",
+          "recent_empty_title": "Aucune requête récente capturée",
+          "col_time": "Heure",
+          "col_method": "Méthode",
+          "col_path": "Chemin",
+          "col_status": "Statut",
+          "col_ms": "ms",
+          "raw_path": "chemin brut",
+          "truncated": "tronqué",
+          "detail_request": "Requête",
+          "detail_response": "Réponse",
+          "detail_error": "Erreur",
+          "detail_path_params": "Paramètres d'URL",
+          "detail_query": "Query",
+          "detail_headers": "En-têtes",
+          "detail_body": "Corps",
+          "detail_no_body": "(aucun corps)"
+        }
+      },
+      "logs": {
+        "title": "Logs",
+        "description": "Consultez les requêtes capturées en temps réel",
+        "live": "Live",
+        "pause": "Pause",
+        "live_status": "Live",
+        "refresh": "Actualiser",
+        "search_placeholder": "Rechercher dans les URI…",
+        "load_more": "Charger plus",
+        "empty": "Aucun log ne correspond aux filtres actuels.",
+        "entries": "entrées"
+      },
+      "settings": {
+        "title": "Paramètres",
+        "description": "Configuration du module API — visibilité des routes, rétention et seuils.",
+        "scope": {
+          "title": "Visibilité des routes",
+          "subtitle": "Quelles routes sont prises en compte par les pages Vue d'ensemble, Routes et Logs.",
+          "label": "Portée",
+          "description": "Own routes = uniquement le code de votre projet. Module routes = uniquement les modules Antelope installés. All routes = aucun filtrage."
+        },
+        "retention": {
+          "log_retention": "Rétention des logs (jours)",
+          "log_retention_description": "Durée de conservation des logs de requêtes détaillés avant purge. Laissez vide pour revenir à la valeur par défaut de la configuration du module.",
+          "stats_retention": "Rétention des statistiques (jours)",
+          "stats_retention_description": "Durée de conservation des statistiques agrégées par jour. Laissez vide pour revenir à la valeur par défaut de la configuration du module.",
+          "slowness": "Seuil de lenteur (ms)",
+          "slowness_description": "Latence au-delà de laquelle une requête est marquée comme lente. Laissez vide pour revenir à la valeur par défaut de la configuration du module.",
+          "max_body": "Taille max des bodies capturés (Ko)",
+          "max_body_description": "Les bodies de requête/réponse au-delà de cette taille sont tronqués. Laissez vide pour revenir à la valeur par défaut de la configuration du module."
+        }
+      },
+      "filters": {
+        "all_methods": "Toutes les méthodes",
+        "all_statuses": "Tous les statuts",
+        "status_success": "2xx succès",
+        "status_client": "4xx client",
+        "status_server": "5xx serveur",
+        "slow_only": "Lentes uniquement",
+        "period": "Période"
+      }
+    }
+  }
+}

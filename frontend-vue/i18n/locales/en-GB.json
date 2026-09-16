@@ -1,0 +1,240 @@
+{
+  "page": {
+    "api": {
+      "category_name": "API",
+      "summary": {
+        "title": "Overview",
+        "description": "Unified health, traffic and error observability — Summary & Monitoring in one place.",
+        "filter_placeholder": "Filter by URI…",
+        "beta": {
+          "title": "This module is in beta",
+          "description": "Today the API console is read-only — it lets you inspect, monitor and test your routes. In an upcoming release you'll be able to **edit routes directly**, adjust their parameters, **configure their documentation without coding**, and **compose what each route does with visual logic blocks** — wiring triggers, conditions and actions on a node canvas, no code required. Antelope is actively building this; it ships alongside the **Module Builder**, the upcoming way to configure the whole platform without writing code."
+        },
+        "kpis": {
+          "total_routes": "Total routes",
+          "errors_24h": "Errors (24h)",
+          "slow_routes": "Slow routes",
+          "avg_latency": "Avg latency",
+          "routes_with_errors_24h": "Routes erroring",
+          "calls_today": "Calls today"
+        },
+        "history": {
+          "title": "Traffic & errors",
+          "subtitle": "Requests vs errors over the period",
+          "requests": "Requests",
+          "errors": "Errors",
+          "empty": "No traffic recorded in this period."
+        },
+        "breakdown": {
+          "title": "Status breakdown",
+          "subtitle": "Responses over the period",
+          "by_day": "By day",
+          "donut": "Donut",
+          "success": "Success",
+          "client": "Client Error",
+          "server": "Server Error",
+          "high_error_day": "High error day (≥30%)",
+          "responses": "responses",
+          "empty": "No responses recorded in this period."
+        },
+        "watch": {
+          "title": "Needs attention",
+          "subtitle": "Routes watch + highest error rates, merged",
+          "severity_critical": "Critical",
+          "severity_warning": "Warning",
+          "requests_24h": "req / 24h",
+          "empty_title": "All routes look healthy",
+          "empty_description": "Nothing flagged in the last 24 hours."
+        },
+        "slowest": {
+          "title": "Slowest routes",
+          "subtitle": "Highest average response time",
+          "empty": "No latency recorded in this period."
+        },
+        "recent": {
+          "title": "Recent requests",
+          "subtitle": "Live sample of incoming traffic",
+          "col_time": "Time",
+          "col_method": "Method",
+          "col_path": "Path",
+          "col_status": "Status",
+          "col_ms": "ms",
+          "empty": "No matching requests."
+        },
+        "activity": {
+          "title": "Recent activity",
+          "subtitle": "Newly registered routes and module events",
+          "route_created": "Route registered",
+          "error": "Server error on",
+          "empty_description": "Route registrations and recent errors will appear here.",
+          "ago_now": "now",
+          "ago_minutes": "{n}m ago",
+          "ago_hours": "{n}h ago",
+          "ago_days": "{n}d ago"
+        }
+      },
+      "routes": {
+        "title": "Routes",
+        "description": "Inspect registered API routes, their parameters and middleware",
+        "tree_title": "API Routes",
+        "tree_refresh": "Refresh tree",
+        "filter_placeholder": "Filter routes…",
+        "no_match": "No routes match the filter.",
+        "placeholder": {
+          "title": "Select a route",
+          "description": "Pick a route or folder on the left to inspect its documentation, configuration and statistics."
+        },
+        "tabs": {
+          "documentation": "Documentation",
+          "tester": "Tester",
+          "configuration": "Configuration",
+          "statistics": "Statistics"
+        },
+        "doc": {
+          "handler_label": "Handler",
+          "authentication": "Authentication",
+          "path_params": "Path parameters",
+          "path_params_description": "Values extracted from the URL pattern (e.g. :id).",
+          "query_params": "Query parameters",
+          "query_params_description": "Values read from the URL query string.",
+          "headers": "Headers",
+          "headers_description": "Values read from request headers.",
+          "body": "Body",
+          "body_description": "Parsed JSON body fields. Inferred — full schema awaits a storage point.",
+          "raw_body": "Raw body",
+          "raw_body_description": "Raw buffer body, available to the handler unparsed.",
+          "context": "Context",
+          "context_description": "Bare request context injected into the handler.",
+          "result": "Result",
+          "result_description": "Response object, available to postfix-style handlers.",
+          "stream": "Stream",
+          "stream_description": "Writable stream used for streaming responses.",
+          "connection": "Connection",
+          "connection_description": "Websocket connection handle.",
+          "unknown_params": "Other parameters",
+          "unknown_params_description": "Parameters using a custom provider we couldn't classify. The raw provider source is available below.",
+          "col_name": "Name",
+          "col_type": "Type",
+          "col_index": "Index",
+          "col_modifiers": "Modifiers",
+          "col_source": "Source",
+          "col_status": "Status",
+          "col_reason": "Reason",
+          "unnamed": "(unnamed)",
+          "show_source": "Show provider source",
+          "no_authentication": "No auth middleware applies to this route.",
+          "error_responses": "Error responses",
+          "error_responses_description": "Inferred from assert(...) and HTTPResult(...) calls in the handler source.",
+          "narrative": "Narrative documentation",
+          "narrative_pending_title": "Narrative documentation is not stored yet",
+          "narrative_pending_description": "When a storage point lands, route-level prose documentation will appear here.",
+          "response": "Response",
+          "response_pending_title": "Response schema introspection is not available yet",
+          "response_pending_description": "Future versions will surface response shapes and status codes here."
+        },
+        "config": {
+          "parameters": "Parameters",
+          "parameters_description": "Read-only view of every parameter the handler receives, ordered by index.",
+          "no_parameters_title": "No parameters",
+          "no_parameters_description": "This handler takes no parameters.",
+          "properties": "Class members",
+          "properties_description": "Properties declared on the controller class. Each is computed per request from a decorator.",
+          "no_properties_title": "No class members",
+          "no_properties_description": "No decorated properties on this controller.",
+          "middleware": "Applicable middleware",
+          "middleware_route_description": "Prefix, postfix and monitor handlers that run on a request to this route.",
+          "no_middleware_title": "No middleware",
+          "no_middleware_description": "No prefix, postfix or monitor matches this scope.",
+          "modifiers": "modifiers",
+          "auth_badge": "auth"
+        },
+        "tester": {
+          "send": "Send",
+          "use_current_user": "Use my session",
+          "use_current_user_description": "Attach the current user's Bearer token + namespace header to the request.",
+          "auth_unavailable": "No session — log in to enable.",
+          "path_params": "Path parameters",
+          "headers": "Headers",
+          "header_name": "name",
+          "header_value": "value",
+          "add_header": "Add header",
+          "no_headers": "No headers. Add one with the button above.",
+          "body": "Body",
+          "response": "Response",
+          "response_headers": "Headers",
+          "response_body": "Body",
+          "network_error": "Network error",
+          "history": "Recent attempts",
+          "clear_history": "Clear"
+        },
+        "stats": {
+          "kpi_requests": "Requests",
+          "kpi_avg_latency": "Avg latency",
+          "kpi_max_latency": "Max latency",
+          "kpi_error_rate": "Error rate",
+          "chart_counts_title": "Requests by status",
+          "chart_latency_title": "Response time",
+          "chart_empty": "No data recorded in this period.",
+          "recent_title": "Recent requests",
+          "recent_empty_title": "No recent requests captured",
+          "col_time": "Time",
+          "col_method": "Method",
+          "col_path": "Path",
+          "col_status": "Status",
+          "col_ms": "ms",
+          "raw_path": "raw path",
+          "truncated": "truncated",
+          "detail_request": "Request",
+          "detail_response": "Response",
+          "detail_error": "Error",
+          "detail_path_params": "Path params",
+          "detail_query": "Query",
+          "detail_headers": "Headers",
+          "detail_body": "Body",
+          "detail_no_body": "(no body)"
+        }
+      },
+      "logs": {
+        "title": "Logs",
+        "description": "Browse captured request logs in real time",
+        "live": "Live",
+        "pause": "Pause",
+        "live_status": "Live",
+        "refresh": "Refresh",
+        "search_placeholder": "Search URI…",
+        "load_more": "Load more",
+        "empty": "No logs match the current filters.",
+        "entries": "entries"
+      },
+      "settings": {
+        "title": "Settings",
+        "description": "Runtime configuration of the API console — route scope, retention and thresholds.",
+        "scope": {
+          "title": "Route visibility",
+          "subtitle": "Which routes the Overview, Routes and Logs pages take into account.",
+          "label": "Scope",
+          "description": "Own routes = your project's code only. Module routes = installed Antelope modules only. All routes = no filtering."
+        },
+        "retention": {
+          "log_retention": "Log retention (days)",
+          "log_retention_description": "How long detailed request logs are kept before pruning. Leave empty to use the module configuration default.",
+          "stats_retention": "Statistics retention (days)",
+          "stats_retention_description": "How long aggregated per-day statistics are kept. Leave empty to use the module configuration default.",
+          "slowness": "Slowness threshold (ms)",
+          "slowness_description": "Latency above which a request is flagged as slow. Leave empty to use the module configuration default.",
+          "max_body": "Max captured body size (KB)",
+          "max_body_description": "Request/response bodies above this size are stored truncated. Leave empty to use the module configuration default."
+        }
+      },
+      "filters": {
+        "all_methods": "All methods",
+        "all_statuses": "All statuses",
+        "status_success": "2xx success",
+        "status_client": "4xx client",
+        "status_server": "5xx server",
+        "slow_only": "Slow only",
+        "period": "Period"
+      }
+    }
+  }
+}
