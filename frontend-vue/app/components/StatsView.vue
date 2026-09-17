@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import type {
   ChartDataPoint,
-  ChartResponse,
+  ApiChartResponse,
   RouteStatsPayload,
 } from '../composables/useApiIntrospection'
 import ApiMethodBadge from './internal/ApiMethodBadge.vue'
@@ -57,7 +57,7 @@ const C_WORST = STATUS_CLASSES[2].color
 const LATENCY_UNIT = 'ms'
 
 function seriesByCategory(
-  payload: ChartResponse,
+  payload: ApiChartResponse,
   colors: Record<string, string>,
 ) {
   const buckets = new Map<string, ChartDataPoint[]>()
