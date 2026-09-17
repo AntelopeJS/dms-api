@@ -39,7 +39,7 @@ export async function construct(config?: Partial<DmsApiConfig>): Promise<void> {
   setConfig(config);
 
   await AddFrontendModule({
-    name: "@antelopejs/dms-api",
+    name: "@antelopejs/dms-api-frontend-vue",
     sourcePath: path.join(__dirname, "../frontend-vue"),
     renderer: { name: "vue", version: "3" },
     configKey: "dmsApi",
