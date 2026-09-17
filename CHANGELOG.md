@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.1.0
+
+[compare changes](https://github.com/AntelopeJS/dms-api/compare/v0.0.2...v0.1.0)
+
+### 🩹 Fixes
+
+- **frontend:** ⚠️  Register the frontend module under its package name ([#3](https://github.com/AntelopeJS/dms-api/pull/3))
+
+#### ⚠️ Breaking Changes
+
+- **frontend:** ⚠️  Register the frontend module under its package name ([#3](https://github.com/AntelopeJS/dms-api/pull/3))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <rizzitelli.antony@pm.me>
+
 ## v0.0.2
 
 [compare changes](https://github.com/AntelopeJS/dms-api/compare/v0.0.1...v0.0.2)
