@@ -121,7 +121,13 @@ export interface ChartDataPoint {
   category?: string
 }
 
-export interface ChartResponse {
+/**
+ * Payload shape of the dms-api statistics chart endpoints. Deliberately not
+ * named `ChartResponse`: the DMS UI layer exports an unrelated `ChartResponse`
+ * (`{ series: ChartSeries[] }`) under that name, and the two would shadow each
+ * other across layers.
+ */
+export interface ApiChartResponse {
   data?: ChartDataPoint[]
 }
 
@@ -155,8 +161,8 @@ export interface RouteStatsPayload {
   route: { id: string; location: string; method: string }
   aggregate?: RouteAggregate
   charts: {
-    counts: ChartResponse
-    latency: ChartResponse
+    counts: ApiChartResponse
+    latency: ApiChartResponse
   }
   recent: RequestLogSummary[]
 }
