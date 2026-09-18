@@ -67,9 +67,9 @@ export class NotesController extends Controller("/playground/notes") {
   @Get("")
   async latest() {
     const notes = await GetModel(NoteModel).getAll();
-    const last = notes
-      .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
-      .at(-1);
+    const last = notes.sort(
+      (a, b) => a.createdAt.getTime() - b.createdAt.getTime(),
+    )[notes.length - 1];
     return { message: last?.message ?? "" };
   }
 

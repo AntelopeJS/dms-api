@@ -47,4 +47,4 @@ jobs:
       - run: pnpm build
       - run: pnpm test
       # `pnpm --dir frontend-vue typecheck` is left out: it needs a running DMS
-      # backend for `ajs-dms prepare` to generate the complete Inertia workspace.
+      # backend for `ajs dms prepare` to generate the complete Inertia workspace.
