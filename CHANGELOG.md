@@ -1,5 +1,22 @@
 # Changelog
 
+## v0.1.3
+
+[compare changes](https://github.com/AntelopeJS/dms-api/compare/v0.1.2...v0.1.3)
+
+### 🩹 Fixes
+
+- **frontend:** Use DMS client-only component ([#11](https://github.com/AntelopeJS/dms-api/pull/11))
+
+### 🏡 Chore
+
+- Use supported DMS CLI commands ([#9](https://github.com/AntelopeJS/dms-api/pull/9))
+- **orb:** Add playground services and lifecycle setup ([#10](https://github.com/AntelopeJS/dms-api/pull/10))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <rizzitelli.antony@pm.me>
+
 ## v0.1.2
 
 [compare changes](https://github.com/AntelopeJS/dms-api/compare/v0.1.1...v0.1.2)
