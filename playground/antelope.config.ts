@@ -26,6 +26,9 @@ export default defineConfig({
       },
       config: {
         homepage: "/home",
+        auth: {
+          jwtSecret: "dev",
+        },
       },
       importOverrides: [],
       disabledExports: [],
