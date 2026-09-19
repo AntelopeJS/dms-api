@@ -58,7 +58,7 @@ const apex = useApexChart(() => ({
   <!-- Same frame classes <DmsChart> puts on a standalone chart, so a card
        holding one of each renders the two identically. -->
   <div class="dms-chart dms-card p-5 sm:p-6">
-    <ClientOnly>
+    <DmsClientOnly>
       <DmsApexChartHost
         :apex-type="apex.apexType.value"
         :height="height"
@@ -68,6 +68,6 @@ const apex = useApexChart(() => ({
       <template #fallback>
         <USkeleton class="w-full" :style="{ height }" />
       </template>
-    </ClientOnly>
+    </DmsClientOnly>
   </div>
 </template>
