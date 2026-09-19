@@ -1,0 +1,22 @@
+services:
+  mongodb:
+    command: >-
+      if ! systemctl is-active --quiet mongod; then sudo systemctl start mongod; fi;
+      until mongosh --quiet --eval 'db.runCommand({ ping: 1 }).ok' 2>/dev/null | grep -Fxq '1'; do sleep 0.5; done;
+      exec sleep infinity
+    port: 27017
+
+  dms-backend:
+    command: pnpm --dir playground dev
+    port: 5010
+    health: /api/onboarding/informations
+
+  dms-frontend:
+    command: >-
+      until curl -fsS http://127.0.0.1:5010/api/onboarding/informations >/dev/null; do sleep 0.5; done;
+      export DMS_SESSION_SECRET="${DMS_SESSION_SECRET:-$(openssl rand -hex 32)}";
+      pnpm --dir playground frontend:dev
+    port: 3001
+    portal:
+      title: AntelopeJS DMS API playground
+      description: DMS API playground
