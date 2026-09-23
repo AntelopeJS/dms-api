@@ -17,11 +17,11 @@
     "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
-    "build": "rimraf dist && tsc -p tsconfig.build.json",
+    "build": "rimraf dist && tsc",
     "dev": "ajs project run -w -p playground",
     "lint:fix": "oxlint --fix --max-warnings=1000000 && oxfmt . && pnpm --dir frontend-vue lint:fix",
     "lint": "oxlint && oxfmt --check . && pnpm --dir frontend-vue lint",
-    "typecheck": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit",
     "test": "pnpm --dir frontend-vue test",
     "format": "oxfmt . && pnpm --dir frontend-vue format",
     "frontend:dev": "cd playground && pnpm frontend:dev",
