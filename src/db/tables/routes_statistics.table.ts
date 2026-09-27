@@ -27,4 +27,12 @@ export class RouteStatistics extends Table {
 
   @Field(["any"])
   declare statistics: DayStatistics[];
+
+  /**
+   * Optimistic-concurrency token, replaced on every write of `statistics`
+   * (see {@link RouteStatisticsModel.replaceStatistics}). Absent on rows
+   * written before it existed; the first guarded write installs it.
+   */
+  @Field("string")
+  declare revision?: string;
 }
