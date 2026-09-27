@@ -60,14 +60,17 @@ export async function getRequestLog(
 }
 
 /**
- * Fetch the most recent N logs for a given route id. Used by the per-route
- * Statistics tab as the input to the history table.
+ * Fetch the most recent N logs for a route, identified by method and URI
+ * pattern. Used by the per-route Statistics tab as the input to the history
+ * table. Not by `routeId`: that is interface-api's in-process counter, so a
+ * stored value names a different route (or none) after a restart.
  */
 export async function getRecentLogsForRoute(
-  model: RequestLogModel,
-  routeId: string,
+  model: Pick<RequestLogModel, "query">,
+  method: string,
+  uri: string,
   limit = 20,
 ): Promise<RequestLog[]> {
-  const page = await model.query({ routeId, limit });
+  const page = await model.query({ method, uri, limit });
   return page.results;
 }

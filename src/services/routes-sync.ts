@@ -1,13 +1,14 @@
 import type { getRegisteredRoutes } from "@antelopejs/interface-api";
 import type { RouteModel } from "@/db";
 import type { Route } from "@/db/tables/routes.table";
+import { normalizeRouteMethod } from "@/db/tables/routes_statistics.table";
 import type { HttpMethod } from "@/types";
 import { getOwnModuleIds } from "./scope";
 
 type RegisteredRoute = ReturnType<typeof getRegisteredRoutes>[number];
 
 function normalizeMethod(method: string): HttpMethod {
-  return method.toUpperCase() as HttpMethod;
+  return normalizeRouteMethod(method) as HttpMethod;
 }
 
 function getRouteKey(method: string, uri: string): string {
