@@ -21,7 +21,7 @@ export class LogsPage extends PageController(
     module: "api",
     order: 2,
   },
-  DefaultLayout({ hideHeader: true, fullWidth: true }),
+  DefaultLayout({ hideHeader: true, fullWidth: true, fillHeight: true }),
 ) {
   static content = CustomComponent("DmsApiLogsView").meta({
     name: "$page.api.logs.title",
