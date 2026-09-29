@@ -1,5 +1,22 @@
 # Changelog
 
+## v0.1.5
+
+[compare changes](https://github.com/AntelopeJS/dms-api/compare/v0.1.4...v0.1.5)
+
+### 🩹 Fixes
+
+- **db:** Make route statistics updates atomic and key route lookups on method and uri ([#21](https://github.com/AntelopeJS/dms-api/pull/21))
+
+### 🏡 Chore
+
+- **playground:** Move to @antelopejs/dms-frontend 0.3.2 ([#20](https://github.com/AntelopeJS/dms-api/pull/20))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <rizzitelli.antony@pm.me>
+- Alessandro Aloisio ([@alessaloisio](http://github.com/alessaloisio))
+
 ## v0.1.4
 
 [compare changes](https://github.com/AntelopeJS/dms-api/compare/v0.1.3...v0.1.4)
