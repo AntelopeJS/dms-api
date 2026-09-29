@@ -51,7 +51,10 @@ export class RoutesController extends Controller("/api/monitoring/routes") {
   ) {
     const inspection = getRouteInspection(id);
     assert(inspection, 404, "Route not found");
-    const route = await GetModel(RouteModel).get(id);
+    const route = await GetModel(RouteModel).getByRoute(
+      inspection.method,
+      inspection.location,
+    );
     return {
       ...inspection,
       registeredAt: route?.createdAt ?? null,
@@ -90,7 +93,12 @@ export class RoutesController extends Controller("/api/monitoring/routes") {
         days,
       ),
       getRouteAggregate(stats, inspection.method, inspection.location, days),
-      getRecentLogsForRoute(log, id, RECENT_LOGS_DEFAULT),
+      getRecentLogsForRoute(
+        log,
+        inspection.method,
+        inspection.location,
+        RECENT_LOGS_DEFAULT,
+      ),
     ]);
 
     return {

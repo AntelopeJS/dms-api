@@ -9,12 +9,20 @@ import { SCHEMA_NAME } from "../../types/constants";
 export const routesStatisticsTableName = "routes_statistics";
 
 /**
+ * Canonical casing of an HTTP method as stored in the route tables
+ * (`routes`, `routes_statistics`, `request_log`).
+ */
+export function normalizeRouteMethod(method: string): string {
+  return method.toUpperCase();
+}
+
+/**
  * Generate composite key for route statistics
  * Format: "METHOD:uri" (e.g., "GET:/api/users/:id")
  * Method is normalized to uppercase for consistency
  */
 export function getRouteStatsKey(method: string, uri: string): string {
-  return `${method.toUpperCase()}:${uri}`;
+  return `${normalizeRouteMethod(method)}:${uri}`;
 }
 
 @RegisterTable(routesStatisticsTableName, SCHEMA_NAME)
@@ -27,4 +35,12 @@ export class RouteStatistics extends Table {
 
   @Field(["any"])
   declare statistics: DayStatistics[];
+
+  /**
+   * Optimistic-concurrency token, replaced on every write of `statistics`
+   * (see {@link RouteStatisticsModel.replaceStatistics}). Absent on rows
+   * written before it existed; the first guarded write installs it.
+   */
+  @Field("string")
+  declare revision?: string;
 }
