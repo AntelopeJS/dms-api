@@ -22,7 +22,10 @@ function onRoute(id: string) {
 </script>
 
 <template>
-  <div class="flex h-full w-full flex-col gap-5 p-6">
+  <!-- The page fills the panel (`fillHeight` in src/pages/routes/page.ts):
+       from `lg` up the tree and the detail share its height and scroll
+       inside; below, where they stack, the view scrolls as a whole. -->
+  <div class="flex min-h-0 w-full flex-1 flex-col gap-5 p-6 max-lg:overflow-y-auto">
     <!-- page head -->
     <header class="flex flex-wrap items-center gap-4">
       <div
@@ -43,21 +46,15 @@ function onRoute(id: string) {
 
     <!-- master-detail split -->
     <div
-      class="grid min-h-0 flex-1 grid-cols-1 gap-5 lg:grid-cols-[minmax(280px,340px)_1fr]"
+      class="grid grid-cols-1 gap-5 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(280px,340px)_1fr]"
     >
       <!-- left: tree -->
-      <DmsCard
-        :padded="false"
-        class="flex max-h-[calc(100vh-13rem)] flex-col overflow-hidden"
-      >
+      <DmsCard :padded="false" class="flex flex-col overflow-hidden lg:min-h-0">
         <RouteTree :period="period" @select-route="onRoute" />
       </DmsCard>
 
       <!-- right: detail -->
-      <DmsCard
-        :padded="false"
-        class="max-h-[calc(100vh-13rem)] overflow-auto"
-      >
+      <DmsCard :padded="false" class="lg:min-h-0 lg:overflow-auto">
         <RouteDetailTabs
           v-if="selectedRouteId && period"
           :key="selectedRouteId"

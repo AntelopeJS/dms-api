@@ -21,7 +21,7 @@ export class RoutesPage extends PageController(
     module: "api",
     order: 1,
   },
-  DefaultLayout({ hideHeader: true, fullWidth: true }),
+  DefaultLayout({ hideHeader: true, fullWidth: true, fillHeight: true }),
 ) {
   static content = CustomComponent("DmsApiRoutesView").meta({
     name: "$page.api.routes.title",

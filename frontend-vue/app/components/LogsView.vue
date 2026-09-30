@@ -207,7 +207,9 @@ const counts = computed(() => {
 </script>
 
 <template>
-  <div class="flex w-full flex-col gap-5 p-6">
+  <!-- The page fills the panel (`fillHeight` in src/pages/logs/page.ts): the
+       log list takes the height left and scrolls inside the card. -->
+  <div class="flex min-h-0 w-full flex-1 flex-col gap-5 p-6">
     <header class="flex flex-wrap items-center gap-4">
       <div
         class="grid size-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary"
@@ -244,7 +246,7 @@ const counts = computed(() => {
       </div>
     </header>
 
-    <DmsCard :padded="false" class="flex flex-col overflow-hidden">
+    <DmsCard :padded="false" class="flex min-h-0 flex-1 flex-col overflow-hidden">
       <!-- Filter toolbar -->
       <div
         class="flex flex-wrap items-center gap-2 border-b border-default px-4 py-3"
@@ -271,9 +273,7 @@ const counts = computed(() => {
 
       <!-- Console-style log list. The row list scrolls internally so the
            toolbar and footer stay pinned. -->
-      <div
-        class="flex max-h-[calc(100vh-24rem)] min-h-[360px] flex-col overflow-hidden font-mono text-xs"
-      >
+      <div class="flex min-h-0 flex-1 flex-col overflow-hidden font-mono text-xs">
         <div v-if="rows.length === 0 && !loading" class="p-8 text-center text-muted">
           {{ $t('page.api.logs.empty') }}
         </div>
