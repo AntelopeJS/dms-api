@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.1.7
+
+[compare changes](https://github.com/AntelopeJS/dms-api/compare/v0.1.6...v0.1.7)
+
+### 🚀 Enhancements
+
+- **frontend-vue:** Declare the @antelopejs/dms-frontend releases the layer supports ([#22](https://github.com/AntelopeJS/dms-api/pull/22))
+
+### ❤️ Contributors
+
+- Alessandro Aloisio ([@alessaloisio](http://github.com/alessaloisio))
+
 ## v0.1.6
 
 [compare changes](https://github.com/AntelopeJS/dms-api/compare/v0.1.5...v0.1.6)
