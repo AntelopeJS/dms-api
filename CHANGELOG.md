@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.1.6
+
+[compare changes](https://github.com/AntelopeJS/dms-api/compare/v0.1.5...v0.1.6)
+
+### 💅 Refactors
+
+- **pages:** Let the routes and logs pages fill the panel ([#25](https://github.com/AntelopeJS/dms-api/pull/25))
+
+### 🏡 Chore
+
+- **lint:** Check @antelopejs/interface-* ranges ([#24](https://github.com/AntelopeJS/dms-api/pull/24))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <rizzitelli.antony@pm.me>
+
 ## v0.1.5
 
 [compare changes](https://github.com/AntelopeJS/dms-api/compare/v0.1.4...v0.1.5)
