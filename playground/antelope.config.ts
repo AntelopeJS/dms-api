@@ -64,7 +64,7 @@ export default defineConfig({
       source: {
         type: "package",
         package: "@antelopejs/file-storage-local",
-        version: "^0.1.5",
+        version: ">=0.1.5 <1.0.0",
       },
       config: {
         storagePath: ".antelope/file-storage",
@@ -78,7 +78,7 @@ export default defineConfig({
       source: {
         type: "package",
         package: "@antelopejs/nodemailer",
-        version: "0.0.5",
+        version: ">=0.0.5 <1.0.0",
       },
       config: {
         ethereal: true,
@@ -90,7 +90,7 @@ export default defineConfig({
       source: {
         type: "package",
         package: "@antelopejs/api",
-        version: "^1.3.0",
+        version: "^1.3.1",
       },
       config: {
         servers: [
