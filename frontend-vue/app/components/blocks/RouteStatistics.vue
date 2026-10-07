@@ -268,6 +268,7 @@ function openTester() {
       <USkeleton class="h-56" />
     </div>
   </div>
+  <div v-else-if="!stats && errorStatus(error) === 404" />
   <DmsCard v-else-if="!stats" :padded="false" class="py-6">
     <DmsEmptyState
       variant="error"
