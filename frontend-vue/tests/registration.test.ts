@@ -1,8 +1,11 @@
 import { expect, it, vi } from 'vitest'
 import frontendModule from '../dms.frontend'
 
-it('registers API dashboard components without leaking internal paths into their names', async () => {
+vi.mock('../app/plugins/displays', () => ({ default: () => {} }))
+
+it('registers the blocks the backend pages name, and nothing else', async () => {
   const registerComponent = vi.fn()
+  const registerPlugin = vi.fn()
   await frontendModule.setup({
     options: { public: {} },
     registerComponent,
@@ -10,19 +13,30 @@ it('registers API dashboard components without leaking internal paths into their
     registerDynamicPage: vi.fn(),
     registerLayout: vi.fn(),
     registerErrorPage: vi.fn(),
-    registerPlugin: vi.fn(),
+    registerPlugin,
     registerMiddleware: vi.fn(),
     provide: vi.fn(),
     use: vi.fn(),
   })
+  expect(frontendModule.componentPrefix).toBe('DmsApi')
   const names = registerComponent.mock.calls.map(([name]) => name)
   expect(names).toEqual(
     expect.arrayContaining([
-      'DmsApiSummaryView',
-      'DmsApiTesterPanel',
-      'DmsApiPeriodSelect',
+      'HealthHero',
+      'LiveTraffic',
+      'RequestDetail',
+      'RouteTree',
+      'RouteHeader',
+      'RouteStatistics',
+      'RouteDocumentation',
+      'RouteTester',
+      'ScopeChip',
+      'SplitLayout',
     ]),
   )
+  expect(names).not.toContain('ApiMethodBadge')
   expect(new Set(names).size).toBe(names.length)
-  expect(names).not.toContain('DmsApiInternalPeriodSelect')
+  expect(registerPlugin).toHaveBeenCalledWith(expect.any(Function), {
+    clientOnly: false,
+  })
 })
