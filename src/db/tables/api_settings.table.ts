@@ -36,6 +36,10 @@ export class ApiSettings extends Table {
   @Field("number")
   declare requestLogMaxBodySize: number | null;
 
+  /** Override of requestLogCaptureHeaders; null → config default. */
+  @Field(["string"])
+  declare requestLogCaptureHeaders: string[] | null;
+
   @UpdateTime()
   @Field("date")
   declare updatedAt: Date;

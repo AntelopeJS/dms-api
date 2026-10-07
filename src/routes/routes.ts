@@ -1,149 +1,86 @@
-import { Controller, Get, Parameter } from "@antelopejs/interface-api";
+import {
+  Context,
+  Controller,
+  Get,
+  Parameter,
+  type RequestContext,
+} from "@antelopejs/interface-api";
 import { assert } from "@antelopejs/interface-api-util";
 import { GetModel } from "@antelopejs/interface-database-decorators";
-import { AuthOwnerOnly, AuthRawUser } from "@antelopejs/interface-dms/auth";
 import type { User } from "@antelopejs/interface-dms/auth/db";
+import { AuthUserWithPermission } from "@antelopejs/interface-dms/guards";
 import { RequestLogModel, RouteModel, RouteStatisticsModel } from "@/db";
+import { RoutesPage } from "@/pages/routes";
 import {
-  getFolderInspection,
-  getRouteInspection,
-} from "@/services/introspection";
-import { parsePeriodDays, resolvePeriodDays } from "@/services/period";
-import { getRecentLogsForRoute } from "@/services/request-log/read";
+  type CatalogModels,
+  findRoute,
+  getRouteDetail,
+  getRouteStatistics,
+  listRoutes,
+} from "@/services/route-catalog";
 import { getScopedRouteKeys } from "@/services/scope";
 import { getActiveScope } from "@/services/settings";
-import {
-  getFolderAggregate,
-  getRouteAggregate,
-} from "@/services/statistics-aggregate";
-import {
-  getResponseTimesStatistics,
-  getRouteStatistics,
-} from "@/services/statistics-read";
-import { buildRoutesTreeNodes } from "@/services/tree";
+import { resolveWindow } from "@/services/window";
 
-const DEFAULT_STATS_DAYS = 7;
-const RECENT_LOGS_DEFAULT = 20;
+const DEFAULT_WINDOW_DAYS = 7;
+const ROUTE_NOT_FOUND = "Route not found";
 
-/**
- * Controller for the Routes page: the route tree on the left, plus
- * per-route and per-folder payloads driving the Documentation,
- * Configuration and Statistics tabs on the right.
- */
-@AuthOwnerOnly()
-export class RoutesController extends Controller("/api/monitoring/routes") {
-  @Get("tree")
-  async getTree(
-    @AuthRawUser() _user: User,
-    @Parameter("period", "query") period?: string,
-  ) {
-    const [stats, keys] = await Promise.all([
-      GetModel(RouteStatisticsModel).getAll(),
-      getScopedRouteKeys(GetModel(RouteModel), getActiveScope()),
-    ]);
-    return buildRoutesTreeNodes(stats, keys, parsePeriodDays(period));
-  }
-
-  @Get("route/:id/doc")
-  async getRouteDoc(
-    @AuthRawUser() _user: User,
-    @Parameter("id", "param") id: string,
-  ) {
-    const inspection = getRouteInspection(id);
-    assert(inspection, 404, "Route not found");
-    const route = await GetModel(RouteModel).getByRoute(
-      inspection.method,
-      inspection.location,
-    );
-    return {
-      ...inspection,
-      registeredAt: route?.createdAt ?? null,
-      updatedAt: route?.updatedAt ?? null,
-    };
-  }
-
-  @Get("route/:id/config")
-  async getRouteConfig(
-    @AuthRawUser() _user: User,
-    @Parameter("id", "param") id: string,
-  ) {
-    const inspection = getRouteInspection(id);
-    assert(inspection, 404, "Route not found");
-    return inspection;
-  }
-
-  @Get("route/:id/stats")
-  async getRouteStats(
-    @AuthRawUser() _user: User,
-    @Parameter("id", "param") id: string,
-    @Parameter("period", "query") period?: string,
-  ) {
-    const inspection = getRouteInspection(id);
-    assert(inspection, 404, "Route not found");
-    const days = resolvePeriodDays(period, DEFAULT_STATS_DAYS);
-    const stats = GetModel(RouteStatisticsModel);
-    const log = GetModel(RequestLogModel);
-
-    const [counts, latency, aggregate, recent] = await Promise.all([
-      getRouteStatistics(stats, inspection.method, inspection.location, days),
-      getResponseTimesStatistics(
-        stats,
-        inspection.method,
-        inspection.location,
-        days,
-      ),
-      getRouteAggregate(stats, inspection.method, inspection.location, days),
-      getRecentLogsForRoute(
-        log,
-        inspection.method,
-        inspection.location,
-        RECENT_LOGS_DEFAULT,
-      ),
-    ]);
-
-    return {
-      route: {
-        id,
-        location: inspection.location,
-        method: inspection.method,
-      },
-      aggregate,
-      charts: { counts, latency },
-      recent,
-    };
-  }
-
-  @Get("folder/:encodedPath/doc")
-  async getFolderDoc(
-    @AuthRawUser() _user: User,
-    @Parameter("encodedPath", "param") encodedPath: string,
-  ) {
-    return getFolderInspection(decodePath(encodedPath));
-  }
-
-  @Get("folder/:encodedPath/config")
-  async getFolderConfig(
-    @AuthRawUser() _user: User,
-    @Parameter("encodedPath", "param") encodedPath: string,
-  ) {
-    return getFolderInspection(decodePath(encodedPath));
-  }
-
-  @Get("folder/:encodedPath/stats")
-  async getFolderStats(
-    @AuthRawUser() _user: User,
-    @Parameter("encodedPath", "param") encodedPath: string,
-    @Parameter("period", "query") period?: string,
-  ) {
-    const days = resolvePeriodDays(period, DEFAULT_STATS_DAYS);
-    return getFolderAggregate(
-      GetModel(RouteStatisticsModel),
-      decodePath(encodedPath),
-      days,
-    );
-  }
+function models(): CatalogModels {
+  return {
+    logs: GetModel(RequestLogModel),
+    stats: GetModel(RouteStatisticsModel),
+    routes: GetModel(RouteModel),
+  };
 }
 
-function decodePath(encoded: string): string {
-  return `/${decodeURIComponent(encoded).split("/").filter(Boolean).join("/")}`;
+const explorer = RoutesPage.explorer;
+const tabs = ["tabs"] as const;
+
+/**
+ * The Routes page's blocks: the tree, then everything about the route the
+ * URL names (`?route=METHOD%20/path`). A route is named by its method and
+ * path, never by the runtime's route id, which changes on every start.
+ */
+export class RoutesController extends Controller("/api/monitoring/routes") {
+  @Get("list")
+  async listRoutes(
+    @AuthUserWithPermission(explorer.targetChild("tree")) _user: User,
+  ) {
+    const keys = await getScopedRouteKeys(
+      GetModel(RouteModel),
+      getActiveScope(),
+    );
+    return { routes: await listRoutes(models(), keys) };
+  }
+
+  @Get("detail")
+  async getDetail(
+    @AuthUserWithPermission(explorer.targetChild("header"))
+    _user: User,
+    @Parameter("route", "query") route?: string,
+  ) {
+    const detail = route ? await getRouteDetail(models(), route) : undefined;
+    assert(detail, 404, ROUTE_NOT_FOUND);
+    return detail;
+  }
+
+  @Get("statistics")
+  async getStatistics(
+    @AuthUserWithPermission(explorer.targetChild(...tabs, "statistics"))
+    _user: User,
+    @Context() context: RequestContext,
+  ) {
+    const params = context.url.searchParams;
+    const inspection = findRoute(params.get("route") ?? undefined);
+    assert(inspection, 404, ROUTE_NOT_FOUND);
+    const window = resolveWindow(
+      {
+        from: params.get("from") ?? undefined,
+        to: params.get("to") ?? undefined,
+        comparison: params.get("comparison") ?? undefined,
+      },
+      DEFAULT_WINDOW_DAYS,
+    );
+    return getRouteStatistics(models(), inspection, window);
+  }
 }

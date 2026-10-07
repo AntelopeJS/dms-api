@@ -12,6 +12,8 @@ export interface RequestLogFilters {
   routeId?: string;
   uri?: string;
   method?: string;
+  /** Substring of the error message, case-insensitive. */
+  errorMessage?: string;
   statusClass?: RequestLogStatusClass;
   statusMin?: number;
   statusMax?: number;
@@ -32,6 +34,35 @@ export interface RequestLogFilters {
 export interface RequestLogPage {
   results: RequestLog[];
   nextCursor: string | null;
+}
+
+/** One page of a filtered listing, with the number of matching rows. */
+export interface RequestLogListPage {
+  results: RequestLog[];
+  total: number;
+}
+
+/** Columns a listing can be sorted on, each backed by an index. */
+export type RequestLogSortKey = "timestamp" | "statusCode" | "responseTimeMs";
+
+export interface RequestLogListOptions {
+  offset?: number;
+  limit?: number;
+  sortKey?: RequestLogSortKey;
+  sortDirection?: "asc" | "desc";
+}
+
+/**
+ * The few fields the aggregations read, projected so a window of traffic can
+ * be scanned in one query without carrying headers and bodies along.
+ */
+export interface RequestLogSample {
+  timestamp: Date;
+  method: string;
+  uri: string;
+  statusCode: number;
+  responseTimeMs: number;
+  errorMessage?: string;
 }
 
 const DEFAULT_LIMIT = 50;
@@ -88,11 +119,62 @@ export class RequestLogModel extends BasicDataModel(
       filters.limit ?? DEFAULT_LIMIT,
       REQUEST_LOG_MAX_LIMIT,
     );
-    let q = this.table.orderBy(REQUEST_LOG_ORDER_INDEX, "desc");
-    q = this.applyScalarFilters(q, filters);
-    q = this.applyStatusFilters(q, filters);
+    const q = this.applyFilters(
+      this.table.orderBy(REQUEST_LOG_ORDER_INDEX, "desc"),
+      filters,
+    );
     const results = await q.slice(0, limit + 1).run();
     return paginate(results, limit);
+  }
+
+  /**
+   * One page of the rows matching `filters`, by offset, with the total: what
+   * a table view over the logs pages through.
+   */
+  async list(
+    filters: RequestLogFilters,
+    options: RequestLogListOptions,
+  ): Promise<RequestLogListPage> {
+    const limit = Math.min(
+      options.limit ?? DEFAULT_LIMIT,
+      REQUEST_LOG_MAX_LIMIT,
+    );
+    const offset = Math.max(0, options.offset ?? 0);
+    const sortKey = options.sortKey ?? "timestamp";
+    const index = sortKey === "timestamp" ? REQUEST_LOG_ORDER_INDEX : sortKey;
+    const ordered = this.applyFilters(
+      this.table.orderBy(index, options.sortDirection ?? "desc"),
+      filters,
+    );
+    const [results, total] = await Promise.all([
+      ordered.slice(offset, offset + limit).run(),
+      this.applyFilters(this.table, filters).count().run(),
+    ]);
+    return { results, total };
+  }
+
+  /** Every row matching `filters`, reduced to the fields aggregations read. */
+  async samples(filters: RequestLogFilters): Promise<RequestLogSample[]> {
+    return this.applyFilters(this.table, filters)
+      .map((doc) => ({
+        timestamp: doc.key("timestamp"),
+        method: doc.key("method"),
+        uri: doc.key("uri"),
+        statusCode: doc.key("statusCode"),
+        responseTimeMs: doc.key("responseTimeMs"),
+        errorMessage: doc.key("error").default(null).key("message"),
+      }))
+      .run() as Promise<RequestLogSample[]>;
+  }
+
+  private applyFilters(
+    q: this["table"],
+    filters: RequestLogFilters,
+  ): this["table"] {
+    return this.applyStatusFilters(
+      this.applyScalarFilters(q, filters),
+      filters,
+    );
   }
 
   private applyScalarFilters(
@@ -134,8 +216,33 @@ export class RequestLogModel extends BasicDataModel(
       q = q.filter((doc) => doc.key("method").eq(method));
     }
     if (filters.search) {
-      const needle = escapeRegex(filters.search);
-      q = q.filter((doc) => doc.key("uri").match(`(?i)${needle}`));
+      const pattern = `(?i)${escapeRegex(filters.search)}`;
+      q = q.filter((doc) =>
+        doc
+          .key("rawPath")
+          .match(pattern)
+          .or(doc.key("uri").match(pattern))
+          .or(doc.key("_id").match(pattern))
+          .or(
+            doc
+              .key("error")
+              .default(null)
+              .key("message")
+              .default("")
+              .match(pattern),
+          ),
+      );
+    }
+    if (filters.errorMessage) {
+      const pattern = `(?i)${escapeRegex(filters.errorMessage)}`;
+      q = q.filter((doc) =>
+        doc
+          .key("error")
+          .default(null)
+          .key("message")
+          .default("")
+          .match(pattern),
+      );
     }
     const routeKeys = filters.routeKeys;
     if (routeKeys) {

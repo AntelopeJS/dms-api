@@ -58,3 +58,12 @@ export async function getScopedRouteKeys(
     .run();
   return new Set(routes.map((route) => scopeRouteKey(route.method, route.uri)));
 }
+
+/** Routes in scope: the size of the key set, or every synced route for `all`. */
+export async function countScopedRoutes(
+  routesModel: RouteModel,
+  keys: Set<string> | null,
+): Promise<number> {
+  if (keys) return keys.size;
+  return routesModel.table.count().run();
+}
