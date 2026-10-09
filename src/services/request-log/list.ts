@@ -59,7 +59,7 @@ const SORT_KEYS: Record<string, RequestLogSortKey> = {
 const DEFAULT_PAGE_SIZE = 50;
 
 /** `is:GET` → `GET`; `include:GET,POST` → `GET` (one method at a time). */
-function filterValue(raw: string | undefined): string | undefined {
+export function filterValue(raw: string | undefined): string | undefined {
   if (!raw) return undefined;
   const separator = raw.indexOf(":");
   const value = separator < 0 ? raw : raw.slice(separator + 1);

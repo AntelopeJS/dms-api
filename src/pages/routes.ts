@@ -149,6 +149,7 @@ function recentRow() {
       .child(
         "table",
         requestTable({
+          fetchUrl: "/api/monitoring/logs/route",
           columns: ["timestamp", "status", "path", "responseTimeMs"],
           sizes: { timestamp: 116, status: 84, path: 180 },
           layout: "compact",

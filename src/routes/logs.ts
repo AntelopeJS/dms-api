@@ -13,10 +13,15 @@ import { getConfig } from "@/config";
 import { RequestLogModel, RouteModel } from "@/db";
 import { LogsPage } from "@/pages/logs";
 import { OverviewPage } from "@/pages/overview";
+import { RoutesPage } from "@/pages/routes";
 import { logsLink, routeLink, routeRef } from "@/services/links";
 import { getMaxLogDays } from "@/services/period";
 import { getRequestLog } from "@/services/request-log/read";
-import { listRequestLogs, type SourceQuery } from "@/services/request-log/list";
+import {
+  filterValue,
+  listRequestLogs,
+  type SourceQuery,
+} from "@/services/request-log/list";
 import { getScopedRouteKeys } from "@/services/scope";
 import { bytesToKb } from "@/services/settings-form";
 import { getActiveScope } from "@/services/settings";
@@ -66,6 +71,30 @@ export class LogsController extends Controller("/api/monitoring/logs") {
       sourceQuery(context),
       await scopeKeys(),
     );
+  }
+
+  /**
+   * The last requests of the route the Routes page selects, filtered by its
+   * `?route=` like a link to the logs. Without a route there is nothing to
+   * list, rather than every request of the API.
+   */
+  @Get("route")
+  async listForRoute(
+    @AuthUserWithPermission(
+      RoutesPage.explorer.targetChild(
+        "tabs",
+        "statistics",
+        "recent",
+        "requests",
+        "table",
+      ),
+    )
+    _user: User,
+    @Context() context: RequestContext,
+  ) {
+    const query = sourceQuery(context);
+    if (!filterValue(query.filter_route)) return { results: [], total: 0 };
+    return listRequestLogs(GetModel(RequestLogModel), query, await scopeKeys());
   }
 
   @Get("live")
