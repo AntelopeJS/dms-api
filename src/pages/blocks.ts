@@ -14,7 +14,6 @@ export type ApiBlock =
   | "RequestDetail"
   | "RouteTree"
   | "RouteHeader"
-  | "RouteStatistics"
   | "RouteDocumentation"
   | "RouteTester"
   | "SplitLayout";
@@ -26,7 +25,6 @@ const BLOCK_ICONS: Record<ApiBlock, string> = {
   RequestDetail: "i-ph-sidebar-simple",
   RouteTree: "i-ph-tree-structure",
   RouteHeader: "i-ph-signpost",
-  RouteStatistics: "i-ph-chart-bar",
   RouteDocumentation: "i-ph-book-open-text",
   RouteTester: "i-ph-paper-plane-tilt",
   SplitLayout: "i-ph-columns",

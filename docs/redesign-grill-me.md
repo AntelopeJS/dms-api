@@ -88,7 +88,7 @@ keeps custom components for the parts no block expresses.
 | `LiveTraffic` | Per-minute histogram of the last hour with a Live toggle that shows its own failures; no block polls. |
 | `RequestDetail` | The request drawer (error and stack first, timing, headers, bodies, Replay / cURL / Open route / Same error). |
 | `RouteTree` | A filterable tree whose selection lives in the URL. |
-| `RouteHeader`, `RouteStatistics`, `RouteDocumentation`, `RouteTester` | Everything under the selected route reads `?route=` from the URL; no block takes its fetch URL from the page query. They render public DMS components (`DmsStatGroup`, `DmsChart`, `DmsCard`, `DmsEmptyState`, `DmsStatusPill`) inside. |
+| `RouteHeader`, `RouteDocumentation`, `RouteTester` | Everything under the selected route reads `?route=` from the URL. They render public DMS components (`DmsCard`, `DmsEmptyState`, `DmsStatusPill`) inside. Since DMS 0.6.1 a block's `fetchUrl` takes `{{query.route}}`, so the Statistics tab is now DMS blocks only (`KpiCard`, `ChartCard`, `TopListCard`, a request table filtered by `?route=`); these three stay custom for what they draw, not for how they read the route. |
 | `SplitLayout` | A list beside its detail. `Grid` shares its columns equally, so a row of two cells cannot give one of them three quarters; `DmsMasterDetail` is a template component, not a block. |
 
 The request tables also draw their cells with four small cell displays of the

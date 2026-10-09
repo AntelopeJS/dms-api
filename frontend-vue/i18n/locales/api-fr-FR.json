@@ -50,10 +50,6 @@
         "name": "Résumé de la route",
         "description": "La route sélectionnée : handler, accès et origine."
       },
-      "route_statistics": {
-        "name": "Statistiques de la route",
-        "description": "Trafic, latence, erreurs principales et dernières requêtes de la route."
-      },
       "route_documentation": {
         "name": "Documentation de la route",
         "description": "Le contrat de la route, déduit de son code et de son trafic."
@@ -325,30 +321,22 @@
       "statistics": {
         "title": "Statistiques de la route",
         "requests": "Requêtes",
-        "average": "Latence moy.",
         "error_rate": "Taux d'erreur",
-        "max": "Latence max",
-        "vs_previous": "{delta} vs période précédente",
-        "no_baseline": "Pas de période précédente",
-        "min": "min {min}",
-        "error_split": "{client} × 4xx · {server} × 5xx",
         "by_status": "Requêtes par statut",
         "response_time": "Temps de réponse",
         "series_average": "Moyenne",
         "series_max": "Max",
         "series_min": "Min",
-        "slow_line": "Lente · {threshold}",
         "top_errors": "Erreurs principales",
         "no_errors": "Aucune erreur sur la période",
-        "no_message": "Sans message",
-        "calls": "{count} appel | {count} appels",
-        "last": "dernier {ago}",
         "recent": "Requêtes récentes",
-        "all_requests": "Toutes les requêtes",
-        "error": "Impossible de charger les statistiques",
-        "no_calls_title": "Aucun appel sur la période",
-        "no_calls_description": "Personne n'a appelé cette route sur la période choisie. Envoyez une requête de test pour la voir ici.",
-        "send_test": "Envoyer une requête de test"
+        "no_calls_title": "Aucun appel sur cette route pour l’instant",
+        "no_calls_description": "Ses requêtes s’affichent ici dès qu’elle est appelée.",
+        "average_ms": "Moy. (ms)",
+        "max_ms": "Max (ms)",
+        "top_errors_description": "Erreurs regroupées par statut et message",
+        "server_error": "Erreur serveur · voir ses requêtes",
+        "client_error": "Erreur client · voir ses requêtes"
       },
       "docs": {
         "example": "Exemple de requête",

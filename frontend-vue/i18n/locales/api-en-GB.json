@@ -50,10 +50,6 @@
         "name": "Route summary",
         "description": "The selected route: handler, access and origin."
       },
-      "route_statistics": {
-        "name": "Route statistics",
-        "description": "Traffic, latency, top errors and last requests of the selected route."
-      },
       "route_documentation": {
         "name": "Route documentation",
         "description": "The contract of the selected route, inferred from its code and traffic."
@@ -325,30 +321,22 @@
       "statistics": {
         "title": "Route statistics",
         "requests": "Requests",
-        "average": "Avg latency",
         "error_rate": "Error rate",
-        "max": "Max latency",
-        "vs_previous": "{delta} vs. previous period",
-        "no_baseline": "No previous period",
-        "min": "min {min}",
-        "error_split": "{client} × 4xx · {server} × 5xx",
         "by_status": "Requests by status",
         "response_time": "Response time",
         "series_average": "Average",
         "series_max": "Max",
         "series_min": "Min",
-        "slow_line": "Slow · {threshold}",
         "top_errors": "Top errors",
         "no_errors": "No errors in this period",
-        "no_message": "No message",
-        "calls": "{count} call | {count} calls",
-        "last": "last {ago}",
         "recent": "Recent requests",
-        "all_requests": "All requests",
-        "error": "Could not load the statistics",
-        "no_calls_title": "No calls in this period",
-        "no_calls_description": "Nobody called this route in the selected period. Send a test request to see it here.",
-        "send_test": "Send a test request"
+        "no_calls_title": "No call to this route yet",
+        "no_calls_description": "Its requests show here as soon as it is called.",
+        "average_ms": "Avg (ms)",
+        "max_ms": "Max (ms)",
+        "top_errors_description": "Errors grouped by status and message",
+        "server_error": "Server error · open its requests",
+        "client_error": "Client error · open its requests"
       },
       "docs": {
         "example": "Example request",

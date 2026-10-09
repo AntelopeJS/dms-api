@@ -27,7 +27,6 @@ it('registers the blocks the backend pages name, and nothing else', async () => 
       'RequestDetail',
       'RouteTree',
       'RouteHeader',
-      'RouteStatistics',
       'RouteDocumentation',
       'RouteTester',
       'ScopeChip',

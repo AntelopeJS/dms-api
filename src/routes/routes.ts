@@ -15,12 +15,24 @@ import {
   type CatalogModels,
   findRoute,
   getRouteDetail,
-  getRouteStatistics,
   listRoutes,
 } from "@/services/route-catalog";
+import {
+  errorRateKpi,
+  type KpiPayload,
+  latencyChart,
+  latencyKpi,
+  loadRouteTraffic,
+  maxLatencyKpi,
+  requestsKpi,
+  type RouteChartPayload,
+  type RouteTraffic,
+  routeTopErrors,
+  statusChart,
+} from "@/services/route-statistics";
 import { getScopedRouteKeys } from "@/services/scope";
 import { getActiveScope } from "@/services/settings";
-import { resolveWindow } from "@/services/window";
+import { resolveWindow, type TimeWindow } from "@/services/window";
 
 const DEFAULT_WINDOW_DAYS = 7;
 const ROUTE_NOT_FOUND = "Route not found";
@@ -34,7 +46,33 @@ function models(): CatalogModels {
 }
 
 const explorer = RoutesPage.explorer;
-const tabs = ["tabs"] as const;
+const statistics = ["tabs", "statistics"] as const;
+
+function windowOf(context: RequestContext): TimeWindow {
+  const params = context.url.searchParams;
+  return resolveWindow(
+    {
+      from: params.get("from") ?? undefined,
+      to: params.get("to") ?? undefined,
+      comparison: params.get("comparison") ?? undefined,
+    },
+    DEFAULT_WINDOW_DAYS,
+  );
+}
+
+/** The route `?route=` names, if the runtime still registers it. */
+function routeOf(context: RequestContext) {
+  const inspection = findRoute(
+    context.url.searchParams.get("route") ?? undefined,
+  );
+  return inspection
+    ? { method: inspection.method.toUpperCase(), path: inspection.location }
+    : undefined;
+}
+
+function trafficOf(context: RequestContext): Promise<RouteTraffic> {
+  return loadRouteTraffic(models(), routeOf(context), windowOf(context));
+}
 
 /**
  * The Routes page's blocks: the tree, then everything about the route the
@@ -64,23 +102,85 @@ export class RoutesController extends Controller("/api/monitoring/routes") {
     return detail;
   }
 
-  @Get("statistics")
-  async getStatistics(
-    @AuthUserWithPermission(explorer.targetChild(...tabs, "statistics"))
+  @Get("statistics/requests")
+  async getRequests(
+    @AuthUserWithPermission(
+      explorer.targetChild(...statistics, "kpis", "requests"),
+    )
+    _user: User,
+    @Context() context: RequestContext,
+  ): Promise<KpiPayload> {
+    return requestsKpi(await trafficOf(context));
+  }
+
+  @Get("statistics/latency")
+  async getLatency(
+    @AuthUserWithPermission(
+      explorer.targetChild(...statistics, "kpis", "latency"),
+    )
+    _user: User,
+    @Context() context: RequestContext,
+  ): Promise<KpiPayload> {
+    return latencyKpi(await trafficOf(context));
+  }
+
+  @Get("statistics/error-rate")
+  async getErrorRate(
+    @AuthUserWithPermission(
+      explorer.targetChild(...statistics, "kpis", "errorRate"),
+    )
+    _user: User,
+    @Context() context: RequestContext,
+  ): Promise<KpiPayload> {
+    return errorRateKpi(await trafficOf(context));
+  }
+
+  @Get("statistics/max-latency")
+  async getMaxLatency(
+    @AuthUserWithPermission(
+      explorer.targetChild(...statistics, "kpis", "maxLatency"),
+    )
+    _user: User,
+    @Context() context: RequestContext,
+  ): Promise<KpiPayload> {
+    return maxLatencyKpi(await trafficOf(context));
+  }
+
+  @Get("statistics/status")
+  async getStatusChart(
+    @AuthUserWithPermission(
+      explorer.targetChild(...statistics, "charts", "status"),
+    )
+    _user: User,
+    @Context() context: RequestContext,
+  ): Promise<RouteChartPayload> {
+    return statusChart(await trafficOf(context));
+  }
+
+  @Get("statistics/latency-chart")
+  async getLatencyChart(
+    @AuthUserWithPermission(
+      explorer.targetChild(...statistics, "charts", "latency"),
+    )
+    _user: User,
+    @Context() context: RequestContext,
+  ): Promise<RouteChartPayload> {
+    return latencyChart(await trafficOf(context));
+  }
+
+  @Get("statistics/errors")
+  async getErrors(
+    @AuthUserWithPermission(
+      explorer.targetChild(...statistics, "detail", "errors"),
+    )
     _user: User,
     @Context() context: RequestContext,
   ) {
-    const params = context.url.searchParams;
-    const inspection = findRoute(params.get("route") ?? undefined);
-    assert(inspection, 404, ROUTE_NOT_FOUND);
-    const window = resolveWindow(
-      {
-        from: params.get("from") ?? undefined,
-        to: params.get("to") ?? undefined,
-        comparison: params.get("comparison") ?? undefined,
-      },
-      DEFAULT_WINDOW_DAYS,
+    return routeTopErrors(
+      models(),
+      routeOf(context),
+      windowOf(context),
+      context.url.searchParams.get("route") ?? "",
     );
-    return getRouteStatistics(models(), inspection, window);
   }
 }

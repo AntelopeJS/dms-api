@@ -128,8 +128,8 @@ function requestDrawerAction() {
   return {
     label: "$api.logs.open_request",
     icon: "i-ph-sidebar-simple",
-    // Drawn inline: the DMS 0.6 table does not run an `isDefault` action on a
-    // row click yet, so the row's own button is what opens it.
+    // Drawn inline: the DMS table runs an `isDefault` action on a double
+    // click only, so the row's own button is the one-click way to open it.
     isVisible: true,
     isDefault: true,
     deepLink: true,

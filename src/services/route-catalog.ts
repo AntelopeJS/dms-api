@@ -12,22 +12,15 @@ import {
   type RouteInspection,
 } from "./introspection";
 import { routeRef } from "./links";
-import {
-  computeRouteHealth,
-  type ErrorGroup,
-  issueOf,
-  type RouteIssue,
-} from "./route-health";
+import { computeRouteHealth, issueOf, type RouteIssue } from "./route-health";
 import { scopeRouteKey } from "./scope";
 import {
-  averageLatency,
   loadSamples,
   loadTraffic,
   type ScopeKeys,
   sumBuckets,
   type TrafficBucket,
 } from "./traffic";
-import type { TimeRange, TimeWindow } from "./window";
 
 export interface CatalogModels {
   logs: RequestLogModel;
@@ -361,124 +354,5 @@ export async function getRouteDetail(
     pipeline: pipelineOf(inspection),
     inspection,
     contract,
-  };
-}
-
-/** A row of the recent requests of a route. */
-export interface RecentRequest {
-  _id: string;
-  timestamp: string;
-  rawPath: string;
-  statusCode: number;
-  responseTimeMs: number;
-  ip?: string;
-}
-
-/** The Statistics tab of a route over a window. */
-export interface RouteStatisticsPayload {
-  requests: number;
-  previousRequests: number | null;
-  averageLatency: number;
-  minLatency: number;
-  maxLatency: number;
-  maxLatencyAt: string | null;
-  maxLatencyRequestId: string | null;
-  clientErrors: number;
-  serverErrors: number;
-  errorRate: number;
-  slowThreshold: number;
-  granularity: TimeWindow["granularity"];
-  buckets: Array<{
-    start: number;
-    success: number;
-    clientErrors: number;
-    serverErrors: number;
-    average: number;
-    min: number;
-    max: number;
-  }>;
-  topErrors: Array<Omit<ErrorGroup, "first" | "last"> & { last: string }>;
-  recent: RecentRequest[];
-}
-
-const TOP_ERRORS_LIMIT = 5;
-const RECENT_LIMIT = 6;
-
-function recentRow(log: RequestLog): RecentRequest {
-  return {
-    _id: log._id,
-    timestamp: log.timestamp.toISOString(),
-    rawPath: log.rawPath,
-    statusCode: log.statusCode,
-    responseTimeMs: log.responseTimeMs,
-    ip: log.ip,
-  };
-}
-
-async function slowestRequest(
-  model: RequestLogModel,
-  method: string,
-  path: string,
-  range: TimeRange,
-): Promise<RequestLog | undefined> {
-  const { results } = await model.list(
-    { method, uri: path, since: range.from, until: range.to },
-    { sortKey: "responseTimeMs", sortDirection: "desc", limit: 1 },
-  );
-  return results[0];
-}
-
-/** Traffic, latency, top errors and last requests of a route. */
-export async function getRouteStatistics(
-  models: CatalogModels,
-  inspection: RouteInspection,
-  window: TimeWindow,
-): Promise<RouteStatisticsPayload> {
-  const method = inspection.method.toUpperCase();
-  const path = inspection.location;
-  const keys = new Set([scopeRouteKey(method, path)]);
-  const [buckets, previous, samples, slowest, recent] = await Promise.all([
-    loadTraffic(models, window, window.granularity, keys),
-    window.previous
-      ? loadTraffic(models, window.previous, window.granularity, keys)
-      : Promise.resolve(null),
-    loadSamples(models.logs, window, keys),
-    slowestRequest(models.logs, method, path, window),
-    models.logs.query({ method, uri: path, limit: RECENT_LIMIT }),
-  ]);
-  const total = sumBuckets(buckets);
-  const health = computeRouteHealth(samples).get(scopeRouteKey(method, path));
-  return {
-    requests: total.requests,
-    previousRequests: previous ? sumBuckets(previous).requests : null,
-    averageLatency: Math.round(averageLatency(total)),
-    minLatency: Math.round(total.minLatency),
-    maxLatency: Math.round(total.maxLatency),
-    maxLatencyAt: slowest?.timestamp.toISOString() ?? null,
-    maxLatencyRequestId: slowest?._id ?? null,
-    clientErrors: total.clientErrors,
-    serverErrors: total.serverErrors,
-    errorRate:
-      total.requests > 0
-        ? (total.clientErrors + total.serverErrors) / total.requests
-        : 0,
-    slowThreshold: getConfig().requestSlownessThreshold,
-    granularity: window.granularity,
-    buckets: buckets.map((bucket) => ({
-      start: bucket.start,
-      success: bucket.requests - bucket.clientErrors - bucket.serverErrors,
-      clientErrors: bucket.clientErrors,
-      serverErrors: bucket.serverErrors,
-      average: Math.round(averageLatency(bucket)),
-      min: Math.round(bucket.minLatency),
-      max: Math.round(bucket.maxLatency),
-    })),
-    topErrors: (health?.errors ?? [])
-      .slice(0, TOP_ERRORS_LIMIT)
-      .map(({ first: _first, last, ...group }) => ({
-        ...group,
-        last: last.toISOString(),
-      })),
-    recent: recent.results.map(recentRow),
   };
 }
