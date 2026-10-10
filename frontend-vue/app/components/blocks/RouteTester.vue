@@ -533,21 +533,30 @@ const shortcut = computed(() =>
             <p v-if="route.pathParams.length === 0" class="text-dimmed text-sm">
               {{ t('api.tester.no_path', { path: route.path }) }}
             </p>
-            <div v-else class="flex flex-col gap-2">
-              <UFormField
+            <div v-else class="flex flex-col gap-3">
+              <DmsFieldRow
                 v-for="name in route.pathParams"
                 :key="name"
                 :label="`:${name}`"
-                :error="
-                  pathValues[name] ? false : t('api.tester.path_required')
-                "
+                :label-for="`api-path-${name}`"
+                layout="form"
+                spacing="list"
+                :inset="false"
+                required
               >
-                <UInput
-                  v-model="pathValues[name]"
-                  size="sm"
-                  class="w-full font-mono"
-                />
-              </UFormField>
+                <UFormField
+                  :error="
+                    pathValues[name] ? false : t('api.tester.path_required')
+                  "
+                >
+                  <UInput
+                    :id="`api-path-${name}`"
+                    v-model="pathValues[name]"
+                    size="sm"
+                    class="w-full font-mono"
+                  />
+                </UFormField>
+              </DmsFieldRow>
             </div>
           </template>
         </div>
