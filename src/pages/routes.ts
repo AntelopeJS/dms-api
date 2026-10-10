@@ -2,10 +2,10 @@ import { Card } from "@antelopejs/interface-dms/base/card";
 import { ChartColumn, ChartLine } from "@antelopejs/interface-dms/base/chart";
 import { ChartCard } from "@antelopejs/interface-dms/base/chart-card";
 import { Grid, GridRow } from "@antelopejs/interface-dms/base/grid";
-import { KpiCard } from "@antelopejs/interface-dms/base/kpi-card";
 import { DefaultLayout } from "@antelopejs/interface-dms/base/layouts";
 import { PeriodSelector } from "@antelopejs/interface-dms/base/period-selector";
 import { HStack, Spacer } from "@antelopejs/interface-dms/base/stack";
+import { StatGroup } from "@antelopejs/interface-dms/base/stat-group";
 import { Tab } from "@antelopejs/interface-dms/base/tab";
 import { TopListCard } from "@antelopejs/interface-dms/base/top-list-card";
 import { PageController, RegisterPage } from "@antelopejs/interface-dms/page";
@@ -29,54 +29,20 @@ function statisticsUrl(name: string): string {
 
 const RECENT_REQUESTS = 6;
 
-function kpi(name: string, options: Parameters<typeof KpiCard>[0]) {
-  return KpiCard({
-    variant: "stat",
-    fetchUrl: statisticsUrl(name),
-    periodScope: ROUTES_PERIOD,
-    showDelta: true,
-    ...options,
-  } as Parameters<typeof KpiCard>[0]);
-}
-
-function kpiRow() {
-  return GridRow()
-    .child(
-      "requests",
-      kpi("requests", {
-        icon: "i-ph-arrows-left-right",
-        title: "$api.routes.statistics.requests",
-        valueFormat: "compact",
-      }),
-    )
-    .child(
-      "latency",
-      kpi("latency", {
-        icon: "i-ph-timer",
-        title: "$api.routes.statistics.average_ms",
-        valueFormat: "number",
-        invert: true,
-      }),
-    )
-    .child(
-      "errorRate",
-      kpi("error-rate", {
-        icon: "i-ph-warning-diamond",
-        title: "$api.routes.statistics.error_rate",
-        valueFormat: "percent",
-        valuePrecision: 1,
-        invert: true,
-      }),
-    )
-    .child(
-      "maxLatency",
-      kpi("max-latency", {
-        icon: "i-ph-gauge",
-        title: "$api.routes.statistics.max_ms",
-        valueFormat: "number",
-        invert: true,
-      }),
-    );
+/** Calls, latency, error rate and slowest call of the route, as one strip. */
+function summaryRow() {
+  return GridRow().child(
+    "summary",
+    StatGroup({
+      fetchUrl: statisticsUrl("summary"),
+      periodScope: ROUTES_PERIOD,
+      layout: "joined",
+      columns: 4,
+      skeletonCount: 4,
+      label: "$api.routes.statistics.title",
+    }).meta({ name: "$api.routes.statistics.summary", icon: "i-ph-gauge" }),
+    { colSpan: 4 },
+  );
 }
 
 function chartRow() {
@@ -149,7 +115,7 @@ function recentRow() {
       .child(
         "table",
         requestTable({
-          fetchUrl: "/api/monitoring/logs/route",
+          fetchUrl: `/api/monitoring/logs/route?${ROUTE_QUERY_KEY}={{query.${ROUTE_QUERY_KEY}}}`,
           columns: ["timestamp", "status", "path", "responseTimeMs"],
           sizes: { timestamp: 116, status: 84, path: 180 },
           layout: "compact",
@@ -183,7 +149,7 @@ function recentRow() {
  */
 function routeStatistics() {
   return Grid({ gap: "1rem", minColumnWidth: "160px" })
-    .child("kpis", kpiRow())
+    .child("summary", summaryRow())
     .child("charts", chartRow())
     .child("detail", errorRow())
     .child("recent", recentRow())

@@ -9,6 +9,7 @@ import { assert } from "@antelopejs/interface-api-util";
 import { GetModel } from "@antelopejs/interface-database-decorators";
 import type { User } from "@antelopejs/interface-dms/auth/db";
 import { AuthUserWithPermission } from "@antelopejs/interface-dms/guards";
+import { getConfig } from "@/config";
 import { RequestLogModel, RouteModel, RouteStatisticsModel } from "@/db";
 import { RoutesPage } from "@/pages/routes";
 import {
@@ -18,13 +19,9 @@ import {
   listRoutes,
 } from "@/services/route-catalog";
 import {
-  errorRateKpi,
-  type KpiPayload,
   latencyChart,
-  latencyKpi,
   loadRouteTraffic,
-  maxLatencyKpi,
-  requestsKpi,
+  routeSummary,
   type RouteChartPayload,
   type RouteTraffic,
   routeTopErrors,
@@ -102,48 +99,18 @@ export class RoutesController extends Controller("/api/monitoring/routes") {
     return detail;
   }
 
-  @Get("statistics/requests")
-  async getRequests(
+  @Get("statistics/summary")
+  async getSummary(
     @AuthUserWithPermission(
-      explorer.targetChild(...statistics, "kpis", "requests"),
+      explorer.targetChild(...statistics, "summary", "summary"),
     )
     _user: User,
     @Context() context: RequestContext,
-  ): Promise<KpiPayload> {
-    return requestsKpi(await trafficOf(context));
-  }
-
-  @Get("statistics/latency")
-  async getLatency(
-    @AuthUserWithPermission(
-      explorer.targetChild(...statistics, "kpis", "latency"),
-    )
-    _user: User,
-    @Context() context: RequestContext,
-  ): Promise<KpiPayload> {
-    return latencyKpi(await trafficOf(context));
-  }
-
-  @Get("statistics/error-rate")
-  async getErrorRate(
-    @AuthUserWithPermission(
-      explorer.targetChild(...statistics, "kpis", "errorRate"),
-    )
-    _user: User,
-    @Context() context: RequestContext,
-  ): Promise<KpiPayload> {
-    return errorRateKpi(await trafficOf(context));
-  }
-
-  @Get("statistics/max-latency")
-  async getMaxLatency(
-    @AuthUserWithPermission(
-      explorer.targetChild(...statistics, "kpis", "maxLatency"),
-    )
-    _user: User,
-    @Context() context: RequestContext,
-  ): Promise<KpiPayload> {
-    return maxLatencyKpi(await trafficOf(context));
+  ) {
+    return routeSummary(
+      await trafficOf(context),
+      getConfig().requestSlownessThreshold,
+    );
   }
 
   @Get("statistics/status")

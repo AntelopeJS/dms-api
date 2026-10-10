@@ -10,6 +10,7 @@ import { AuthUserWithPermission } from "@antelopejs/interface-dms/guards";
 import { RequestLogModel, RouteModel, RouteStatisticsModel } from "@/db";
 import { OverviewPage } from "@/pages/overview";
 import { getActivity } from "@/services/activity";
+import { healthBanner, healthStats } from "@/services/health-blocks";
 import {
   getAttention,
   getErrorShareChart,
@@ -49,6 +50,16 @@ function windowOf(context: RequestContext): TimeWindow {
   );
 }
 
+/** The health of the scoped routes over the last 24 hours. */
+async function health() {
+  const keys = await scopeKeys();
+  return getHealth(
+    models(),
+    keys,
+    await countScopedRoutes(GetModel(RouteModel), keys),
+  );
+}
+
 const grid = OverviewPage.dashboard;
 
 /**
@@ -58,13 +69,17 @@ const grid = OverviewPage.dashboard;
  */
 export class OverviewController extends Controller("/api/monitoring/overview") {
   @Get("health")
-  async getHealth(@AuthUserWithPermission(OverviewPage.health) _user: User) {
-    const keys = await scopeKeys();
-    return getHealth(
-      models(),
-      keys,
-      await countScopedRoutes(GetModel(RouteModel), keys),
-    );
+  async getHealthBanner(
+    @AuthUserWithPermission(OverviewPage.health) _user: User,
+  ) {
+    return healthBanner(await health());
+  }
+
+  @Get("health/figures")
+  async getHealthFigures(
+    @AuthUserWithPermission(OverviewPage.figures) _user: User,
+  ) {
+    return healthStats(await health());
   }
 
   @Get("traffic")

@@ -11,10 +11,10 @@ import { Grid, GridRow } from "@antelopejs/interface-dms/base/grid";
 import { DefaultLayout } from "@antelopejs/interface-dms/base/layouts";
 import { PeriodSelector } from "@antelopejs/interface-dms/base/period-selector";
 import { HStack, Spacer } from "@antelopejs/interface-dms/base/stack";
+import { StatGroup } from "@antelopejs/interface-dms/base/stat-group";
 import { TopListCard } from "@antelopejs/interface-dms/base/top-list-card";
 import { PageController, RegisterPage } from "@antelopejs/interface-dms/page";
 import { logsLink } from "@/services/links";
-import { apiBlock } from "./blocks";
 import { monitorCategory } from "./module";
 import { requestTable } from "./request-table";
 import { scopeChip } from "./scope-chip";
@@ -75,9 +75,17 @@ export class OverviewPage extends PageController(
     dismissKey: "dms-api-beta-1",
   });
 
-  static health = apiBlock("HealthHero", {
+  static health = Banner({
     fetchUrl: `${OVERVIEW_API}/health`,
-  });
+  }).meta({ name: "$api.overview.health.verdict", icon: "i-ph-heartbeat" });
+
+  static figures = StatGroup({
+    fetchUrl: `${OVERVIEW_API}/health/figures`,
+    layout: "joined",
+    columns: 4,
+    skeletonCount: 4,
+    label: "$api.overview.health.figures",
+  }).meta({ name: "$api.overview.health.figures", icon: "i-ph-gauge" });
 
   static dashboard = Grid({ gap: "1rem", minColumnWidth: "300px" })
     .child(

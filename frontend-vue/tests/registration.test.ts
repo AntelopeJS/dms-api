@@ -22,7 +22,6 @@ it('registers the blocks the backend pages name, and nothing else', async () => 
   const names = registerComponent.mock.calls.map(([name]) => name)
   expect(names).toEqual(
     expect.arrayContaining([
-      'HealthHero',
       'LiveTraffic',
       'RequestDetail',
       'RouteTree',

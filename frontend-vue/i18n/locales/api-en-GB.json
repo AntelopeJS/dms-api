@@ -30,10 +30,6 @@
         "name": "Route scope",
         "description": "The active route scope and how many routes it holds, linking to Settings."
       },
-      "health_hero": {
-        "name": "API health",
-        "description": "Health verdict, its reasons and the headline metrics of the last 24 hours."
-      },
       "live_traffic": {
         "name": "Live traffic",
         "description": "Requests per minute over the last hour, refreshed while Live is on."
@@ -64,48 +60,41 @@
       }
     },
     "health": {
-      "label": "API health · live",
       "verdict": {
-        "operational": "Operational",
-        "degraded": "Degraded",
-        "down": "Down",
-        "idle": "No traffic"
+        "operational": "operational",
+        "degraded": "degraded",
+        "down": "down",
+        "idle": "idle"
       },
-      "since": "Since {date}",
-      "last_incident": "Last server error {date}",
-      "checked": "checked {time}",
+      "title": "API {verdict}",
+      "title_since": "API {verdict} · since {date}",
+      "title_last": "API {verdict} · last server error {date}",
       "metrics": {
         "calls": "Calls · 24 h",
         "calls_delta": "{delta} vs. previous 24 h",
         "calls_no_baseline": "No traffic the day before",
         "errors": "Errors · 24 h",
-        "errors_sub": "{count} calls",
+        "errors_value": "{share}",
+        "errors_sub": "no call | {count} call | {count} calls",
         "latency": "Avg latency",
+        "ms": "{value} ms",
         "latency_sub": "max {max} ms",
         "routes": "Routes",
         "routes_sub": "All healthy | {count} needs attention | {count} need attention"
       },
       "reasons": {
-        "failing": "{count} route failing | {count} routes failing",
-        "slow": "{count} slow route | {count} slow routes",
-        "none": "Every route answered without server errors in the last 24 hours."
+        "failing": "{count} route failing | {count} route failing | {count} routes failing",
+        "slow": "{count} slow route | {count} slow route | {count} slow routes",
+        "both": "{failing} · {slow}",
+        "none": "Every route answered without server errors in the last 24 hours.",
+        "idle": "No call in the last 24 hours."
       },
-      "view_errors": "View {count} server error | View {count} server errors",
-      "stale_title": "Showing data from {time}",
-      "stale_description": "The last refresh failed. The numbers may be out of date.",
-      "error_title": "Monitoring data is unavailable",
-      "error_description": "The console could not read its statistics. The API itself may be fine.",
+      "view_server_errors": "View server errors",
       "first_run": {
         "title": "No requests captured yet",
-        "description": "{count} routes are registered. The console records calls as soon as your API receives them.",
+        "description": "no route is registered. The console records calls as soon as your API receives them. | {count} route is registered. The console records calls as soon as your API receives them. | {count} routes are registered. The console records calls as soon as your API receives them.",
         "browse": "Browse routes",
-        "logs": "Open request logs",
-        "step_1": "Pick a route",
-        "step_1_detail": "Routes lists everything your project registers.",
-        "step_2": "Send a first request",
-        "step_2_detail": "From the tester on any route, or from your app.",
-        "step_3": "Watch it arrive",
-        "step_3_detail": "Request logs shows it within seconds."
+        "logs": "Open request logs"
       }
     },
     "overview": {
@@ -172,6 +161,10 @@
         "registered_many_detail": "{routes}…",
         "from_project": "From your project code",
         "from_module": "From the {module} module"
+      },
+      "health": {
+        "verdict": "API health",
+        "figures": "Health figures · 24 h"
       }
     },
     "live": {
@@ -332,11 +325,19 @@
         "recent": "Recent requests",
         "no_calls_title": "No call to this route yet",
         "no_calls_description": "Its requests show here as soon as it is called.",
-        "average_ms": "Avg (ms)",
-        "max_ms": "Max (ms)",
         "top_errors_description": "Errors grouped by status and message",
-        "server_error": "Server error · open its requests",
-        "client_error": "Client error · open its requests"
+        "server_error": "Server error · last {at}",
+        "client_error": "Client error · last {at}",
+        "summary": "Route figures",
+        "average": "Avg latency",
+        "max": "Slowest call",
+        "ms": "{value} ms",
+        "min": "min {min}",
+        "rate": "{rate}",
+        "error_split": "{client} × 4xx · {server} × 5xx",
+        "slow_line": "slow above {threshold}",
+        "vs_previous": "{delta} vs. previous period",
+        "no_baseline": "No previous period"
       },
       "docs": {
         "example": "Example request",

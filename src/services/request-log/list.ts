@@ -1,3 +1,4 @@
+import type { Tone } from "@antelopejs/interface-dms/base/types/tone";
 import { getConfig } from "@/config";
 import type { RequestLogModel } from "@/db";
 import type {
@@ -27,6 +28,8 @@ export interface RequestLogRow {
   route: string;
   status: string;
   statusClass: string;
+  /** Tone of the status pill: its class, as the DMS draws tones. */
+  statusTone: Tone;
   responseTimeMs: number;
   slow: boolean;
   error: string | null;
@@ -59,11 +62,22 @@ const SORT_KEYS: Record<string, RequestLogSortKey> = {
 const DEFAULT_PAGE_SIZE = 50;
 
 /** `is:GET` → `GET`; `include:GET,POST` → `GET` (one method at a time). */
-export function filterValue(raw: string | undefined): string | undefined {
+function filterValue(raw: string | undefined): string | undefined {
   if (!raw) return undefined;
   const separator = raw.indexOf(":");
   const value = separator < 0 ? raw : raw.slice(separator + 1);
   return value.split(",")[0]?.trim() || undefined;
+}
+
+const STATUS_TONES: Record<string, Tone> = {
+  "5xx": "error",
+  "4xx": "warning",
+  "3xx": "info",
+  "2xx": "success",
+};
+
+function statusToneOf(status: number): Tone {
+  return STATUS_TONES[statusClassOf(status)] ?? "neutral";
 }
 
 export function statusClassOf(status: number): string {
@@ -122,6 +136,7 @@ export function toRow(log: RequestLog): RequestLogRow {
     route: routeRef(log.method, log.uri),
     status: String(log.statusCode),
     statusClass: statusClassOf(log.statusCode),
+    statusTone: statusToneOf(log.statusCode),
     responseTimeMs: Math.round(log.responseTimeMs),
     slow: log.responseTimeMs >= getConfig().requestSlownessThreshold,
     error: log.error?.message ?? null,

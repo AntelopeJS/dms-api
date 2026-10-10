@@ -8,12 +8,7 @@ import {
 import type { ComponentBuilder } from "@antelopejs/interface-dms/component";
 import { LOG_WINDOWS } from "@/services/request-log/list";
 import { apiBlock } from "./blocks";
-import {
-  MethodDisplay,
-  PathDisplay,
-  StatusDisplay,
-  TimeDisplay,
-} from "./displays";
+import { TimeDisplay } from "./displays";
 
 /** Route answering the request tables, in the `TableView.fromSource` shape. */
 const REQUEST_LOGS_URL = "/api/monitoring/logs";
@@ -28,6 +23,15 @@ const HTTP_METHODS = [
   "OPTIONS",
 ];
 const STATUS_CLASSES = ["2xx", "3xx", "4xx", "5xx"];
+
+/** A method drawn in the tone of what it does: read, create, change, delete. */
+const METHOD_TONES = {
+  GET: "info",
+  POST: "success",
+  PUT: "warning",
+  PATCH: "warning",
+  DELETE: "error",
+} as const;
 
 function select(values: readonly string[], labelKey?: string) {
   return new DefaultDataTypes.SelectType({
@@ -51,7 +55,7 @@ const REQUEST_COLUMNS: Record<string, TableViewSourceColumn> = {
   method: {
     name: "$api.logs.columns.method",
     type: select(HTTP_METHODS),
-    display: new MethodDisplay(),
+    display: new DefaultDisplays.StatusPillDisplay({ tones: METHOD_TONES }),
     filterable: true,
     size: 96,
     order: 2,
@@ -59,16 +63,16 @@ const REQUEST_COLUMNS: Record<string, TableViewSourceColumn> = {
   path: {
     name: "$api.logs.columns.path",
     type: new DefaultDataTypes.StringType(),
-    display: new PathDisplay(),
+    display: new DefaultDisplays.MonoDisplay(),
     size: 240,
     order: 3,
   },
   status: {
     name: "$api.logs.columns.status",
     type: new DefaultDataTypes.StringType(),
-    display: new StatusDisplay(),
+    display: new DefaultDisplays.StatusPillDisplay({ toneField: "statusTone" }),
     sortable: true,
-    size: 104,
+    size: 116,
     order: 4,
   },
   responseTimeMs: {
@@ -135,6 +139,7 @@ function requestDrawerAction() {
     deepLink: true,
     target: {
       type: "drawer" as const,
+      direction: "right" as const,
       component: apiBlock("RequestDetail"),
       title: "$api.logs.drawer_title",
     },

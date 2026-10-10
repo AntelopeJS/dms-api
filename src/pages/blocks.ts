@@ -9,7 +9,6 @@ import { CustomComponent } from "@antelopejs/interface-dms/base/custom";
  */
 export type ApiBlock =
   | "ScopeChip"
-  | "HealthHero"
   | "LiveTraffic"
   | "RequestDetail"
   | "RouteTree"
@@ -20,7 +19,6 @@ export type ApiBlock =
 
 const BLOCK_ICONS: Record<ApiBlock, string> = {
   ScopeChip: "i-ph-funnel",
-  HealthHero: "i-ph-heartbeat",
   LiveTraffic: "i-ph-broadcast",
   RequestDetail: "i-ph-sidebar-simple",
   RouteTree: "i-ph-tree-structure",

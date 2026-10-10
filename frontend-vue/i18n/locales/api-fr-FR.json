@@ -30,10 +30,6 @@
         "name": "Périmètre des routes",
         "description": "Le périmètre actif et son nombre de routes, avec un lien vers les paramètres."
       },
-      "health_hero": {
-        "name": "Santé de l'API",
-        "description": "Verdict de santé, ses raisons et les indicateurs clés des dernières 24 heures."
-      },
       "live_traffic": {
         "name": "Trafic en direct",
         "description": "Requêtes par minute sur la dernière heure, actualisées tant que le direct est actif."
@@ -64,48 +60,41 @@
       }
     },
     "health": {
-      "label": "Santé de l'API · en direct",
       "verdict": {
-        "operational": "Opérationnelle",
-        "degraded": "Dégradée",
-        "down": "En panne",
-        "idle": "Aucun trafic"
+        "operational": "opérationnelle",
+        "degraded": "dégradée",
+        "down": "en panne",
+        "idle": "sans trafic"
       },
-      "since": "Depuis le {date}",
-      "last_incident": "Dernière erreur serveur le {date}",
-      "checked": "vérifié à {time}",
+      "title": "API {verdict}",
+      "title_since": "API {verdict} · depuis le {date}",
+      "title_last": "API {verdict} · dernière erreur serveur le {date}",
       "metrics": {
         "calls": "Appels · 24 h",
-        "calls_delta": "{delta} vs 24 h précédentes",
+        "calls_delta": "{delta} par rapport aux 24 h précédentes",
         "calls_no_baseline": "Aucun trafic la veille",
         "errors": "Erreurs · 24 h",
-        "errors_sub": "{count} appels",
-        "latency": "Latence moy.",
+        "errors_value": "{share}",
+        "errors_sub": "aucun appel | {count} appel | {count} appels",
+        "latency": "Latence moyenne",
+        "ms": "{value} ms",
         "latency_sub": "max {max} ms",
         "routes": "Routes",
         "routes_sub": "Toutes saines | {count} à surveiller | {count} à surveiller"
       },
       "reasons": {
-        "failing": "{count} route en échec | {count} routes en échec",
-        "slow": "{count} route lente | {count} routes lentes",
-        "none": "Aucune route n'a renvoyé d'erreur serveur ces dernières 24 heures."
+        "failing": "{count} route en échec | {count} route en échec | {count} routes en échec",
+        "slow": "{count} route lente | {count} route lente | {count} routes lentes",
+        "both": "{failing} · {slow}",
+        "none": "Aucune erreur serveur sur les 24 dernières heures.",
+        "idle": "Aucun appel sur les 24 dernières heures."
       },
-      "view_errors": "Voir {count} erreur serveur | Voir {count} erreurs serveur",
-      "stale_title": "Données de {time}",
-      "stale_description": "La dernière actualisation a échoué. Les chiffres peuvent être périmés.",
-      "error_title": "Données de supervision indisponibles",
-      "error_description": "La console n'a pas pu lire ses statistiques. L'API elle-même va peut-être bien.",
+      "view_server_errors": "Voir les erreurs serveur",
       "first_run": {
-        "title": "Aucune requête capturée",
-        "description": "{count} routes sont enregistrées. La console enregistre les appels dès que votre API les reçoit.",
+        "title": "Aucune requête capturée pour l’instant",
+        "description": "aucune route n’est enregistrée. La console enregistre les appels dès que votre API les reçoit. | {count} route est enregistrée. La console enregistre les appels dès que votre API les reçoit. | {count} routes sont enregistrées. La console enregistre les appels dès que votre API les reçoit.",
         "browse": "Parcourir les routes",
-        "logs": "Ouvrir les journaux",
-        "step_1": "Choisir une route",
-        "step_1_detail": "Routes liste tout ce que votre projet enregistre.",
-        "step_2": "Envoyer une première requête",
-        "step_2_detail": "Depuis le testeur d'une route, ou depuis votre application.",
-        "step_3": "La voir arriver",
-        "step_3_detail": "Les journaux l'affichent en quelques secondes."
+        "logs": "Ouvrir les journaux"
       }
     },
     "overview": {
@@ -172,6 +161,10 @@
         "registered_many_detail": "{routes}…",
         "from_project": "Depuis le code du projet",
         "from_module": "Depuis le module {module}"
+      },
+      "health": {
+        "verdict": "Santé de l’API",
+        "figures": "Indicateurs de santé · 24 h"
       }
     },
     "live": {
@@ -332,11 +325,19 @@
         "recent": "Requêtes récentes",
         "no_calls_title": "Aucun appel sur cette route pour l’instant",
         "no_calls_description": "Ses requêtes s’affichent ici dès qu’elle est appelée.",
-        "average_ms": "Moy. (ms)",
-        "max_ms": "Max (ms)",
         "top_errors_description": "Erreurs regroupées par statut et message",
-        "server_error": "Erreur serveur · voir ses requêtes",
-        "client_error": "Erreur client · voir ses requêtes"
+        "server_error": "Erreur serveur · dernière {at}",
+        "client_error": "Erreur client · dernière {at}",
+        "summary": "Indicateurs de la route",
+        "average": "Latence moyenne",
+        "max": "Appel le plus lent",
+        "ms": "{value} ms",
+        "min": "min {min}",
+        "rate": "{rate}",
+        "error_split": "{client} × 4xx · {server} × 5xx",
+        "slow_line": "lent au-delà de {threshold}",
+        "vs_previous": "{delta} par rapport à la période précédente",
+        "no_baseline": "Pas de période précédente"
       },
       "docs": {
         "example": "Exemple de requête",

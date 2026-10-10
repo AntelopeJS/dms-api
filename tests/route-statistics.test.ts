@@ -1,10 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  errorRateKpi,
   latencyChart,
-  latencyKpi,
-  maxLatencyKpi,
-  requestsKpi,
+  routeSummary,
   type RouteTraffic,
   statusChart,
 } from "@/services/route-statistics";
@@ -43,21 +40,18 @@ const traffic: RouteTraffic = {
 };
 
 describe("route statistics", () => {
-  it("compares the requests to the previous period", () => {
-    expect(requestsKpi(traffic)).toEqual({
-      value: 10,
-      delta: 100,
-      sparkline: [8, 0, 2],
+  it("sums up calls, latency, errors and the slowest call", () => {
+    const [requests, latency, errors, max] = routeSummary(traffic, 250).items;
+    expect(requests).toMatchObject({ value: 10, detailTone: "success" });
+    expect(requests?.detail).toMatchObject({
+      params: { delta: { value: 1 } },
     });
-  });
-
-  it("reads latency and error rate off the buckets that saw a call", () => {
-    expect(latencyKpi(traffic)).toMatchObject({
-      value: 90,
-      sparkline: [100, 50],
+    expect(latency?.value).toMatchObject({ params: { value: { value: 90 } } });
+    expect(errors?.value).toMatchObject({
+      params: { rate: { value: 0.2 } },
     });
-    expect(errorRateKpi(traffic)).toMatchObject({ value: 20, delta: null });
-    expect(maxLatencyKpi(traffic)).toMatchObject({ value: 300, delta: 200 });
+    expect(errors?.detailTone).toBe("error");
+    expect(max).toMatchObject({ tone: "warning", detailTone: "warning" });
   });
 
   it("splits the requests by status class", () => {
@@ -78,17 +72,18 @@ describe("route statistics", () => {
     ]);
   });
 
-  it("has nothing to show without a previous period or traffic", () => {
+  it("says when there is no previous period", () => {
     const empty: RouteTraffic = {
       buckets: [],
       total: sumBuckets([]),
       previous: null,
     };
-    expect(requestsKpi(empty)).toEqual({
+    const [requests, , errors] = routeSummary(empty, 250).items;
+    expect(requests).toMatchObject({
       value: 0,
-      delta: null,
-      sparkline: [],
+      detail: "$api.routes.statistics.no_baseline",
+      detailTone: "neutral",
     });
-    expect(errorRateKpi(empty).value).toBe(0);
+    expect(errors?.tone).toBe("muted");
   });
 });

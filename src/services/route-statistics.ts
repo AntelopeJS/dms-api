@@ -1,3 +1,8 @@
+import type { StatGroupItem } from "@antelopejs/interface-dms/base/stat-group";
+import type {
+  BlockText,
+  ComposedText,
+} from "@antelopejs/interface-dms/base/types/composed-text";
 import { logsLink } from "./links";
 import type { CatalogModels } from "./route-catalog";
 import { computeRouteHealth } from "./route-health";
@@ -18,13 +23,6 @@ export interface RouteKey {
   path: string;
 }
 
-/** What a DMS `KpiCard` reads from its `fetchUrl`. */
-export interface KpiPayload {
-  value: number;
-  delta: number | null;
-  sparkline: number[];
-}
-
 /** One series of a DMS chart: `{ x, y }` points. */
 interface SeriesPayload {
   name: string;
@@ -42,7 +40,7 @@ export interface RouteChartPayload {
 export interface RouteErrorItem {
   id: string;
   title: string;
-  description: string;
+  description: BlockText;
   value: number;
   icon: string;
   to: string;
@@ -106,48 +104,86 @@ function busy(buckets: TrafficBucket[]): TrafficBucket[] {
   return buckets.filter((bucket) => bucket.requests > 0);
 }
 
-export function requestsKpi(traffic: RouteTraffic): KpiPayload {
+function ms(value: number): ComposedText {
   return {
-    value: traffic.total.requests,
-    delta: change(traffic.total.requests, traffic.previous?.requests),
-    sparkline: traffic.buckets.map((bucket) => bucket.requests),
+    key: "api.routes.statistics.ms",
+    params: { value: { type: "number", value: Math.round(value) } },
   };
 }
 
-export function latencyKpi(traffic: RouteTraffic): KpiPayload {
-  const value = Math.round(averageLatency(traffic.total));
-  const previous = traffic.previous?.requests
-    ? averageLatency(traffic.previous)
-    : undefined;
+function versus(delta: number | null): BlockText {
+  if (delta === null) return "$api.routes.statistics.no_baseline";
   return {
-    value,
-    delta: change(value, previous),
-    sparkline: busy(traffic.buckets).map((bucket) =>
-      Math.round(averageLatency(bucket)),
-    ),
+    key: "api.routes.statistics.vs_previous",
+    params: {
+      delta: { type: "number", value: delta / PERCENT, format: "percent" },
+    },
   };
 }
 
-export function errorRateKpi(traffic: RouteTraffic): KpiPayload {
-  const value = errorRate(traffic.total);
-  const previous = traffic.previous?.requests
-    ? errorRate(traffic.previous)
-    : undefined;
+/**
+ * The headline figures of a route over the page's period, as a DMS
+ * `StatGroup`: calls against the previous period, latency, error rate and
+ * the slowest call against the slow threshold.
+ */
+export function routeSummary(
+  traffic: RouteTraffic,
+  slowThreshold: number,
+): { items: StatGroupItem[] } {
+  const { total } = traffic;
+  const delta = change(total.requests, traffic.previous?.requests);
+  const rate = errorRate(total);
   return {
-    value,
-    delta: change(value, previous),
-    sparkline: busy(traffic.buckets).map(errorRate),
-  };
-}
-
-export function maxLatencyKpi(traffic: RouteTraffic): KpiPayload {
-  const value = Math.round(traffic.total.maxLatency);
-  return {
-    value,
-    delta: change(value, traffic.previous?.maxLatency || undefined),
-    sparkline: busy(traffic.buckets).map((bucket) =>
-      Math.round(bucket.maxLatency),
-    ),
+    items: [
+      {
+        id: "requests",
+        icon: "i-ph-arrows-left-right",
+        eyebrow: "$api.routes.statistics.requests",
+        value: total.requests,
+        detail: versus(delta),
+        detailTone:
+          delta === null ? "neutral" : delta >= 0 ? "success" : "warning",
+      },
+      {
+        id: "latency",
+        icon: "i-ph-timer",
+        eyebrow: "$api.routes.statistics.average",
+        value: ms(averageLatency(total)),
+        detail: {
+          key: "api.routes.statistics.min",
+          params: { min: ms(total.minLatency) },
+        },
+      },
+      {
+        id: "errors",
+        icon: "i-ph-warning-diamond",
+        tone: rate > 0 ? "warning" : "muted",
+        eyebrow: "$api.routes.statistics.error_rate",
+        value: {
+          key: "api.routes.statistics.rate",
+          params: {
+            rate: { type: "number", value: rate / PERCENT, format: "percent" },
+          },
+        },
+        detail: {
+          key: "api.routes.statistics.error_split",
+          params: { client: total.clientErrors, server: total.serverErrors },
+        },
+        detailTone: total.serverErrors > 0 ? "error" : "neutral",
+      },
+      {
+        id: "max",
+        icon: "i-ph-gauge",
+        tone: total.maxLatency >= slowThreshold ? "warning" : "muted",
+        eyebrow: "$api.routes.statistics.max",
+        value: ms(total.maxLatency),
+        detail: {
+          key: "api.routes.statistics.slow_line",
+          params: { threshold: ms(slowThreshold) },
+        },
+        detailTone: total.maxLatency >= slowThreshold ? "warning" : "neutral",
+      },
+    ],
   };
 }
 
@@ -222,9 +258,12 @@ export async function routeTopErrors(
         title: group.message
           ? `${group.status} · ${group.message}`
           : String(group.status),
-        description: isServer
-          ? "$api.routes.statistics.server_error"
-          : "$api.routes.statistics.client_error",
+        description: {
+          key: isServer
+            ? "api.routes.statistics.server_error"
+            : "api.routes.statistics.client_error",
+          params: { at: { type: "relative", value: group.last.toISOString() } },
+        },
         value: group.count,
         icon: isServer ? "i-ph-x-circle" : "i-ph-warning",
         to: logsLink({

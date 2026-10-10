@@ -84,17 +84,17 @@ keeps custom components for the parts no block expresses.
 | Custom block | Why no DMS block fits |
 | --- | --- |
 | `ScopeChip` | A live "Own routes · 42" link to Settings; no block reads the scope. |
-| `HealthHero` | Wraps the public `DmsStatusSummary` (the design's health hero) with the verdict, its reasons and the drill-down action; also the first-run guide. |
+| ~~`HealthHero`~~ | Gone since DMS 0.7.2: the verdict is a `Banner({ fetchUrl })` (tone, reasons, "View server errors", or the first-run guide) over a `StatGroup` of the four headline figures, both answered by the backend in composed texts. |
 | `LiveTraffic` | Per-minute histogram of the last hour with a Live toggle that shows its own failures; no block polls. |
 | `RequestDetail` | The request drawer (error and stack first, timing, headers, bodies, Replay / cURL / Open route / Same error). |
 | `RouteTree` | A filterable tree whose selection lives in the URL. |
 | `RouteHeader`, `RouteDocumentation`, `RouteTester` | Everything under the selected route reads `?route=` from the URL. They render public DMS components (`DmsCard`, `DmsEmptyState`, `DmsStatusPill`) inside. Since DMS 0.6.1 a block's `fetchUrl` takes `{{query.route}}`, so the Statistics tab is now DMS blocks only (`KpiCard`, `ChartCard`, `TopListCard`, a request table filtered by `?route=`); these three stay custom for what they draw, not for how they read the route. |
 | `SplitLayout` | A list beside its detail. `Grid` shares its columns equally, so a row of two cells cannot give one of them three quarters; `DmsMasterDetail` is a template component, not a block. |
 
-The request tables also draw their cells with four small cell displays of the
-module (`api:method`, `api:status`, `api:time`, `api:path`, registered with
-`@RegisterDisplay`), so a GET or a 500 looks the same in a table and in a
-custom block.
+The request tables draw methods, statuses and paths with DMS displays since
+DMS 0.7.2: status pills toned per method, or per row through `toneField` (a
+status by its class), and the mono display. Only the time, to the
+millisecond, keeps a cell display of the module (`api:time`).
 
 **Q10. How are custom blocks named for permissions?**
 Every one carries `.meta({ name: "$api.blocks.<id>.name", description,
