@@ -1,4 +1,3 @@
-import { defu } from "defu";
 import {
   REQUEST_LOG_DEFAULT_HEADERS,
   REQUEST_LOG_MAX_BODY_BYTES,
@@ -37,12 +36,27 @@ let baseConfig: DmsApiConfig = DEFAULT_CONFIG;
 let globalConfig: DmsApiConfig = DEFAULT_CONFIG;
 let runtimeOverrides: Partial<DmsApiConfig> = {};
 
+/**
+ * `layer` over `base`, key by key: a key `layer` leaves undefined falls
+ * through. Not `defu`, which concatenates arrays: a header allow-list set to
+ * two headers would have kept the eight defaults on top of them.
+ */
+function overlay(
+  layer: Partial<DmsApiConfig>,
+  base: DmsApiConfig,
+): DmsApiConfig {
+  const defined = Object.fromEntries(
+    Object.entries(layer).filter(([, value]) => value !== undefined),
+  );
+  return { ...base, ...defined };
+}
+
 function mergeEffective(): void {
-  globalConfig = defu(runtimeOverrides, baseConfig);
+  globalConfig = overlay(runtimeOverrides, baseConfig);
 }
 
 export function setConfig(input?: Partial<DmsApiConfig>): void {
-  const merged = defu(input ?? {}, DEFAULT_CONFIG);
+  const merged = overlay(input ?? {}, DEFAULT_CONFIG);
   if (input?.requestLogRetention === undefined) {
     merged.requestLogRetention = merged.statisticsLifetime;
   }
@@ -61,4 +75,9 @@ export function applyConfigOverrides(overrides: Partial<DmsApiConfig>): void {
 
 export function getConfig(): DmsApiConfig {
   return globalConfig;
+}
+
+/** The configuration the module was started with, without the overrides. */
+export function getBaseConfig(): DmsApiConfig {
+  return baseConfig;
 }

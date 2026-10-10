@@ -3,6 +3,7 @@ import type { RouteModel } from "@/db";
 import type { Route } from "@/db/tables/routes.table";
 import { normalizeRouteMethod } from "@/db/tables/routes_statistics.table";
 import type { HttpMethod } from "@/types";
+import { MONITORING_API_PREFIX } from "@/types";
 import { getOwnModuleIds } from "./scope";
 
 type RegisteredRoute = ReturnType<typeof getRegisteredRoutes>[number];
@@ -83,14 +84,31 @@ function computeUpdates(
   return routesToUpdate;
 }
 
+/**
+ * The console's own endpoints are module routes, even when the console runs
+ * from a local checkout (its playground, a fork): counting them as the
+ * project's would make the dashboard watch itself polling.
+ */
+function withoutConsole(
+  localModules: ReadonlySet<string>,
+  registeredRoutes: RegisteredRoute[],
+): ReadonlySet<string> {
+  const consoleModule = registeredRoutes.find((route) =>
+    route.location.startsWith(`${MONITORING_API_PREFIX}/`),
+  )?.module;
+  if (!consoleModule) return localModules;
+  return new Set([...localModules].filter((id) => id !== consoleModule));
+}
+
 export async function syncRoutes(
   routesModel: RouteModel,
   registeredRoutes: RegisteredRoute[],
 ): Promise<void> {
-  const [existingRoutes, ownModules] = await Promise.all([
+  const [existingRoutes, localModules] = await Promise.all([
     routesModel.getAll(),
     getOwnModuleIds(),
   ]);
+  const ownModules = withoutConsole(localModules, registeredRoutes);
   const now = new Date();
 
   const existingByKey = new Map(

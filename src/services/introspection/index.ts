@@ -68,17 +68,15 @@ export interface RouteInspection {
   method: string;
   mode: RouteHandlerMode;
   callbackName: string;
+  /** Class name of the controller declaring the handler, when it has one. */
+  controllerName: string | null;
+  /** Module that registered the route, when the runtime could tell. */
+  module: string | null;
   priority?: number;
   parameters: ParameterInfo[];
   properties: PropertyInfo[];
   applicableMiddleware: MiddlewareInfo[];
   errorCodes: InferredErrorCode[];
-}
-
-export interface FolderInspection {
-  path: string;
-  middlewareAtOrAbove: MiddlewareInfo[];
-  routes: RouteInspection[];
 }
 
 const MIDDLEWARE_MODES: ReadonlySet<RouteHandlerMode> = new Set([
@@ -214,6 +212,13 @@ function comparePriorityThenMode(
   return ap - bp;
 }
 
+function controllerNameOf(handler: RouteHandler): string | null {
+  const name = (
+    handler.proto as { constructor?: { name?: string } } | undefined
+  )?.constructor?.name;
+  return name && name !== "Object" ? name : null;
+}
+
 function inspectHandler(id: string, handler: RouteHandler): RouteInspection {
   return {
     id,
@@ -221,6 +226,8 @@ function inspectHandler(id: string, handler: RouteHandler): RouteInspection {
     method: handler.method,
     mode: handler.mode,
     callbackName: handler.callback.name || "anonymous",
+    controllerName: controllerNameOf(handler),
+    module: handler.module ?? null,
     priority: handler.priority,
     parameters: handler.parameters.map(inspectParameter),
     properties: inspectProperties(handler.properties),
@@ -245,21 +252,4 @@ export function listRouteInspections(): RouteInspection[] {
   return getRegisteredRouteHandlers()
     .filter(({ handler }) => handler.mode === "handler")
     .map(({ id, handler }) => inspectHandler(id, handler));
-}
-
-export function getFolderInspection(urlPath: string): FolderInspection {
-  const normalized = `/${urlPath.split("/").filter(Boolean).join("/")}`;
-  const routes = listRouteInspections().filter((route) =>
-    locationCovers(normalized, route.location),
-  );
-  const middlewareAtOrAbove = listMiddlewareEntries()
-    .filter(({ handler }) => locationCovers(handler.location, normalized))
-    .sort(comparePriorityThenMode)
-    .map(({ id, handler }) => toMiddlewareInfo(id, handler));
-
-  return {
-    path: normalized,
-    middlewareAtOrAbove,
-    routes,
-  };
 }

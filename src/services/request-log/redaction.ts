@@ -1,7 +1,26 @@
 const REDACTED = "[REDACTED]";
 const MAX_REDACTION_DEPTH = 32;
-const SENSITIVE_KEY =
-  /password|passwd|secret|token|authorization|cookie|apikey|privatekey|credential|otp|recoverycode|backupcode/;
+/**
+ * Words a key is redacted for, matched against the key lower-cased with its
+ * separators removed (`portal_token`, `X-Api-Key`). Listed on the Settings
+ * page, read-only.
+ */
+export const REDACTED_KEY_WORDS = [
+  "password",
+  "passwd",
+  "secret",
+  "token",
+  "authorization",
+  "cookie",
+  "apikey",
+  "privatekey",
+  "credential",
+  "otp",
+  "recoverycode",
+  "backupcode",
+] as const;
+
+const SENSITIVE_KEY = new RegExp(REDACTED_KEY_WORDS.join("|"));
 
 /** Identifies credential-bearing keys independently of case and separators. */
 export function isSensitiveKey(key: string): boolean {

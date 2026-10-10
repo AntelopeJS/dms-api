@@ -6,9 +6,21 @@
 <a href="https://antelopejs.com"><img src="https://img.shields.io/badge/Docs-18181B?style=for-the-badge&color=000000" alt="Documentation"></a>
 </div>
 
-`@antelopejs/dms-api` adds API inspection to the AntelopeJS DMS:
-a route catalog, request logs, aggregated statistics, and settings. Open
-**Modules → API** (`/modules/api`); the summary page is the default landing page.
+`@antelopejs/dms-api` adds an API console to the AntelopeJS DMS. Open
+**Modules → API** (`/modules/api`):
+
+- **Overview**: is the API healthy, since when and why not, with traffic,
+  errors, the routes needing attention and the slowest ones.
+- **Request logs**: every captured request, filtered by status class, method,
+  slowness or period; a request opens with its error, timing, headers and
+  bodies, and can be replayed in the tester.
+- **Routes**: every registered route with its statistics, its contract
+  (inferred from its code and its traffic) and a tester.
+- **Settings**: the routes the console watches, retention, captured headers
+  and the slow threshold.
+
+It requires `@antelopejs/dms` 0.7.4 or later (`@antelopejs/interface-dms` 0.5.1)
+and `@antelopejs/dms-frontend` 0.5.2.
 
 This module is the dashboard for your API, not the HTTP server implementation.
 Your application still needs an API provider such as `@antelopejs/api`, the
@@ -45,7 +57,8 @@ its Vue 3 Inertia frontend module automatically through
 statistics and request-log retention, the slow-request threshold, body-size
 limits, and the header capture allowlist. Retention uses milliseconds; body
 limits use bytes. Settings saved through the dashboard override the module
-configuration at runtime.
+configuration at runtime; clearing a field, or setting it back to the module
+default, removes the override.
 
 Request logs can contain application data. Review the capture and retention
 settings before collecting real traffic, and use synthetic requests for
@@ -56,7 +69,9 @@ screenshots or shared demos. The module prunes logs and statistics hourly.
 Use the pnpm version declared in `package.json`. The repository's `dev` script
 starts its playground backend; `frontend:dev` starts the published Inertia
 dashboard loader. The playground connects to MongoDB at
-`mongodb://localhost:27017` unless `MONGO_URL` points it elsewhere. `pnpm build`
+`mongodb://localhost:27017` unless `MONGO_URL` points it elsewhere. Run `pnpm --dir playground traffic` while the playground runs to send
+its demo storefront routes a few hundred requests (healthy, slow, failing and
+client errors), so every page has something to show. `pnpm build`
 compiles the backend, and `pnpm test` runs the backend unit tests (`tests/`)
 followed by the frontend test suite. To typecheck
 the complete application, set `DMS_FRONTEND_WORKSPACE` to the workspace

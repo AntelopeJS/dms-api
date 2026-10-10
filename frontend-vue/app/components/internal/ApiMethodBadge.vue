@@ -1,33 +1,33 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { httpMethodColor } from '../../utils/httpMethod'
+import { methodTone } from '../../utils/http'
 
-// HTTP-method badge. The DMS look is a flat, tinted, mono pill — in
-// `@antelopejs/dms-frontend` that's `<UBadge variant="subtle">` with a
-// per-verb semantic color. The verb → color mapping (the API-specific bit)
-// lives in the shared `httpMethodColor` helper; the flat surface and its
-// colors are inherited from the DMS theme.
+// The method of a request or a route. Outline everywhere; `solid` only marks
+// the request the tester is about to send.
 const props = withDefaults(
   defineProps<{
     method: string
-    size?: 'sm' | 'md' | 'lg'
+    solid?: boolean
+    size?: 'sm' | 'md'
   }>(),
-  { size: 'sm' },
+  { solid: false, size: 'md' },
 )
 
-const upper = computed(() => props.method.toUpperCase())
-const label = computed(() => (upper.value === '*' ? 'ALL' : upper.value))
-
-const color = computed(() => httpMethodColor(upper.value))
+const label = computed(() =>
+  props.method.toUpperCase() === 'DELETE' ? 'DEL' : props.method.toUpperCase(),
+)
 </script>
 
 <template>
-  <UBadge
-    :color="color"
-    variant="subtle"
+  <DmsStatusPill
+    :tone="methodTone(method)"
+    :label="label"
+    :variant="solid ? 'soft' : 'outline'"
     :size="size"
-    class="font-mono font-semibold tracking-wide"
-  >
-    {{ label }}
-  </UBadge>
+    dot="none"
+    mono
+    uppercase
+    class="min-w-[3.25rem] justify-center"
+    :title="method.toUpperCase()"
+  />
 </template>

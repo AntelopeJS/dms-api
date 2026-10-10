@@ -1,12 +1,5 @@
 import { getConfig } from "@/config";
-import {
-  MAX_HOURLY_HOURS,
-  MAX_MINUTELY_MINUTES,
-  MS_PER_DAY,
-  MS_PER_HOUR,
-  MS_PER_MINUTE,
-  STATISTICS_RETENTION_MS,
-} from "@/types";
+import { MS_PER_DAY, STATISTICS_RETENTION_MS } from "@/types";
 
 /**
  * Shared parsing for the `period` query parameter of the monitoring
@@ -47,56 +40,6 @@ export function getMaxLogDays(): number {
 }
 
 /**
- * Sub-day windows are served from the raw request logs, not the day rollups,
- * so they answer to `requestLogRetention` instead — bounded further by the
- * chart point budget the aggregation itself enforces.
- */
-export function getMaxLogMinutes(): number {
-  return clampWindow(
-    retention("requestLogRetention") / MS_PER_MINUTE,
-    MAX_MINUTELY_MINUTES,
-  );
-}
-
-export function getMaxLogHours(): number {
-  return clampWindow(
-    retention("requestLogRetention") / MS_PER_HOUR,
-    MAX_HOURLY_HOURS,
-  );
-}
-
-function clampWindow(available: number, ceiling: number): number {
-  return Math.max(1, Math.min(ceiling, Math.floor(available)));
-}
-
-/**
- * `Nd` → day count, clamped to the statistics retention. Anything that is not
- * a positive day window yields undefined; callers that treat that as "no
- * filter at all" use this directly, the ones that need a default want
- * {@link resolvePeriodDays}.
- */
-export function parsePeriodDays(period?: string): number | undefined {
-  if (!period) return undefined;
-  const m = period.match(/^(\d+)d$/);
-  if (!m) return undefined;
-  const n = parseInt(m[1], 10);
-  if (n <= 0) return undefined;
-  return Math.min(n, getMaxStatsDays());
-}
-
-/**
- * Same, but falls back to `fallback` when `period` names no usable window.
- * The fallback is clamped too — a 7-day default would otherwise chart four
- * empty days against a 3-day retention.
- */
-export function resolvePeriodDays(
-  period: string | undefined,
-  fallback: number,
-): number {
-  return parsePeriodDays(period) ?? Math.min(fallback, getMaxStatsDays());
-}
-
-/**
  * Period parser that also picks the chart granularity. Accepts:
  *   - `Nm` (minutes), or `1h` → minute buckets
  *   - `Nh` (hours, N≥2) → hour buckets
@@ -108,26 +51,4 @@ export function resolvePeriodDays(
 export interface ParsedPeriod {
   granularity: "minute" | "hour" | "day";
   count: number;
-}
-
-export function parsePeriod(period?: string): ParsedPeriod | undefined {
-  if (!period) return undefined;
-  const m = period.match(/^(\d+)([mhd])$/);
-  if (!m) return undefined;
-  const count = parseInt(m[1], 10);
-  if (count <= 0) return undefined;
-  if (m[2] === "m") {
-    return {
-      granularity: "minute",
-      count: Math.min(count, getMaxLogMinutes()),
-    };
-  }
-  if (m[2] === "h") {
-    // 1h gets minute-level granularity so the chart has 60 points instead of 1.
-    if (count === 1) {
-      return { granularity: "minute", count: Math.min(60, getMaxLogMinutes()) };
-    }
-    return { granularity: "hour", count: Math.min(count, getMaxLogHours()) };
-  }
-  return { granularity: "day", count: Math.min(count, getMaxStatsDays()) };
 }

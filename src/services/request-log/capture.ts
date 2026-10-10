@@ -162,7 +162,9 @@ function assembleLogRecord(input: LogInputs) {
     responseHeaders: response.headers,
     responseBody: response.body.body,
     responseBodyTruncated: response.body.truncated,
-    error: formatError(context.error),
+    error:
+      formatError(context.error) ??
+      responseError(input.statusCode, context.response),
     ip: clientIp(context),
     userAgent: (
       context.rawRequest.headers["user-agent"] as string | undefined
@@ -255,12 +257,54 @@ function matchSegments(
   return params;
 }
 
+const ERROR_STATUS_MIN = 400;
+const BODY_MESSAGE_KEYS = ["error", "message"] as const;
+
+/**
+ * The message an error response carries: `{ error }` or `{ message }`, the
+ * shape `HTTPResult` bodies and `assert` use. Read from the body object, or
+ * from its JSON text.
+ */
+export function bodyErrorMessage(body: unknown): string | undefined {
+  let value = body;
+  if (Buffer.isBuffer(value)) value = value.toString("utf8");
+  if (typeof value === "string") {
+    try {
+      value = JSON.parse(value);
+    } catch {
+      return undefined;
+    }
+  }
+  if (!value || typeof value !== "object") return undefined;
+  for (const key of BODY_MESSAGE_KEYS) {
+    const message = (value as Record<string, unknown>)[key];
+    if (typeof message === "string" && message.trim()) return message.trim();
+  }
+  return undefined;
+}
+
+function responseError(
+  statusCode: number,
+  response: unknown,
+): { message: string } | undefined {
+  if (statusCode < ERROR_STATUS_MIN) return undefined;
+  const message = bodyErrorMessage(extractBody(response));
+  return message ? { message } : undefined;
+}
+
 function formatError(
   err: unknown,
 ): { message: string; stack?: string } | undefined {
   if (!err) return undefined;
   if (err instanceof Error) {
     return { message: err.message, stack: err.stack };
+  }
+  // A thrown HTTPResult: its body says what went wrong, its status otherwise.
+  if (typeof (err as { getStatus?: unknown }).getStatus === "function") {
+    return {
+      message:
+        bodyErrorMessage(extractBody(err)) ?? `HTTP ${extractStatusCode(err)}`,
+    };
   }
   // `String(err)`, not its JSON form. A thrown HTTPResult is not an Error, so
   // JSON would serialise its whole own-property graph -- body and headers

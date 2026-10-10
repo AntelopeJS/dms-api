@@ -1,142 +1,151 @@
-import { Controller, Get, Parameter } from "@antelopejs/interface-api";
+import {
+  Context,
+  Controller,
+  Get,
+  Parameter,
+  type RequestContext,
+} from "@antelopejs/interface-api";
 import { assert } from "@antelopejs/interface-api-util";
 import { GetModel } from "@antelopejs/interface-database-decorators";
-import { AuthOwnerOnly, AuthRawUser } from "@antelopejs/interface-dms/auth";
 import type { User } from "@antelopejs/interface-dms/auth/db";
+import { AuthUserWithPermission } from "@antelopejs/interface-dms/guards";
 import { getConfig } from "@/config";
 import { RequestLogModel, RouteModel } from "@/db";
-import type {
-  RequestLogFilters,
-  RequestLogStatusClass,
-} from "@/db/models/request_log.model";
-import {
-  getRequestLog,
-  queryRequestLogsScoped,
-} from "@/services/request-log/read";
+import { LogsPage } from "@/pages/logs";
+import { OverviewPage } from "@/pages/overview";
+import { RoutesPage } from "@/pages/routes";
+import { logsLink, routeLink, routeRef } from "@/services/links";
+import { getMaxLogDays } from "@/services/period";
+import { getRequestLog } from "@/services/request-log/read";
+import { listRequestLogs, type SourceQuery } from "@/services/request-log/list";
 import { getScopedRouteKeys } from "@/services/scope";
+import { bytesToKb } from "@/services/settings-form";
 import { getActiveScope } from "@/services/settings";
-import { MS_PER_DAY, MS_PER_HOUR, MS_PER_MINUTE, MS_PER_SECOND } from "@/types";
+import { getLiveTraffic } from "@/services/live";
+import { findRoute } from "@/services/route-catalog";
 
-type LogTab = "requests" | "errors" | "slow";
+function sourceQuery(context: RequestContext): SourceQuery {
+  return Object.fromEntries(context.url.searchParams.entries());
+}
 
-const TAB_FILTERS: Record<LogTab, Partial<RequestLogFilters>> = {
-  requests: {},
-  errors: { statusClass: "server-error" },
-  slow: {},
-};
+async function scopeKeys() {
+  return getScopedRouteKeys(GetModel(RouteModel), getActiveScope());
+}
 
-const STATUS_CLASSES: ReadonlySet<string> = new Set([
-  "success",
-  "client-error",
-  "server-error",
-]);
-
-const PERIOD_UNIT_MS: Record<string, number> = {
-  s: MS_PER_SECOND,
-  m: MS_PER_MINUTE,
-  h: MS_PER_HOUR,
-  d: MS_PER_DAY,
-};
-
-@AuthOwnerOnly()
+/**
+ * The request tables' route (the request logs page and the Overview's recent
+ * requests), the live histogram above the logs, and one request in full for
+ * the drawer.
+ */
 export class LogsController extends Controller("/api/monitoring/logs") {
   @Get("")
-  // Each parameter is bound to a request input by its decorator, so
-  // the framework hands them in positionally: an options object is not
-  // expressible here.
-  // oxlint-disable-next-line eslint/max-params
   async listLogs(
-    @AuthRawUser() _user: User,
-    @Parameter("tab", "query") tab?: string,
-    @Parameter("period", "query") period?: string,
-    @Parameter("method", "query") method?: string,
-    @Parameter("status", "query") status?: string,
-    @Parameter("search", "query") search?: string,
-    @Parameter("cursor", "query") cursor?: string,
-    @Parameter("limit", "query") limit?: string,
+    @AuthUserWithPermission(LogsPage.requests) _user: User,
+    @Context() context: RequestContext,
   ) {
-    const filters = buildLogFilters(
-      { tab, period, method, status, search, cursor, limit },
-      getConfig().requestSlownessThreshold,
+    return listRequestLogs(
+      GetModel(RequestLogModel),
+      sourceQuery(context),
+      await scopeKeys(),
     );
-    const keys = await getScopedRouteKeys(
-      GetModel(RouteModel),
-      getActiveScope(),
+  }
+
+  /**
+   * The same rows for the Overview: the recent requests table lives on a page
+   * of its own permission, so it reads through a route of its own.
+   */
+  @Get("recent")
+  async listRecent(
+    @AuthUserWithPermission(
+      OverviewPage.dashboard.targetChild("recent", "requests", "table"),
+    )
+    _user: User,
+    @Context() context: RequestContext,
+  ) {
+    return listRequestLogs(
+      GetModel(RequestLogModel),
+      sourceQuery(context),
+      await scopeKeys(),
     );
-    return queryRequestLogsScoped(GetModel(RequestLogModel), filters, keys);
+  }
+
+  /**
+   * The last requests of the route the Routes page selects: its table names
+   * `?route={{query.route}}`, which the DMS requests only once a route is
+   * picked.
+   */
+  @Get("route")
+  async listForRoute(
+    @AuthUserWithPermission(
+      RoutesPage.explorer.targetChild(
+        "tabs",
+        "statistics",
+        "recent",
+        "requests",
+        "table",
+      ),
+    )
+    _user: User,
+    @Context() context: RequestContext,
+  ) {
+    const { route, ...query } = sourceQuery(context);
+    if (!route) return { results: [], total: 0 };
+    return listRequestLogs(
+      GetModel(RequestLogModel),
+      { ...query, filter_route: `is:${route}` },
+      await scopeKeys(),
+    );
+  }
+
+  @Get("live")
+  async getLive(@AuthUserWithPermission(LogsPage.live) _user: User) {
+    const config = getConfig();
+    return {
+      ...(await getLiveTraffic(GetModel(RequestLogModel), await scopeKeys())),
+      retentionDays: getMaxLogDays(),
+      maxBodyKb: bytesToKb(config.requestLogMaxBodySize),
+    };
   }
 
   @Get(":id")
   async getLog(
-    @AuthRawUser() _user: User,
+    @AuthUserWithPermission(LogsPage.requests) _user: User,
     @Parameter("id", "param") id: string,
   ) {
     const log = await getRequestLog(GetModel(RequestLogModel), id);
     assert(log, 404, "Log not found");
-    return log;
+    const ref = routeRef(log.method, log.uri);
+    const route = findRoute(ref);
+    return {
+      _id: log._id,
+      timestamp: log.timestamp,
+      method: log.method,
+      uri: log.uri,
+      rawPath: log.rawPath,
+      statusCode: log.statusCode,
+      responseTimeMs: log.responseTimeMs,
+      ip: log.ip,
+      userAgent: log.userAgent,
+      pathParams: log.pathParams,
+      query: log.query,
+      requestHeaders: log.requestHeaders,
+      requestBody: log.requestBody,
+      requestBodyTruncated: log.requestBodyTruncated,
+      responseHeaders: log.responseHeaders,
+      responseBody: log.responseBody,
+      responseBodyTruncated: log.responseBodyTruncated,
+      error: log.error,
+      route: ref,
+      routeRegistered: route !== undefined,
+      slowThresholdMs: getConfig().requestSlownessThreshold,
+      links: {
+        route: route ? routeLink(ref) : null,
+        tester: route ? routeLink(ref, "2") : null,
+        sameError: log.error?.message
+          ? logsLink({ route: ref, error: log.error.message })
+          : null,
+        sameRoute: logsLink({ route: ref }),
+      },
+    };
   }
-}
-
-interface LogQueryParams {
-  tab?: string;
-  period?: string;
-  method?: string;
-  status?: string;
-  search?: string;
-  cursor?: string;
-  limit?: string;
-}
-
-function buildLogFilters(
-  params: LogQueryParams,
-  slowThresholdMs: number,
-): RequestLogFilters {
-  const resolvedTab: LogTab =
-    (params.tab as LogTab) in TAB_FILTERS ? (params.tab as LogTab) : "requests";
-
-  const filters: RequestLogFilters = {
-    ...TAB_FILTERS[resolvedTab],
-    method: params.method,
-    search: params.search,
-    cursor: params.cursor,
-    limit: parseLimit(params.limit),
-  };
-
-  if (params.status) {
-    if (STATUS_CLASSES.has(params.status)) {
-      filters.statusClass = params.status as RequestLogStatusClass;
-    } else {
-      const n = parseInt(params.status, 10);
-      if (!Number.isNaN(n)) {
-        filters.statusMin = n;
-        filters.statusMax = n;
-      }
-    }
-  }
-
-  if (params.period) {
-    const ms = periodToMs(params.period);
-    if (ms !== undefined) filters.since = new Date(Date.now() - ms);
-  }
-
-  if (resolvedTab === "slow") {
-    filters.slowThresholdMs = slowThresholdMs;
-  }
-
-  return filters;
-}
-
-function parseLimit(raw?: string): number | undefined {
-  if (!raw) return undefined;
-  const n = parseInt(raw, 10);
-  if (Number.isNaN(n) || n <= 0) return undefined;
-  return n;
-}
-
-function periodToMs(period: string): number | undefined {
-  const m = period.match(/^(\d+)([smhd])$/);
-  if (!m) return undefined;
-  const n = parseInt(m[1], 10);
-  if (n <= 0) return undefined;
-  return n * PERIOD_UNIT_MS[m[2]];
 }
