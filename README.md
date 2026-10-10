@@ -19,7 +19,7 @@
 - **Settings**: the routes the console watches, retention, captured headers
   and the slow threshold.
 
-It requires `@antelopejs/dms` 0.7.2 or later (`@antelopejs/interface-dms` 0.5.1)
+It requires `@antelopejs/dms` 0.7.4 or later (`@antelopejs/interface-dms` 0.5.1)
 and `@antelopejs/dms-frontend` 0.5.2.
 
 This module is the dashboard for your API, not the HTTP server implementation.
