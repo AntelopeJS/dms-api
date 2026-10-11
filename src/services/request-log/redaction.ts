@@ -113,6 +113,35 @@ export function passesLuhn(digits: string): boolean {
   return sum % 10 === 0;
 }
 
+/**
+ * The issuer prefixes and lengths of the card networks: Visa, Mastercard,
+ * American Express, Discover, JCB, UnionPay and Diners Club. A long numeric
+ * id (an order number, a Snowflake id) passes the Luhn check one time in ten:
+ * it must also be shaped like a card of a network to be redacted.
+ */
+const CARD_NETWORKS: ReadonlyArray<{ prefix: RegExp; lengths: number[] }> = [
+  { prefix: /^4/, lengths: [13, 16, 19] },
+  {
+    prefix: /^(?:5[1-5]|222[1-9]|22[3-9][0-9]|2[3-6][0-9]{2}|27[01][0-9]|2720)/,
+    lengths: [16],
+  },
+  { prefix: /^3[47]/, lengths: [15] },
+  { prefix: /^(?:6011|64[4-9]|65)/, lengths: [16, 17, 18, 19] },
+  { prefix: /^35(?:2[89]|[3-8][0-9])/, lengths: [16, 17, 18, 19] },
+  { prefix: /^62/, lengths: [16, 17, 18, 19] },
+  { prefix: /^3(?:0[0-5]|[689])/, lengths: [14, 15, 16, 17, 18, 19] },
+];
+
+/** Whether `digits` read as a payment card number: a network's, Luhn-valid. */
+export function isCardNumber(digits: string): boolean {
+  return (
+    CARD_NETWORKS.some(
+      ({ prefix, lengths }) =>
+        lengths.includes(digits.length) && prefix.test(digits),
+    ) && passesLuhn(digits)
+  );
+}
+
 /** Counts what one redaction pass replaced. */
 class Redactor {
   count = 0;
@@ -120,7 +149,7 @@ class Redactor {
   /** `text` with every card number in it replaced. */
   text(text: string): string {
     return text.replace(CARD_NUMBER, (match) => {
-      if (!passesLuhn(match.replace(/[ -]/g, ""))) return match;
+      if (!isCardNumber(match.replace(/[ -]/g, ""))) return match;
       this.count++;
       return REDACTED;
     });

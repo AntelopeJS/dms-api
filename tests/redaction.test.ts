@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  isCardNumber,
   isSensitiveKey,
   passesLuhn,
   redactSearchParams,
@@ -79,6 +80,38 @@ describe("card numbers", () => {
       reference: "4242424242424241",
     });
     expect(redacted).toBe(3);
+  });
+
+  it("leaves a long numeric id that no card network issues", () => {
+    // Luhn-valid, but no network issues these prefixes at these lengths.
+    const ids = ["52345678901234565", "400000000000000002", "2000000000000006"];
+    for (const id of ids) expect(passesLuhn(id)).toBe(true);
+    const { value, redacted } = redactValue({
+      orderId: ids[0],
+      snowflake: ids[1],
+      tracking: `parcel ${ids[2]}`,
+    });
+    expect(value).toEqual({
+      orderId: ids[0],
+      snowflake: ids[1],
+      tracking: `parcel ${ids[2]}`,
+    });
+    expect(redacted).toBe(0);
+  });
+
+  it("knows the cards of each network", () => {
+    for (const card of [
+      "4242424242424242",
+      "5555555555554444",
+      "2223003122003222",
+      "378282246310005",
+      "6011111111111117",
+      "3566002020360505",
+      "6200000000000005",
+      "36227206271667",
+    ]) {
+      expect(isCardNumber(card)).toBe(true);
+    }
   });
 
   it("redacts the card data the QA found in clear", () => {
