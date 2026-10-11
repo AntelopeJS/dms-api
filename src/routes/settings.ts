@@ -26,7 +26,6 @@ import { countRoutes } from "@/services/route-catalog";
 import { getScopedRouteKeys } from "@/services/scope";
 import { getEffectiveSettings, updateSettings } from "@/services/settings";
 import {
-  changedFields,
   editableValues,
   logRetentionImpact,
   RETENTION_FIELDS,
@@ -63,10 +62,10 @@ function isRetentionField(value: unknown): value is RetentionField {
 
 /**
  * The Settings form's route. The form loads the values in force and sends
- * them all back on save; only the fields that changed are validated and
- * written, and a cleared field returns to the module default. The answer is
- * the values as stored (header names in lower case, without repeats), which
- * the form shows once saved.
+ * them all back on save, each validated and written; a value equal to the
+ * module default ("Use default") is stored as no override. The answer is the
+ * values as stored (header names in lower case, without repeats), which the
+ * form shows once saved.
  */
 export class SettingsController extends Controller("/api/monitoring/settings") {
   @Get("")
@@ -79,11 +78,7 @@ export class SettingsController extends Controller("/api/monitoring/settings") {
     @AuthUserWithPermission(SettingsPage.form) _user: User,
     @JSONBody() body: unknown,
   ) {
-    const current = editableValues(getEffectiveSettings());
-    const result = validateSettings(
-      changedFields(body, current),
-      isSensitiveHeader,
-    );
+    const result = validateSettings(body, isSensitiveHeader);
     if (!result.ok) throw new HTTPResult(HTTP_BAD_REQUEST, result.error);
     await updateSettings(
       GetModel(ApiSettingsModel),

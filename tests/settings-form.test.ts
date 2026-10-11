@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { setConfig } from "@/config";
 import {
-  changedFields,
+  configErrors,
   editableValues,
   getSettingsFormContext,
   INVALID_HEADER_MESSAGE,
@@ -43,41 +43,56 @@ function validate(
   changes: Record<string, unknown>,
   sensitive: (name: string) => boolean = neverSensitive,
 ) {
-  return validateSettings(changedFields(formBody(changes), current), sensitive);
+  return validateSettings(changes, sensitive);
 }
 
 afterEach(() => setConfig());
 
-describe("changedFields", () => {
-  it("keeps only the editable fields that differ from the values in force", () => {
-    expect(
-      changedFields(
-        formBody({ [SETTINGS_FIELDS.slowThreshold]: 1500 }),
-        current,
-      ),
-    ).toEqual({ [SETTINGS_FIELDS.slowThreshold]: 1500 });
+describe("the whole form body", () => {
+  it("validates every editable field and leaves the read-only ones out", () => {
+    expect(validateSettings(formBody({}), neverSensitive)).toEqual({
+      ok: true,
+      data: current,
+    });
   });
 
-  it("does not validate again a value the form only sent back", () => {
-    const offGrid = editableValues({
-      ...settings,
-      statisticsLifetime: 45 * MS_PER_DAY,
-      requestSlownessThreshold: 1001,
-    });
-    const body = { ...offGrid, [SETTINGS_FIELDS.maxBody]: 32 };
-    const result = validateSettings(
-      changedFields(body, offGrid),
+  it("refuses a body that is not an object", () => {
+    expect(validateSettings(null, neverSensitive).ok).toBe(false);
+    expect(validateSettings([1], neverSensitive).ok).toBe(false);
+  });
+});
+
+describe("configErrors", () => {
+  it("accepts the module defaults", () => {
+    const { scope: _scope, ...config } = settings;
+    expect(configErrors(config, neverSensitive)).toEqual([]);
+  });
+
+  it("names what the form would refuse to save back", () => {
+    const { scope: _scope, ...config } = settings;
+    const errors = configErrors(
+      {
+        ...config,
+        statisticsLifetime: 45 * MS_PER_DAY,
+        requestSlownessThreshold: 1001,
+      },
       neverSensitive,
     );
-    expect(result).toEqual({
-      ok: true,
-      data: { [SETTINGS_FIELDS.maxBody]: 32 },
-    });
+    expect(errors).toHaveLength(2);
+    expect(errors[0]).toMatch(/^statisticsLifetimeDays: /);
+    expect(errors[1]).toMatch(/^requestSlownessThresholdMs: /);
   });
 
-  it("reads nothing from a body that is not an object", () => {
-    expect(changedFields(null, current)).toEqual({});
-    expect(changedFields([1], current)).toEqual({});
+  it("names a secret header set to be captured", () => {
+    const { scope: _scope, ...config } = settings;
+    expect(
+      configErrors(
+        { ...config, requestLogCaptureHeaders: ["authorization"] },
+        (name) => name === "authorization",
+      ),
+    ).toEqual([
+      `requestLogCaptureHeaders: ${SENSITIVE_HEADER_MESSAGE} (authorization)`,
+    ]);
   });
 });
 

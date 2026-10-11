@@ -18,7 +18,7 @@ import {
   registerAutomationNodes,
   unregisterAutomationNodes,
 } from "./automation";
-import { type DmsApiConfig, setConfig } from "./config";
+import { type DmsApiConfig, getBaseConfig, setConfig } from "./config";
 import {
   ApiSettingsModel,
   RequestLogModel,
@@ -33,12 +33,19 @@ import {
   syncRoutes,
 } from "./services";
 import { stopLiveFeed } from "./services/live-feed";
+import { isSensitiveHeader } from "./services/request-log/redaction";
+import { configErrors } from "./services/settings-form";
 import { SCHEMA_NAME } from "./types/constants";
 
 let pruneTask: ScheduledTask | null = null;
 
 export async function construct(config?: Partial<DmsApiConfig>): Promise<void> {
   setConfig(config);
+  // The Settings form could not save such a value back: refuse it at start.
+  const errors = configErrors(getBaseConfig(), isSensitiveHeader);
+  if (errors.length) {
+    throw new Error(`[dms-api] invalid configuration: ${errors.join("; ")}`);
+  }
 
   await AddFrontendModule({
     name: "@antelopejs/dms-api-frontend-vue",

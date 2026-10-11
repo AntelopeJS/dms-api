@@ -18,8 +18,8 @@ export const DEFAULT_STATISTICS_LIFETIME_DAYS = 90;
 
 export interface DmsApiConfig {
   /**
-   * Statistics retention window in milliseconds. The Settings page offers 30,
-   * 60 or 90 days; a value set here outside those choices still applies.
+   * Statistics retention window in milliseconds: 30, 60 or 90 days, the
+   * choices of the Settings page.
    */
   statisticsLifetime: number;
   /** Threshold above which a request is flagged as slow, in milliseconds. */

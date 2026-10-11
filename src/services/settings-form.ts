@@ -94,8 +94,6 @@ export function editableValues(settings: ApiSettingsPayload) {
   };
 }
 
-type EditableValues = ReturnType<typeof editableValues>;
-
 /** A header name as HTTP allows it (RFC 9110 token), in lower case. */
 const HEADER_NAME = /^[a-z0-9!#$%&'*+.^_`|~-]+$/;
 
@@ -119,9 +117,8 @@ const statisticsLifetimeDays = z
 const { slowThresholdMs } = SETTINGS_BOUNDS;
 
 /**
- * The body the settings form sends, once the unchanged fields are left out
- * (see {@link changedFields}): `null` for a field the user cleared.
- * Read-only fields are never written.
+ * The body the settings form sends: every field, `null` for one returned to
+ * its module default. Read-only fields are left out, never written.
  */
 const settingsBody = z.object({
   [SETTINGS_FIELDS.scope]: z
@@ -152,31 +149,6 @@ const settingsBody = z.object({
 
 export type SettingsBody = z.infer<typeof settingsBody>;
 
-/**
- * The fields of `body` that differ from the values in force. The form sends
- * every field on each save: one the user did not touch is not validated
- * again, so a value set in the module configuration outside what the form
- * offers (45 days of statistics, a 1001 ms threshold) does not block saving
- * another field.
- */
-export function changedFields(
-  body: unknown,
-  current: EditableValues,
-): Record<string, unknown> {
-  if (typeof body !== "object" || body === null || Array.isArray(body)) {
-    return {};
-  }
-  const editable = new Set(Object.keys(current));
-  return Object.fromEntries(
-    Object.entries(body).filter(
-      ([key, value]) =>
-        editable.has(key) &&
-        JSON.stringify(value) !==
-          JSON.stringify(current[key as keyof EditableValues]),
-    ),
-  );
-}
-
 /** A refused save, as the DMS form shows it under the field it names. */
 export interface SettingsFieldError {
   field: string;
@@ -190,16 +162,16 @@ export type SettingsValidation =
   | { ok: false; error: SettingsFieldError | z.ZodIssue[] };
 
 /**
- * Validates what changed. A header name HTTP does not allow, or one the
+ * Validates the form's body. A header name HTTP does not allow, or one the
  * capture never stores (`authorization`, a cookie…), is refused by name, so
  * the form marks those tags; anything else answers zod's issues, which the
  * form puts under their fields.
  */
 export function validateSettings(
-  changes: Record<string, unknown>,
+  body: unknown,
   isSensitiveHeader: (name: string) => boolean,
 ): SettingsValidation {
-  const parsed = settingsBody.safeParse(changes);
+  const parsed = settingsBody.safeParse(body);
   if (!parsed.success) return { ok: false, error: parsed.error.issues };
   const headers = parsed.data[SETTINGS_FIELDS.headers];
   if (headers) {
@@ -227,6 +199,31 @@ export function validateSettings(
     }
   }
   return { ok: true, data: parsed.data };
+}
+
+/**
+ * What the module configuration sets that the Settings form refuses (45 days
+ * of statistics, a 1001 ms threshold, a secret header to capture), as
+ * `field: reason` lines: the form could not save such a value back, so the
+ * module does not start with it.
+ */
+export function configErrors(
+  config: Omit<ApiSettingsPayload, "scope">,
+  isSensitiveHeader: (name: string) => boolean,
+): string[] {
+  const { [SETTINGS_FIELDS.scope]: _scope, ...values } = editableValues({
+    ...config,
+    scope: "all",
+  });
+  const result = validateSettings(values, isSensitiveHeader);
+  if (result.ok) return [];
+  if (!Array.isArray(result.error)) {
+    const { field, message, values: names } = result.error;
+    return [`${field}: ${message} (${names?.join(", ")})`];
+  }
+  return result.error.map(
+    (issue) => `${issue.path.join(".")}: ${issue.message}`,
+  );
 }
 
 /**
