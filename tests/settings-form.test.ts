@@ -8,7 +8,6 @@ import {
   logRetentionImpact,
   SENSITIVE_HEADER_MESSAGE,
   SETTINGS_FIELDS,
-  sensitiveHeaderNames,
   settingsSummary,
   statisticsRetentionImpact,
   toSettingsUpdate,
@@ -165,20 +164,6 @@ describe("validateSettings", () => {
     expect((result.error as Array<{ path: unknown[] }>)[0]?.path).toEqual([
       SETTINGS_FIELDS.logRetention,
     ]);
-  });
-});
-
-describe("sensitiveHeaderNames", () => {
-  it("names the listed headers the capture never stores, once, in lower case", () => {
-    const isSensitive = (name: string) =>
-      name === "authorization" || name.includes("cookie");
-    expect(
-      sensitiveHeaderNames(
-        " Authorization ,x-request-id,set-cookie,authorization,,",
-        isSensitive,
-      ),
-    ).toEqual(["authorization", "set-cookie"]);
-    expect(sensitiveHeaderNames("", isSensitive)).toEqual([]);
   });
 });
 

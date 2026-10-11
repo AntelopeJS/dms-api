@@ -106,7 +106,7 @@ keeps custom components for the parts no block expresses.
 | Custom block | Why no DMS block fits |
 | --- | --- |
 | `ScopeChip` | A live "Own routes · 42" link to Settings; no block reads the scope. |
-| `HealthHero` | The verdict by explicit rules (Healthy, Degraded, Down, Recovered, No traffic), how long it has held with its start in a tooltip, the 5xx rate and the p95 first with both rules' thresholds, the 4xx rate in grey, the reasons and "View server errors", or the first-run guide. DMS 0.7.2's `Banner` and `StatGroup` draw the verdict and the figures, but not the rest: a change of verdict seen live raises a toast and marks the browser tab, the page's Live control reads the verdict on screen to say it changed while paused, a failed refresh keeps the last figures as stale with a retry, and the eyebrow says Live, Paused or Stale. A fetched block tells the page nothing and has no stale or failed state (DMS-8), and a composed text takes no tooltip. |
+| ~~`HealthHero`~~ | Gone: the verdict is a `Banner({ fetchUrl: /overview/health })` and the figures a `StatGroup` (`/overview/health/figures`), both in composed texts (`src/services/health-blocks.ts`). Lost on the way: tooltips, the toast on a verdict change and the stale state, which DMS blocks do not offer. |
 | `LiveTraffic` | Per-minute histogram of the last hour with a Live toggle that shows its own failures; no block polls. |
 | `RequestDetail` | The request drawer (error and stack first, timing, headers, bodies, Replay / cURL / Open route / Same error). |
 | `RouteTree` | A filterable tree whose selection lives in the URL. |
@@ -166,7 +166,7 @@ themselves (health hero, tab counters, tree footer).
 
 1. `HStack`: `ScopeChip` · `Spacer` · `PeriodSelector` (segmented, 24 h / 7 d / 30 d, against the previous period).
 2. `Banner` (beta, `info`, `sm`, dismissible): one line instead of ~90 words (F14).
-3. `HealthHero`: verdict (Operational / Degraded / Down), since when, reasons
+3. Health `Banner` + `StatGroup`: verdict (Operational / Degraded / Down), since when, reasons
    (n failing, n slow), four metrics (calls today, errors 24 h, average
    latency, routes in scope) and "View n server errors" (F01). With no request
    captured yet, it becomes the first-run guide (F17).

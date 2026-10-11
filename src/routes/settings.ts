@@ -32,7 +32,6 @@ import {
   type RetentionField,
   SETTINGS_BOUNDS,
   SETTINGS_FIELDS,
-  sensitiveHeaderNames,
   settingsSummary,
   statisticsRetentionImpact,
   toSettingsUpdate,
@@ -111,19 +110,6 @@ export class SettingsController extends Controller("/api/monitoring/settings") {
     return field === SETTINGS_FIELDS.statsRetention
       ? statisticsRetentionImpact(GetModel(RouteStatisticsModel), days)
       : logRetentionImpact(GetModel(RequestLogModel), days);
-  }
-
-  /**
-   * Which of `names` the capture never stores (`authorization`, a cookie…):
-   * the captured headers input asks as names are added, so such a name shows
-   * red at once, by the same rule the save applies.
-   */
-  @Get("sensitive-headers")
-  getSensitiveHeaders(
-    @AuthUserWithPermission(SettingsPage.form) _user: User,
-    @Parameter("names", "query") names: string | undefined,
-  ) {
-    return { sensitive: sensitiveHeaderNames(names ?? "", isSensitiveHeader) };
   }
 
   /**

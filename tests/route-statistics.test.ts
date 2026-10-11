@@ -139,18 +139,20 @@ describe("route statistics", () => {
   });
 
   it("says when there is no previous period", () => {
+    const [requests] = routeSummary({ ...traffic, previous: null }, 250).items;
+    expect(requests).toMatchObject({
+      detail: "$api.routes.statistics.no_baseline",
+      detailTone: "neutral",
+    });
+  });
+
+  it("has no figures for a route without calls", () => {
     const empty: RouteTraffic = {
       buckets: [],
       total: sumBuckets([]),
       previous: null,
     };
-    const [requests, , errors] = routeSummary(empty, 250).items;
-    expect(requests).toMatchObject({
-      value: 0,
-      detail: "$api.routes.statistics.no_baseline",
-      detailTone: "neutral",
-    });
-    expect(errors?.tone).toBe("muted");
+    expect(routeSummary(empty, 250).items).toEqual([]);
     expect(errorRateChart(empty)).toMatchObject({ value: 0, delta: null });
   });
 });

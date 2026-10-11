@@ -206,6 +206,8 @@ export function routeSummary(
   slowThreshold: number,
 ): RouteSummaryPayload {
   const { total } = traffic;
+  // No call over the period: no figures, so the StatGroup shows its empty state.
+  if (total.requests === 0) return { items: [] };
   const delta = change(total.requests, traffic.previous?.requests);
   const rate = errorRateFigures(traffic).value;
   const timed = total.timed > 0;

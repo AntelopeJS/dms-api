@@ -227,25 +227,6 @@ export function configErrors(
 }
 
 /**
- * The names of a comma-separated list (`?names=` of the check the captured
- * headers input runs as names are added) that the capture never stores, in
- * lower case: the input marks them as the save would refuse them.
- */
-export function sensitiveHeaderNames(
-  names: string,
-  isSensitiveHeader: (name: string) => boolean,
-): string[] {
-  return [
-    ...new Set(
-      names
-        .split(",")
-        .map((name) => name.trim().toLowerCase())
-        .filter((name) => name && isSensitiveHeader(name)),
-    ),
-  ];
-}
-
-/**
  * An override equal to the module default is no override: storing it would
  * pin the value if the default changes later.
  */
