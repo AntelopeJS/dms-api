@@ -1,5 +1,4 @@
 import { ActivityFeed } from "@antelopejs/interface-dms/base/activity-feed";
-import { Banner } from "@antelopejs/interface-dms/base/banner";
 import { Card } from "@antelopejs/interface-dms/base/card";
 import { ChartColumn } from "@antelopejs/interface-dms/base/chart";
 import { ChartCard } from "@antelopejs/interface-dms/base/chart-card";
@@ -76,6 +75,8 @@ export class OverviewPage extends PageController(
   // `PeriodWindow` drives the cards' period scope.
   static toolbar = pageToolbar({
     scope: scopeChip(),
+    // Still in beta: a pill beside the scope, its meaning in a tooltip.
+    badge: apiBlock("BetaBadge"),
     live: liveControl({
       page: "overview",
       sinceUrl: "/api/monitoring/logs/recent/since",
@@ -87,15 +88,6 @@ export class OverviewPage extends PageController(
       defaultWindow: OVERVIEW_DEFAULT_WINDOW,
     }),
   }).meta({ name: "$api.overview.toolbar", icon: "i-ph-sliders-horizontal" });
-
-  static beta = Banner({
-    title: "$api.overview.beta.title",
-    description: "$api.overview.beta.description",
-    tone: "info",
-    size: "sm",
-    dismissible: true,
-    dismissKey: "dms-api-beta-1",
-  }).meta({ name: "$api.overview.beta.title", icon: "i-ph-flask" });
 
   // The verdict, since when and why, with the figures it rests on: a DMS
   // Banner and StatGroup cannot give the "since" its tooltip, tell a change

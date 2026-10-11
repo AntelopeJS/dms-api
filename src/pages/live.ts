@@ -45,6 +45,8 @@ export function liveControl(
 export interface PageToolbarParts {
   /** The route scope chip (`scopeChip()`). */
   scope: Component;
+  /** A pill right of the scope: the Overview's Beta. */
+  badge?: Component;
   /** The Live / Pause control (`liveControl()`). */
   live: Component;
   /** The period of the page (`PeriodWindow`, `LogsPeriod`). */
@@ -52,13 +54,19 @@ export interface PageToolbarParts {
 }
 
 /**
- * The toolbar of the monitoring pages, a DMS `HStack`: `[scope] ··· [live]
- * [period]`, wrapping on a narrow window. The children keep their ids
- * (`scope`, `live`, `period`): permissions and blocks name them so.
+ * The toolbar of the monitoring pages, a DMS `HStack`: `[scope] [badge] ···
+ * [live] [period]` on one line, wrapping on a narrow window. The children
+ * keep their ids (`scope`, `beta`, `live`, `period`): permissions and blocks
+ * name them so.
  */
 export function pageToolbar(parts: PageToolbarParts): ComponentBuilder {
-  return HStack({ alignment: "center", spacing: "0.75rem", wrap: true })
-    .child("scope", parts.scope)
+  const toolbar = HStack({
+    alignment: "center",
+    spacing: "0.75rem",
+    wrap: true,
+  }).child("scope", parts.scope);
+  if (parts.badge) toolbar.child("beta", parts.badge);
+  return toolbar
     .child("spacer", Spacer())
     .child("live", parts.live)
     .child("period", parts.period);

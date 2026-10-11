@@ -92,6 +92,10 @@
       "health_hero": {
         "name": "API health",
         "description": "Health verdict, its reasons and the headline metrics of the last minutes."
+      },
+      "beta_badge": {
+        "name": "Beta badge",
+        "description": "Says the console is still in beta, beside the page's toolbar."
       }
     },
     "health": {
