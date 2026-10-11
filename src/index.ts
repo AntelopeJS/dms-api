@@ -8,7 +8,6 @@ import "./pages";
 
 import path from "node:path";
 import { getRegisteredRoutes } from "@antelopejs/interface-api";
-import { Logging } from "@antelopejs/interface-core/logging";
 import {
   GetModel,
   RegisterSchema,
@@ -29,7 +28,6 @@ import {
 import { registerLiveTopics } from "./realtime";
 import {
   loadSettings,
-  migrateStoredData,
   pruneAllStatistics,
   pruneRequestLogs,
   syncRoutes,
@@ -56,12 +54,6 @@ export async function start(): Promise<void> {
   await loadSettings(GetModel(ApiSettingsModel));
   const routesModel = GetModel(RouteModel);
   await syncRoutes(routesModel, getRegisteredRoutes());
-
-  // Bring data stored by earlier versions in line, in the background: each
-  // pass runs once and the start does not wait for it.
-  void migrateStoredData().catch((err) =>
-    Logging.Error("[dms-api] migration failed:", err),
-  );
 
   const statsModel = GetModel(RouteStatisticsModel);
   const logModel = GetModel(RequestLogModel);

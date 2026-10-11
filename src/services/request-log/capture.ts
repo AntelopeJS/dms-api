@@ -218,7 +218,7 @@ export function isDmsConsoleCall(
 }
 
 /** Every registered handler answering requests, with its module. */
-export function registeredHandlers(): HandlerOwner[] {
+function registeredHandlers(): HandlerOwner[] {
   return getRegisteredRouteHandlers()
     .filter(({ handler }) => handler.mode === "handler")
     .map(({ handler }) => ({

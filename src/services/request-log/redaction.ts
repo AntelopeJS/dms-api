@@ -256,35 +256,3 @@ export function sanitizeBody(
     return { omitted: "malformed", redacted: 0 };
   }
 }
-
-/** `"key": <string, number or literal>` in JSON text, for cut-off bodies. */
-const JSON_MEMBER =
-  /"((?:[^"\\]|\\.)*)"(\s*:\s*)("(?:[^"\\]|\\.)*"?|-?[0-9][0-9.eE+-]*|true|false|null)/g;
-
-/**
- * Redacts a body as an earlier capture stored it, by today's rules: JSON is
- * redacted as structured data, a form as parameters. A JSON body cut at the
- * size limit no longer parses: its members are redacted one by one in the
- * text, and card numbers wherever they are.
- */
-export function redactStoredBody(text: string): Redacted<string> {
-  return redactWith((redactor) => {
-    const trimmed = text.trimStart();
-    if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
-      return redactor.params(new URLSearchParams(text)).toString();
-    }
-    try {
-      return JSON.stringify(redactor.value(JSON.parse(text)));
-    } catch {
-      const members = text.replace(
-        JSON_MEMBER,
-        (member, key: string, colon: string, value: string) => {
-          if (!isSensitiveKey(key) || value === `"${REDACTED}"`) return member;
-          redactor.count++;
-          return `"${key}"${colon}"${REDACTED}"`;
-        },
-      );
-      return redactor.text(members);
-    }
-  });
-}

@@ -152,15 +152,16 @@ const SERVER_ERROR_MIN = 500;
 
 interface LogCursor {
   timestamp: Date;
-  id?: string;
+  id: string;
 }
 
+/** A cursor {@link logCursor} wrote, or undefined. */
 function decodeCursor(raw?: string): LogCursor | undefined {
   if (!raw) return undefined;
   const separator = raw.indexOf(CURSOR_SEPARATOR);
-  const date = separator < 0 ? raw : raw.slice(0, separator);
-  const id = separator < 0 ? undefined : raw.slice(separator + 1);
-  const timestamp = new Date(date);
+  if (separator < 0) return undefined;
+  const timestamp = new Date(raw.slice(0, separator));
+  const id = raw.slice(separator + 1);
   if (Number.isNaN(+timestamp) || id === "") return undefined;
   return { timestamp, id };
 }
@@ -328,17 +329,17 @@ export class RequestLogModel extends BasicDataModel(
   ): this["table"] {
     const cursor = decodeCursor(filters.cursor);
     if (cursor) {
-      q = q.filter((doc) => {
-        const older = doc.key("timestamp").lt(cursor.timestamp);
-        return cursor.id === undefined
-          ? older
-          : older.or(
-              doc
-                .key("timestamp")
-                .eq(cursor.timestamp)
-                .and(doc.key("_id").lt(cursor.id)),
-            );
-      });
+      q = q.filter((doc) =>
+        doc
+          .key("timestamp")
+          .lt(cursor.timestamp)
+          .or(
+            doc
+              .key("timestamp")
+              .eq(cursor.timestamp)
+              .and(doc.key("_id").lt(cursor.id)),
+          ),
+      );
     }
     const since = filters.since;
     if (since) {
@@ -499,95 +500,4 @@ export class RequestLogModel extends BasicDataModel(
       .delete()
       .run();
   }
-
-  // Maintenance of logs stored by earlier versions (see `migrate.ts`). Each
-  // selects through an index, so it costs what it changes.
-
-  /**
-   * Durations of exactly 0 ms: an earlier capture wrote 0 when it had no
-   * start time. A measured duration is never exactly 0 (nanosecond clock).
-   */
-  async clearUnmeasuredDurations(): Promise<number> {
-    return this.table
-      .filter((doc) => doc.key("responseTimeMs").eq(0))
-      .update({ responseTimeMs: null })
-      .run();
-  }
-
-  async renameUri(from: string, to: string): Promise<number> {
-    return this.table
-      .filter((doc) => doc.key("uri").eq(from))
-      .update({ uri: to })
-      .run();
-  }
-
-  async deleteByUri(uri: string): Promise<number> {
-    return this.table
-      .filter((doc) => doc.key("uri").eq(uri))
-      .delete()
-      .run();
-  }
-
-  /**
-   * The page loads (`GET`, `HEAD`) whose path matches `pattern`, but for the
-   * paths in `kept`, which a handler answers: a scan, run once.
-   */
-  async deletePageLoads(pattern: string, kept: string[]): Promise<number> {
-    return this.table
-      .filter((doc) =>
-        kept.reduce(
-          (selected, uri) => selected.and(doc.key("uri").ne(uri)),
-          doc
-            .key("uri")
-            .match(pattern)
-            .and(doc.key("method").eq("GET").or(doc.key("method").eq("HEAD"))),
-        ),
-      )
-      .delete()
-      .run();
-  }
-
-  /**
-   * Up to `limit` logs past `cursor` (newest first, see {@link logCursor})
-   * whose stored bodies match `pattern`, with just what a redaction pass
-   * rewrites.
-   */
-  async bodiesMatching(
-    pattern: string,
-    cursor: string | undefined,
-    limit: number,
-  ): Promise<StoredBodies[]> {
-    return this.applyScalarFilters(
-      this.table.orderBy(REQUEST_LOG_ORDER_INDEX, "desc"),
-      { cursor },
-    )
-      .filter((doc) =>
-        doc
-          .key("requestBody")
-          .default("")
-          .match(pattern)
-          .or(doc.key("responseBody").default("").match(pattern)),
-      )
-      .slice(0, limit)
-      .map((doc) => ({
-        _id: doc.key("_id"),
-        timestamp: doc.key("timestamp"),
-        requestBody: doc.key("requestBody"),
-        responseBody: doc.key("responseBody"),
-      }))
-      .run() as Promise<StoredBodies[]>;
-  }
-
-  async replaceBodies(
-    id: string,
-    bodies: Partial<Pick<RequestLog, "requestBody" | "responseBody">>,
-  ): Promise<void> {
-    await this.table.get(id).update(bodies).run();
-  }
 }
-
-/** A log's stored bodies, as a redaction pass reads them. */
-export type StoredBodies = Pick<
-  RequestLog,
-  "_id" | "timestamp" | "requestBody" | "responseBody"
->;

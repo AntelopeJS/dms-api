@@ -4,7 +4,6 @@ import {
   isSensitiveKey,
   passesLuhn,
   redactSearchParams,
-  redactStoredBody,
   redactValue,
   sanitizeBody,
 } from "@/services/request-log/redaction";
@@ -168,36 +167,5 @@ describe("sanitizeBody", () => {
       text: "password=%5BREDACTED%5D&card=%5BREDACTED%5D&name=Jane",
       redacted: 2,
     });
-  });
-});
-
-describe("redactStoredBody", () => {
-  it("redacts a stored JSON body by today's rules", () => {
-    const stored = JSON.stringify({
-      password: "[REDACTED]",
-      cardNumber: "4242 4242 4242 4242",
-      items: [{ sku: "DESK" }],
-    });
-    expect(JSON.parse(redactStoredBody(stored).value)).toEqual({
-      password: "[REDACTED]",
-      cardNumber: "[REDACTED]",
-      items: [{ sku: "DESK" }],
-    });
-  });
-
-  it("leaves a body that has nothing new to redact as it was", () => {
-    const stored = '{"password":"[REDACTED]","sku":"DESK"}';
-    expect(redactStoredBody(stored).value).toBe(stored);
-    const form = "password=%5BREDACTED%5D&name=Jane";
-    expect(redactStoredBody(form).value).toBe(form);
-  });
-
-  it("redacts a JSON body cut at the size limit member by member", () => {
-    const { value } = redactStoredBody(
-      '{"card_cvc":"123","note":"4242424242424242","cardNumber":"4242 42',
-    );
-    expect(value).toBe(
-      '{"card_cvc":"[REDACTED]","note":"[REDACTED]","cardNumber":"[REDACTED]"',
-    );
   });
 });

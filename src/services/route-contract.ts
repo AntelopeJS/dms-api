@@ -258,8 +258,7 @@ export async function loadContractTraffic(
   now: Date = new Date(),
 ): Promise<ContractTraffic> {
   const since = new Date(now.getTime() - CONTRACT_WINDOW_DAYS * MS_PER_DAY);
-  // Stored paths are canonical (see `normalizeRoutePath`): the migration
-  // renamed the logs written before route keys lost their trailing slash.
+  // Stored paths are canonical (see `normalizeRoutePath`).
   const filters = {
     method,
     since,
