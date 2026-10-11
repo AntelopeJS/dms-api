@@ -56,6 +56,15 @@ beforeEach(() => {
   registered.handlers = [];
 });
 
+/** The line under a listed route: the composed text after its state. */
+function detailOf(item: { meta?: unknown[] } | undefined) {
+  return item?.meta?.find(
+    (entry) =>
+      typeof entry === "object" &&
+      /_(detail|last)$/.test((entry as { key: string }).key),
+  );
+}
+
 describe("getAttention", () => {
   it("gives a failing route's rate over the window its state was judged on", async () => {
     // A busy day with a few 5xx, under 1 % over 24 h; 3 of the last 15
@@ -77,10 +86,18 @@ describe("getAttention", () => {
       serverErrors: 3,
       serverErrorRate: 5,
     });
-    expect(route?.params).toMatchObject({
-      windowRate: "5",
-      windowCalls: "60",
-      windowMinutes: "15",
+    // The feed says it in the reader's language: rate, window and calls.
+    expect(detailOf(route)).toEqual({
+      key: "api.overview.attention.window_detail",
+      params: {
+        calls: { type: "count", value: 60 },
+        rate: {
+          key: "api.common.percent",
+          params: { value: { type: "number", value: 5 } },
+        },
+        minutes: { type: "number", value: 15 },
+        serverErrors: { type: "number", value: 3 },
+      },
     });
   });
 
@@ -96,7 +113,10 @@ describe("getAttention", () => {
     expect(route?.state).toBe("recovered");
     const last = new Date(NOW.getTime() - 20 * MS_PER_MINUTE).toISOString();
     expect(route?.lastServerError).toBe(last);
-    expect(route?.params?.lastServerError).toBe(last);
+    expect(detailOf(route)).toMatchObject({
+      key: "api.overview.attention.recovered_detail",
+      params: { last: { type: "relative", value: last } },
+    });
   });
 
   it("puts the registered routes first and marks the stray paths", async () => {

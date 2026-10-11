@@ -26,19 +26,6 @@ export interface SelectOptions {
 }
 
 /**
- * The page's query as the address bar holds it. A block may write it past
- * the router (`PeriodWindow` keeps `?window=` that way), and a navigation
- * built from the router's copy would put back the value it replaced.
- */
-export function liveQuery(
-  route: ReturnType<typeof useDmsRoute>,
-): Record<string, string> {
-  if (typeof window === 'undefined')
-    return { ...route.query } as Record<string, string>
-  return Object.fromEntries(new URLSearchParams(window.location.search))
-}
-
-/**
  * The route the Routes page shows, as `?route=METHOD%20/path` in the URL: a
  * link, a reload or the back button land on the same route, and every block
  * of the page reads the same value.
@@ -55,7 +42,7 @@ export function useRouteSelection(queryKey = 'route') {
 
   async function select(next: string | null, options: SelectOptions = {}) {
     if (next === ref.value) return
-    const query = liveQuery(route)
+    const query = { ...route.query } as Record<string, string | string[]>
     // A replayed request belongs to the route it was sent to: another route
     // opens its tester blank.
     delete query[REPLAY_QUERY_KEY]

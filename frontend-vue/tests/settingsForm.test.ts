@@ -31,9 +31,7 @@ describe('createRetentionGuard', () => {
   ) {
     const before = resubmit.mock.calls.length
     expect(guard.allowSubmit()).toBe(false)
-    await vi.waitFor(() =>
-      expect(resubmit.mock.calls.length).toBe(before + 1),
-    )
+    await vi.waitFor(() => expect(resubmit.mock.calls.length).toBe(before + 1))
     expect(guard.allowSubmit()).toBe(true)
   }
 

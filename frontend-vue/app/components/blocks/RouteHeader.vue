@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue'
-import { usePeriodScope } from '#dms-core/app/composables/period/usePeriodScope'
 import { usePageRecordLabel } from '#dms-core/app/build/composables/page/usePageRecordLabel'
 import { routeSnippetRequest, toCurl } from '../../utils/snippets'
 import { hasRequestBody } from '../../utils/http'
-import { windowOfPreset, windowParts } from '../../utils/routeExplorer'
+import { windowParts } from '../../utils/routeExplorer'
+import { readWindow } from '../../utils/periodWindow'
 import ApiMethodBadge from '../internal/ApiMethodBadge.vue'
 import ApiPath from '../internal/ApiPath.vue'
 
@@ -18,8 +18,6 @@ const props = withDefaults(
   defineProps<{
     fetchUrl: string
     queryKey?: string
-    /** The period selector the Requests link carries the window of. */
-    periodScope?: string
     settingsUrl?: string
     /** Query key of the page's tabs, and the tester's: it has its own cURL. */
     tabKey?: string
@@ -27,7 +25,6 @@ const props = withDefaults(
   }>(),
   {
     queryKey: 'route',
-    periodScope: undefined,
     settingsUrl: '/modules/api/settings',
     tabKey: 'tab',
     testerTab: '2',
@@ -61,7 +58,6 @@ const { t } = useI18n()
 const locale = useFormatLocale()
 const toast = useToast()
 const page = useDmsRoute()
-const period = usePeriodScope(props.periodScope)
 const recordLabel = usePageRecordLabel()
 const {
   data: route,
@@ -79,7 +75,8 @@ const auth = computed(() =>
 const requestsLink = computed(() => {
   if (!route.value) return ''
   const query = new URLSearchParams({ route: route.value.ref })
-  const span = windowOfPreset(period.value?.preset)
+  // The page's period (`?window=`), which the request logs read the same.
+  const span = readWindow(page.query)
   if (span) query.set('window', span)
   return `/modules/api/logs?${query}`
 })
@@ -143,7 +140,7 @@ const STATISTICS_TAB = '0'
 
 // Live, the route's state is read again on the Statistics tab only: the
 // documentation and the tester read the same detail, and must not move.
-useLiveRefresh(() => {
+usePageBlocksRefresh(() => {
   const tab = page.query[props.tabKey]
   if (!tab || tab === STATISTICS_TAB) void refresh()
 })

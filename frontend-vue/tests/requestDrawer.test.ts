@@ -1,32 +1,22 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   bodyOmission,
-  dayStarts,
   decodePath,
   durationScale,
   hrefWithRecord,
   isRequestId,
-  listedRequestIds,
-  navigationAmong,
-  OPEN_REQUEST_EVENT,
-  OPEN_REQUEST_KEY,
   openRequestMiddleware,
-  openRequestRedirect,
+  opensRequestInPlace,
   originalBodySize,
   readRecord,
-  redactionsOf,
-  REQUEST_ACTION_ICON,
-  REQUEST_ACTION_SELECTOR,
   REQUEST_PANEL,
-  requestActionSelector,
+  REQUEST_PANEL_ID,
   requestClock,
-  requestOfActionId,
   requestPivots,
   requestTitle,
   requestUrl,
   thresholdRatio,
   withParam,
-  withRecord,
   writeRecord,
 } from '../app/utils/requestDrawer'
 
@@ -35,121 +25,50 @@ const ROUTES = '/modules/api/routes'
 const ORIGIN = 'http://console.test'
 
 describe('requestDrawer', () => {
-  it('opens a row over the query the page already has', () => {
+  it('opens a row in place on the page already shown', () => {
     expect(
-      openRequestRedirect(
-        { path: ROUTES, query: { [OPEN_REQUEST_KEY]: 'r1' } },
-        {
-          path: ROUTES,
-          query: { route: 'GET /users/:id', tab: 'statistics' },
-        },
+      opensRequestInPlace(
+        { path: ROUTES, query: { record: 'r1' } },
+        { path: ROUTES, query: { route: 'GET /users/:id', tab: '0' } },
       ),
-    ).toEqual({
-      path: ROUTES,
-      query: { route: 'GET /users/:id', tab: 'statistics', record: 'r1' },
-    })
+    ).toBe(true)
+    expect(
+      opensRequestInPlace(
+        { path: LOGS, query: { record: 'r2', error: 'boom' } },
+        { path: LOGS, query: { error: 'boom' } },
+      ),
+    ).toBe(true)
   })
 
-  it('replaces the request already open', () => {
+  it('leaves a visit to another page, or changing more, alone', () => {
     expect(
-      openRequestRedirect(
-        { path: LOGS, query: { [OPEN_REQUEST_KEY]: 'r2' } },
-        { path: LOGS, query: { error: 'boom', record: 'r1' } },
-      ),
-    ).toEqual({ path: LOGS, query: { error: 'boom', record: 'r2' } })
-  })
-
-  it('keeps nothing of another page', () => {
-    expect(
-      openRequestRedirect(
-        { path: LOGS, query: { [OPEN_REQUEST_KEY]: 'r1' } },
-        { path: ROUTES, query: { route: 'GET /users' } },
-      ),
-    ).toEqual({ path: LOGS, query: { record: 'r1' } })
-  })
-
-  it('leaves every other visit alone', () => {
-    expect(
-      openRequestRedirect(
+      opensRequestInPlace(
         { path: LOGS, query: { record: 'r1' } },
-        { path: LOGS, query: {} },
+        { path: ROUTES, query: {} },
       ),
-    ).toBeUndefined()
+    ).toBe(false)
     expect(
-      openRequestRedirect(
-        { path: LOGS, query: { [OPEN_REQUEST_KEY]: '' } },
-        { path: LOGS, query: {} },
+      opensRequestInPlace(
+        { path: LOGS, query: { record: 'r1', error: 'other' } },
+        { path: LOGS, query: { error: 'boom' } },
       ),
-    ).toBeUndefined()
+    ).toBe(false)
+    expect(
+      opensRequestInPlace({ path: LOGS, query: {} }, { path: LOGS, query: {} }),
+    ).toBe(false)
   })
 
   it('reads and writes the open request', () => {
     expect(readRecord({ record: 'r1' })).toBe('r1')
+    expect(readRecord({ record: ['r1'] })).toBe('r1')
     expect(readRecord({ record: '' })).toBeNull()
     expect(readRecord({})).toBeNull()
-    expect(withRecord({ route: 'GET /', record: 'r1' })).toEqual({
-      route: 'GET /',
-    })
-    expect(withRecord({ route: 'GET /' }, 'r2')).toEqual({
-      route: 'GET /',
-      record: 'r2',
-    })
     expect(hrefWithRecord(`${ORIGIN}${LOGS}?slow=true&record=r1`)).toBe(
       `${ORIGIN}${LOGS}?slow=true`,
     )
-  })
-})
-
-describe('the rows of a request table', () => {
-  const buttonId = (id: string) => `row-action-${id}-${REQUEST_ACTION_ICON}`
-
-  it('reads a row id from its action button, whatever the id holds', () => {
-    const id = '0359c490-1b2c-4d5e-8f90-123456789abc'
-    expect(requestOfActionId(buttonId(id))).toBe(id)
-    expect(requestOfActionId('row-action-r1-i-ph-pencil')).toBeNull()
-    expect(requestOfActionId('row-actions-r1')).toBeNull()
-    expect(requestOfActionId(null)).toBeNull()
-    expect(requestActionSelector('r1')).toBe(`button[id="${buttonId('r1')}"]`)
-    expect(requestActionSelector('a"b')).toContain('a\\"b')
-  })
-
-  it('lists the rows the tables show, in order, once each', () => {
-    const buttons = ['a', 'a', 'b', 'c', 'b'].map((id) => ({
-      getAttribute: (name: string) => (name === 'id' ? buttonId(id) : null),
-    }))
-    const root = {
-      querySelectorAll: (selector: string) =>
-        selector === REQUEST_ACTION_SELECTOR ? buttons : [],
-    } as unknown as ParentNode
-    expect(listedRequestIds(root)).toEqual(['a', 'b', 'c'])
-  })
-
-  it('steps to the neighbours of the open row', () => {
-    const step = vi.fn()
-    const navigation = navigationAmong(['a', 'b', 'c'], 'b', step)!
-    expect(navigation).toMatchObject({
-      index: 1,
-      total: 3,
-      hasPrev: true,
-      hasNext: true,
-    })
-    navigation.next()
-    navigation.prev()
-    expect(step.mock.calls).toEqual([['c'], ['a']])
-    const last = navigationAmong(['a', 'b'], 'b', step)!
-    expect(last.hasNext).toBe(false)
-    last.next()
-    expect(step).toHaveBeenCalledTimes(2)
-    expect(navigationAmong(['a'], 'z', step)).toBeNull()
-  })
-
-  it('cuts a table by day only when it runs through time', () => {
-    const today = '2026-10-10'
-    const yesterday = '2026-10-09'
-    expect(dayStarts([today, today, yesterday, yesterday])).toEqual([2])
-    expect(dayStarts([today, today])).toEqual([])
-    // Sorted on duration: the days interleave, no line is drawn.
-    expect(dayStarts([today, yesterday, today])).toEqual([])
+    expect(hrefWithRecord(`${ORIGIN}${LOGS}?slow=true`, 'r2')).toBe(
+      `${ORIGIN}${LOGS}?slow=true&record=r2`,
+    )
   })
 })
 
@@ -165,13 +84,9 @@ describe('history', () => {
     const entries = [{ state: inertia as unknown, url: href }]
     let index = 0
     const popstate = vi.fn()
-    const dispatchEvent = vi.fn()
     const location = {
       get href() {
         return entries[index].url
-      },
-      get pathname() {
-        return new URL(entries[index].url).pathname
       },
     }
     const history = {
@@ -194,58 +109,58 @@ describe('history', () => {
         popstate(entries[index].state)
       }),
     }
-    vi.stubGlobal('window', { location, history, dispatchEvent })
-    vi.stubGlobal(
-      'CustomEvent',
-      class {
-        constructor(
-          public type: string,
-          public init: { detail: unknown },
-        ) {}
-      },
-    )
-    return { inertia, history, location, popstate, dispatchEvent }
+    vi.stubGlobal('window', { location, history })
+    return { inertia, history, location, popstate }
   }
+
+  // The DMS composables the middleware opens the panel with.
+  const open = vi.fn()
+  const panel = { value: {} as Record<string, unknown> }
+  beforeEach(() => {
+    open.mockClear()
+    panel.value = {}
+    vi.stubGlobal('useSidePanel', (id: string) => {
+      expect(id).toBe(REQUEST_PANEL_ID)
+      return { open }
+    })
+    vi.stubGlobal('useDmsState', () => panel)
+  })
 
   afterEach(() => {
     vi.unstubAllGlobals()
   })
 
   it('opens a row in place, without a visit or a history entry', () => {
-    const { history, location, dispatchEvent, inertia } = browser(
-      `${ORIGIN}${LOGS}?slow=true`,
-    )
+    const { history, location, inertia } = browser(`${ORIGIN}${LOGS}?slow=true`)
     const result = openRequestMiddleware(
-      { path: LOGS, query: { [OPEN_REQUEST_KEY]: 'r1' } },
+      { path: LOGS, query: { record: 'r1' } },
       { path: LOGS, query: { slow: 'true' } },
     )
     expect(result).toBe(false)
+    expect(open).toHaveBeenCalledOnce()
+    expect(panel.value).toEqual({ id: 'r1', path: LOGS, focus: true })
     expect(location.href).toBe(`${ORIGIN}${LOGS}?slow=true&record=r1`)
     expect(history.pushState).not.toHaveBeenCalled()
     expect(history.length).toBe(1)
     // Inertia's state of the entry is the same object: nothing to restore.
     expect(history.state).toBe(inertia)
-    const [event] = dispatchEvent.mock.calls[0]
-    expect(event.type).toBe(OPEN_REQUEST_EVENT)
-    expect(event.init.detail).toEqual({ id: 'r1' })
   })
 
-  it('opens, steps and closes without a traverse Inertia would answer', () => {
+  it('opens and closes without a traverse Inertia would answer', () => {
     const start = `${ORIGIN}${LOGS}?window=24h`
     const { history, location, popstate, inertia } = browser(start)
     openRequestMiddleware(
-      { path: LOGS, query: { [OPEN_REQUEST_KEY]: 'r1' } },
+      { path: LOGS, query: { record: 'r1' } },
       { path: LOGS, query: { window: '24h' } },
     )
-    // Another row clicked, then J: the request open is replaced.
+    // Another row opened: the request open is replaced.
     openRequestMiddleware(
-      { path: LOGS, query: { [OPEN_REQUEST_KEY]: 'r2' } },
+      { path: LOGS, query: { record: 'r2' } },
       { path: LOGS, query: { window: '24h' } },
     )
-    writeRecord('r3')
-    expect(location.href).toBe(`${ORIGIN}${LOGS}?window=24h&record=r3`)
+    expect(location.href).toBe(`${ORIGIN}${LOGS}?window=24h&record=r2`)
     // ✕ or Esc.
-    writeRecord()
+    writeRecord(null)
     expect(location.href).toBe(start)
     expect(history.length).toBe(1)
     expect(history.pushState).not.toHaveBeenCalled()
@@ -258,21 +173,38 @@ describe('history', () => {
     const { history, location } = browser(
       `${ORIGIN}${LOGS}?record=r1&slow=true`,
     )
-    writeRecord()
+    writeRecord(null)
     expect(location.href).toBe(`${ORIGIN}${LOGS}?slow=true`)
     expect(history.length).toBe(1)
   })
 
-  it('visits another page with the request open', () => {
+  it('lets a visit to another page go on, the panel open on its request', () => {
     const { history } = browser(`${ORIGIN}${ROUTES}`)
     expect(
       openRequestMiddleware(
-        { path: LOGS, query: { [OPEN_REQUEST_KEY]: 'r1' } },
+        { path: LOGS, query: { record: 'r1' } },
         { path: ROUTES, query: {} },
       ),
-    ).toEqual({ path: LOGS, query: { record: 'r1' } })
-    expect(history.pushState).not.toHaveBeenCalled()
+    ).toBeUndefined()
+    expect(open).toHaveBeenCalledOnce()
     expect(history.replaceState).not.toHaveBeenCalled()
+  })
+
+  it("leaves the visits naming no request, and other modules' pages, alone", () => {
+    browser(`${ORIGIN}${LOGS}`)
+    expect(
+      openRequestMiddleware(
+        { path: LOGS, query: {} },
+        { path: LOGS, query: {} },
+      ),
+    ).toBeUndefined()
+    expect(
+      openRequestMiddleware(
+        { path: '/modules/crm/contacts', query: { record: 'c1' } },
+        { path: '/modules/crm/contacts', query: {} },
+      ),
+    ).toBeUndefined()
+    expect(open).not.toHaveBeenCalled()
   })
 })
 
@@ -364,31 +296,6 @@ describe('reading a request', () => {
     expect(bodyOmission('not-read')).toBe('not-read')
   })
 
-  it('reads what the capture masked, or counts it on an older log', () => {
-    expect(
-      redactionsOf({
-        redactions: {
-          query: 1,
-          requestBody: 2,
-          responseBody: 0,
-          headers: ['x-api-key'],
-        },
-        requestBody: '{}',
-      }),
-    ).toEqual({
-      query: 1,
-      requestBody: 2,
-      responseBody: 0,
-      headers: ['x-api-key'],
-    })
-    expect(
-      redactionsOf({
-        query: { token: '[REDACTED]', page: '2', ids: ['[REDACTED]', '3'] },
-        requestBody: '{"password":"[REDACTED]","card":"[REDACTED]"}',
-      }),
-    ).toEqual({ query: 2, requestBody: 2, responseBody: 0, headers: [] })
-  })
-
   it('tells a request id from what a link may hold', () => {
     expect(isRequestId('0359c490-1b2c-4d5e-8f90-123456789abc')).toBe(true)
     expect(isRequestId('<script>/../settings')).toBe(false)
@@ -412,6 +319,7 @@ describe('reading a request', () => {
           responseTimeMs: null,
           links: {
             sameRoute: '/modules/api/logs?route=POST+%2Fnope%2Fqa-rd-notread',
+            samePath: '/modules/api/logs?path=%2Fnope%2Fqa-rd-notread',
           },
         }),
       ).toEqual([

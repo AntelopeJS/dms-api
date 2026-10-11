@@ -18,12 +18,12 @@
     },
     "common": {
       "retry": "Retry",
-      "refresh": "Refresh",
-      "stale": "The last refresh failed: these numbers may be out of date.",
       "ago_s": "{amount} s ago",
       "ago_min": "{amount} min ago",
       "ago_h": "{amount} h ago",
-      "ago_d": "{amount} d ago"
+      "ago_d": "{amount} d ago",
+      "percent": "{value}%",
+      "ms": "{value} ms"
     },
     "scope": {
       "own": "Own routes · {count}",
@@ -40,25 +40,9 @@
         "name": "Module address",
         "description": "Sends /modules/api to the module's landing page. Draws nothing."
       },
-      "health_hero": {
-        "name": "API health",
-        "description": "Health verdict, its reasons and the headline metrics of the last minutes."
-      },
-      "beta_badge": {
-        "name": "Beta badge",
-        "description": "Says the console is still in beta, beside the page's toolbar."
-      },
       "period_window": {
         "name": "Period",
         "description": "The period of the page's cards, kept in its address (1H, 24H, 7D, 30D)."
-      },
-      "attention_list": {
-        "name": "Needs attention",
-        "description": "The routes the health rules flag, worst first, with their figures and top error."
-      },
-      "overview_top_list": {
-        "name": "Top list",
-        "description": "A ranked list of the Overview over the page's period."
       },
       "live_traffic": {
         "name": "Live traffic",
@@ -67,10 +51,6 @@
       "request_detail": {
         "name": "Request details",
         "description": "One captured request: error, timing, headers and bodies."
-      },
-      "request_drawer_host": {
-        "name": "Request panel",
-        "description": "Opens the request a row of the page asks for, in a panel on the right."
       },
       "route_tree": {
         "name": "Route list",
@@ -92,14 +72,6 @@
         "name": "Routes and detail",
         "description": "The route list beside the selected route."
       },
-      "columns_layout": {
-        "name": "Cards in columns",
-        "description": "Cards side by side that wrap by halves on narrower screens."
-      },
-      "route_statistics": {
-        "name": "Route statistics",
-        "description": "The figures of the selected route over the period, or when it was last called."
-      },
       "logs_period": {
         "name": "Request logs period",
         "description": "The period the request table lists, in the page toolbar."
@@ -115,23 +87,9 @@
       "live_control": {
         "name": "Live / Pause",
         "description": "The page's Live / Pause control: updates as requests arrive, or a still page that counts what it misses."
-      },
-      "live_banner": {
-        "name": "New requests",
-        "description": "Over a request table: the requests that arrived while it does not move, and the way to show them."
-      },
-      "page_toolbar": {
-        "name": "Page toolbar",
-        "description": "The route scope, the Live / Pause control and the period of a monitoring page."
       }
     },
     "health": {
-      "label": "API health",
-      "state": {
-        "live": "live",
-        "paused": "paused",
-        "stale": "not updated"
-      },
       "verdict": {
         "operational": "Healthy",
         "degraded": "Degraded",
@@ -139,21 +97,9 @@
         "recovered": "Recovered",
         "idle": "No traffic"
       },
-      "for": "for {duration}",
-      "for_over": "for more than {duration}",
       "since_degraded": "Degraded since {date}",
       "since_down": "Down since {date}",
       "since_recovered": "Recovered since {date}",
-      "recovered_ago": "{duration} ago",
-      "incident_started": "The incident started {date}",
-      "last_incident": "Last incident {date}",
-      "checked": "checked {time}",
-      "duration": {
-        "s": "{n} s",
-        "min": "{n} min",
-        "h": "{n} h",
-        "d": "{n} d"
-      },
       "metrics": {
         "server_errors": "5xx · {minutes} min",
         "server_errors_rules": "Degraded ≥ {degraded} / {minutes} min · Down ≥ {down} / {downMinutes} min",
@@ -163,31 +109,24 @@
         "per_minute": "req/min",
         "traffic_sub": "{count} route in scope | {count} routes in scope",
         "client_errors": "4xx · {minutes} min",
-        "client_errors_sub": "Client errors, often expected"
+        "client_errors_sub": "Client errors, often expected",
+        "per_minute_value": "{value} req/min"
       },
       "reasons": {
         "failing": "{count} route failing | {count} routes failing",
         "slow": "{count} slow route (≥ {threshold}) | {count} slow routes (≥ {threshold})",
         "recovered": "{count} route recovered | {count} routes recovered",
-        "none": "No route is above the thresholds over the last {minutes} minutes."
+        "none": "No route is above the thresholds over the last {minutes} minutes.",
+        "join": "{first} · {rest}",
+        "idle": "No API call over the last {hours} hours."
       },
-      "view_errors": "View {count} server error | View {count} server errors",
-      "stale_title": "Showing data from {time}",
-      "stale_description": "The last refresh failed. The numbers may be out of date.",
-      "error_title": "Monitoring data is unavailable",
-      "error_description": "The console could not read its statistics. The API itself may be fine.",
       "first_run": {
         "title": "No requests captured yet",
         "description": "{count} routes are registered. The console records calls as soon as your API receives them.",
         "browse": "Browse routes",
-        "logs": "Open request logs",
-        "step_1": "Pick a route",
-        "step_1_detail": "Routes lists everything your project registers.",
-        "step_2": "Send a first request",
-        "step_2_detail": "From the tester on any route, or from your app.",
-        "step_3": "Watch it arrive",
-        "step_3_detail": "Request logs shows it within seconds."
-      }
+        "logs": "Open request logs"
+      },
+      "view_server_errors": "View server errors"
     },
     "overview": {
       "title": "Overview",
@@ -207,8 +146,6 @@
         "30d": "30D"
       },
       "no_previous": "No previous period to compare with",
-      "last": "Last {span}",
-      "list_error": "This list could not be loaded",
       "traffic": {
         "title": "Traffic & errors",
         "2xx": "2xx success",
@@ -238,20 +175,21 @@
         "stray_hint": "Calls to paths the API does not register, such as scanners probing for files",
         "error_title": "The routes to check could not be loaded",
         "empty_title": "Every route looks healthy",
-        "empty_description": "{span}: no server error, slow route or high 4xx rate.",
+        "empty_description": "Last 24 hours: no server error, slow route or high 4xx rate.",
         "failing": "Failing",
         "recovered": "Recovered",
         "failing_detail": "{rate} server errors · {serverErrors} of {calls} call | {rate} server errors · {serverErrors} of {calls} calls",
         "window_detail": "{rate} server errors over {minutes} min · {serverErrors} of {calls} call | {rate} server errors over {minutes} min · {serverErrors} of {calls} calls",
-        "recovered_detail": "for {span} · last 5xx at {time}",
-        "recovered_last": "last 5xx at {time}",
+        "recovered_detail": "back {end} · last 5xx {last}",
+        "recovered_last": "last 5xx {last}",
         "lookback_detail": "{span}: {rate} · {serverErrors} of {calls}",
         "slow": "Slow",
         "slow_detail": "p95 {p95} · avg {average} · {calls} call | p95 {p95} · avg {average} · {calls} calls",
         "client_errors": "4xx rate",
         "client_errors_detail": "{rate} client errors · {clientErrors} of {calls} call | {rate} client errors · {clientErrors} of {calls} calls",
         "top_error": "{status} “{message}” × {count}",
-        "top_status": "{status} × {count}"
+        "top_status": "{status} × {count}",
+        "stray": "No route answers this path"
       },
       "slowest": {
         "title": "Slowest routes",
@@ -259,9 +197,7 @@
         "empty": "No calls in this period",
         "detail": "p95 {p95} · max {max} · {calls} call | p95 {p95} · max {max} · {calls} calls",
         "detail_partial": "p95 {p95} (partial) · max {max} · {calls} call | p95 {p95} (partial) · max {max} · {calls} calls",
-        "detail_no_p95": "max {max} · {calls} call | max {max} · {calls} calls",
-        "p95_partial": "Partial p95: measured on {share} of the calls. The oldest days of the period have no latency histogram.",
-        "p95_missing": "No p95 for this period: its days have no latency histogram."
+        "detail_no_p95": "max {max} · {calls} call | max {max} · {calls} calls"
       },
       "recent": {
         "title": "Recent requests",
@@ -283,6 +219,10 @@
         "registered_many_detail": "{routes}…",
         "from_project": "From your project code",
         "from_module": "From the {module} module"
+      },
+      "health": {
+        "verdict": "API health",
+        "figures": "API health figures"
       }
     },
     "live": {
@@ -318,8 +258,6 @@
       "polling": "no realtime, polling",
       "paused": "Paused",
       "paused_because": "Paused · {reason}",
-      "table_held": "Table on hold · {reason}",
-      "back_to_live": "Back to live",
       "reasons": {
         "hidden": "tab hidden",
         "panel": "request open",
@@ -335,9 +273,6 @@
       "resume": "Resume",
       "show": "Show",
       "verdict": {
-        "title": "API health: {verdict}",
-        "description": "It was {previous}.",
-        "tab": "● {verdict} · {page}",
         "changed": "Status changed: {from} → {to}"
       }
     },
@@ -347,7 +282,7 @@
       "table": "Request table",
       "search": "Path, request ID, error…",
       "count": "{count} request | {count} requests",
-      "keys_hint": "/ search · J / K next / previous request · Esc close the panel · L live / pause · ? shortcuts",
+      "keys_hint": "⇧F search · Esc close the panel · L live / pause · ? shortcuts",
       "toolbar": "Request logs toolbar",
       "drawer_title": "Request",
       "open_request": "Open request",
@@ -402,7 +337,6 @@
         "title": "Keyboard shortcuts",
         "open": "Keyboard shortcuts (?)",
         "search": "Search the requests",
-        "step": "Next / previous request, while the panel is open",
         "close": "Close the panel",
         "live": "Live or Pause for the whole page",
         "help": "Show these shortcuts"
@@ -428,18 +362,14 @@
         "narrowed": "Narrowed by: {filters}.",
         "period_hint": "The requests may be outside this period.",
         "widen": "Show every period",
-        "clear_filters": "Clear filters",
         "search_title": "No request matches “{search}”",
         "search_description": "The search looks in paths, request IDs and error messages.",
-        "clear_search": "Clear search",
         "route_title": "No request for {route}",
         "error_filter_title": "No request carries this error",
         "incident_title": "No request during this incident",
         "link_description": "The filter the link brought matches no captured request.",
         "remove_link": "Remove the linked filter",
-        "tab": "{tab} tab",
         "path": "Path {path}",
-        "show_all_tabs": "Show every status",
         "error_title": "Request logs could not be loaded",
         "error_description": "The console's log store did not answer. Try again."
       }
@@ -452,9 +382,6 @@
       },
       "panel_label": "Request detail",
       "close": "Close (Esc)",
-      "position": "Request {index} of {total} shown",
-      "previous": "Previous request (K)",
-      "next": "Next request (J)",
       "replay": "Replay in tester",
       "copy_curl": "Copy cURL",
       "copy_url": "Copy the URL",
@@ -606,9 +533,6 @@
         "series_p95": "p95",
         "series_p95_partial": "p95 (partial: not recorded before the module update)",
         "idle_title": "No call over this period",
-        "idle_last": "Last call {date}.",
-        "idle_never": "No call recorded yet.",
-        "idle_try": "Test this route",
         "requests": "Requests",
         "error_rate": "Error rate",
         "response_time": "Response time (ms)",
@@ -633,7 +557,8 @@
         "summary": "Route figures",
         "p95_detail": "p95 {p95}",
         "p95_partial_detail": "p95 {p95} · partial",
-        "p95_none": "No p95 kept over the period"
+        "p95_none": "No p95 kept over the period",
+        "idle_description": "Call it from the Tester tab to see its figures."
       },
       "docs": {
         "beta_title": "Beta · inferred from traffic",

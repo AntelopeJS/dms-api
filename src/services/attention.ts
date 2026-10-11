@@ -1,3 +1,8 @@
+import type {
+  BlockText,
+  ComposedText,
+} from "@antelopejs/interface-dms/base/types/composed-text";
+import { count, milliseconds, number, percent, text } from "./health-blocks";
 import {
   HEALTH_THRESHOLDS,
   type HealthVerdict,
@@ -29,8 +34,8 @@ import {
 
 /**
  * "Needs attention": the routes the health rules flag over the last 24 h,
- * worst first, capped, each an `ActivityFeed` entry that also carries its
- * numbers for a reader that formats them itself.
+ * worst first, capped, each a DMS `ActivityFeed` entry whose details are
+ * composed in the reader's language, with its numbers beside.
  */
 
 const ATTENTION_FEED: Record<
@@ -70,8 +75,6 @@ export interface AttentionItem extends FeedItemPayload {
    * (in percent): the degraded rule's 15 minutes (further back while they
    * hold fewer than `minRequests` calls), the down rule's 5 minutes on a
    * Down verdict. Null for a slow or 4xx route, judged over the lookback.
-   * `params` carries it too: `windowRate`, `windowServerErrors`,
-   * `windowCalls`, `windowMinutes` (empty when null).
    */
   stateWindow: RuleWindowInfo | null;
   topError: { status: number; message: string | null; count: number } | null;
@@ -79,8 +82,7 @@ export interface AttentionItem extends FeedItemPayload {
   /**
    * The route's last 5xx over the lookback (ISO), for a failing or recovered
    * one: a recovered route says since when it is, and its last 5xx, rather
-   * than the rate of the burst its state window still holds. `params` carries
-   * it too (`lastServerError`, empty when null).
+   * than the rate of the burst its state window still holds.
    */
   lastServerError: string | null;
 }
@@ -145,33 +147,84 @@ function stateWindowOf(route: RouteHealthState): RuleWindowInfo | null {
   return route.verdict === "down" ? windows.down : windows.degraded;
 }
 
-/** The figures of the state window as feed params, empty without one. */
-function windowParams(window: RuleWindowInfo | null): Record<string, string> {
-  if (!window) {
-    return {
-      windowRate: "",
-      windowServerErrors: "",
-      windowCalls: "",
-      windowMinutes: "",
-    };
-  }
-  return {
-    windowRate: String(window.serverErrorRate),
-    windowServerErrors: String(window.serverErrors),
-    windowCalls: String(window.requests),
-    windowMinutes: String(window.minutes),
-  };
-}
-
 type TopError = ReturnType<typeof topErrorOf>;
 
-/** The top error's params of the feed item, empty without one. */
-function topErrorParams(top: TopError) {
-  return {
-    status: top ? String(top.status) : "",
-    message: top?.message ?? "",
-    count: top ? String(top.count) : "",
-  };
+/** `{status} "{message}" × {count}` of the route's top error. */
+function topErrorText(top: NonNullable<TopError>): ComposedText {
+  return top.message
+    ? text("overview.attention.top_error", {
+        status: String(top.status),
+        message: top.message,
+        count: number(top.count),
+      })
+    : text("overview.attention.top_status", {
+        status: String(top.status),
+        count: number(top.count),
+      });
+}
+
+/**
+ * Why a failing route is listed: its 5xx rate over the window of the rule
+ * that judged it, else over the lookback.
+ */
+function failingDetail(
+  route: RouteHealthState,
+  window: RuleWindowInfo | null,
+): ComposedText {
+  if (window)
+    return text("overview.attention.window_detail", {
+      calls: count(window.requests),
+      rate: percent(window.serverErrorRate),
+      minutes: number(window.minutes),
+      serverErrors: number(window.serverErrors),
+    });
+  return text("overview.attention.failing_detail", {
+    calls: count(route.traffic.requests),
+    rate: percent(roundPercent(serverErrorShare(route.traffic))),
+    serverErrors: number(route.traffic.serverErrors),
+  });
+}
+
+/**
+ * The line under a route, by its state. A recovered route says since when,
+ * and its last 5xx: the rate of its state window would still hold the burst.
+ */
+function stateDetail(
+  route: RouteHealthState,
+  window: RuleWindowInfo | null,
+  lastServerError: Date | null,
+): ComposedText {
+  const { traffic } = route;
+  switch (route.state) {
+    case "recovered": {
+      if (!lastServerError) return failingDetail(route, window);
+      const last = {
+        type: "relative" as const,
+        value: lastServerError.toISOString(),
+      };
+      const end = route.incident?.end;
+      return end
+        ? text("overview.attention.recovered_detail", {
+            end: { type: "relative", value: end.toISOString() },
+            last,
+          })
+        : text("overview.attention.recovered_last", { last });
+    }
+    case "client-errors":
+      return text("overview.attention.client_errors_detail", {
+        calls: count(traffic.requests),
+        rate: percent(roundPercent(clientErrorShare(traffic))),
+        clientErrors: number(traffic.clientErrors),
+      });
+    case "slow":
+      return text("overview.attention.slow_detail", {
+        calls: count(traffic.requests),
+        p95: route.p95Ms === null ? "—" : milliseconds(route.p95Ms),
+        average: milliseconds(averageLatency(traffic)),
+      });
+    default:
+      return failingDetail(route, window);
+  }
 }
 
 function incidentOf(route: RouteHealthState) {
@@ -192,12 +245,15 @@ function attentionItem(route: RouteHealthState, known: boolean): AttentionItem {
   const average = Math.round(averageLatency(traffic));
   const p95 = route.p95Ms === null ? null : Math.round(route.p95Ms);
   const stateWindow = stateWindowOf(route);
-  const lastServerError = lastServerErrorOf(route)?.toISOString() ?? null;
-  const meta = [
+  const lastServerErrorAt = lastServerErrorOf(route);
+  const lastServerError = lastServerErrorAt?.toISOString() ?? null;
+  const meta: BlockText[] = [
     `$api.overview.attention.${key}`,
-    `$api.overview.attention.${key}_detail`,
+    stateDetail(route, stateWindow, lastServerErrorAt),
   ];
-  if (top?.message) meta.push("$api.overview.attention.top_error");
+  // A path no route answers (a scanner's `GET /.env`) says so first.
+  if (!known) meta.unshift("$api.overview.attention.stray");
+  if (top) meta.push(topErrorText(top));
   const date =
     state === "recovered" ? route.incident?.end : route.incident?.start;
   return {
@@ -205,20 +261,6 @@ function attentionItem(route: RouteHealthState, known: boolean): AttentionItem {
     ...ATTENTION_FEED[state],
     title: routeRef(route.method, route.uri),
     meta,
-    params: {
-      calls: String(traffic.requests),
-      serverErrors: String(traffic.serverErrors),
-      clientErrors: String(traffic.clientErrors),
-      rate: String(
-        state === "client-errors" ? clientErrorRate : serverErrorRate,
-      ),
-      average: String(average),
-      p95: p95 === null ? "" : String(p95),
-      max: String(Math.round(traffic.maxLatency)),
-      ...topErrorParams(top),
-      ...windowParams(stateWindow),
-      lastServerError: lastServerError ?? "",
-    },
     date: date?.toISOString(),
     to: attentionLink(route),
     route: routeRef(route.method, route.uri),

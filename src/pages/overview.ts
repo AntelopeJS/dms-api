@@ -1,21 +1,18 @@
 import { ActivityFeed } from "@antelopejs/interface-dms/base/activity-feed";
+import { Banner } from "@antelopejs/interface-dms/base/banner";
 import { Card } from "@antelopejs/interface-dms/base/card";
 import { ChartColumn } from "@antelopejs/interface-dms/base/chart";
 import { ChartCard } from "@antelopejs/interface-dms/base/chart-card";
 import { Grid, GridRow } from "@antelopejs/interface-dms/base/grid";
 import { DefaultLayout } from "@antelopejs/interface-dms/base/layouts";
+import { StatGroup } from "@antelopejs/interface-dms/base/stat-group";
+import { TopListCard } from "@antelopejs/interface-dms/base/top-list-card";
 import { PageController, RegisterPage } from "@antelopejs/interface-dms/page";
 import { logsLink } from "@/services/links";
 import { apiBlock } from "./blocks";
+import { liveControl, pageToolbar } from "./live";
 import { monitorCategory } from "./module";
-import {
-  blockClientId,
-  followsLive,
-  liveBanner,
-  liveControl,
-  pageToolbar,
-} from "./live";
-import { requestDrawerHost, requestTable } from "./request-table";
+import { requestTable } from "./request-table";
 import { scopeChip } from "./scope-chip";
 
 const OVERVIEW_API = "/api/monitoring/overview";
@@ -33,16 +30,11 @@ const RECENT_REQUESTS = 6;
 
 const ACTIVITY_ROWS = 8;
 
-/**
- * The DMS blocks of the dashboard that stay live while Recent requests holds
- * (a request open, Load more, a search): the charts and the activity. Each
- * follows the live mode by itself (`followsLive`).
- */
-const LIVE_BLOCKS = [
-  blockClientId("dashboard", "health", "errorShare"),
-  blockClientId("dashboard", "traffic", "chart"),
-  blockClientId("dashboard", "recent", "activity"),
-];
+/** Rows "Needs attention" shows: the route's own cap (`ATTENTION_LIMIT`). */
+const ATTENTION_ROWS = 8;
+
+/** Rows of the slowest routes: the route's own cap. */
+const SLOWEST_ROWS = 5;
 
 /**
  * The DMS hides the legend of a chart nested in a `ChartCard` (it draws only
@@ -62,9 +54,10 @@ const SERIES_LEGEND = {
 };
 
 /**
- * Overview: is the API healthy, and where to look when it is not. The health
- * hero leads, what needs a look comes right under it, then the trends; every
- * row drills down to a route or to its requests.
+ * Overview: is the API healthy, and where to look when it is not. The verdict
+ * leads with its figures, what needs a look comes right under it, then the
+ * trends; every row drills down to a route or to its requests. Every block is
+ * a DMS one; the Live / Pause control of the toolbar refreshes them all.
  */
 @RegisterPage()
 export class OverviewPage extends PageController(
@@ -79,21 +72,16 @@ export class OverviewPage extends PageController(
   },
   DefaultLayout(),
 ) {
-  // Opens the request a recent row asks for, from the right; draws nothing.
-  static requestDrawer = requestDrawerHost();
-
-  // The toolbar of every monitoring page, Beta right of the scope. The
-  // period lives in the URL (`?window=24h`): the DMS PeriodSelector keeps
-  // its own in memory, so `PeriodWindow` drives the cards' period scope.
+  // The toolbar of every monitoring page. The period lives in the URL
+  // (`?window=24h`): the DMS PeriodSelector keeps its own in memory, so
+  // `PeriodWindow` drives the cards' period scope.
   static toolbar = pageToolbar({
     scope: scopeChip(),
-    badge: apiBlock("BetaBadge"),
     live: liveControl({
       page: "overview",
       sinceUrl: "/api/monitoring/logs/recent/since",
       defaultWindow: OVERVIEW_DEFAULT_WINDOW,
-      healthUrl: `${OVERVIEW_API}/health`,
-      liveBlocks: LIVE_BLOCKS,
+      verdictUrl: `${OVERVIEW_API}/health/verdict`,
     }),
     period: apiBlock("PeriodWindow", {
       scope: OVERVIEW_PERIOD,
@@ -101,9 +89,28 @@ export class OverviewPage extends PageController(
     }),
   }).meta({ name: "$api.overview.toolbar", icon: "i-ph-sliders-horizontal" });
 
-  static health = apiBlock("HealthHero", {
+  static beta = Banner({
+    title: "$api.overview.beta.title",
+    description: "$api.overview.beta.description",
+    tone: "info",
+    size: "sm",
+    dismissible: true,
+    dismissKey: "dms-api-beta-1",
+  }).meta({ name: "$api.overview.beta.title", icon: "i-ph-flask" });
+
+  // The verdict, since when and why (`services/health-blocks.ts`).
+  static health = Banner({
     fetchUrl: `${OVERVIEW_API}/health`,
-  });
+  }).meta({ name: "$api.overview.health.verdict", icon: "i-ph-heartbeat" });
+
+  // The figures the verdict rests on, over the rules' 15 minutes.
+  static figures = StatGroup({
+    fetchUrl: `${OVERVIEW_API}/health/figures`,
+    layout: "joined",
+    columns: 4,
+    skeletonCount: 4,
+    label: "$api.overview.health.figures",
+  }).meta({ name: "$api.overview.health.figures", icon: "i-ph-gauge" });
 
   // The rows keep their ids whatever their order: the endpoints check their
   // permission by them (`src/routes/overview.ts`).
@@ -113,49 +120,69 @@ export class OverviewPage extends PageController(
       GridRow()
         .child(
           "attention",
-          apiBlock("AttentionList", {
+          ActivityFeed({
+            title: "$api.overview.attention.title",
             fetchUrl: `${OVERVIEW_API}/attention`,
-            errorsLink: logsLink({
-              tab: "5xx",
-              window: "24h",
-              from: "overview",
-            }),
+            groupByDay: false,
+            mono: true,
+            maxItems: ATTENTION_ROWS,
+            fillHeight: true,
+            skeletonCount: 3,
+            actions: [
+              {
+                label: "$api.overview.attention.all_errors",
+                to: logsLink({ tab: "5xx", window: "24h", from: "overview" }),
+              },
+            ],
+            empty: {
+              title: "$api.overview.attention.empty_title",
+              description: "$api.overview.attention.empty_description",
+            },
+          }).meta({
+            name: "$api.overview.attention.title",
+            icon: "i-ph-first-aid-kit",
           }),
         )
         .child(
           "slowest",
-          apiBlock("OverviewTopList", {
-            kind: "slowest",
+          TopListCard({
+            title: "$api.overview.slowest.title",
+            description: "$api.overview.slowest.description",
             fetchUrl: `${OVERVIEW_API}/slowest`,
             periodScope: OVERVIEW_PERIOD,
+            valueFormat: "number",
+            valuePrecision: 0,
+            showBar: true,
+            showRank: false,
+            showDelta: false,
+            skeletonCount: SLOWEST_ROWS,
+            emptyLabel: "$api.overview.slowest.empty",
           }).meta({ name: "$api.overview.slowest.title", icon: "i-ph-timer" }),
         )
         .child(
           "errorShare",
-          followsLive(
-            ChartCard({
-              title: "$api.overview.error_share.title",
-              // Shown in place of the "vs" figure, so only when there is none.
-              description: "$api.overview.no_previous",
-              icon: "i-ph-warning-diamond",
-              fetchUrl: `${OVERVIEW_API}/error-share`,
-              periodScope: OVERVIEW_PERIOD,
-              valueFormat: "percent",
-              valuePrecision: 1,
-              // The DMS badge reads a delta as a relative change, good when up:
-              // a rate's change in points, bad when up, would read wrong. The
-              // "vs" figure stays (DMS-12).
-              showDelta: false,
-              showLegend: false,
-              chart: ChartColumn({
-                height: "220px",
-                xaxisType: "datetime",
-                stacked: true,
-                color: ["warning", "error"],
-                rawOptions: [SERIES_LEGEND],
-              }),
+          ChartCard({
+            title: "$api.overview.error_share.title",
+            // Shown in place of the "vs" figure, so only when there is none.
+            description: "$api.overview.no_previous",
+            icon: "i-ph-warning-diamond",
+            fetchUrl: `${OVERVIEW_API}/error-share`,
+            periodScope: OVERVIEW_PERIOD,
+            valueFormat: "percent",
+            valuePrecision: 1,
+            // The DMS badge reads a delta as a relative change, good when up:
+            // a rate's change in points, bad when up, would read wrong. The
+            // "vs" figure stays (DMS-12).
+            showDelta: false,
+            showLegend: false,
+            chart: ChartColumn({
+              height: "220px",
+              xaxisType: "datetime",
+              stacked: true,
+              color: ["warning", "error"],
+              rawOptions: [SERIES_LEGEND],
             }),
-          ),
+          }),
         ),
     )
     .child(
@@ -163,34 +190,39 @@ export class OverviewPage extends PageController(
       GridRow()
         .child(
           "chart",
-          followsLive(
-            ChartCard({
-              title: "$api.overview.traffic.title",
-              description: "$api.overview.no_previous",
-              icon: "i-ph-chart-bar",
-              fetchUrl: `${OVERVIEW_API}/traffic`,
-              periodScope: OVERVIEW_PERIOD,
-              valueFormat: "compact",
-              showLegend: false,
-              // 2xx, 4xx and 5xx stacked on one axis: the height of a column
-              // is the traffic, its red part the server errors.
-              chart: ChartColumn({
-                height: "260px",
-                xaxisType: "datetime",
-                stacked: true,
-                color: ["success", "warning", "error"],
-                rawOptions: [SERIES_LEGEND],
-              }),
+          ChartCard({
+            title: "$api.overview.traffic.title",
+            description: "$api.overview.no_previous",
+            icon: "i-ph-chart-bar",
+            fetchUrl: `${OVERVIEW_API}/traffic`,
+            periodScope: OVERVIEW_PERIOD,
+            valueFormat: "compact",
+            showLegend: false,
+            // 2xx, 4xx and 5xx stacked on one axis: the height of a column
+            // is the traffic, its red part the server errors.
+            chart: ChartColumn({
+              height: "260px",
+              xaxisType: "datetime",
+              stacked: true,
+              color: ["success", "warning", "error"],
+              rawOptions: [SERIES_LEGEND],
             }),
-          ),
+          }),
           { colSpan: 2 },
         )
         .child(
           "classes",
-          apiBlock("OverviewTopList", {
-            kind: "classes",
+          TopListCard({
+            title: "$api.overview.classes.title",
+            description: "$api.overview.classes.description",
             fetchUrl: `${OVERVIEW_API}/classes`,
             periodScope: OVERVIEW_PERIOD,
+            valueFormat: "number",
+            showBar: true,
+            showRank: false,
+            showDelta: false,
+            skeletonCount: 3,
+            emptyLabel: "$api.overview.classes.empty",
           }).meta({
             name: "$api.overview.classes.title",
             icon: "i-ph-chart-pie-slice",
@@ -214,7 +246,6 @@ export class OverviewPage extends PageController(
               },
             ],
           })
-            .child("live", liveBanner({ pageSize: RECENT_REQUESTS }))
             .child(
               "table",
               requestTable({
@@ -262,17 +293,15 @@ export class OverviewPage extends PageController(
           "activity",
           // Grouped by day, each incident at its time: an absolute time does
           // not go stale the way "Just now" did.
-          followsLive(
-            ActivityFeed({
-              title: "$api.overview.activity.title",
-              fetchUrl: `${OVERVIEW_API}/activity`,
-              groupByDay: true,
-              maxItems: ACTIVITY_ROWS,
-              fillHeight: true,
-              skeletonCount: 4,
-              empty: { title: "$api.overview.activity.empty" },
-            }),
-          ).meta({
+          ActivityFeed({
+            title: "$api.overview.activity.title",
+            fetchUrl: `${OVERVIEW_API}/activity`,
+            groupByDay: true,
+            maxItems: ACTIVITY_ROWS,
+            fillHeight: true,
+            skeletonCount: 4,
+            empty: { title: "$api.overview.activity.empty" },
+          }).meta({
             name: "$api.overview.activity.title",
             icon: "i-ph-clock-counter-clockwise",
           }),

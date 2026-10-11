@@ -1,7 +1,5 @@
 import { byteLength } from './format'
-import {
-  startsWithRequestBody,
-} from './http'
+import { startsWithRequestBody } from './http'
 import {
   type BodyMode,
   decodedValue,

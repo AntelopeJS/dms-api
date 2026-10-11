@@ -58,5 +58,4 @@ describe('http', () => {
     })
     expect(parseRouteRef('nope')).toBeNull()
   })
-
 })

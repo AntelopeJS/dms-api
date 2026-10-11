@@ -1,6 +1,7 @@
 import { Card } from "@antelopejs/interface-dms/base/card";
 import { ChartLine } from "@antelopejs/interface-dms/base/chart";
 import { ChartCard } from "@antelopejs/interface-dms/base/chart-card";
+import { Grid, GridRow } from "@antelopejs/interface-dms/base/grid";
 import { DefaultLayout } from "@antelopejs/interface-dms/base/layouts";
 import { StatGroup } from "@antelopejs/interface-dms/base/stat-group";
 import { Tab } from "@antelopejs/interface-dms/base/tab";
@@ -9,14 +10,8 @@ import { PageController, RegisterPage } from "@antelopejs/interface-dms/page";
 import { getConfig } from "@/config";
 import { apiBlock } from "./blocks";
 import { exploreCategory } from "./module";
-import {
-  blockClientId,
-  followsLive,
-  liveBanner,
-  liveControl,
-  pageToolbar,
-} from "./live";
-import { requestDrawerHost, requestTable } from "./request-table";
+import { liveControl, pageToolbar } from "./live";
+import { requestTable } from "./request-table";
 import { scopeChip } from "./scope-chip";
 
 const ROUTES_API = "/api/monitoring/routes";
@@ -50,21 +45,6 @@ const MS_PER_SECOND = 1000;
  */
 export const ROUTES_DEFAULT_WINDOW = "24h";
 
-/** Where the Statistics tab sits below the page's `explorer`. */
-const STATISTICS_PATH = ["tabs", "statistics"] as const;
-
-/**
- * The DMS blocks of the Statistics tab that stay live while Recent requests
- * holds (a request open, Load more): the figures, the charts and the top
- * errors. Each follows the live mode by itself (`followsLive`).
- */
-const LIVE_BLOCKS = [
-  ["summary", "summary"],
-  ["charts", "status"],
-  ["charts", "latency"],
-  ["detail", "errors"],
-].map((path) => blockClientId("explorer", ...STATISTICS_PATH, ...path));
-
 /** Narrowest a chart stays readable at beside the other one. */
 const CHART_MIN_WIDTH = "340px";
 
@@ -85,24 +65,31 @@ const CHART_LEGEND = {
   }),
 };
 
+/** A row of the Statistics tab's grid holding one block, as wide as the tab. */
+const FULL_WIDTH = { colSpan: 2 };
+
 /**
  * Calls, latency with its p95, error rate and slowest call of the route over
- * the page's period, as one DMS StatGroup strip that follows the live mode.
+ * the page's period, as one DMS StatGroup strip. A route without a call over
+ * the period answers no figure: the strip says so, and where to call it.
  */
 function summaryRow() {
-  return apiBlock("ColumnsLayout", { columns: 1 })
+  return GridRow()
     .child(
       "summary",
-      followsLive(
-        StatGroup({
-          fetchUrl: statisticsUrl("summary"),
-          periodScope: ROUTES_PERIOD,
-          layout: "joined",
-          columns: 4,
-          skeletonCount: 4,
-          label: "$api.routes.statistics.title",
-        }).meta({ name: "$api.routes.statistics.summary", icon: "i-ph-gauge" }),
-      ),
+      StatGroup({
+        fetchUrl: statisticsUrl("summary"),
+        periodScope: ROUTES_PERIOD,
+        layout: "joined",
+        columns: 4,
+        skeletonCount: 4,
+        label: "$api.routes.statistics.title",
+        empty: {
+          title: "$api.routes.statistics.idle_title",
+          description: "$api.routes.statistics.idle_description",
+        },
+      }).meta({ name: "$api.routes.statistics.summary", icon: "i-ph-gauge" }),
+      FULL_WIDTH,
     )
     .meta({ name: "$api.routes.statistics.summary" });
 }
@@ -164,77 +151,69 @@ function latencyChart() {
 }
 
 function chartRow() {
-  return apiBlock("ColumnsLayout", {
-    columns: 2,
-    minColumnWidth: CHART_MIN_WIDTH,
-  })
+  return GridRow()
     .child(
       "status",
-      followsLive(
-        ChartCard({
-          title: "$api.routes.statistics.error_rate_chart",
-          icon: "i-ph-chart-line",
-          fetchUrl: statisticsUrl("status"),
-          periodScope: ROUTES_PERIOD,
-          valueFormat: "percent",
-          valuePrecision: 1,
-          // A rate's change in points, bad when up: the DMS badge would show it
-          // as a relative change, green. The "vs" figure stays (DMS-12).
-          showDelta: false,
-          showLegend: true,
-          // 4xx and 5xx as a share of each bucket's calls: an incident reads
-          // whatever the volume around it.
-          chart: ChartLine({
-            height: "220px",
-            xaxisType: "datetime",
-            curve: "straight",
-            color: ["warning", "error"],
-            rawOptions: [CHART_LEGEND],
-          }),
+      ChartCard({
+        title: "$api.routes.statistics.error_rate_chart",
+        icon: "i-ph-chart-line",
+        fetchUrl: statisticsUrl("status"),
+        periodScope: ROUTES_PERIOD,
+        valueFormat: "percent",
+        valuePrecision: 1,
+        // A rate's change in points, bad when up: the DMS badge would show it
+        // as a relative change, green. The "vs" figure stays (DMS-12).
+        showDelta: false,
+        showLegend: true,
+        // 4xx and 5xx as a share of each bucket's calls: an incident reads
+        // whatever the volume around it.
+        chart: ChartLine({
+          height: "220px",
+          xaxisType: "datetime",
+          curve: "straight",
+          color: ["warning", "error"],
+          rawOptions: [CHART_LEGEND],
         }),
-      ),
+      }),
     )
     .child(
       "latency",
-      followsLive(
-        ChartCard({
-          title: "$api.routes.statistics.response_time",
-          icon: "i-ph-timer",
-          fetchUrl: statisticsUrl("latency-chart"),
-          periodScope: ROUTES_PERIOD,
-          valueFormat: "number",
-          // Whole milliseconds: the axis spreads its ticks evenly between the
-          // bounds autoYRange widens to the threshold, fractions otherwise
-          // ("881.664"). The threshold keeps the range wide enough for whole
-          // numbers never to repeat.
-          valuePrecision: 0,
-          showDelta: false,
-          showLegend: true,
-          chart: latencyChart(),
-        }),
-      ),
+      ChartCard({
+        title: "$api.routes.statistics.response_time",
+        icon: "i-ph-timer",
+        fetchUrl: statisticsUrl("latency-chart"),
+        periodScope: ROUTES_PERIOD,
+        valueFormat: "number",
+        // Whole milliseconds: the axis spreads its ticks evenly between the
+        // bounds autoYRange widens to the threshold, fractions otherwise
+        // ("881.664"). The threshold keeps the range wide enough for whole
+        // numbers never to repeat.
+        valuePrecision: 0,
+        showDelta: false,
+        showLegend: true,
+        chart: latencyChart(),
+      }),
     )
     .meta({ name: "$api.routes.statistics.charts" });
 }
 
 function errorRow() {
-  return apiBlock("ColumnsLayout", { columns: 1 })
+  return GridRow()
     .child(
       "errors",
-      followsLive(
-        TopListCard({
-          title: "$api.routes.statistics.top_errors",
-          description: "$api.routes.statistics.top_errors_description",
-          fetchUrl: statisticsUrl("errors"),
-          periodScope: ROUTES_PERIOD,
-          valueFormat: "number",
-          showBar: true,
-          showRank: false,
-          showDelta: false,
-          skeletonCount: 3,
-          emptyLabel: "$api.routes.statistics.no_errors",
-        }),
-      ),
+      TopListCard({
+        title: "$api.routes.statistics.top_errors",
+        description: "$api.routes.statistics.top_errors_description",
+        fetchUrl: statisticsUrl("errors"),
+        periodScope: ROUTES_PERIOD,
+        valueFormat: "number",
+        showBar: true,
+        showRank: false,
+        showDelta: false,
+        skeletonCount: 3,
+        emptyLabel: "$api.routes.statistics.no_errors",
+      }),
+      FULL_WIDTH,
     )
     .meta({ name: "$api.routes.statistics.top_errors" });
 }
@@ -246,14 +225,13 @@ function errorRow() {
  * route applies the page's default.
  */
 function recentRow() {
-  return apiBlock("ColumnsLayout", { columns: 1 })
+  return GridRow()
     .child(
       "requests",
       Card({
         title: "$api.routes.statistics.recent",
         padded: false,
       })
-        .child("live", liveBanner({ pageSize: RECENT_REQUESTS }))
         .child(
           "table",
           requestTable({
@@ -281,25 +259,18 @@ function recentRow() {
           name: "$api.routes.statistics.recent",
           icon: "i-ph-list-magnifying-glass",
         }),
+      FULL_WIDTH,
     )
     .meta({ name: "$api.routes.statistics.recent" });
 }
 
 /**
  * The Statistics tab: DMS blocks reading the route of the URL through
- * `{{query.route}}`, over the page's period. A route without a call over the
- * period shows when it was last called and the way to the tester instead of
- * a page of zeros.
+ * `{{query.route}}`, over the page's period, on a two-column grid: the
+ * charts side by side, the rest across.
  */
 function routeStatistics() {
-  return apiBlock("RouteStatistics", {
-    summaryUrl: `${ROUTES_API}/statistics/summary`,
-    detailUrl: DETAIL_URL,
-    periodScope: ROUTES_PERIOD,
-    queryKey: ROUTE_QUERY_KEY,
-    tabKey: TAB_QUERY_KEY,
-    testerTab: TESTER_TAB,
-  })
+  return Grid({ gap: "1rem", minColumnWidth: CHART_MIN_WIDTH })
     .child("summary", summaryRow())
     .child("charts", chartRow())
     .child("detail", errorRow())
@@ -327,10 +298,6 @@ export class RoutesPage extends PageController(
   },
   DefaultLayout(),
 ) {
-  // Opens the request a row of the Statistics tab asks for, from the right;
-  // draws nothing.
-  static requestDrawer = requestDrawerHost();
-
   // The toolbar of every monitoring page (`pageToolbar`).
   static toolbar = pageToolbar({
     scope: scopeChip(),
@@ -339,7 +306,6 @@ export class RoutesPage extends PageController(
       sinceUrl: "/api/monitoring/logs/routes/since",
       defaultWindow: ROUTES_DEFAULT_WINDOW,
       routeKey: ROUTE_QUERY_KEY,
-      liveBlocks: LIVE_BLOCKS,
     }),
     period: apiBlock("PeriodWindow", {
       scope: ROUTES_PERIOD,
@@ -365,7 +331,6 @@ export class RoutesPage extends PageController(
       apiBlock("RouteHeader", {
         fetchUrl: DETAIL_URL,
         queryKey: ROUTE_QUERY_KEY,
-        periodScope: ROUTES_PERIOD,
         tabKey: TAB_QUERY_KEY,
         testerTab: TESTER_TAB,
       }),

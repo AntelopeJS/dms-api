@@ -1,3 +1,5 @@
+import type { ActivityFeedItem } from "@antelopejs/interface-dms/base/activity-feed";
+import type { TopListItem } from "@antelopejs/interface-dms/base/top-list-card";
 import { getConfig } from "@/config";
 import type { RequestLogModel, RouteModel, RouteStatisticsModel } from "@/db";
 import type { RequestLogSample } from "@/db/models/request_log.model";
@@ -10,6 +12,7 @@ import {
   type RuleWindowsInfo,
   ruleWindowsInfo,
 } from "./health-rules";
+import { percent, slowRouteDetail, text } from "./health-blocks";
 import { logsLink, routeLink, routeRef } from "./links";
 import {
   type RouteHealthState,
@@ -76,15 +79,13 @@ export interface RangeInfo {
   to: string;
 }
 
-/** What the health hero of the Overview draws. */
+/** The API's health: what the Overview's banner and figures are made of. */
 export interface HealthPayload {
   verdict: HealthVerdict;
   /** Start of the current incident, or of the last one; null when none (or older than the lookback). */
   incidentStart: string | null;
   /** When the last incident ended; null while it lasts or without one. */
   incidentEnd: string | null;
-  /** Same as `incidentStart`, kept for the readers of the first version. */
-  since: string | null;
   /** How long the verdict has held, in ms; null when longer than the lookback. */
   durationMs: number | null;
   checkedAt: string;
@@ -146,27 +147,14 @@ export interface ChartCardPayload {
 }
 
 /** One row of a DMS `TopListCard`. */
-export interface TopListItemPayload {
-  id: string;
-  title: string;
-  description?: string;
-  value: number;
-  icon?: string;
-  to?: string;
-}
+export type TopListItemPayload = TopListItem & { id: string };
 
 /** One entry of a DMS `ActivityFeed`. */
-export interface FeedItemPayload {
+export type FeedItemPayload = ActivityFeedItem & {
   id: string;
   icon: string;
-  tone: "error" | "warning" | "info" | "success" | "primary" | "neutral";
-  title: string;
-  meta?: string[];
-  /** Strings only: the DMS feed reads every value as text or a `$` key. */
-  params?: Record<string, string>;
-  date?: string;
-  to?: string;
-}
+  tone: NonNullable<ActivityFeedItem["tone"]>;
+};
 
 const PERCENT = 100;
 const ONE_DECIMAL = 10;
@@ -321,7 +309,6 @@ export async function getHealth(
     verdict: health.verdict,
     incidentStart,
     incidentEnd: health.incident?.end?.toISOString() ?? null,
-    since: incidentStart,
     durationMs: health.durationMs,
     checkedAt: now.toISOString(),
     metrics: shortWindowMetrics(samples, metricsWindow),
@@ -524,13 +511,16 @@ export async function getStatusClasses(
   if (total.requests === 0) return { items: [], total: 0, window: info };
   return {
     items: STATUS_CLASS_ROWS.map((row) => {
-      const count = row.count(total);
+      const calls = row.count(total);
       return {
         id: row.id,
         statusClass: row.id,
         title: `$api.overview.classes.${row.id}`,
-        value: count,
-        share: roundPercent(count / total.requests),
+        description: text("overview.classes.share", {
+          share: percent(roundPercent(calls / total.requests)),
+        }),
+        value: calls,
+        share: roundPercent(calls / total.requests),
         icon: row.icon,
         to: logsLink({ tab: row.id, window: window.preset, from: "overview" }),
       };
@@ -582,14 +572,21 @@ export async function getSlowestRoutes(
       const ref = routeRef(key.slice(0, separator), key.slice(separator + 1));
       const p95 = p95Latency(total);
       const average = Math.round(averageLatency(total));
+      const coverage = roundTo(p95Coverage(total), TWO_DECIMALS);
       return {
         id: ref,
         title: ref,
+        description: slowRouteDetail({
+          p95,
+          coverage,
+          calls: total.requests,
+          max: total.maxLatency,
+        }),
         route: ref,
         value: average,
         averageMs: average,
         p95Ms: p95 === null ? null : Math.round(p95),
-        p95Coverage: roundTo(p95Coverage(total), TWO_DECIMALS),
+        p95Coverage: coverage,
         maxMs: Math.round(total.maxLatency),
         requests: total.requests,
         to: routeLink(ref, undefined, window.preset),

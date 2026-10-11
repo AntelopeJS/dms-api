@@ -1,15 +1,15 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { byteLength, formatMs } from '../../utils/format'
 import {
   decodePath,
   durationScale,
   fullDateTime,
   isRequestId,
+  NO_REDACTIONS,
   originalBodySize,
   readRecord,
   type Redactions,
-  redactionsOf,
   relativeTime,
   REQUEST_PANEL_ID,
   type RequestPivot,
@@ -32,7 +32,7 @@ import ApiStatusBadge from '../internal/ApiStatusBadge.vue'
 import ApiTesterBadge from '../internal/ApiTesterBadge.vue'
 
 // One captured request, in the DMS side panel on the right, which a request
-// table's row opens (`RequestDrawerHost`). The header stays put: where the
+// table's row opens (`utils/requestDrawer.ts`). The header stays put: where the
 // request went, how it ended, what to do with it. Below, the summary puts
 // the error first, then what the request was and how long it took against
 // the slow threshold; then what was sent and what came back. Every action
@@ -54,8 +54,8 @@ interface RequestLog {
   routeLatency?: RouteLatency | null
   /** The method of the handler that answered (GET for a HEAD it served). */
   routeMethod?: string | null
-  /** What the capture masked, section by section; null on an older log. */
-  redactions?: Redactions | null
+  /** What the capture masked, section by section. */
+  redactions: Redactions
   /** `tester` for a request the console's tester sent. */
   source?: string | null
   /** Where the API answers, for the URL and the cURL; null while unknown. */
@@ -120,14 +120,22 @@ const router = useDmsRouter()
 const panel = useRequestPanel()
 const sidePanel = useSidePanel(REQUEST_PANEL_ID)
 
-// The request the page's host names; without a host (a server render, a page
-// holding no request table), the one the URL names.
-const requestId = computed(() =>
-  panel.value.hosted
-    ? panel.value.id
-    : readRecord(router.currentRoute.value.query),
-)
-const navigation = computed(() => panel.value.navigation)
+// The request a row of this page opened (the URL was rewritten in place,
+// which the router does not see); else the one the URL names (a reload, a
+// link).
+const requestId = computed(() => {
+  const { id, path } = panel.value
+  const route = router.currentRoute.value
+  return id && path === route.path ? id : readRecord(route.query)
+})
+
+// The DMS keeps the open panel in a cookie: a page that names no request
+// (another page, a tab reopened) closes it rather than showing an error.
+function closeWithoutRequest() {
+  if (!requestId.value) sidePanel.close()
+}
+onMounted(closeWithoutRequest)
+watch(() => router.currentRoute.value.path, closeWithoutRequest)
 
 // The page the panel is open on: it reads the request by that page's
 // permission, a link to the logs says where it came from, and the route on
@@ -171,12 +179,9 @@ const failure = computed<'invalid' | 'not_found' | 'forbidden' | 'error'>(
 )
 
 function close() {
-  if (panel.value.close) {
-    panel.value.close()
-    return
-  }
+  panel.value = { id: null, path: null, focus: false }
   sidePanel.close()
-  writeRecord()
+  writeRecord(null)
 }
 
 const failureActions = computed(() =>
@@ -385,9 +390,7 @@ function omission(reason: string | null | undefined) {
   return summary && summary.requestLogMaxBodyKb === 0 ? 'disabled' : null
 }
 
-const redactions = computed(() =>
-  log.value ? redactionsOf(log.value) : redactionsOf({}),
-)
+const redactions = computed(() => log.value?.redactions ?? NO_REDACTIONS)
 const requestSize = computed(() =>
   originalBodySize(
     byteLength(log.value?.requestBody ?? ''),
@@ -410,43 +413,15 @@ const count = (value: number) =>
 </script>
 
 <template>
-  <section class="flex min-h-0 flex-col" :aria-busy="pending">
+  <section
+    class="flex min-h-0 flex-col"
+    :aria-busy="pending"
+    @keydown.esc.exact="close"
+  >
     <header
       class="border-default flex shrink-0 flex-col gap-2.5 border-b px-4 pt-3 sm:px-5"
     >
       <div class="flex items-center gap-1">
-        <template v-if="navigation">
-          <span class="text-dimmed font-mono text-[11px]" aria-live="polite">
-            {{
-              t('api.request.position', {
-                index: navigation.index + 1,
-                total: navigation.total,
-              })
-            }}
-          </span>
-          <UTooltip :text="t('api.request.previous')">
-            <UButton
-              size="xs"
-              color="neutral"
-              variant="ghost"
-              icon="i-ph-caret-up"
-              :disabled="!navigation.hasPrev"
-              :aria-label="t('api.request.previous')"
-              @click="navigation.prev()"
-            />
-          </UTooltip>
-          <UTooltip :text="t('api.request.next')">
-            <UButton
-              size="xs"
-              color="neutral"
-              variant="ghost"
-              icon="i-ph-caret-down"
-              :disabled="!navigation.hasNext"
-              :aria-label="t('api.request.next')"
-              @click="navigation.next()"
-            />
-          </UTooltip>
-        </template>
         <span class="grow" />
         <UTooltip :text="t('api.request.close')">
           <UButton

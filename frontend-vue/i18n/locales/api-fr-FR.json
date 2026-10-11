@@ -18,12 +18,12 @@
     },
     "common": {
       "retry": "Réessayer",
-      "refresh": "Actualiser",
-      "stale": "La dernière actualisation a échoué : ces chiffres peuvent être périmés.",
       "ago_s": "il y a {amount} s",
       "ago_min": "il y a {amount} min",
       "ago_h": "il y a {amount} h",
-      "ago_d": "il y a {amount} j"
+      "ago_d": "il y a {amount} j",
+      "percent": "{value} %",
+      "ms": "{value} ms"
     },
     "scope": {
       "own": "Routes du projet · {count}",
@@ -40,25 +40,9 @@
         "name": "Adresse du module",
         "description": "Envoie /modules/api vers la page d'accueil du module. N'affiche rien."
       },
-      "health_hero": {
-        "name": "Santé de l'API",
-        "description": "Verdict de santé, ses raisons et les indicateurs clés des dernières minutes."
-      },
-      "beta_badge": {
-        "name": "Pastille bêta",
-        "description": "Signale que la console est encore en bêta, à côté de la barre d'outils de la page."
-      },
       "period_window": {
         "name": "Période",
         "description": "La période des cartes de la page, gardée dans son adresse (1H, 24H, 7J, 30J)."
-      },
-      "attention_list": {
-        "name": "À surveiller",
-        "description": "Les routes signalées par les règles de santé, les pires d'abord, avec leurs chiffres et leur erreur principale."
-      },
-      "overview_top_list": {
-        "name": "Classement",
-        "description": "Une liste classée de la vue d'ensemble, sur la période de la page."
       },
       "live_traffic": {
         "name": "Trafic en direct",
@@ -67,10 +51,6 @@
       "request_detail": {
         "name": "Détail d'une requête",
         "description": "Une requête capturée : erreur, durée, en-têtes et corps."
-      },
-      "request_drawer_host": {
-        "name": "Panneau de requête",
-        "description": "Ouvre la requête demandée par une ligne de la page, dans un panneau à droite."
       },
       "route_tree": {
         "name": "Liste des routes",
@@ -92,14 +72,6 @@
         "name": "Routes et détail",
         "description": "La liste des routes à côté de la route sélectionnée."
       },
-      "columns_layout": {
-        "name": "Cartes en colonnes",
-        "description": "Des cartes côte à côte qui passent de moitié en moitié sur les écrans plus étroits."
-      },
-      "route_statistics": {
-        "name": "Statistiques de la route",
-        "description": "Les chiffres de la route sélectionnée sur la période, ou la date de son dernier appel."
-      },
       "logs_period": {
         "name": "Période des journaux",
         "description": "La période que liste la table des requêtes, dans la barre d'outils de la page."
@@ -115,23 +87,9 @@
       "live_control": {
         "name": "En direct / Pause",
         "description": "Le contrôle En direct / Pause de la page : mises à jour à l'arrivée des requêtes, ou page figée qui compte ce qu'elle manque."
-      },
-      "live_banner": {
-        "name": "Nouvelles requêtes",
-        "description": "Au-dessus d'une table de requêtes : les requêtes arrivées pendant qu'elle ne bouge pas, et de quoi les afficher."
-      },
-      "page_toolbar": {
-        "name": "Barre d'outils de la page",
-        "description": "Le périmètre des routes, le contrôle En direct / Pause et la période d'une page de supervision."
       }
     },
     "health": {
-      "label": "Santé de l'API",
-      "state": {
-        "live": "en direct",
-        "paused": "en pause",
-        "stale": "non actualisée"
-      },
       "verdict": {
         "operational": "Opérationnelle",
         "degraded": "Dégradée",
@@ -139,21 +97,9 @@
         "recovered": "Rétablie",
         "idle": "Aucun trafic"
       },
-      "for": "depuis {duration}",
-      "for_over": "depuis plus de {duration}",
       "since_degraded": "Dégradée depuis le {date}",
       "since_down": "En panne depuis le {date}",
       "since_recovered": "Rétablie depuis le {date}",
-      "recovered_ago": "il y a {duration}",
-      "incident_started": "L'incident a commencé le {date}",
-      "last_incident": "Dernier incident {date}",
-      "checked": "vérifié à {time}",
-      "duration": {
-        "s": "{n} s",
-        "min": "{n} min",
-        "h": "{n} h",
-        "d": "{n} j"
-      },
       "metrics": {
         "server_errors": "5xx · {minutes} min",
         "server_errors_rules": "Dégradée ≥ {degraded} / {minutes} min · En panne ≥ {down} / {downMinutes} min",
@@ -163,31 +109,24 @@
         "per_minute": "req/min",
         "traffic_sub": "{count} route dans le périmètre | {count} routes dans le périmètre",
         "client_errors": "4xx · {minutes} min",
-        "client_errors_sub": "Erreurs client, souvent attendues"
+        "client_errors_sub": "Erreurs client, souvent attendues",
+        "per_minute_value": "{value} req/min"
       },
       "reasons": {
         "failing": "{count} route en échec | {count} routes en échec",
         "slow": "{count} route lente (≥ {threshold}) | {count} routes lentes (≥ {threshold})",
         "recovered": "{count} route rétablie | {count} routes rétablies",
-        "none": "Aucune route ne dépasse les seuils ces {minutes} dernières minutes."
+        "none": "Aucune route ne dépasse les seuils ces {minutes} dernières minutes.",
+        "join": "{first} · {rest}",
+        "idle": "Aucun appel à l'API ces {hours} dernières heures."
       },
-      "view_errors": "Voir {count} erreur serveur | Voir {count} erreurs serveur",
-      "stale_title": "Données de {time}",
-      "stale_description": "La dernière actualisation a échoué. Les chiffres peuvent être périmés.",
-      "error_title": "Données de supervision indisponibles",
-      "error_description": "La console n'a pas pu lire ses statistiques. L'API elle-même va peut-être bien.",
       "first_run": {
         "title": "Aucune requête capturée",
         "description": "{count} routes sont enregistrées. La console enregistre les appels dès que votre API les reçoit.",
         "browse": "Parcourir les routes",
-        "logs": "Ouvrir les journaux",
-        "step_1": "Choisir une route",
-        "step_1_detail": "Routes liste tout ce que votre projet enregistre.",
-        "step_2": "Envoyer une première requête",
-        "step_2_detail": "Depuis le testeur d'une route, ou depuis votre application.",
-        "step_3": "La voir arriver",
-        "step_3_detail": "Les journaux l'affichent en quelques secondes."
-      }
+        "logs": "Ouvrir les journaux"
+      },
+      "view_server_errors": "Voir les erreurs serveur"
     },
     "overview": {
       "title": "Vue d'ensemble",
@@ -207,8 +146,6 @@
         "30d": "30 j"
       },
       "no_previous": "Pas de période précédente à comparer",
-      "last": "Sur {span}",
-      "list_error": "Impossible de charger cette liste",
       "traffic": {
         "title": "Trafic et erreurs",
         "2xx": "2xx succès",
@@ -238,20 +175,21 @@
         "stray_hint": "Appels vers des chemins que l'API n'enregistre pas, comme des robots qui cherchent des fichiers",
         "error_title": "Impossible de charger les routes à surveiller",
         "empty_title": "Toutes les routes semblent saines",
-        "empty_description": "{span} : aucune erreur serveur, route lente ou taux de 4xx élevé.",
+        "empty_description": "24 dernières heures : aucune erreur serveur, route lente ou taux de 4xx élevé.",
         "failing": "En échec",
         "recovered": "Rétablie",
         "failing_detail": "{rate} d'erreurs serveur · {serverErrors} sur {calls} appel | {rate} d'erreurs serveur · {serverErrors} sur {calls} appels",
         "window_detail": "{rate} d'erreurs serveur sur {minutes} min · {serverErrors} sur {calls} appel | {rate} d'erreurs serveur sur {minutes} min · {serverErrors} sur {calls} appels",
-        "recovered_detail": "depuis {span} · dernière 5xx à {time}",
-        "recovered_last": "dernière 5xx à {time}",
+        "recovered_detail": "rétablie {end} · dernière 5xx {last}",
+        "recovered_last": "dernière 5xx {last}",
         "lookback_detail": "{span} : {rate} · {serverErrors} sur {calls}",
         "slow": "Lente",
         "slow_detail": "p95 {p95} · moy. {average} · {calls} appel | p95 {p95} · moy. {average} · {calls} appels",
         "client_errors": "Taux de 4xx",
         "client_errors_detail": "{rate} d'erreurs client · {clientErrors} sur {calls} appel | {rate} d'erreurs client · {clientErrors} sur {calls} appels",
         "top_error": "{status} « {message} » × {count}",
-        "top_status": "{status} × {count}"
+        "top_status": "{status} × {count}",
+        "stray": "Aucune route ne répond à ce chemin"
       },
       "slowest": {
         "title": "Routes les plus lentes",
@@ -259,9 +197,7 @@
         "empty": "Aucun appel sur la période",
         "detail": "p95 {p95} · max {max} · {calls} appel | p95 {p95} · max {max} · {calls} appels",
         "detail_partial": "p95 {p95} (partielle) · max {max} · {calls} appel | p95 {p95} (partielle) · max {max} · {calls} appels",
-        "detail_no_p95": "max {max} · {calls} appel | max {max} · {calls} appels",
-        "p95_partial": "p95 partielle : mesurée sur {share} des appels. Les jours les plus anciens de la période n'ont pas d'histogramme de latence.",
-        "p95_missing": "Pas de p95 sur cette période : ses jours n'ont pas d'histogramme de latence."
+        "detail_no_p95": "max {max} · {calls} appel | max {max} · {calls} appels"
       },
       "recent": {
         "title": "Requêtes récentes",
@@ -283,6 +219,10 @@
         "registered_many_detail": "{routes}…",
         "from_project": "Depuis le code du projet",
         "from_module": "Depuis le module {module}"
+      },
+      "health": {
+        "verdict": "Santé de l'API",
+        "figures": "Indicateurs de santé de l'API"
       }
     },
     "live": {
@@ -318,8 +258,6 @@
       "polling": "sans temps réel, relecture régulière",
       "paused": "En pause",
       "paused_because": "En pause · {reason}",
-      "table_held": "Tableau en pause · {reason}",
-      "back_to_live": "Revenir au direct",
       "reasons": {
         "hidden": "onglet masqué",
         "panel": "requête ouverte",
@@ -335,9 +273,6 @@
       "resume": "Reprendre",
       "show": "Afficher",
       "verdict": {
-        "title": "Santé de l'API : {verdict}",
-        "description": "Avant : {previous}.",
-        "tab": "● {verdict} · {page}",
         "changed": "Statut changé : {from} → {to}"
       }
     },
@@ -347,7 +282,7 @@
       "table": "Table des requêtes",
       "search": "Chemin, ID de requête, erreur…",
       "count": "{count} requête | {count} requêtes",
-      "keys_hint": "/ rechercher · J / K requête suivante / précédente · Échap fermer le panneau · L direct / pause · ? raccourcis",
+      "keys_hint": "⇧F rechercher · Échap fermer le panneau · L direct / pause · ? raccourcis",
       "toolbar": "Barre d'outils des journaux",
       "drawer_title": "Requête",
       "open_request": "Ouvrir la requête",
@@ -402,7 +337,6 @@
         "title": "Raccourcis clavier",
         "open": "Raccourcis clavier (?)",
         "search": "Rechercher dans les requêtes",
-        "step": "Requête suivante / précédente, panneau ouvert",
         "close": "Fermer le panneau",
         "live": "En direct ou Pause pour toute la page",
         "help": "Afficher ces raccourcis"
@@ -428,18 +362,14 @@
         "narrowed": "Filtré par : {filters}.",
         "period_hint": "Les requêtes sont peut-être hors de cette période.",
         "widen": "Toutes les périodes",
-        "clear_filters": "Retirer les filtres",
         "search_title": "Aucune requête ne contient « {search} »",
         "search_description": "La recherche porte sur les chemins, les ID de requête et les messages d'erreur.",
-        "clear_search": "Effacer la recherche",
         "route_title": "Aucune requête pour {route}",
         "error_filter_title": "Aucune requête ne porte cette erreur",
         "incident_title": "Aucune requête pendant cet incident",
         "link_description": "Le filtre apporté par le lien ne correspond à aucune requête capturée.",
         "remove_link": "Retirer le filtre du lien",
-        "tab": "Onglet {tab}",
         "path": "Chemin {path}",
-        "show_all_tabs": "Tous les statuts",
         "error_title": "Impossible de charger les journaux",
         "error_description": "Le stockage des journaux n'a pas répondu. Réessayez."
       }
@@ -452,9 +382,6 @@
       },
       "panel_label": "Détail de la requête",
       "close": "Fermer (Échap)",
-      "position": "Requête {index} sur {total} affichées",
-      "previous": "Requête précédente (K)",
-      "next": "Requête suivante (J)",
       "replay": "Rejouer dans le testeur",
       "copy_curl": "Copier en cURL",
       "copy_url": "Copier l'URL",
@@ -606,9 +533,6 @@
         "series_p95": "p95",
         "series_p95_partial": "p95 (partielle : non enregistrée avant la mise à jour du module)",
         "idle_title": "Aucun appel sur la période",
-        "idle_last": "Dernier appel {date}.",
-        "idle_never": "Aucun appel enregistré pour l'instant.",
-        "idle_try": "Tester cette route",
         "requests": "Requêtes",
         "error_rate": "Taux d'erreur",
         "response_time": "Temps de réponse (ms)",
@@ -633,7 +557,8 @@
         "summary": "Indicateurs de la route",
         "p95_detail": "p95 {p95}",
         "p95_partial_detail": "p95 {p95} · partielle",
-        "p95_none": "Aucune p95 conservée sur la période"
+        "p95_none": "Aucune p95 conservée sur la période",
+        "idle_description": "Appelez-la depuis l'onglet Testeur pour voir ses chiffres."
       },
       "docs": {
         "beta_title": "Bêta · déduit du trafic",

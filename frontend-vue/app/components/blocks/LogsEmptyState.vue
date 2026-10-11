@@ -1,14 +1,5 @@
 <script setup lang="ts">
-import {
-  computed,
-  inject,
-  onBeforeUnmount,
-  onMounted,
-  ref,
-  useTemplateRef,
-  type ComponentPublicInstance,
-  type Ref,
-} from 'vue'
+import { computed } from 'vue'
 import {
   ALL_LOG_WINDOW,
   clearedLogsFilters,
@@ -16,7 +7,6 @@ import {
   hasLogsFilters,
   logsEmptyCause,
   readLogsFilters,
-  shownTab,
   withDefaultWindow,
   withLogsFilters,
   type LogsFilters,
@@ -26,7 +16,8 @@ import {
 // a link's filters, the period and the other filters of the URL (the DMS
 // table does not count those as filters), else nothing captured yet. Each
 // cause comes with its way out. The table hands it `state`, `search` and
-// `refresh`.
+// `refresh`; its tab and its search field are its own, cleared from its own
+// toolbar.
 defineOptions({ inheritAttrs: false })
 
 const props = defineProps<{
@@ -38,45 +29,6 @@ const props = defineProps<{
 const { t } = useI18n()
 const route = useDmsRoute()
 const router = useDmsRouter()
-
-// The DMS table shares its search with what it draws: clearing it from here
-// folds the toolbar's field like its own "Clear search" does.
-const table = inject<
-  Ref<{ globalFilterState?: Ref<string | undefined> }> | undefined
->('tableSharedData', undefined)
-
-// The status tab, which empties the table as much as the URL's filters: the
-// DMS table does not share it, it is read from the tabs of the card this
-// body is drawn in, and followed while it shows.
-const ALL_TAB = 'all'
-const CARD_SELECTOR = '.dms-card'
-const TAB_SELECTOR = '[aria-current="true"]'
-const body = useTemplateRef<ComponentPublicInstance>('body')
-const card = ref<HTMLElement | null>(null)
-const tab = ref<string>()
-let tabsObserver: MutationObserver | undefined
-
-onMounted(() => {
-  card.value = (body.value?.$el as HTMLElement | undefined)?.closest?.(
-    CARD_SELECTOR,
-  ) as HTMLElement | null
-  if (!card.value) return
-  const read = () => (tab.value = shownTab(card.value!))
-  read()
-  tabsObserver = new MutationObserver(read)
-  tabsObserver.observe(card.value, {
-    subtree: true,
-    attributes: true,
-    attributeFilter: ['aria-current'],
-  })
-})
-onBeforeUnmount(() => tabsObserver?.disconnect())
-
-/** Shows the "All" tab: the first of the card's tabs. */
-function showAllTabs() {
-  const tabs = card.value?.querySelector(TAB_SELECTOR)?.parentElement
-  ;(tabs?.firstElementChild as HTMLElement | null)?.click()
-}
 
 // With the period the table applies when the URL names none.
 const filters = computed(() => withDefaultWindow(readLogsFilters(route.query)))
@@ -96,14 +48,11 @@ function describeFilters(current: LogsFilters): string[] {
 }
 
 /**
- * "5xx tab · Path /api/orders/42 · Last hour": what narrows the rows besides
- * the link the title names, the tab first.
+ * "Path /api/orders/42 · Last hour": what narrows the rows besides the link
+ * the title names.
  */
 function describe(current: LogsFilters): string {
   return [
-    tab.value && tab.value !== ALL_TAB
-      ? t('api.logs.empty.tab', { tab: tab.value })
-      : undefined,
     current.route && current.path
       ? t('api.logs.empty.path', { path: current.path })
       : undefined,
@@ -119,26 +68,12 @@ function go(query: Record<string, string>) {
 
 function clearFilters() {
   return {
-    label: t('api.logs.empty.clear_filters'),
+    label: t('dms.table.clear_filters'),
     icon: 'i-ph-x',
     color: 'neutral' as const,
     variant: 'outline' as const,
     onClick: () => go(clearedLogsFilters(route.query)),
   }
-}
-
-// Every status, while a tab narrows the rows.
-function allTabs() {
-  if (!tab.value || tab.value === ALL_TAB) return []
-  return [
-    {
-      label: t('api.logs.empty.show_all_tabs'),
-      icon: 'i-ph-list',
-      color: 'neutral' as const,
-      variant: 'outline' as const,
-      onClick: showAllTabs,
-    },
-  ]
 }
 
 // Every period, while a narrower one may hide the requests.
@@ -153,22 +88,6 @@ function widen() {
       variant: 'outline' as const,
       onClick: () =>
         go(withLogsFilters(route.query, { window: ALL_LOG_WINDOW })),
-    },
-  ]
-}
-
-function clearSearch() {
-  const search = table?.value?.globalFilterState
-  if (!search) return []
-  return [
-    {
-      label: t('api.logs.empty.clear_search'),
-      icon: 'i-ph-x',
-      color: 'neutral' as const,
-      variant: 'outline' as const,
-      onClick: () => {
-        search.value = ''
-      },
     },
   ]
 }
@@ -188,7 +107,7 @@ const content = computed(() => {
         description: t('api.logs.empty.error_description'),
         actions: [
           {
-            label: t('api.common.retry'),
+            label: t('dms.table.load_error_retry'),
             icon: 'i-ph-arrow-clockwise',
             color: 'neutral' as const,
             variant: 'outline' as const,
@@ -205,8 +124,6 @@ const content = computed(() => {
           .filter(Boolean)
           .join(' '),
         actions: [
-          ...clearSearch(),
-          ...allTabs(),
           ...widen(),
           ...(hasLogsFilters(current) ? [clearFilters()] : []),
         ],
@@ -228,7 +145,6 @@ const content = computed(() => {
           .filter(Boolean)
           .join(' '),
         actions: [
-          ...allTabs(),
           {
             label: t('api.logs.empty.remove_link'),
             icon: 'i-ph-x',
@@ -262,7 +178,6 @@ const content = computed(() => {
           .join(' '),
         // The default period alone is nothing to clear.
         actions: [
-          ...allTabs(),
           ...widen(),
           ...(hasLogsFilters(readLogsFilters(route.query))
             ? [clearFilters()]
@@ -291,7 +206,6 @@ const content = computed(() => {
 
 <template>
   <DmsEmptyState
-    ref="body"
     :variant="content.variant"
     :icon="content.icon"
     :title="content.title"
