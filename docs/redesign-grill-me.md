@@ -4,16 +4,25 @@
 > are the plan as first taken; the QA pass and its fixes changed several of
 > them. In short:
 >
-> - Dependencies: `@antelopejs/dms` 0.7.4 or later (`interface-dms` 0.5.1)
+> - Dependencies: `@antelopejs/dms` 0.7.8 or later (`interface-dms` 0.5.4)
 >   and `@antelopejs/dms-frontend` `>=0.5.2 <0.6.0`, not dms 0.6 /
 >   interface-dms 0.4 / dms-frontend 0.5.0.
-> - A request opens in the DMS side panel (`registerSidePanel`, dms 0.7),
->   not in a drawer, from every request table.
-> - The Overview, the Request logs and Routes have a Live / Pause mode, fed by
->   a realtime topic.
+> - A request opens in the DMS row side panel (a `sidePanel` row action
+>   target, dms 0.7.8) on a single click, from every request table: the DMS
+>   draws its header ("Request 3 of 50 shown", ∧ ∨, J / K, close), highlights
+>   the open row and keeps it in `?record=`.
+> - The Overview, the Request logs and Routes declare the DMS page live mode
+>   (`live: { maxRate }`) with its `LiveToggle` (Direct / Pause), over the
+>   realtime topic the capture publishes on; the request tables hold their
+>   rows while paused (`liveHold`).
+> - The column tones are the DMS's: a slow duration in orange
+>   (`DurationDisplay({ format: "ms", toneField })`), an error in red
+>   (`TextDisplay({ toneField })`).
 > - The health is judged by explicit rules (error rates, latency, incidents,
 >   recovery), shown with their thresholds and windows.
-> - Periods are rolling and shared by the pages (24H by default, 1H to 30D);
+> - Periods are rolling, picked with the DMS `PeriodSelector` (24H by default,
+>   1H to 30D), kept in the URL (`?api.period=last-24h`) and followed by the
+>   request tables (`periodScope`);
 >   statistics are kept 30, 60 or 90 days (90 by default); the latency chart
 >   shows the p95 instead of the minimum.
 > - The console no longer captures its own traffic or the DMS's, and logs the
@@ -107,20 +116,19 @@ keeps custom components for the parts no block expresses.
 | --- | --- |
 | `ScopeChip` | A live "Own routes · 42" link to Settings; no block reads the scope. |
 | `HealthHero` | The verdict, since when (its start in a tooltip) and why, its four figures, the stale state when a refresh fails, a toast when the verdict changes and "● Degraded" in the browser tab, read from `/overview/health`. A `Banner` and a `StatGroup` give none of these. |
-| `LiveTraffic` | Per-minute histogram of the last hour with a Live toggle that shows its own failures; no block polls. |
-| `RequestDetail` | The request drawer (error and stack first, timing, headers, bodies, Replay / cURL / Open route / Same error). |
+| `LiveTraffic` | Per-minute histogram of the last hour that follows the page's Direct / Pause (`usePageLive()`) and shows its own failures; no block draws it. |
+| `RequestDetail` | The body of the request side panel (error and stack first, timing, headers, bodies, Replay / cURL / Open route / Same error); the DMS draws the panel and its navigation. |
 | `RouteTree` | A filterable tree whose selection lives in the URL. |
 | `RouteHeader`, `RouteDocumentation`, `RouteTester` | Everything under the selected route reads `?route=` from the URL. They render public DMS components (`DmsCard`, `DmsEmptyState`, `DmsStatusPill`) inside. Since DMS 0.6.1 a block's `fetchUrl` takes `{{query.route}}`, so the Statistics tab is now DMS blocks only (a `StatGroup` of the route's figures, `ChartCard`, `TopListCard`, a request table filtered by `?route=`); these three stay custom for what they draw, not for how they read the route. |
 | `SplitLayout` | A list beside its detail. `Grid` shares its columns equally, so a row of two cells cannot give one of them three quarters; `DmsMasterDetail` is a template component, not a block. |
 
-The request tables draw methods and statuses with DMS displays since DMS
-0.7.2: status pills toned per method, or per row through `toneField` (a
-status by its class). The module keeps cell displays (`@RegisterDisplay`) for
-what the DMS does not draw: the time to the millisecond (`api:time`), the path
-decoded as people read it with the Tester's badge on the requests it sent
-(`api:path`; the mono display shows neither), a duration that may never have
-been measured (`api:duration`), the request id (`api:request-id`) and the
-error message (`api:error`).
+The request tables draw their cells with DMS displays: status pills toned
+per method, or per row through `toneField` (a status by its class), the
+duration in milliseconds toned `warning` when slow
+(`DurationDisplay({ format: "ms", toneField: "durationTone" })`) and the error
+message toned `error` (`TextDisplay({ toneField: "errorTone" })`), the tones
+set by the server on each row. The module keeps one cell display
+(`@RegisterDisplay`): the time to the millisecond (`api:time`).
 
 **Q10. How are custom blocks named for permissions?**
 Every one carries `.meta({ name: "$api.blocks.<id>.name", description,
@@ -164,7 +172,7 @@ themselves (health hero, tab counters, tree footer).
 
 **Q16. Layout?**
 
-1. `HStack`: `ScopeChip` · `BetaBadge` (its meaning in a tooltip, F14) · `Spacer` · `LiveControl` · `PeriodWindow` (1 h / 24 h / 7 d / 30 d, against the previous period).
+1. `HStack`: `ScopeChip` · `BetaBadge` (its meaning in a tooltip, F14) · `Spacer` · `LiveToggle` · `PeriodSelector` (segmented 1H / 24H / 7D / 30D, against the previous period, kept in the URL).
 2. `HealthHero`: verdict (Operational / Degraded / Down), since when, reasons
    (n failing, n slow), four metrics (calls today, errors 24 h, average
    latency, routes in scope) and "View n server errors" (F01). With no request
@@ -176,7 +184,7 @@ themselves (health hero, tab counters, tree footer).
    left out so small changes show, F07), `ActivityFeed` *Needs attention*
    and `TopListCard` *Slowest routes*.
 5. `Card` *Recent requests* around a compact `TableView.fromSource` (each row
-   opens the request drawer), and `ActivityFeed` *Activity*.
+   opens the request side panel), and `ActivityFeed` *Activity*.
 
 **Q17. Why `ActivityFeed` for "Needs attention"?**
 Each row is an issue with a tone, an icon, a title (the route, in mono) and
@@ -190,8 +198,10 @@ Removed (F16): it filtered half the page. Filtering lives where it is
 complete (Routes, Request logs).
 
 **Q19. The period selector drives what?**
-The two charts and the two top lists (`periodScope: "api"`). The health hero
-and "Needs attention" are about now (24 h) and say so.
+The two charts, the two top lists and the recent requests
+(`periodScope: "api"`). The health hero and "Needs attention" are about now
+(24 h) and say so. The selector is the DMS's, id `api`: it keeps the period
+in the URL (`?api.period=last-24h`), and a link carrying it opens on it.
 
 ## 6. Request logs
 
@@ -205,8 +215,9 @@ filters.
 **Q21. Filters?**
 - Tabs All / 2xx / 4xx / 5xx on the status class, with counters (F09, F10).
 - Quick filters: Method, Slow only (a separate toggle, so "slow 5xx" is a
-  question you can ask, F09), Period (1 h / 24 h / 7 d / 14 d, capped by the
-  log retention).
+  question you can ask, F09), Every period (`?all=true`). The period is the
+  toolbar's DMS `PeriodSelector` (1H / 24H / 7D / 30D, capped by the log
+  retention), which the table follows (`periodScope`).
 - Search: path, request id, error message.
 - From another page, `?route=METHOD%20/path`, `?error=` and `?slow=true` open
   the table pre-filtered, and `?requests.tab=5xx` picks the tab. A source
@@ -216,20 +227,25 @@ filters.
   names them above it, each with a way to remove it.
 
 **Q22. Live mode?**
-`LiveTraffic` above the table: the per-minute histogram of the last hour,
-refreshed every 5 s while Live is on, with a visible paused / retrying state
-when polling fails (F10). The table keeps its own refresh: a source table
-has no realtime, so new rows do not slide in by themselves.
+The DMS page live mode: the page declares `live: { maxRate: 5 }`, its toolbar
+holds the DMS `LiveToggle`, and the table follows the capture's realtime
+topic (`realtimeTopic`), held while paused (`liveHold`, "N new · Show"). Its
+route lists a held table as it stood (`liveHeldAt`), through search, sort
+and paging. `LiveTraffic` above the table, the per-minute histogram of the
+last hour, follows the same state (`usePageLive()`), with a visible paused /
+retrying state when a read fails (F10).
 
 **Q23. The drawer?**
-`RequestDetail`, opened by a custom row action (`deepLink`, J / K through
-the `navigation` prop). The docs promise that `isDefault` makes a row click
-run the action; the DMS 0.6 table does not implement it yet, so the action is
-also drawn inline (`isVisible`) and the row's own button opens it. The drawer
-shows the error message and stack first, timing against the slow threshold, captured
+A side panel: the row action's target is `{ type: "sidePanel", component:
+RequestDetail, positionLabel: "$api.request.position" }`, run on a single
+click (`rowClick: "single"`). The DMS draws the header ("Request 3 of 50
+shown", ∧ ∨, J / K, close), highlights the open row and keeps it in
+`?record=`; a request beyond the listed rows is read through the table's own
+single-log route (`fetchRowUrl`). `RequestDetail` shows the error message and
+stack first, timing against the slow threshold, captured
 headers, request and response bodies with a redaction note, and the actions
 Replay in tester, Copy cURL, Open route, Same error (F03). A failed load says
-why in the drawer instead of `console.error`.
+why in the panel instead of `console.error`.
 
 ## 7. Routes
 

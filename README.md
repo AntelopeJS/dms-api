@@ -24,12 +24,20 @@ and `@antelopejs/dms-frontend` `>=0.5.2 <0.6.0`. DMS 0.7.8 brings the pieces
 the console is built on: the row side panel, the page's Live / Pause state, the
 period kept in the URL and the column tones.
 
-The Overview, the Request logs and Routes have a **Live / Pause** control.
-Live, the default, the page follows new requests as the DMS realtime channel
-announces them. Paused, nothing moves, and the control counts the requests that
-arrived meanwhile. A hidden tab or typing in the Tester pauses the whole page;
-an open request, a search, another sort, more rows loaded or a scroll down hold
-the request table alone, and say why. The choice is kept for the three pages.
+The Overview, the Request logs and Routes have the DMS **Direct / Pause**
+toggle (the L key). Direct, the default, the page follows new requests as the
+DMS realtime channel announces them, each block read again at most every 5 s
+(Request logs), 10 s (Overview) or 15 s (Routes). Paused, nothing is read: the
+request tables keep their rows, search, sort and "Load more" included, and
+offer "N new · Show"; resuming reads each block once. The choice is kept per
+page.
+
+A request opens in a side panel on the right, on a single click on its row,
+from every request table: J / K step through the rows shown, and the URL names
+it (`?record=`), so a link or a reload opens it again. The period of a page is
+its period selector's (1H, 24H, 7D, 30D), kept in the URL
+(`?api.period=last-24h`); without one, the page opens on the last period
+picked there, else the last 24 hours.
 
 This module is the dashboard for your API, not the HTTP server implementation.
 Your application still needs an API provider such as `@antelopejs/api`, the
