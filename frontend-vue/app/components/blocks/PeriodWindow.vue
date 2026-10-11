@@ -1,5 +1,12 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import {
+  computed,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  shallowRef,
+  watch,
+} from 'vue'
 import { formatRelativeDay } from '../../utils/format'
 import {
   PERIOD_WINDOWS,
@@ -50,7 +57,20 @@ const period = usePeriod({
   presets: PERIOD_WINDOWS.map((value) => WINDOW_PRESETS[value]),
   comparisons: ['previous-period'],
 })
-onBeforeUnmount(registerPeriodScope(props.scope, period.state))
+// Paused, the cards keep their period: the DMS period's clock moves a
+// rolling preset every minute, and each move would read every card again.
+// A period chosen while paused still applies; Live takes the clock back.
+// TODO: drop once the DMS holds the period itself with `usePageLive()`.
+const held = shallowRef(period.state.value)
+watch([() => period.state.value, live], ([state, isLive], [previous]) => {
+  if (isLive || state.preset !== previous.preset) held.value = state
+})
+onBeforeUnmount(
+  registerPeriodScope(
+    props.scope,
+    computed(() => held.value),
+  ),
+)
 
 // The URL leads: a choice, Back or a link carrying `?window=` all move the
 // cards' period.
