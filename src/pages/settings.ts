@@ -7,27 +7,27 @@ import {
 } from "@antelopejs/interface-dms/base/form";
 import { FormPageLayout } from "@antelopejs/interface-dms/base/layouts";
 import { HttpMethod } from "@antelopejs/interface-dms/base/types";
+import type { ComponentInfoSerialized } from "@antelopejs/interface-dms/component";
 import { PageController, RegisterPage } from "@antelopejs/interface-dms/page";
-import { getSettingsFormContext } from "@/services/settings-form";
+import {
+  DEFAULT_STATISTICS_LIFETIME_DAYS,
+  STATISTICS_LIFETIME_DAY_CHOICES,
+} from "@/config";
+import {
+  getSettingsFormContext,
+  SETTINGS_BOUNDS,
+  SETTINGS_FIELDS,
+} from "@/services/settings-form";
 import { configureCategory } from "./module";
 
-/** Field ids of the settings form: the keys its route reads and answers. */
-export const SETTINGS_FIELDS = {
-  scope: "scope",
-  logRetention: "requestLogRetentionDays",
-  statsRetention: "statisticsLifetimeDays",
-  maxBody: "requestLogMaxBodyKb",
-  headers: "requestLogCaptureHeaders",
-  redacted: "redactedKeys",
-  slowThreshold: "requestSlownessThresholdMs",
-  errorRate: "errorRateWarning",
-} as const;
-
 const SETTINGS_URL = "/api/monitoring/settings";
-const MAX_RETENTION_DAYS = 366;
-const MAX_SLOW_MS = 600_000;
-const MAX_BODY_KB = 10_240;
-const MAX_CAPTURED_HEADERS = 50;
+const RETENTION_IMPACT_URL = `${SETTINGS_URL}/retention-impact`;
+const SENSITIVE_HEADERS_URL = `${SETTINGS_URL}/sensitive-headers`;
+
+/** An input of the console's own, in place of the type's default one. */
+function apiInput<T>(name: string, options: T): ComponentInfoSerialized<T> {
+  return { componentName: `DmsApi${name}`, options };
+}
 
 const scopeType = new DefaultDataTypes.SelectType({
   display: "cards",
@@ -54,6 +54,15 @@ const scopeType = new DefaultDataTypes.SelectType({
   ],
 });
 
+const { logRetentionDays, maxBodyKb, slowThresholdMs, capturedHeaders } =
+  SETTINGS_BOUNDS;
+
+const retentionType = new DefaultDataTypes.NumberType({
+  min: logRetentionDays.min,
+  max: logRetentionDays.max,
+  step: 1,
+});
+
 const settingsForm = Form({
   fetchUrl: SETTINGS_URL,
   submitUrl: SETTINGS_URL,
@@ -72,7 +81,6 @@ const settingsForm = Form({
           label: "$api.settings.scope.label",
           description: "$api.settings.scope.description",
           type: scopeType,
-          required: true,
         },
       ],
     },
@@ -86,20 +94,28 @@ const settingsForm = Form({
           id: SETTINGS_FIELDS.logRetention,
           label: "$api.settings.retention.logs",
           description: "$api.settings.retention.logs_description",
-          type: new DefaultDataTypes.NumberType({
-            min: 1,
-            max: MAX_RETENTION_DAYS,
-            step: 1,
+          hint: "$api.settings.retention.logs_hint",
+          type: retentionType,
+          inputComponent: apiInput("RetentionInput", {
+            kind: "logs",
+            min: logRetentionDays.min,
+            max: logRetentionDays.max,
+            impactUrl: RETENTION_IMPACT_URL,
           }),
         },
         {
+          // The number type keeps a value set in the module configuration
+          // outside the choices (45 days) valid; the input offers it as the
+          // current value beside them, and the route accepts only a choice.
           id: SETTINGS_FIELDS.statsRetention,
           label: "$api.settings.retention.statistics",
           description: "$api.settings.retention.statistics_description",
-          type: new DefaultDataTypes.NumberType({
-            min: 1,
-            max: MAX_RETENTION_DAYS,
-            step: 1,
+          type: retentionType,
+          inputComponent: apiInput("RetentionInput", {
+            kind: "statistics",
+            choices: [...STATISTICS_LIFETIME_DAY_CHOICES],
+            defaultChoice: DEFAULT_STATISTICS_LIFETIME_DAYS,
+            impactUrl: RETENTION_IMPACT_URL,
           }),
         },
       ],
@@ -116,8 +132,13 @@ const settingsForm = Form({
           description: "$api.settings.capture.max_body_description",
           hint: "$api.settings.capture.max_body_hint",
           type: new DefaultDataTypes.NumberType({
-            min: 0,
-            max: MAX_BODY_KB,
+            min: maxBodyKb.min,
+            max: maxBodyKb.max,
+            step: 1,
+          }),
+          inputComponent: apiInput("SettingNumberInput", {
+            min: maxBodyKb.min,
+            max: maxBodyKb.max,
             step: 1,
           }),
         },
@@ -126,11 +147,15 @@ const settingsForm = Form({
           label: "$api.settings.capture.headers",
           description: "$api.settings.capture.headers_description",
           hint: "$api.settings.capture.headers_hint",
-          type: new TagsType({
-            max: MAX_CAPTURED_HEADERS,
+          type: new TagsType({ max: capturedHeaders.max }),
+          // Checks each name as it is added, in lower case: a name HTTP does
+          // not allow, or one the capture never stores, shows red and blocks
+          // the save before it is sent.
+          inputComponent: apiInput("HeaderTagsInput", {
+            max: capturedHeaders.max,
+            sensitiveUrl: SENSITIVE_HEADERS_URL,
             placeholder: "$api.settings.capture.headers_placeholder",
             suggestions: [
-              "authorization",
               "stripe-signature",
               "x-request-id",
               "x-forwarded-for",
@@ -157,20 +182,37 @@ const settingsForm = Form({
       icon: "i-ph-gauge",
       fields: [
         {
+          // Steps from 50, so round values stay round: a minimum of 1 put
+          // the grid on 1 + 50·k (1000 became 1001).
           id: SETTINGS_FIELDS.slowThreshold,
           label: "$api.settings.thresholds.slow",
           description: "$api.settings.thresholds.slow_description",
+          hint: "$api.settings.thresholds.slow_hint",
           type: new DefaultDataTypes.NumberType({
-            min: 1,
-            max: MAX_SLOW_MS,
-            step: 50,
+            min: slowThresholdMs.min,
+            max: slowThresholdMs.max,
+            step: slowThresholdMs.step,
+          }),
+          inputComponent: apiInput("SettingNumberInput", {
+            min: slowThresholdMs.min,
+            max: slowThresholdMs.max,
+            step: slowThresholdMs.step,
           }),
         },
         {
           id: SETTINGS_FIELDS.errorRate,
           label: "$api.settings.thresholds.error_rate",
           description: "$api.settings.thresholds.error_rate_description",
-          type: new DefaultDataTypes.StringType(),
+          type: new DefaultDataTypes.PercentageType(),
+          readonly: {
+            badge: { label: "$api.settings.thresholds.fixed", tone: "neutral" },
+          },
+        },
+        {
+          id: SETTINGS_FIELDS.downRate,
+          label: "$api.settings.thresholds.down_rate",
+          description: "$api.settings.thresholds.down_rate_description",
+          type: new DefaultDataTypes.PercentageType(),
           readonly: {
             badge: { label: "$api.settings.thresholds.fixed", tone: "neutral" },
           },
@@ -195,8 +237,8 @@ function patchFields(
 }
 
 /**
- * The module defaults and the live hints depend on the module config and the
- * stored data, not on the page: they are filled in for each request.
+ * The module defaults depend on the module config, not on the page: they are
+ * filled in for each request.
  */
 settingsForm.onFilter((_permissions, options: FormPropsSerialized) => {
   const context = getSettingsFormContext();
@@ -209,7 +251,8 @@ settingsForm.onFilter((_permissions, options: FormPropsSerialized) => {
 /**
  * Settings: which routes the console watches, how long it keeps what it
  * captures, what a request log keeps, and when a route needs attention.
- * Changes apply at once, without a restart.
+ * Changes apply at once, without a restart. Named "API settings", with its
+ * own icon, beside the platform's Settings in the sidebar.
  */
 @RegisterPage()
 export class SettingsPage extends PageController(
@@ -217,7 +260,7 @@ export class SettingsPage extends PageController(
   {
     displayName: "$api.settings.title",
     description: "$api.settings.description",
-    icon: "i-ph-gear-six",
+    icon: "i-ph-sliders",
     module: "api",
     category: configureCategory,
     order: 0,
