@@ -35,16 +35,11 @@ describe("OverviewPage", () => {
     ]);
   });
 
-  it("draws the health with DMS blocks read from the overview routes", () => {
+  it("leads with the health hero, read from the overview's health route", () => {
     const health = OverviewPage.health.serializeSync() as Serialized;
-    const figures = OverviewPage.figures.serializeSync() as Serialized;
-    expect(health.componentName).toMatch(/banner/);
+    expect(health.componentName).toBe("DmsApiHealthHero");
     expect(health.options).toMatchObject({
       fetchUrl: "/api/monitoring/overview/health",
-    });
-    expect(figures.componentName).toMatch(/stat-group/);
-    expect(figures.options).toMatchObject({
-      fetchUrl: "/api/monitoring/overview/health/figures",
     });
   });
 
@@ -72,7 +67,7 @@ describe("OverviewPage", () => {
   it("reads the verdict while paused, to tell a changed one", () => {
     expect(child(toolbar, "live").options).toMatchObject({
       page: "overview",
-      verdictUrl: "/api/monitoring/overview/health/verdict",
+      verdictUrl: "/api/monitoring/overview/health",
     });
   });
 });

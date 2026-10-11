@@ -106,7 +106,7 @@ keeps custom components for the parts no block expresses.
 | Custom block | Why no DMS block fits |
 | --- | --- |
 | `ScopeChip` | A live "Own routes · 42" link to Settings; no block reads the scope. |
-| ~~`HealthHero`~~ | Gone: the verdict is a `Banner({ fetchUrl: /overview/health })` and the figures a `StatGroup` (`/overview/health/figures`), both in composed texts (`src/services/health-blocks.ts`). Lost on the way: tooltips, the toast on a verdict change and the stale state, which DMS blocks do not offer. |
+| `HealthHero` | The verdict, since when (its start in a tooltip) and why, its four figures, the stale state when a refresh fails, a toast when the verdict changes and "● Degraded" in the browser tab, read from `/overview/health`. A `Banner` and a `StatGroup` give none of these. |
 | `LiveTraffic` | Per-minute histogram of the last hour with a Live toggle that shows its own failures; no block polls. |
 | `RequestDetail` | The request drawer (error and stack first, timing, headers, bodies, Replay / cURL / Open route / Same error). |
 | `RouteTree` | A filterable tree whose selection lives in the URL. |

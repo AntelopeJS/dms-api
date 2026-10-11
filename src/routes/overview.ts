@@ -11,7 +11,6 @@ import { RequestLogModel, RouteModel, RouteStatisticsModel } from "@/db";
 import { OVERVIEW_DEFAULT_WINDOW, OverviewPage } from "@/pages/overview";
 import { getActivity } from "@/services/activity";
 import { ATTENTION_LIMIT, getAttention } from "@/services/attention";
-import { healthBanner, healthStats } from "@/services/health-blocks";
 import {
   getErrorShareChart,
   getHealth,
@@ -75,29 +74,13 @@ const grid = OverviewPage.dashboard;
  * 7 days.
  */
 export class OverviewController extends Controller("/api/monitoring/overview") {
-  /** The verdict, as the page's DMS `Banner` reads it. */
+  /**
+   * The verdict, since when and why, and its figures: the Overview's health
+   * reads it, and the Live / Pause control its verdict while paused.
+   */
   @Get("health")
   async getHealth(@AuthUserWithPermission(OverviewPage.health) _user: User) {
-    return healthBanner(await currentHealth());
-  }
-
-  /** The figures under the verdict, as the page's DMS `StatGroup` reads them. */
-  @Get("health/figures")
-  async getHealthFigures(
-    @AuthUserWithPermission(OverviewPage.figures) _user: User,
-  ) {
-    return healthStats(await currentHealth());
-  }
-
-  /**
-   * The verdict alone: the Live / Pause control reads it while paused, to
-   * say when it changed.
-   */
-  @Get("health/verdict")
-  async getHealthVerdict(
-    @AuthUserWithPermission(OverviewPage.health) _user: User,
-  ) {
-    return { verdict: (await currentHealth()).verdict };
+    return currentHealth();
   }
 
   @Get("traffic")

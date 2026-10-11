@@ -23,7 +23,8 @@
       "ago_h": "il y a {amount} h",
       "ago_d": "il y a {amount} j",
       "percent": "{value} %",
-      "ms": "{value} ms"
+      "ms": "{value} ms",
+      "refresh": "Actualiser"
     },
     "scope": {
       "own": "Routes du projet · {count}",
@@ -87,6 +88,10 @@
       "live_control": {
         "name": "En direct / Pause",
         "description": "Le contrôle En direct / Pause de la page : mises à jour à l'arrivée des requêtes, ou page figée qui compte ce qu'elle manque."
+      },
+      "health_hero": {
+        "name": "Santé de l'API",
+        "description": "Verdict de santé, ses raisons et les indicateurs clés des dernières minutes."
       }
     },
     "health": {
@@ -109,24 +114,49 @@
         "per_minute": "req/min",
         "traffic_sub": "{count} route dans le périmètre | {count} routes dans le périmètre",
         "client_errors": "4xx · {minutes} min",
-        "client_errors_sub": "Erreurs client, souvent attendues",
-        "per_minute_value": "{value} req/min"
+        "client_errors_sub": "Erreurs client, souvent attendues"
       },
       "reasons": {
         "failing": "{count} route en échec | {count} routes en échec",
         "slow": "{count} route lente (≥ {threshold}) | {count} routes lentes (≥ {threshold})",
         "recovered": "{count} route rétablie | {count} routes rétablies",
-        "none": "Aucune route ne dépasse les seuils ces {minutes} dernières minutes.",
-        "join": "{first} · {rest}",
-        "idle": "Aucun appel à l'API ces {hours} dernières heures."
+        "none": "Aucune route ne dépasse les seuils ces {minutes} dernières minutes."
       },
       "first_run": {
         "title": "Aucune requête capturée",
         "description": "{count} routes sont enregistrées. La console enregistre les appels dès que votre API les reçoit.",
         "browse": "Parcourir les routes",
-        "logs": "Ouvrir les journaux"
+        "logs": "Ouvrir les journaux",
+        "step_1": "Choisir une route",
+        "step_1_detail": "Routes liste tout ce que votre projet enregistre.",
+        "step_2": "Envoyer une première requête",
+        "step_2_detail": "Depuis le testeur d'une route, ou depuis votre application.",
+        "step_3": "La voir arriver",
+        "step_3_detail": "Les journaux l'affichent en quelques secondes."
       },
-      "view_server_errors": "Voir les erreurs serveur"
+      "label": "Santé de l'API",
+      "state": {
+        "live": "en direct",
+        "paused": "en pause",
+        "stale": "non actualisée"
+      },
+      "for": "depuis {duration}",
+      "for_over": "depuis plus de {duration}",
+      "recovered_ago": "il y a {duration}",
+      "incident_started": "L'incident a commencé le {date}",
+      "last_incident": "Dernier incident {date}",
+      "checked": "vérifié à {time}",
+      "duration": {
+        "s": "{n} s",
+        "min": "{n} min",
+        "h": "{n} h",
+        "d": "{n} j"
+      },
+      "view_errors": "Voir {count} erreur serveur | Voir {count} erreurs serveur",
+      "stale_title": "Données de {time}",
+      "stale_description": "La dernière actualisation a échoué. Les chiffres peuvent être périmés.",
+      "error_title": "Données de supervision indisponibles",
+      "error_description": "La console n'a pas pu lire ses statistiques. L'API elle-même va peut-être bien."
     },
     "overview": {
       "title": "Vue d'ensemble",
@@ -218,10 +248,6 @@
         "registered_many_detail": "{routes}…",
         "from_project": "Depuis le code du projet",
         "from_module": "Depuis le module {module}"
-      },
-      "health": {
-        "verdict": "Santé de l'API",
-        "figures": "Indicateurs de santé de l'API"
       }
     },
     "live": {
@@ -272,7 +298,10 @@
       "resume": "Reprendre",
       "show": "Afficher",
       "verdict": {
-        "changed": "Statut changé : {from} → {to}"
+        "changed": "Statut changé : {from} → {to}",
+        "title": "Santé de l'API : {verdict}",
+        "description": "Avant : {previous}.",
+        "tab": "● {verdict} · {page}"
       }
     },
     "logs": {

@@ -2,7 +2,7 @@ import type {
   BlockText,
   ComposedText,
 } from "@antelopejs/interface-dms/base/types/composed-text";
-import { count, milliseconds, number, percent, text } from "./health-blocks";
+import { count, milliseconds, number, percent, text } from "./composed-text";
 import {
   HEALTH_THRESHOLDS,
   type HealthVerdict,

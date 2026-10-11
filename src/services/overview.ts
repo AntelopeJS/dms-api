@@ -1,10 +1,12 @@
 import type { ActivityFeedItem } from "@antelopejs/interface-dms/base/activity-feed";
 import type { TopListItem } from "@antelopejs/interface-dms/base/top-list-card";
+import type { ComposedText } from "@antelopejs/interface-dms/base/types/composed-text";
 import { getConfig } from "@/config";
 import type { RequestLogModel, RouteModel, RouteStatisticsModel } from "@/db";
 import type { RequestLogSample } from "@/db/models/request_log.model";
 import { MS_PER_MINUTE } from "@/types";
 import { cached } from "./aggregate-cache";
+import { count, milliseconds, percent, text } from "./composed-text";
 import {
   evaluateHealth,
   HEALTH_THRESHOLDS,
@@ -12,7 +14,6 @@ import {
   type RuleWindowsInfo,
   ruleWindowsInfo,
 } from "./health-rules";
-import { percent, slowRouteDetail, text } from "./health-blocks";
 import { logsLink, routeLink, routeRef } from "./links";
 import {
   type RouteHealthState,
@@ -78,7 +79,7 @@ export interface RangeInfo {
   to: string;
 }
 
-/** The API's health: what the Overview's banner and figures are made of. */
+/** The API's health: what the Overview's health hero shows. */
 export interface HealthPayload {
   verdict: HealthVerdict;
   /** Start of the current incident, or of the last one; null when none (or older than the lookback). */
@@ -543,6 +544,21 @@ export interface SlowRouteItem extends TopListItemPayload {
   p95Ms: number | null;
   maxMs: number;
   requests: number;
+}
+
+/** "p95 300 ms · max 300 ms · 6 calls" under a slowest route of the Overview. */
+function slowRouteDetail(route: {
+  p95: number | null;
+  calls: number;
+  max: number;
+}): ComposedText {
+  const figures = { calls: count(route.calls), max: milliseconds(route.max) };
+  if (route.p95 === null)
+    return text("overview.slowest.detail_no_p95", figures);
+  return text("overview.slowest.detail", {
+    ...figures,
+    p95: milliseconds(route.p95),
+  });
 }
 
 /** The routes with the highest average latency over the window. */

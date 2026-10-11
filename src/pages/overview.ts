@@ -5,7 +5,6 @@ import { ChartColumn } from "@antelopejs/interface-dms/base/chart";
 import { ChartCard } from "@antelopejs/interface-dms/base/chart-card";
 import { Grid, GridRow } from "@antelopejs/interface-dms/base/grid";
 import { DefaultLayout } from "@antelopejs/interface-dms/base/layouts";
-import { StatGroup } from "@antelopejs/interface-dms/base/stat-group";
 import { TopListCard } from "@antelopejs/interface-dms/base/top-list-card";
 import { PageController, RegisterPage } from "@antelopejs/interface-dms/page";
 import { logsLink } from "@/services/links";
@@ -56,8 +55,8 @@ const SERIES_LEGEND = {
 /**
  * Overview: is the API healthy, and where to look when it is not. The verdict
  * leads with its figures, what needs a look comes right under it, then the
- * trends; every row drills down to a route or to its requests. Every block is
- * a DMS one; the Live / Pause control of the toolbar refreshes them all.
+ * trends; every row drills down to a route or to its requests. The Live /
+ * Pause control of the toolbar refreshes every block.
  */
 @RegisterPage()
 export class OverviewPage extends PageController(
@@ -81,7 +80,7 @@ export class OverviewPage extends PageController(
       page: "overview",
       sinceUrl: "/api/monitoring/logs/recent/since",
       defaultWindow: OVERVIEW_DEFAULT_WINDOW,
-      verdictUrl: `${OVERVIEW_API}/health/verdict`,
+      verdictUrl: `${OVERVIEW_API}/health`,
     }),
     period: apiBlock("PeriodWindow", {
       scope: OVERVIEW_PERIOD,
@@ -98,19 +97,12 @@ export class OverviewPage extends PageController(
     dismissKey: "dms-api-beta-1",
   }).meta({ name: "$api.overview.beta.title", icon: "i-ph-flask" });
 
-  // The verdict, since when and why (`services/health-blocks.ts`).
-  static health = Banner({
+  // The verdict, since when and why, with the figures it rests on: a DMS
+  // Banner and StatGroup cannot give the "since" its tooltip, tell a change
+  // of verdict, say the figures are stale, nor mark the browser tab.
+  static health = apiBlock("HealthHero", {
     fetchUrl: `${OVERVIEW_API}/health`,
-  }).meta({ name: "$api.overview.health.verdict", icon: "i-ph-heartbeat" });
-
-  // The figures the verdict rests on, over the rules' 15 minutes.
-  static figures = StatGroup({
-    fetchUrl: `${OVERVIEW_API}/health/figures`,
-    layout: "joined",
-    columns: 4,
-    skeletonCount: 4,
-    label: "$api.overview.health.figures",
-  }).meta({ name: "$api.overview.health.figures", icon: "i-ph-gauge" });
+  });
 
   // The rows keep their ids whatever their order: the endpoints check their
   // permission by them (`src/routes/overview.ts`).
