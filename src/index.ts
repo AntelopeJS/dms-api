@@ -8,6 +8,7 @@ import "./pages";
 
 import path from "node:path";
 import { getRegisteredRoutes } from "@antelopejs/interface-api";
+import { Logging } from "@antelopejs/interface-core/logging";
 import {
   GetModel,
   RegisterSchema,
@@ -25,12 +26,15 @@ import {
   RouteModel,
   RouteStatisticsModel,
 } from "./db";
+import { registerLiveTopics } from "./realtime";
 import {
   loadSettings,
+  migrateStoredData,
   pruneAllStatistics,
   pruneRequestLogs,
   syncRoutes,
 } from "./services";
+import { stopLiveFeed } from "./services/live-feed";
 import { SCHEMA_NAME } from "./types/constants";
 
 let pruneTask: ScheduledTask | null = null;
@@ -53,6 +57,12 @@ export async function start(): Promise<void> {
   const routesModel = GetModel(RouteModel);
   await syncRoutes(routesModel, getRegisteredRoutes());
 
+  // Bring data stored by earlier versions in line, in the background: each
+  // pass runs once and the start does not wait for it.
+  void migrateStoredData().catch((err) =>
+    Logging.Error("[dms-api] migration failed:", err),
+  );
+
   const statsModel = GetModel(RouteStatisticsModel);
   const logModel = GetModel(RequestLogModel);
 
@@ -63,12 +73,15 @@ export async function start(): Promise<void> {
   });
 
   registerAutomationNodes();
+  // The live mode of the monitoring pages hears of new requests.
+  registerLiveTopics();
 }
 
 export function destroy(): void {}
 
 export async function stop(): Promise<void> {
   unregisterAutomationNodes();
+  stopLiveFeed();
   if (pruneTask) {
     await pruneTask.stop();
     pruneTask = null;
