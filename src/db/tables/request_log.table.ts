@@ -15,6 +15,46 @@ export interface RequestLogError {
   stack?: string;
 }
 
+/**
+ * Why a body was not stored, so the console can say it instead of an empty
+ * "no body":
+ *  - `disabled`: body capture is off (maximum body size 0);
+ *  - `too-large`: the request body went over the server's limit and was
+ *    refused (413) before anything read it;
+ *  - `not-json`: a type the capture cannot redact by key (text, XML, binary,
+ *    multipart, a JSON scalar);
+ *  - `malformed`: announced as JSON or a form, but did not parse;
+ *  - `empty`: there was no body;
+ *  - `not-read`: a body was sent, but the request was answered before any
+ *    handler read it (unknown route, rejected by a guard).
+ */
+export type RequestLogBodyOmission =
+  | "disabled"
+  | "too-large"
+  | "not-json"
+  | "malformed"
+  | "empty"
+  | "not-read";
+
+/**
+ * Who sent a request, when it is not the API's own traffic: `tester` for a
+ * request sent from the console's Tester. Such requests stay in the logs but
+ * are kept out of the statistics, the health and Needs attention.
+ */
+export type RequestLogSource = "tester";
+
+/** What the capture redacted from a request, section by section. */
+export interface RequestLogRedactions {
+  /** Query parameter values replaced by `[REDACTED]`. */
+  query: number;
+  /** Values replaced by `[REDACTED]` in the stored request body. */
+  requestBody: number;
+  /** Values replaced by `[REDACTED]` in the stored response body. */
+  responseBody: number;
+  /** Allow-listed headers left out because their name looks like a secret. */
+  headers: string[];
+}
+
 @RegisterTable(requestLogTableName, SCHEMA_NAME)
 export class RequestLog extends Table {
   // Leading field of the `timestamp_id` index, which also serves the plain
@@ -47,6 +87,24 @@ export class RequestLog extends Table {
   @Field("string")
   declare routeId?: string;
 
+  /**
+   * Method of the route that served the request, when it differs from the
+   * request's: `GET` for a HEAD answered by the GET handler, `ANY` for a
+   * handler registered on every method. The route of a log is
+   * `routeMethod ?? method` with `uri`.
+   */
+  @Field("string")
+  declare routeMethod?: string;
+
+  /** Who sent the request when it is not API traffic (see RequestLogSource). */
+  @Field("string")
+  declare source?: RequestLogSource;
+
+  /** The request's `x-request-id` header, to find a request its sender knows. */
+  @Index()
+  @Field("string")
+  declare requestId?: string;
+
   @Field("any")
   declare pathParams: Record<string, string>;
 
@@ -62,13 +120,26 @@ export class RequestLog extends Table {
   @Field("boolean")
   declare requestBodyTruncated: boolean;
 
+  /** Why the request body was not stored; absent when it was. */
+  @Field("string")
+  declare requestBodyOmitted?: RequestLogBodyOmission;
+
+  /** Bytes of the whole request body, when only its start is stored. */
+  @Field("number")
+  declare requestBodySize?: number;
+
   @Index()
   @Field("number")
   declare statusCode: number;
 
+  /**
+   * Time from the request entering the capture middleware to its response.
+   * Null when it could not be measured: the request never reached a route
+   * (unknown path), so no middleware stamped its start.
+   */
   @Index()
   @Field("number")
-  declare responseTimeMs: number;
+  declare responseTimeMs: number | null;
 
   @Field("any")
   declare responseHeaders: Record<string, string>;
@@ -78,6 +149,18 @@ export class RequestLog extends Table {
 
   @Field("boolean")
   declare responseBodyTruncated: boolean;
+
+  /** Why the response body was not stored; absent when it was. */
+  @Field("string")
+  declare responseBodyOmitted?: RequestLogBodyOmission;
+
+  /** Bytes of the whole response body, when only its start is stored. */
+  @Field("number")
+  declare responseBodySize?: number;
+
+  /** What the capture redacted; absent on logs captured before it counted. */
+  @Field("any")
+  declare redactions?: RequestLogRedactions;
 
   @Field("any")
   declare error?: RequestLogError;

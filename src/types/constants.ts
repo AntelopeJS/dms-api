@@ -27,8 +27,11 @@ export const ELEVATED_ERROR_RATE = 0.05;
 /** Error rate (0-1) above which the summary health is reported as "down". */
 export const CRITICAL_ERROR_RATE = 0.2;
 
-/** Default statistics retention period in milliseconds (30 days) */
-export const STATISTICS_RETENTION_MS = 2_592_000_000;
+/**
+ * Default retention of the request logs in milliseconds (30 days): logs older
+ * than this are pruned every hour. The statistics have their own retention.
+ */
+export const REQUEST_LOG_RETENTION_MS = 2_592_000_000;
 
 /** Threshold in milliseconds to consider a request as slow (1 second) */
 export const SLOW_REQUEST_THRESHOLD_MS = 1000;
@@ -61,6 +64,48 @@ export const REQUEST_LOG_DEFAULT_HEADERS = [
   "origin",
 ] as const;
 
+/**
+ * Path prefixes of the traffic the console does not capture: its own
+ * endpoints (polled by every open page), the DMS realtime channel and the
+ * DMS's own `/dms/*` endpoints. Counting them would make the dashboard watch
+ * itself and drown the API's traffic under the console's.
+ */
+export const INTERNAL_PATH_PREFIXES = [
+  MONITORING_API_PREFIX,
+  "/api/realtime",
+  "/dms",
+] as const;
+
+/**
+ * Last segment of the page layout route the DMS registers for every page
+ * (`<page>/pagelayout`), called by the DMS frontend to draw a page: internal
+ * traffic too, whichever module declared the page.
+ */
+export const INTERNAL_ROUTE_SUFFIX = "/pagelayout";
+
+/**
+ * Headers a request names its source in (`tester`). The Tester sends both:
+ * the DMS frontend's proxy strips every `x-dms-*` header before forwarding,
+ * so only `x-antelopejs-api-source` reaches the API through it today.
+ */
+export const REQUEST_SOURCE_HEADERS = [
+  "x-dms-api-source",
+  "x-antelopejs-api-source",
+] as const;
+
+/** Header a request names its own id in, stored to find the request again. */
+export const REQUEST_ID_HEADER = "x-request-id";
+
+/** Longest `x-request-id` value stored; longer ones are not ids. */
+export const REQUEST_ID_MAX_LENGTH = 128;
+
+/**
+ * Largest page of the request table's route. The DMS table loads more rows
+ * by asking again from the first row with a larger limit, so this bounds what
+ * "Load more" can reach: 100 clicks of 50 rows.
+ */
+export const REQUEST_LOG_LIST_MAX_ROWS = 5000;
+
 /** Content-types whose bodies are safe to capture as text */
 export const REQUEST_LOG_TEXT_CONTENT_TYPE_PREFIXES = [
   "application/json",
@@ -68,3 +113,20 @@ export const REQUEST_LOG_TEXT_CONTENT_TYPE_PREFIXES = [
   "application/x-www-form-urlencoded",
   "text/",
 ] as const;
+
+/**
+ * Realtime topic the console's live mode listens on: the capture publishes on
+ * it what it logged since its last message (see `services/live-feed.ts`), and
+ * the Overview, Request logs and Routes pages are bound to it.
+ */
+export const LIVE_REQUESTS_TOPIC = "api:monitor:requests";
+
+/** Type of the messages published on {@link LIVE_REQUESTS_TOPIC}. */
+export const LIVE_REQUESTS_EVENT = "requests";
+
+/**
+ * Least time between two messages on {@link LIVE_REQUESTS_TOPIC}. The DMS
+ * debounces what it receives (180 ms, restarted by each event) and a page
+ * refreshes on each message: one per request would never settle.
+ */
+export const LIVE_BATCH_MS = 1_500;

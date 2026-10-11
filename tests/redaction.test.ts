@@ -1,0 +1,170 @@
+import { describe, expect, it } from "vitest";
+import {
+  isSensitiveKey,
+  passesLuhn,
+  redactSearchParams,
+  redactStoredBody,
+  redactValue,
+  sanitizeBody,
+} from "@/services/request-log/redaction";
+
+describe("isSensitiveKey", () => {
+  it.each([
+    "password",
+    "X-Api-Key",
+    "portal_token",
+    "accessToken",
+    "accesstoken",
+    "clientSecret",
+    "cardNumber",
+    "card_number",
+    "card_cvc",
+    "cvc",
+    "CVV2",
+    "iban",
+    "customerIban",
+    "card",
+    "creditCard",
+    "pin",
+    "userPin",
+    "pan",
+    "ssn",
+    "otp",
+    "otpCode",
+    "totp",
+    "recovery_codes",
+    "set-cookie",
+    "authorization",
+  ])("redacts %s", (key) => {
+    expect(isSensitiveKey(key)).toBe(true);
+  });
+
+  it.each([
+    "footprint",
+    "isNotPaid",
+    "slotPosition",
+    "hotpink",
+    "pivotPoint",
+    "tokenizedAmount",
+    "company",
+    "spin",
+    "cardBrand",
+    "card_last4",
+    "shipping",
+    "currency",
+  ])("keeps %s", (key) => {
+    expect(isSensitiveKey(key)).toBe(false);
+  });
+});
+
+describe("card numbers", () => {
+  it("checks the Luhn digit", () => {
+    expect(passesLuhn("4242424242424242")).toBe(true);
+    expect(passesLuhn("4242424242424241")).toBe(false);
+  });
+
+  it("redacts a card number under any key, and counts it", () => {
+    const { value, redacted } = redactValue({
+      note: "paid with 4242 4242 4242 4242 today",
+      number: 4111111111111111,
+      createdAt: 1786399200000,
+      order: "5105-1051-0510-5100",
+      reference: "4242424242424241",
+    });
+    expect(value).toEqual({
+      note: "paid with [REDACTED] today",
+      number: "[REDACTED]",
+      createdAt: 1786399200000,
+      order: "[REDACTED]",
+      reference: "4242424242424241",
+    });
+    expect(redacted).toBe(3);
+  });
+
+  it("redacts the card data the QA found in clear", () => {
+    const { value, redacted } = redactValue({
+      cardNumber: "4242 4242 4242 4242",
+      card_cvc: "123",
+      card: { number: "4242424242424242", cvc: "123" },
+      iban: "FR7630006000011234567890189",
+      footprint: "carbon-12kg",
+    });
+    expect(value).toEqual({
+      cardNumber: "[REDACTED]",
+      card_cvc: "[REDACTED]",
+      card: "[REDACTED]",
+      iban: "[REDACTED]",
+      footprint: "carbon-12kg",
+    });
+    expect(redacted).toBe(4);
+  });
+});
+
+describe("redactSearchParams", () => {
+  it("counts the redacted parameters", () => {
+    const { value, redacted } = redactSearchParams(
+      new URLSearchParams("token=a&api_key=b&page=2&page=3"),
+    );
+    expect(value.toString()).toBe(
+      "token=%5BREDACTED%5D&api_key=%5BREDACTED%5D&page=2&page=3",
+    );
+    expect(redacted).toBe(2);
+  });
+});
+
+describe("sanitizeBody", () => {
+  it("says why a body is not stored", () => {
+    expect(sanitizeBody("{nope", "application/json")).toMatchObject({
+      omitted: "malformed",
+    });
+    expect(sanitizeBody("<a/>", "application/xml")).toMatchObject({
+      omitted: "not-json",
+    });
+    expect(sanitizeBody('"a token"', "application/json")).toMatchObject({
+      omitted: "not-json",
+    });
+  });
+
+  it("redacts a form and counts it", () => {
+    expect(
+      sanitizeBody(
+        "password=x&card=4242424242424242&name=Jane",
+        "application/x-www-form-urlencoded",
+      ),
+    ).toEqual({
+      text: "password=%5BREDACTED%5D&card=%5BREDACTED%5D&name=Jane",
+      redacted: 2,
+    });
+  });
+});
+
+describe("redactStoredBody", () => {
+  it("redacts a stored JSON body by today's rules", () => {
+    const stored = JSON.stringify({
+      password: "[REDACTED]",
+      cardNumber: "4242 4242 4242 4242",
+      items: [{ sku: "DESK" }],
+    });
+    expect(JSON.parse(redactStoredBody(stored).value)).toEqual({
+      password: "[REDACTED]",
+      cardNumber: "[REDACTED]",
+      items: [{ sku: "DESK" }],
+    });
+  });
+
+  it("leaves a body that has nothing new to redact as it was", () => {
+    const stored = '{"password":"[REDACTED]","sku":"DESK"}';
+    expect(redactStoredBody(stored).value).toBe(stored);
+    const form = "password=%5BREDACTED%5D&name=Jane";
+    expect(redactStoredBody(form).value).toBe(form);
+  });
+
+  it("redacts a JSON body cut at the size limit member by member", () => {
+    const { value } = redactStoredBody(
+      '{"card_cvc":"123","note":"4242424242424242","cardNumber":"4242 42',
+    );
+    expect(value).toBe(
+      '{"card_cvc":"[REDACTED]","note":"[REDACTED]","cardNumber":"[REDACTED]"',
+    );
+  });
+});
