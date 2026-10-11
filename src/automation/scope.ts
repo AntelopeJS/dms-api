@@ -10,12 +10,3 @@ import { getActiveScope } from "@/services/settings";
 export async function activeScopeKeys(): Promise<Set<string> | null> {
   return getScopedRouteKeys(GetModel(RouteModel), getActiveScope());
 }
-
-/** Scoped route count: size of the key set, or every synced route for "all". */
-export async function countScopedRoutes(
-  keys: Set<string> | null,
-): Promise<number> {
-  if (keys) return keys.size;
-  const all = await GetModel(RouteModel).getAll();
-  return all.length;
-}

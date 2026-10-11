@@ -1,13 +1,14 @@
 import { GetModel } from "@antelopejs/interface-database-decorators";
 import type { ActionType } from "@antelopejs/interface-dms-automation";
-import { RouteStatisticsModel } from "@/db";
+import { RequestLogModel, RouteStatisticsModel } from "@/db";
 import {
   getStatusBreakdown,
   getSummaryKpis,
   type StatusBreakdown,
   type SummaryKpis,
 } from "@/services/statistics-aggregate";
-import { activeScopeKeys, countScopedRoutes } from "./scope";
+import { countRoutes } from "@/services/route-catalog";
+import { activeScopeKeys } from "./scope";
 
 interface GetApiHealthInput {
   days?: number;
@@ -60,9 +61,13 @@ export const getApiHealthAction: ActionType<
   },
   async execute(input) {
     const keys = await activeScopeKeys();
-    const totalRoutes = await countScopedRoutes(keys);
+    const totalRoutes = countRoutes(keys);
     const statsModel = GetModel(RouteStatisticsModel);
-    const kpis = await getSummaryKpis(statsModel, totalRoutes, keys);
+    const kpis = await getSummaryKpis(
+      { logs: GetModel(RequestLogModel), stats: statsModel },
+      totalRoutes,
+      keys,
+    );
     const statusBreakdown = await getStatusBreakdown(
       statsModel,
       input.days,
