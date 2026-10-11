@@ -164,19 +164,18 @@ themselves (health hero, tab counters, tree footer).
 
 **Q16. Layout?**
 
-1. `HStack`: `ScopeChip` · `Spacer` · `PeriodSelector` (segmented, 24 h / 7 d / 30 d, against the previous period).
-2. `Banner` (beta, `info`, `sm`, dismissible): one line instead of ~90 words (F14).
-3. Health `Banner` + `StatGroup`: verdict (Operational / Degraded / Down), since when, reasons
+1. `HStack`: `ScopeChip` · `BetaBadge` (its meaning in a tooltip, F14) · `Spacer` · `LiveControl` · `PeriodWindow` (1 h / 24 h / 7 d / 30 d, against the previous period).
+2. `HealthHero`: verdict (Operational / Degraded / Down), since when, reasons
    (n failing, n slow), four metrics (calls today, errors 24 h, average
    latency, routes in scope) and "View n server errors" (F01). With no request
    captured yet, it becomes the first-run guide (F17).
-4. `ChartCard` *Traffic & errors* (`ChartMixed`: requests as an area, errors
+3. `ChartCard` *Traffic & errors* (`ChartMixed`: requests as an area, errors
    as columns on their own axis, previous-period delta) and `TopListCard`
    *Responses by class* (2xx / 4xx / 5xx with share and bars).
-5. `ChartCard` *Error share per day* (`ChartColumn`, 4xx and 5xx stacked, 2xx
+4. `ChartCard` *Error share per day* (`ChartColumn`, 4xx and 5xx stacked, 2xx
    left out so small changes show, F07), `ActivityFeed` *Needs attention*
    and `TopListCard` *Slowest routes*.
-6. `Card` *Recent requests* around a compact `TableView.fromSource` (each row
+5. `Card` *Recent requests* around a compact `TableView.fromSource` (each row
    opens the request drawer), and `ActivityFeed` *Activity*.
 
 **Q17. Why `ActivityFeed` for "Needs attention"?**
