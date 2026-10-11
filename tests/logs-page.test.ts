@@ -24,6 +24,24 @@ describe("LogsPage", () => {
     expect(options.quickFilters).toBeUndefined();
   });
 
+  it("opens a request in the DMS side panel on a single click", () => {
+    const options = LogsPage.requests.serializeSync().options as {
+      rowClick?: string;
+      rowActions: { custom: { isDefault?: boolean; target: unknown }[] };
+    };
+    expect(options.rowClick).toBe("single");
+    expect(JSON.stringify(options)).toContain(
+      '"fetchRowUrl":"/api/monitoring/logs/{id}"',
+    );
+    const [action] = options.rowActions.custom;
+    expect(action?.isDefault).toBe(true);
+    expect(action?.target).toMatchObject({
+      type: "sidePanel",
+      title: "$api.logs.drawer_title",
+      positionLabel: "$api.request.position",
+    });
+  });
+
   it("shows the error message under a key no old preference hides", () => {
     const options = LogsPage.requests.serializeSync().options as {
       columns: { id: string }[];

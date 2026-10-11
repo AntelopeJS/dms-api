@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { byteLength, formatMs } from '../../utils/format'
 import {
   decodePath,
@@ -8,19 +8,15 @@ import {
   isRequestId,
   NO_REDACTIONS,
   originalBodySize,
-  readRecord,
   type Redactions,
   relativeTime,
-  REQUEST_PANEL_ID,
   type RequestPivot,
   requestPivots,
   requestTitle,
   requestUrl,
   type RouteLatency,
   thresholdRatio,
-  useRequestPanel,
   withParam,
-  writeRecord,
 } from '../../utils/requestDrawer'
 import { capturedSnippetRequest, toCurl } from '../../utils/snippets'
 import ApiBody from '../internal/ApiBody.vue'
@@ -32,7 +28,9 @@ import ApiStatusBadge from '../internal/ApiStatusBadge.vue'
 import ApiTesterBadge from '../internal/ApiTesterBadge.vue'
 
 // One captured request, in the DMS side panel on the right, which a request
-// table's row opens (`utils/requestDrawer.ts`). The header stays put: where the
+// table's row opens (a `sidePanel` row action, `src/pages/request-table.ts`).
+// The DMS draws the panel's header: its title, "Request 3 of 50 shown", the
+// previous / next buttons, J / K and close. Here, the top stays put: where the
 // request went, how it ended, what to do with it. Below, the summary puts
 // the error first, then what the request was and how long it took against
 // the slow threshold; then what was sent and what came back. Every action
@@ -90,15 +88,6 @@ interface RequestLog {
 const MODULE_BASE = '/modules/api'
 /** Pages a link to the request logs may name as its origin (`?from=`). */
 const LINK_ORIGINS = ['overview', 'routes']
-const LOGS_API = '/api/monitoring/logs'
-/**
- * Where a page's request table reads a request in full: by the permission of
- * that table, so the panel opens wherever its rows show.
- */
-const DETAIL_API: Record<string, string> = {
-  overview: `${LOGS_API}/recent`,
-  routes: `${LOGS_API}/routes`,
-}
 /** The settings an owner reads: body capture off says why a body is missing. */
 const SETTINGS_SUMMARY_API = '/api/monitoring/settings/summary'
 /** Where the captured headers are listed. */
@@ -111,35 +100,27 @@ const PIVOT_ICONS: Record<RequestPivot['kind'], string> = {
   slow_route: 'i-ph-timer',
 }
 
+const props = defineProps<{
+  /** The row the table opened: its `_id` names the request. */
+  rowData?: { _id?: string }
+  /**
+   * Where the table reads a request in full, by its own permission (`/<id>`
+   * appended), so the panel opens wherever its rows show.
+   */
+  detailUrl: string
+}>()
+
 const { t } = useI18n()
 const locale = useFormatLocale()
 const toast = useToast()
 // Read through the router, not `useDmsRoute()`: each call of it reassigns
 // the route's query, which the request tables watch for their filters.
 const router = useDmsRouter()
-const panel = useRequestPanel()
-const sidePanel = useSidePanel(REQUEST_PANEL_ID)
 
-// The request a row of this page opened (the URL was rewritten in place,
-// which the router does not see); else the one the URL names (a reload, a
-// link).
-const requestId = computed(() => {
-  const { id, path } = panel.value
-  const route = router.currentRoute.value
-  return id && path === route.path ? id : readRecord(route.query)
-})
+const requestId = computed(() => props.rowData?._id ?? null)
 
-// The DMS keeps the open panel in a cookie: a page that names no request
-// (another page, a tab reopened) closes it rather than showing an error.
-function closeWithoutRequest() {
-  if (!requestId.value) sidePanel.close()
-}
-onMounted(closeWithoutRequest)
-watch(() => router.currentRoute.value.path, closeWithoutRequest)
-
-// The page the panel is open on: it reads the request by that page's
-// permission, a link to the logs says where it came from, and the route on
-// screen is not offered again.
+// The page the panel is open on: a link to the logs says where it came from,
+// and the route on screen is not offered again.
 const page = computed(() => {
   const current = router.currentRoute.value.path
   return current.startsWith(`${MODULE_BASE}/`)
@@ -154,7 +135,7 @@ const {
   refresh,
 } = useApiResource<RequestLog>(() =>
   requestId.value && isRequestId(requestId.value)
-    ? `${DETAIL_API[page.value] ?? LOGS_API}/${encodeURIComponent(requestId.value)}`
+    ? `${props.detailUrl}/${encodeURIComponent(requestId.value)}`
     : null,
 )
 const apiOrigin = useApiOrigin(() => log.value?.apiOrigin)
@@ -178,12 +159,7 @@ const failure = computed<'invalid' | 'not_found' | 'forbidden' | 'error'>(
   },
 )
 
-function close() {
-  panel.value = { id: null, path: null, focus: false }
-  sidePanel.close()
-  writeRecord(null)
-}
-
+// Closing is the DMS header's: only a failed read offers something here.
 const failureActions = computed(() =>
   failure.value === 'error'
     ? [
@@ -193,17 +169,10 @@ const failureActions = computed(() =>
           onClick: () => refresh(),
         },
       ]
-    : [
-        {
-          label: t('api.request.close'),
-          icon: 'i-ph-x',
-          onClick: close,
-        },
-      ],
+    : [],
 )
 
 // --- the header ---
-const heading = ref<HTMLElement | null>(null)
 const title = computed(() =>
   log.value ? requestTitle(log.value) : t('api.logs.drawer_title'),
 )
@@ -223,17 +192,6 @@ const ratio = computed(() =>
   thresholdRatio(timing.value?.ratio ?? 0, locale.value),
 )
 
-// A row opened the panel: it takes the focus, and closing gives it back.
-watch(
-  [() => panel.value.focus, heading],
-  ([focus, element]) => {
-    if (!focus || !element) return
-    panel.value.focus = false
-    void nextTick(() => element.focus({ preventScroll: true }))
-  },
-  { immediate: true },
-)
-
 // --- the error, folded to six lines ---
 const message = ref<HTMLElement | null>(null)
 const messageOpen = ref(false)
@@ -244,12 +202,6 @@ watch([message, () => log.value?.error?.message], async ([element]) => {
   if (!element) return
   await nextTick()
   messageClamped.value = element.scrollHeight > element.clientHeight + 1
-})
-
-// Another request starts on its summary, its error folded.
-watch(requestId, () => {
-  tab.value = 'overview'
-  messageOpen.value = false
 })
 
 // --- the summary ---
@@ -413,34 +365,11 @@ const count = (value: number) =>
 </script>
 
 <template>
-  <section
-    class="flex min-h-0 flex-col"
-    :aria-busy="pending"
-    @keydown.esc.exact="close"
-  >
+  <section class="-m-4 flex min-h-0 flex-col" :aria-busy="pending">
     <header
-      class="border-default flex shrink-0 flex-col gap-2.5 border-b px-4 pt-3 sm:px-5"
+      class="border-default bg-default sticky top-0 z-10 flex shrink-0 flex-col gap-2.5 border-b px-4 pt-3 sm:px-5"
     >
-      <div class="flex items-center gap-1">
-        <span class="grow" />
-        <UTooltip :text="t('api.request.close')">
-          <UButton
-            size="sm"
-            color="neutral"
-            variant="ghost"
-            icon="i-ph-x"
-            :aria-label="t('api.request.close')"
-            @click="close"
-          />
-        </UTooltip>
-      </div>
-
-      <h2
-        ref="heading"
-        tabindex="-1"
-        class="flex min-w-0 items-center gap-2 outline-none"
-        :aria-label="title"
-      >
+      <h3 class="flex min-w-0 items-center gap-2" :aria-label="title">
         <template v-if="log">
           <ApiMethodBadge :method="log.method" />
           <bdi class="min-w-0 truncate">
@@ -454,7 +383,7 @@ const count = (value: number) =>
         <span v-else class="text-highlighted text-[15px] font-semibold">
           {{ title }}
         </span>
-      </h2>
+      </h3>
 
       <template v-if="log">
         <div class="-mt-1 flex min-w-0 items-center gap-1">

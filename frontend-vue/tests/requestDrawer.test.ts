@@ -1,212 +1,17 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import {
   bodyOmission,
   decodePath,
   durationScale,
-  hrefWithRecord,
   isRequestId,
-  openRequestMiddleware,
-  opensRequestInPlace,
   originalBodySize,
-  readRecord,
-  REQUEST_PANEL,
-  REQUEST_PANEL_ID,
   requestClock,
   requestPivots,
   requestTitle,
   requestUrl,
   thresholdRatio,
   withParam,
-  writeRecord,
 } from '../app/utils/requestDrawer'
-
-const LOGS = '/modules/api/logs'
-const ROUTES = '/modules/api/routes'
-const ORIGIN = 'http://console.test'
-
-describe('requestDrawer', () => {
-  it('opens a row in place on the page already shown', () => {
-    expect(
-      opensRequestInPlace(
-        { path: ROUTES, query: { record: 'r1' } },
-        { path: ROUTES, query: { route: 'GET /users/:id', tab: '0' } },
-      ),
-    ).toBe(true)
-    expect(
-      opensRequestInPlace(
-        { path: LOGS, query: { record: 'r2', error: 'boom' } },
-        { path: LOGS, query: { error: 'boom' } },
-      ),
-    ).toBe(true)
-  })
-
-  it('leaves a visit to another page, or changing more, alone', () => {
-    expect(
-      opensRequestInPlace(
-        { path: LOGS, query: { record: 'r1' } },
-        { path: ROUTES, query: {} },
-      ),
-    ).toBe(false)
-    expect(
-      opensRequestInPlace(
-        { path: LOGS, query: { record: 'r1', error: 'other' } },
-        { path: LOGS, query: { error: 'boom' } },
-      ),
-    ).toBe(false)
-    expect(
-      opensRequestInPlace({ path: LOGS, query: {} }, { path: LOGS, query: {} }),
-    ).toBe(false)
-  })
-
-  it('reads and writes the open request', () => {
-    expect(readRecord({ record: 'r1' })).toBe('r1')
-    expect(readRecord({ record: ['r1'] })).toBe('r1')
-    expect(readRecord({ record: '' })).toBeNull()
-    expect(readRecord({})).toBeNull()
-    expect(hrefWithRecord(`${ORIGIN}${LOGS}?slow=true&record=r1`)).toBe(
-      `${ORIGIN}${LOGS}?slow=true`,
-    )
-    expect(hrefWithRecord(`${ORIGIN}${LOGS}?slow=true`, 'r2')).toBe(
-      `${ORIGIN}${LOGS}?slow=true&record=r2`,
-    )
-  })
-})
-
-describe('history', () => {
-  /**
-   * The browser's session history, as far as the panel touches it: its
-   * entries, the one on screen, and the `popstate` a traverse fires, which
-   * Inertia answers by mounting the page anew.
-   */
-  function browser(href: string) {
-    // Inertia's state of the entry: its page, its scroll positions.
-    const inertia = { page: { component: 'Logs', url: LOGS } }
-    const entries = [{ state: inertia as unknown, url: href }]
-    let index = 0
-    const popstate = vi.fn()
-    const location = {
-      get href() {
-        return entries[index].url
-      },
-    }
-    const history = {
-      get state() {
-        return entries[index].state
-      },
-      get length() {
-        return entries.length
-      },
-      pushState: vi.fn((state: unknown, _title: string, url: string) => {
-        entries.splice(index + 1, entries.length, { state, url })
-        index++
-      }),
-      replaceState: vi.fn((state: unknown, _title: string, url: string) => {
-        entries[index] = { state, url }
-      }),
-      back: vi.fn(() => {
-        if (index === 0) return
-        index--
-        popstate(entries[index].state)
-      }),
-    }
-    vi.stubGlobal('window', { location, history })
-    return { inertia, history, location, popstate }
-  }
-
-  // The DMS composables the middleware opens the panel with.
-  const open = vi.fn()
-  const panel = { value: {} as Record<string, unknown> }
-  beforeEach(() => {
-    open.mockClear()
-    panel.value = {}
-    vi.stubGlobal('useSidePanel', (id: string) => {
-      expect(id).toBe(REQUEST_PANEL_ID)
-      return { open }
-    })
-    vi.stubGlobal('useDmsState', () => panel)
-  })
-
-  afterEach(() => {
-    vi.unstubAllGlobals()
-  })
-
-  it('opens a row in place, without a visit or a history entry', () => {
-    const { history, location, inertia } = browser(`${ORIGIN}${LOGS}?slow=true`)
-    const result = openRequestMiddleware(
-      { path: LOGS, query: { record: 'r1' } },
-      { path: LOGS, query: { slow: 'true' } },
-    )
-    expect(result).toBe(false)
-    expect(open).toHaveBeenCalledOnce()
-    expect(panel.value).toEqual({ id: 'r1', path: LOGS, focus: true })
-    expect(location.href).toBe(`${ORIGIN}${LOGS}?slow=true&record=r1`)
-    expect(history.pushState).not.toHaveBeenCalled()
-    expect(history.length).toBe(1)
-    // Inertia's state of the entry is the same object: nothing to restore.
-    expect(history.state).toBe(inertia)
-  })
-
-  it('opens and closes without a traverse Inertia would answer', () => {
-    const start = `${ORIGIN}${LOGS}?window=24h`
-    const { history, location, popstate, inertia } = browser(start)
-    openRequestMiddleware(
-      { path: LOGS, query: { record: 'r1' } },
-      { path: LOGS, query: { window: '24h' } },
-    )
-    // Another row opened: the request open is replaced.
-    openRequestMiddleware(
-      { path: LOGS, query: { record: 'r2' } },
-      { path: LOGS, query: { window: '24h' } },
-    )
-    expect(location.href).toBe(`${ORIGIN}${LOGS}?window=24h&record=r2`)
-    // ✕ or Esc.
-    writeRecord(null)
-    expect(location.href).toBe(start)
-    expect(history.length).toBe(1)
-    expect(history.pushState).not.toHaveBeenCalled()
-    expect(history.back).not.toHaveBeenCalled()
-    expect(popstate).not.toHaveBeenCalled()
-    expect(history.state).toBe(inertia)
-  })
-
-  it('closes a deep link in place, its entry kept', () => {
-    const { history, location } = browser(
-      `${ORIGIN}${LOGS}?record=r1&slow=true`,
-    )
-    writeRecord(null)
-    expect(location.href).toBe(`${ORIGIN}${LOGS}?slow=true`)
-    expect(history.length).toBe(1)
-  })
-
-  it('lets a visit to another page go on, the panel open on its request', () => {
-    const { history } = browser(`${ORIGIN}${ROUTES}`)
-    expect(
-      openRequestMiddleware(
-        { path: LOGS, query: { record: 'r1' } },
-        { path: ROUTES, query: {} },
-      ),
-    ).toBeUndefined()
-    expect(open).toHaveBeenCalledOnce()
-    expect(history.replaceState).not.toHaveBeenCalled()
-  })
-
-  it("leaves the visits naming no request, and other modules' pages, alone", () => {
-    browser(`${ORIGIN}${LOGS}`)
-    expect(
-      openRequestMiddleware(
-        { path: LOGS, query: {} },
-        { path: LOGS, query: {} },
-      ),
-    ).toBeUndefined()
-    expect(
-      openRequestMiddleware(
-        { path: '/modules/crm/contacts', query: { record: 'c1' } },
-        { path: '/modules/crm/contacts', query: {} },
-      ),
-    ).toBeUndefined()
-    expect(open).not.toHaveBeenCalled()
-  })
-})
 
 describe('reading a request', () => {
   it('decodes a path as people read it, and leaves a broken one as is', () => {
@@ -357,16 +162,6 @@ describe('reading a request', () => {
         }),
       ).toEqual(['same_route', 'same_path'])
     })
-  })
-
-  it('leaves a laptop room for the page next to the docked panel', () => {
-    const sidebar = 240
-    expect(1280 - sidebar - REQUEST_PANEL.defaultWidth).toBeGreaterThanOrEqual(
-      600,
-    )
-    expect(REQUEST_PANEL.minWidth).toBeLessThanOrEqual(
-      REQUEST_PANEL.defaultWidth,
-    )
   })
 
   it('adds a parameter to a link', () => {

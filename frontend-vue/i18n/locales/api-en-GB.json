@@ -412,8 +412,6 @@
         "request": "Request",
         "response": "Response"
       },
-      "panel_label": "Request detail",
-      "close": "Close (Esc)",
       "replay": "Replay in tester",
       "copy_curl": "Copy cURL",
       "copy_url": "Copy the URL",
@@ -487,7 +485,8 @@
       "forbidden_title": "You cannot open this request",
       "forbidden_description": "Your role shows this list but not the detail of its requests. Ask an administrator for access to Request logs.",
       "error_title": "Could not open this request",
-      "error_description": "The console did not answer. Try again."
+      "error_description": "The console did not answer. Try again.",
+      "position": "Request {index} of {total} shown"
     },
     "routes": {
       "title": "Routes",

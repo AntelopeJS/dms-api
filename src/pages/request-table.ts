@@ -7,6 +7,7 @@ import {
 } from "@antelopejs/interface-dms/base/table-view";
 import type { ComponentBuilder } from "@antelopejs/interface-dms/component";
 import { LOG_WINDOWS } from "@/services/request-log/list";
+import { apiBlock } from "./blocks";
 import { TimeDisplay } from "./displays";
 
 /** Route answering the request tables, in the `TableView.fromSource` shape. */
@@ -169,11 +170,20 @@ const FILTER_COLUMNS = new Set([
 export type RequestTablePage = "logs" | "overview" | "routes";
 
 /**
- * Opens a request of the table in the side panel on the right: a page target
- * naming `?record=` on the page the table is on, which the module's
- * middleware turns into the panel opening in place, without a visit
- * (`frontend-vue/app/utils/requestDrawer.ts`). Drawn inline, and run by a
- * double click on the row.
+ * Where each page's table reads one request: the list's own route, by the
+ * same permission, so the panel opens wherever the rows show.
+ */
+const DETAIL_URLS: Record<RequestTablePage, string> = {
+  logs: REQUEST_LOGS_URL,
+  overview: `${REQUEST_LOGS_URL}/recent`,
+  routes: `${REQUEST_LOGS_URL}/routes`,
+};
+
+/**
+ * Opens a request of the table in the DMS side panel on the right, on a
+ * single click: the DMS draws its header ("Request 3 of 50 shown", ∧ ∨, J / K,
+ * close), highlights the open row and keeps it in the URL (`?record=`);
+ * `RequestDetail` draws the request.
  */
 function requestPanelAction(page: RequestTablePage) {
   return {
@@ -182,8 +192,10 @@ function requestPanelAction(page: RequestTablePage) {
     isVisible: true,
     isDefault: true,
     target: {
-      type: "page" as const,
-      url: `/modules/api/${page}?record={_id}`,
+      type: "sidePanel" as const,
+      component: apiBlock("RequestDetail", { detailUrl: DETAIL_URLS[page] }),
+      title: "$api.logs.drawer_title",
+      positionLabel: "$api.request.position",
     },
   };
 }
@@ -259,6 +271,9 @@ export function requestTable(
     columns: picked,
     fetchUrl,
     rowIdKey: "_id",
+    rowClick: "single",
+    // A `?record=` beyond the rows listed (a link, an older request).
+    fetchRowUrl: `${DETAIL_URLS[page]}/{id}`,
     capabilities: { search: true, sort: true, paginate: true, filter: true },
     rowActions: { custom: [requestPanelAction(page)] },
   }).mergeOptions({

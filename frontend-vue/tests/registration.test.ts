@@ -2,7 +2,6 @@ import { expect, it, vi } from 'vitest'
 import frontendModule from '../dms.frontend'
 
 vi.mock('../app/plugins/displays', () => ({ default: () => {} }))
-vi.mock('../app/plugins/requestPanel', () => ({ default: () => {} }))
 
 it('registers the blocks the backend pages name, and nothing else', async () => {
   const registerComponent = vi.fn()
@@ -39,20 +38,9 @@ it('registers the blocks the backend pages name, and nothing else', async () => 
   )
   expect(names).not.toContain('ApiMethodBadge')
   expect(new Set(names).size).toBe(names.length)
-  // Both universal: the cell displays, and the side panel a request opens
-  // in, which a reload renders open.
-  expect(registerPlugin).toHaveBeenCalledTimes(2)
-  for (const [, options] of registerPlugin.mock.calls)
-    expect(options).toEqual({ clientOnly: false })
-  // A row opens its request in the side panel, over the page's query.
-  expect(registerMiddleware).toHaveBeenCalledWith(
-    'dms-api-open-request',
-    expect.any(Function),
-    { global: true },
-  )
-  expect(registerMiddleware.mock.calls.map(([name]) => name)).toEqual([
-    'dms-api-open-request',
-  ])
-  for (const [, , options] of registerMiddleware.mock.calls)
-    expect(options).toEqual({ global: true })
+  // Universal: the cell displays draw in the server render too.
+  expect(registerPlugin).toHaveBeenCalledTimes(1)
+  expect(registerPlugin.mock.calls[0]?.[1]).toEqual({ clientOnly: false })
+  // The side panel and its URL are the DMS's: no middleware.
+  expect(registerMiddleware).not.toHaveBeenCalled()
 })

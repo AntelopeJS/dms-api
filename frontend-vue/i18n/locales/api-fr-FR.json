@@ -412,8 +412,6 @@
         "request": "Requête",
         "response": "Réponse"
       },
-      "panel_label": "Détail de la requête",
-      "close": "Fermer (Échap)",
       "replay": "Rejouer dans le testeur",
       "copy_curl": "Copier en cURL",
       "copy_url": "Copier l'URL",
@@ -487,7 +485,8 @@
       "forbidden_title": "Vous ne pouvez pas ouvrir cette requête",
       "forbidden_description": "Votre rôle affiche cette liste, mais pas le détail de ses requêtes. Demandez à un administrateur l'accès aux journaux des requêtes.",
       "error_title": "Impossible d'ouvrir cette requête",
-      "error_description": "La console n'a pas répondu. Réessayez."
+      "error_description": "La console n'a pas répondu. Réessayez.",
+      "position": "Requête {index} sur {total} affichées"
     },
     "routes": {
       "title": "Routes",
