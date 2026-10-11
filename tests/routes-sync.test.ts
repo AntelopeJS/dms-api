@@ -103,32 +103,6 @@ describe("syncRoutes", () => {
     ).toEqual(["GET /api/orders", "POST /api/orders"]);
   });
 
-  it("renames a row stored with its trailing slash, keeping its date", async () => {
-    const created = new Date(NOW - 10 * DAY);
-    routes.rows.set("old", {
-      _id: "old",
-      method: "GET",
-      uri: "/api/orders/",
-      module: "shop",
-      own: true,
-      createdAt: created,
-    } as Route);
-    routes.rows.set("dup", {
-      _id: "dup",
-      method: "GET",
-      uri: "/api/orders",
-      module: "shop",
-      own: true,
-      createdAt: new Date(NOW),
-    } as Route);
-    await syncRoutes(store, registered.routes as never, stats([]));
-    expect(routes.rows.get("old")).toMatchObject({
-      uri: "/api/orders",
-      createdAt: created,
-    });
-    expect(routes.rows.has("dup")).toBe(false);
-  });
-
   it("dates a route from its first recorded call", async () => {
     const firstCall = NOW - 60 * DAY;
     await syncRoutes(

@@ -52,14 +52,6 @@ export async function getOwnModuleIds(): Promise<Set<string>> {
   return own;
 }
 
-/**
- * Synchronize registered routes with the database
- * - Inserts new routes (with their owning module and own/module scope flag)
- * - Updates routes whose ownership info changed (or predates the module field)
- *   and routes stored under a path that is not canonical (trailing slash)
- * - Deletes routes that no longer exist
- * - Dates each route from its first recorded call when that is earlier
- */
 interface Ownership {
   module: string | null;
   own: boolean;
@@ -71,24 +63,6 @@ function ownershipOf(
 ): Ownership {
   const module = route.module ?? null;
   return { module, own: module !== null && ownModules.has(module) };
-}
-
-/**
- * Stored rows by canonical key. A second row for the same route (stored once
- * with its trailing slash, once without) is a duplicate to delete.
- */
-function indexExisting(existingRoutes: Route[]): {
-  byKey: Map<string, Route>;
-  duplicates: string[];
-} {
-  const byKey = new Map<string, Route>();
-  const duplicates: string[] = [];
-  for (const route of existingRoutes) {
-    const key = getRouteKey(route.method, route.uri);
-    if (byKey.has(key)) duplicates.push(route._id);
-    else byKey.set(key, route);
-  }
-  return { byKey, duplicates };
 }
 
 /** Routes that exist in the DB but are no longer registered. */
@@ -119,10 +93,7 @@ function computeInserts(
     }));
 }
 
-/**
- * Existing rows whose ownership changed (covers rows predating the fields),
- * or stored under a non-canonical path.
- */
+/** Existing rows whose module, or its own/module flag, changed. */
 function computeUpdates(
   existingByKey: Map<string, Route>,
   registeredByKey: Map<string, RegisteredRoute>,
@@ -133,17 +104,9 @@ function computeUpdates(
     const registered = registeredByKey.get(key);
     if (!registered) continue;
     const { module, own } = ownershipOf(registered, ownModules);
-    const uri = normalizeRoutePath(existing.uri);
-    if (
-      existing.module === module &&
-      existing.own === own &&
-      existing.uri === uri
-    ) {
-      continue;
-    }
+    if (existing.module === module && existing.own === own) continue;
     existing.module = module;
     existing.own = own;
-    existing.uri = uri;
     routesToUpdate.push(existing);
   }
   return routesToUpdate;
@@ -171,7 +134,7 @@ async function firstCalls(
 ): Promise<Map<string, number>> {
   const first = new Map<string, number>();
   for (const route of await stats.getAll()) {
-    const days = (route.statistics ?? []).map((day) => day.day);
+    const days = route.statistics.map((day) => day.day);
     if (days.length > 0) {
       first.set(getRouteKey(route.method, route.uri), Math.min(...days));
     }
@@ -180,9 +143,9 @@ async function firstCalls(
 }
 
 /**
- * A route row is created when the console first sees the route registered,
- * which for a project adopting the console (or a route that came back after a
- * reload) is long after the route was first called. Its creation date goes
+ * A route row is created when the console sees the route registered, and
+ * deleted when it is no longer: a route that comes back (a module reloaded)
+ * gets a new row, long after it was first called. Its creation date goes
  * back to its first recorded call, so it never reads "registered today" over
  * weeks of history.
  */
@@ -216,6 +179,12 @@ function signatureOf(registeredRoutes: RegisteredRoute[]): string {
 let syncedSignature: string | undefined;
 let pendingSync: Promise<void> | undefined;
 
+/**
+ * Synchronize registered routes with the database: insert the new ones (with
+ * their module and own/module flag), update those whose ownership changed,
+ * delete those no longer registered, and date each from its first recorded
+ * call when that is earlier.
+ */
 async function runSync(
   routesModel: RoutesStore,
   registeredRoutes: RegisteredRoute[],
@@ -228,15 +197,17 @@ async function runSync(
   const ownModules = withoutConsole(localModules, registeredRoutes);
   const now = new Date();
 
-  const { byKey: existingByKey, duplicates } = indexExisting(existingRoutes);
+  const existingByKey = new Map(
+    existingRoutes.map((route) => [
+      getRouteKey(route.method, route.uri),
+      route,
+    ]),
+  );
   const registeredByKey = new Map(
     registeredRoutes.map((r) => [getRouteKey(r.method, r.location), r]),
   );
 
-  const idsToDelete = [
-    ...duplicates,
-    ...computeDeletes(existingByKey, registeredByKey),
-  ];
+  const idsToDelete = computeDeletes(existingByKey, registeredByKey);
   const routesToInsert = computeInserts(
     registeredByKey,
     existingByKey,
