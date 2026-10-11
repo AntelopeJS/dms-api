@@ -43,7 +43,7 @@ export const getApiHealthAction: ActionType<
     type: "object",
     properties: {
       totalRoutes: { type: "number" },
-      routesWithErrors24h: { type: "number" },
+      failingRoutes: { type: "number" },
       slowRoutesCount: { type: "number" },
       averageLatencyMs: { type: "number" },
       callsToday: { type: "number" },

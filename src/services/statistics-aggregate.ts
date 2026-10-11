@@ -17,7 +17,7 @@ import { averageLatency, errorShare } from "./traffic";
 export interface SummaryKpis {
   totalRoutes: number;
   /** Routes failing now, by the health rules. */
-  routesWithErrors24h: number;
+  failingRoutes: number;
   /** Routes whose p95 over the last 24 h is at or above the slow threshold. */
   slowRoutesCount: number;
   averageLatencyMs: number;
@@ -112,7 +112,7 @@ export async function getSummaryKpis(
   }
   return {
     totalRoutes,
-    routesWithErrors24h: states.get("failing") ?? 0,
+    failingRoutes: states.get("failing") ?? 0,
     slowRoutesCount: states.get("slow") ?? 0,
     averageLatencyMs: timedRequests > 0 ? totalLatency / timedRequests : 0,
     callsToday,
