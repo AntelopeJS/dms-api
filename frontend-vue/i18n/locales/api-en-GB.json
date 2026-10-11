@@ -196,7 +196,6 @@
         "description": "Average latency per route",
         "empty": "No calls in this period",
         "detail": "p95 {p95} · max {max} · {calls} call | p95 {p95} · max {max} · {calls} calls",
-        "detail_partial": "p95 {p95} (partial) · max {max} · {calls} call | p95 {p95} (partial) · max {max} · {calls} calls",
         "detail_no_p95": "max {max} · {calls} call | max {max} · {calls} calls"
       },
       "recent": {
@@ -451,7 +450,7 @@
       "invalid_title": "This link names no request",
       "invalid_description": "The address does not hold a valid request id. Check the link you followed.",
       "not_found_title": "This request is no longer stored",
-      "not_found_description": "It was pruned by the log retention, or the link is wrong.",
+      "not_found_description": "It was pruned by the log retention, is outside the route scope, or the link is wrong.",
       "forbidden_title": "You cannot open this request",
       "forbidden_description": "Your role shows this list but not the detail of its requests. Ask an administrator for access to Request logs.",
       "error_title": "Could not open this request",
@@ -531,7 +530,6 @@
         "charts": "Route charts",
         "error_rate_chart": "Error rate by status",
         "series_p95": "p95",
-        "series_p95_partial": "p95 (partial: not recorded before the module update)",
         "idle_title": "No call over this period",
         "requests": "Requests",
         "error_rate": "Error rate",
@@ -556,7 +554,6 @@
         "vs_previous": "{delta} vs. previous period",
         "summary": "Route figures",
         "p95_detail": "p95 {p95}",
-        "p95_partial_detail": "p95 {p95} · partial",
         "p95_none": "No p95 kept over the period",
         "idle_description": "Call it from the Tester tab to see its figures."
       },
@@ -809,7 +806,9 @@
         "redacted": "{count} value is still [REDACTED] and would be sent as is. | {count} values are still [REDACTED] and would be sent as is.",
         "truncated_title": "Send an incomplete body?",
         "truncated": "The body was cut at capture: the API gets only its start."
-      }
+      },
+      "source_failed": "Not sent: the console could not mark the call as the Tester's.",
+      "replay_not_found": "This request can no longer be replayed: it was pruned, is outside the route scope, or matched no route."
     },
     "settings": {
       "title": "API settings",

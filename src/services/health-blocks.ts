@@ -224,25 +224,17 @@ export function healthStats(health: HealthPayload): { items: StatGroupItem[] } {
   };
 }
 
-/**
- * "p95 300 ms · max 300 ms · 6 calls" under a slowest route of the Overview;
- * the p95 said partial when older days of the window kept no latency
- * histogram.
- */
+/** "p95 300 ms · max 300 ms · 6 calls" under a slowest route of the Overview. */
 export function slowRouteDetail(route: {
   p95: number | null;
-  /** Share (0-1) of the measured calls the p95 reads. */
-  coverage: number;
   calls: number;
   max: number;
 }): ComposedText {
   const figures = { calls: count(route.calls), max: milliseconds(route.max) };
   if (route.p95 === null)
     return text("overview.slowest.detail_no_p95", figures);
-  return text(
-    route.coverage < 1
-      ? "overview.slowest.detail_partial"
-      : "overview.slowest.detail",
-    { ...figures, p95: milliseconds(route.p95) },
-  );
+  return text("overview.slowest.detail", {
+    ...figures,
+    p95: milliseconds(route.p95),
+  });
 }

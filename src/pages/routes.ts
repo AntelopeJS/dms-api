@@ -105,9 +105,9 @@ export function thresholdLabel(ms: number): string {
 }
 
 /**
- * The p95 as dots on its line: a day written before the latency histogram
- * existed has none, and a p95 left with a lone point would draw nothing.
- * Average, Max, p95: the order of `/statistics/latency-chart`.
+ * The p95 as dots on its line: a bucket between quiet ones is a lone point,
+ * which a line alone would not draw. Average, Max, p95: the order of
+ * `/statistics/latency-chart`.
  */
 const LATENCY_MARKERS = {
   key: "markers",

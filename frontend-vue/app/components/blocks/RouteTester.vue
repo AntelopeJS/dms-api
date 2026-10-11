@@ -11,7 +11,6 @@ import {
   acceptsRequestBody,
   isWritingMethod,
   pathSegments,
-  routeRef,
   statusText,
 } from '../../utils/http'
 import { fillPath, toCurl } from '../../utils/snippets'
@@ -28,6 +27,7 @@ import {
   inputProblem,
   jsonProblem,
   type KeyValue,
+  createSourceTokens,
   markedHeaders,
   mergeHeaders,
   neverSent,
@@ -40,7 +40,10 @@ import {
   revealBidi,
   sendTesterRequest,
   serializeBody,
+  SIZE_PROBE_SOURCE,
   TesterError,
+  type TesterSourceToken,
+  TESTER_SOURCE_URL,
   type TesterErrorCode,
   type TesterRequest,
   type TesterResult,
@@ -163,6 +166,9 @@ const {
 } = useRouteDetail(props.fetchUrl, props.queryKey)
 const apiOrigin = useApiOrigin(() => route.value?.apiOrigin)
 const blockerId = useId()
+const sourceTokens = createSourceTokens(() =>
+  $authFetch<TesterSourceToken>(TESTER_SOURCE_URL),
+)
 const bodyHintId = useId()
 
 let nextRowId = 0
@@ -296,7 +302,11 @@ const problem = computed(() =>
   route.value
     ? inputProblem(pathValues, path.value, {
         ...request.value,
-        headers: markedHeaders(request.value.headers, SIZE_PROBE_ID),
+        headers: markedHeaders(
+          request.value.headers,
+          SIZE_PROBE_ID,
+          SIZE_PROBE_SOURCE,
+        ),
       })
     : null,
 )
@@ -635,7 +645,7 @@ async function replay(id: string, ref: string) {
       `${LOGS_API}/${encodeURIComponent(id)}`,
     )
     if (activeRef !== ref) return
-    const capturedRef = log.route ?? routeRef(log.method, log.uri)
+    const capturedRef = log.route
     if (capturedRef !== ref) {
       toast.add({
         title: t('api.tester.replay_other_route', { route: capturedRef }),
@@ -670,10 +680,15 @@ async function replay(id: string, ref: string) {
       color: 'info',
       icon: 'i-ph-arrow-counter-clockwise',
     })
-  } catch {
+  } catch (cause) {
+    // A request pruned, outside the route scope or matching no route: the
+    // logs do not open it.
+    const missing = errorStatus(cause) === 404
     toast.add({
-      title: t('api.tester.replay_failed'),
-      color: 'error',
+      title: t(
+        missing ? 'api.tester.replay_not_found' : 'api.tester.replay_failed',
+      ),
+      color: missing ? 'warning' : 'error',
       icon: 'i-ph-warning',
     })
   }
@@ -773,13 +788,27 @@ async function send() {
   const ref = value.ref
   if (!(await confirmSend(ref))) return
   if (activeRef !== ref || sending.value) return
+  // The signed mark that keeps the call out of the statistics: without it,
+  // the call would count as the API's own traffic, so it is not sent.
+  let source: string
+  try {
+    source = (await sourceTokens.get()).value
+  } catch {
+    toast.add({
+      title: t('api.tester.source_failed'),
+      color: 'error',
+      icon: 'i-ph-warning',
+    })
+    return
+  }
+  if (activeRef !== ref || sending.value) return
   const requestId = newRequestId()
   const sentPath = path.value
   const snapshot = draftRequest.value
   const sentAuth = auth.value
   const outgoing: TesterRequest = {
     ...request.value,
-    headers: markedHeaders(request.value.headers, requestId),
+    headers: markedHeaders(request.value.headers, requestId, source),
   }
   const controller = new AbortController()
   inFlight = { controller, ref }

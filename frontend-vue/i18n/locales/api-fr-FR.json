@@ -196,7 +196,6 @@
         "description": "Latence moyenne par route",
         "empty": "Aucun appel sur la période",
         "detail": "p95 {p95} · max {max} · {calls} appel | p95 {p95} · max {max} · {calls} appels",
-        "detail_partial": "p95 {p95} (partielle) · max {max} · {calls} appel | p95 {p95} (partielle) · max {max} · {calls} appels",
         "detail_no_p95": "max {max} · {calls} appel | max {max} · {calls} appels"
       },
       "recent": {
@@ -451,7 +450,7 @@
       "invalid_title": "Ce lien ne désigne aucune requête",
       "invalid_description": "L'adresse ne contient pas un ID de requête valide. Vérifiez le lien suivi.",
       "not_found_title": "Cette requête n'est plus conservée",
-      "not_found_description": "Elle a été purgée par la rétention des journaux, ou le lien est erroné.",
+      "not_found_description": "Elle a été supprimée par la rétention des journaux, est hors du périmètre des routes, ou le lien est erroné.",
       "forbidden_title": "Vous ne pouvez pas ouvrir cette requête",
       "forbidden_description": "Votre rôle affiche cette liste, mais pas le détail de ses requêtes. Demandez à un administrateur l'accès aux journaux des requêtes.",
       "error_title": "Impossible d'ouvrir cette requête",
@@ -531,7 +530,6 @@
         "charts": "Graphiques de la route",
         "error_rate_chart": "Taux d'erreur par statut",
         "series_p95": "p95",
-        "series_p95_partial": "p95 (partielle : non enregistrée avant la mise à jour du module)",
         "idle_title": "Aucun appel sur la période",
         "requests": "Requêtes",
         "error_rate": "Taux d'erreur",
@@ -556,7 +554,6 @@
         "vs_previous": "{delta} par rapport à la période précédente",
         "summary": "Indicateurs de la route",
         "p95_detail": "p95 {p95}",
-        "p95_partial_detail": "p95 {p95} · partielle",
         "p95_none": "Aucune p95 conservée sur la période",
         "idle_description": "Appelez-la depuis l'onglet Testeur pour voir ses chiffres."
       },
@@ -809,7 +806,9 @@
         "redacted": "{count} valeur vaut encore [REDACTED] et serait envoyée telle quelle. | {count} valeurs valent encore [REDACTED] et seraient envoyées telles quelles.",
         "truncated_title": "Envoyer un corps incomplet ?",
         "truncated": "Le corps a été tronqué à la capture : l'API n'en reçoit que le début."
-      }
+      },
+      "source_failed": "Non envoyé : la console n'a pas pu marquer l'appel comme venant du Testeur.",
+      "replay_not_found": "Cette requête ne peut plus être rejouée : supprimée, hors du périmètre des routes, ou sans route."
     },
     "settings": {
       "title": "Réglages API",

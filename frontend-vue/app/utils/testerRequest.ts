@@ -57,15 +57,54 @@ const CLIENT_TIMEOUT_MS = PROXY_TIMEOUT_MS + 5_000
 const TIMEOUT_MARGIN_MS = 1_000
 
 /**
- * Marks of a call sent by the tester, which the module stores to keep it out
- * of the statistics and to find it in the logs. The proxy drops every
- * `x-dms-*` header (CONTROL_HEADER), so the source travels twice: under the
- * agreed name, and under one the proxy forwards.
+ * Marks of a call sent by the tester, which the module reads to keep it out
+ * of the statistics and to find it in the logs: its own request id, and a
+ * token the server signs (`GET /api/monitoring/tester/source`), so no client
+ * can declare its calls the Tester's. Not `x-dms-*`: the proxy drops those.
  */
-export const SOURCE_HEADER = 'x-dms-api-source'
-export const FORWARDED_SOURCE_HEADER = 'x-antelopejs-api-source'
-export const TESTER_SOURCE = 'tester'
+export const SOURCE_HEADER = 'x-antelopejs-api-source'
 export const REQUEST_ID_HEADER = 'x-request-id'
+
+/** Where the Tester asks for the token its next calls carry. */
+export const TESTER_SOURCE_URL = '/api/monitoring/tester/source'
+
+/** A token as the server signs it: `{ header, value, expiresAt }`. */
+export interface TesterSourceToken {
+  header: string
+  value: string
+  expiresAt: string
+}
+
+/**
+ * A stand-in as long as a real token (`tester.<ms>.<base64url SHA-256>`), to
+ * size a request before one is asked for.
+ */
+export const SIZE_PROBE_SOURCE = `tester.${'0'.repeat(13)}.${'0'.repeat(43)}`
+
+/** A token is asked again this long before it expires. */
+const SOURCE_RENEW_MARGIN_MS = 60_000
+
+/**
+ * The tokens of the Tester's calls: one asked for, then reused until a
+ * minute before it expires.
+ */
+export function createSourceTokens(
+  ask: () => Promise<TesterSourceToken>,
+  now: () => number = Date.now,
+): { get: () => Promise<TesterSourceToken> } {
+  let current: TesterSourceToken | null = null
+  return {
+    async get() {
+      if (
+        current &&
+        Date.parse(current.expiresAt) - SOURCE_RENEW_MARGIN_MS > now()
+      )
+        return current
+      current = await ask()
+      return current
+    },
+  }
+}
 
 const CONTENT_TYPES: Record<BodyMode, string | undefined> = {
   json: 'application/json',
@@ -287,15 +326,18 @@ export function newRequestId(): string {
     .join('-')
 }
 
-/** `headers` with the marks that tell the module this call is the tester's. */
+/**
+ * `headers` with the marks that tell the module this call is the tester's:
+ * its request id, and the signed token (`source`).
+ */
 export function markedHeaders(
   headers: Record<string, string>,
   requestId: string,
+  source: string,
 ): Record<string, string> {
   return mergeHeaders(headers, {
     [REQUEST_ID_HEADER]: requestId,
-    [SOURCE_HEADER]: TESTER_SOURCE,
-    [FORWARDED_SOURCE_HEADER]: TESTER_SOURCE,
+    [SOURCE_HEADER]: source,
   })
 }
 
@@ -525,7 +567,7 @@ export interface CapturedRequest {
   timestamp: string
   method: string
   uri: string
-  route?: string
+  route: string
   statusCode: number
   responseTimeMs: number | null
   pathParams?: Record<string, string>
@@ -549,7 +591,6 @@ const SKIPPED_REPLAY_HEADERS = new Set([
   'referer',
   REQUEST_ID_HEADER,
   SOURCE_HEADER,
-  FORWARDED_SOURCE_HEADER,
 ])
 
 /** What a replay puts in the tester, and what it could not. */
