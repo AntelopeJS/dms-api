@@ -236,6 +236,14 @@ describe("captureBody", () => {
       size: 14,
     });
   });
+
+  it("cuts a multi-byte body at the limit in bytes, between characters", () => {
+    // `{"n":"` is 6 bytes, each "é" 2: 9 bytes end inside the second one.
+    const captured = captureBody('{"n":"ééééé"}', "application/json", 9);
+    expect(captured.body).toBe('{"n":"é');
+    expect(Buffer.byteLength(captured.body ?? "")).toBeLessThanOrEqual(9);
+    expect(captured).toMatchObject({ truncated: true, size: 18 });
+  });
 });
 
 describe("pickHeaders", () => {

@@ -74,15 +74,25 @@ export function captureBody(
     return omitted(sanitized.omitted ?? "not-json");
   }
   const { text, redacted } = sanitized;
-  if (text.length > maxBytes) {
+  const bytes = Buffer.from(text, "utf8");
+  if (bytes.length > maxBytes) {
     return {
-      body: text.slice(0, maxBytes),
+      body: utf8Prefix(bytes, maxBytes),
       truncated: true,
       redacted,
-      size: Buffer.byteLength(text),
+      size: bytes.length,
     };
   }
   return { body: text, truncated: false, redacted };
+}
+
+/** The first `maxBytes` bytes of UTF-8 text, without a character cut in two. */
+function utf8Prefix(bytes: Buffer, maxBytes: number): string {
+  let end = maxBytes;
+  // A continuation byte (10xxxxxx) at the cut belongs to the character
+  // before it: cut before that character's first byte.
+  while (end > 0 && (bytes[end] & 0xc0) === 0x80) end--;
+  return bytes.subarray(0, end).toString("utf8");
 }
 
 /** The query of `url` as a record, redacted, and how many values were. */
