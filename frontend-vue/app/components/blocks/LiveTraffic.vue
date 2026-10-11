@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { formatClock, formatCount } from '../../utils/format'
 import { bodyLimit } from '../../utils/logsQuery'
 import {
@@ -40,7 +40,13 @@ const { data, error, pending, refresh } = useApiResource<LivePayload>(
   () => props.fetchUrl,
 )
 
-const { isLive } = usePageLive()
+// The paused state is the browser's (the DMS remembers it per page), the
+// server renders Direct: the card says it is paused once mounted, so the
+// hydration finds the markup the server sent.
+const live = usePageLive()
+const mounted = ref(false)
+onMounted(() => (mounted.value = true))
+const isLive = computed(() => !mounted.value || live.isLive.value)
 const failures = ref(0)
 
 async function poll() {
