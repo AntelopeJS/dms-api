@@ -1,9 +1,8 @@
-export type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
-
 export interface RequestStatistics {
   /** Duration in milliseconds; null when it could not be measured. */
   responseTime: number | null;
-  method: HttpMethod;
+  /** Method of the route, upper case: `ANY` for a handler of every method. */
+  method: string;
   uri: string;
   statusCode: number;
 }

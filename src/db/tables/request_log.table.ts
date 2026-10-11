@@ -4,7 +4,6 @@ import {
   RegisterTable,
   Table,
 } from "@antelopejs/interface-database-decorators";
-import type { HttpMethod } from "@/types";
 import { SCHEMA_NAME } from "../../types/constants";
 
 export const requestLogTableName = "request_log";
@@ -70,7 +69,7 @@ export class RequestLog extends Table {
 
   @Index()
   @Field("string")
-  declare method: HttpMethod;
+  declare method: string;
 
   /** Registered pattern of the matched handler (e.g. /api/users/:id);
    * falls back to the raw path when no route matched (404 etc.). */

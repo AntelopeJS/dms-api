@@ -8,7 +8,6 @@ import {
   normalizeRouteMethod,
   normalizeRoutePath,
 } from "@/db/tables/routes_statistics.table";
-import type { HttpMethod } from "@/types";
 import { MONITORING_API_PREFIX } from "@/types";
 
 type RegisteredRoute = ReturnType<typeof getRegisteredRoutes>[number];
@@ -21,10 +20,6 @@ type RoutesStore = Pick<
 
 /** The statistics a sync reads the first day a route was called from. */
 type StatisticsSource = Pick<RouteStatisticsModel, "getAll">;
-
-function normalizeMethod(method: string): HttpMethod {
-  return normalizeRouteMethod(method) as HttpMethod;
-}
 
 /** `METHOD:path`, canonical: `/api/orders/` and `/api/orders` are one route. */
 function getRouteKey(method: string, uri: string): string {
@@ -86,7 +81,7 @@ function computeInserts(
     .filter(([key]) => !existingByKey.has(key))
     .map(([, r]) => ({
       uri: normalizeRoutePath(r.location),
-      method: normalizeMethod(r.method),
+      method: normalizeRouteMethod(r.method),
       ...ownershipOf(r, ownModules),
       createdAt: now,
       updatedAt: now,

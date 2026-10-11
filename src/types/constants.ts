@@ -103,14 +103,6 @@ export const REQUEST_ID_MAX_LENGTH = 128;
  */
 export const REQUEST_LOG_LIST_MAX_ROWS = 5000;
 
-/** Content-types whose bodies are safe to capture as text */
-export const REQUEST_LOG_TEXT_CONTENT_TYPE_PREFIXES = [
-  "application/json",
-  "application/xml",
-  "application/x-www-form-urlencoded",
-  "text/",
-] as const;
-
 /**
  * Realtime topic the console's live mode listens on: the capture publishes on
  * it what it logged since its last message (see `services/live-feed.ts`), and

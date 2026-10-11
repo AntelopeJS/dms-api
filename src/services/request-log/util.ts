@@ -1,9 +1,6 @@
 import type { IncomingHttpHeaders } from "node:http";
 import type { RequestLogBodyOmission } from "@/db/tables/request_log.table";
-import {
-  HTTP_STATUS_OK,
-  REQUEST_LOG_TEXT_CONTENT_TYPE_PREFIXES,
-} from "@/types/constants";
+import { HTTP_STATUS_OK } from "@/types/constants";
 import {
   isSensitiveHeader,
   redactSearchParams,
@@ -34,12 +31,6 @@ export function pickHeaders(
   return out;
 }
 
-export function contentTypeIsText(contentType?: string): boolean {
-  if (!contentType) return false;
-  const lc = contentType.toLowerCase();
-  return REQUEST_LOG_TEXT_CONTENT_TYPE_PREFIXES.some((p) => lc.startsWith(p));
-}
-
 export interface CapturedBody {
   body?: string;
   truncated: boolean;
@@ -51,7 +42,8 @@ export interface CapturedBody {
   size?: number;
 }
 
-function omitted(reason: RequestLogBodyOmission): CapturedBody {
+/** No body stored, and why. */
+export function omittedBody(reason: RequestLogBodyOmission): CapturedBody {
   return { truncated: false, omitted: reason, redacted: 0 };
 }
 
@@ -65,13 +57,12 @@ export function captureBody(
   contentType: string | undefined,
   maxBytes: number,
 ): CapturedBody {
-  if (isEmptyBody(body)) return omitted("empty");
-  if (maxBytes <= 0) return omitted("disabled");
-  if (!contentTypeIsText(contentType)) return omitted("not-json");
-
+  if (isEmptyBody(body)) return omittedBody("empty");
+  if (maxBytes <= 0) return omittedBody("disabled");
+  // JSON and forms only: what the redaction can read by key.
   const sanitized = sanitizeBody(body, contentType ?? "");
   if (sanitized.text === undefined) {
-    return omitted(sanitized.omitted ?? "not-json");
+    return omittedBody(sanitized.omitted ?? "not-json");
   }
   const { text, redacted } = sanitized;
   const bytes = Buffer.from(text, "utf8");

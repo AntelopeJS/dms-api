@@ -3,7 +3,7 @@ import {
   RegisterTable,
   Table,
 } from "@antelopejs/interface-database-decorators";
-import type { DayStatistics, HttpMethod } from "@/types";
+import type { DayStatistics } from "@/types";
 import { SCHEMA_NAME } from "../../types/constants";
 
 export const routesStatisticsTableName = "routes_statistics";
@@ -39,7 +39,7 @@ export function getRouteStatsKey(method: string, uri: string): string {
 @RegisterTable(routesStatisticsTableName, SCHEMA_NAME)
 export class RouteStatistics extends Table {
   @Field("string")
-  declare method: HttpMethod;
+  declare method: string;
 
   @Field("string")
   declare uri: string;

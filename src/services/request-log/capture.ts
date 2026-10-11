@@ -14,14 +14,12 @@ import { type DmsApiConfig, getConfig } from "@/config";
 import { RequestLogModel, RouteStatisticsModel } from "@/db";
 import type {
   RequestLog,
-  RequestLogBodyOmission,
   RequestLogSource,
 } from "@/db/tables/request_log.table";
 import { normalizeRoutePath } from "@/db/tables/routes_statistics.table";
 import { recordLiveRequest } from "@/services/live-feed";
 import { requestSource } from "@/services/tester-source";
 import { addRequestStatistics } from "@/services/statistics-write";
-import type { HttpMethod } from "@/types";
 import {
   INTERNAL_PATH_PREFIXES,
   INTERNAL_ROUTE_SUFFIX,
@@ -36,6 +34,7 @@ import {
   extractContentType,
   extractHeaders,
   extractStatusCode,
+  omittedBody,
   pickHeaders,
   queryToRecord,
 } from "./util";
@@ -255,7 +254,7 @@ function recordRouteStatistics(
 ): void {
   void addRequestStatistics(GetModel(RouteStatisticsModel), {
     responseTime: responseTimeMs,
-    method: method as HttpMethod,
+    method,
     uri,
     statusCode,
   }).catch((err) => {
@@ -269,10 +268,6 @@ interface BodyCapture {
 }
 
 const PAYLOAD_TOO_LARGE = 413;
-
-function omittedBody(omitted: RequestLogBodyOmission): CapturedBody {
-  return { truncated: false, omitted, redacted: 0 };
-}
 
 /** Whether the request announced a body, read or not. */
 function announcesBody(headers: IncomingHttpHeaders): boolean {
