@@ -76,7 +76,11 @@ const REQUEST_COLUMNS: Record<string, TableViewSourceColumn> = {
   responseTimeMs: {
     name: "$api.logs.columns.duration",
     type: new DefaultDataTypes.NumberType(),
-    display: new DefaultDisplays.DurationDisplay(),
+    // "2 149 ms" on every row, orange when slow (`durationTone`).
+    display: new DefaultDisplays.DurationDisplay({
+      format: "ms",
+      toneField: "durationTone",
+    }),
     sortable: true,
     size: 132,
     order: 3,
@@ -105,6 +109,8 @@ const REQUEST_COLUMNS: Record<string, TableViewSourceColumn> = {
   message: {
     name: "$api.logs.columns.error",
     type: new DefaultDataTypes.StringType(),
+    // In red (`errorTone`), like the error of the request panel.
+    display: new DefaultDisplays.TextDisplay({ toneField: "errorTone" }),
     filterable: false,
     size: 140,
     order: 6,

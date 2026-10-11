@@ -44,8 +44,12 @@ export interface RequestLogRow {
    */
   responseTimeMs: number | null;
   slow: boolean;
+  /** Tone of the duration: `warning` when slow, none otherwise. */
+  durationTone: Tone | null;
   /** The error message. */
   message: string | null;
+  /** Tone of the error message: `error` when there is one. */
+  errorTone: Tone | null;
   ip: string | null;
   /** `tester` for a request sent from the console's Tester. */
   source: string | null;
@@ -262,6 +266,9 @@ function matchesNothing(
 
 export function toRow(log: RequestLogListItem): RequestLogRow {
   const duration = log.responseTimeMs ?? null;
+  const slow =
+    duration !== null && duration >= getConfig().requestSlownessThreshold;
+  const message = log.errorMessage ?? null;
   return {
     _id: log._id,
     timestamp: log.timestamp.toISOString(),
@@ -272,8 +279,10 @@ export function toRow(log: RequestLogListItem): RequestLogRow {
     statusClass: statusClassOf(log.statusCode),
     statusTone: statusToneOf(log.statusCode),
     responseTimeMs: rowDuration(duration),
-    slow: duration !== null && duration >= getConfig().requestSlownessThreshold,
-    message: log.errorMessage ?? null,
+    slow,
+    durationTone: slow ? "warning" : null,
+    message,
+    errorTone: message ? "error" : null,
     ip: log.ip ?? null,
     source: log.source ?? null,
     requestId: log.requestId ?? null,

@@ -159,7 +159,9 @@ describe("toRow", () => {
       statusClass: "4xx",
       responseTimeMs: 1500,
       slow: true,
+      durationTone: "warning",
       message: "Invoice not found",
+      errorTone: "error",
     });
   });
 
@@ -208,6 +210,8 @@ describe("toRow, unmeasured and Tester requests", () => {
       route: "GET /api/orders",
       responseTimeMs: null,
       slow: false,
+      durationTone: null,
+      errorTone: null,
       source: "tester",
       requestId: "6f1c",
       // The status pill's tone, by its class.
