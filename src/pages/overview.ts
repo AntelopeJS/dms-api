@@ -1,34 +1,70 @@
 import { ActivityFeed } from "@antelopejs/interface-dms/base/activity-feed";
-import { Banner } from "@antelopejs/interface-dms/base/banner";
 import { Card } from "@antelopejs/interface-dms/base/card";
-import {
-  ChartColumn,
-  ChartMixed,
-  ChartType,
-} from "@antelopejs/interface-dms/base/chart";
+import { ChartColumn } from "@antelopejs/interface-dms/base/chart";
 import { ChartCard } from "@antelopejs/interface-dms/base/chart-card";
 import { Grid, GridRow } from "@antelopejs/interface-dms/base/grid";
 import { DefaultLayout } from "@antelopejs/interface-dms/base/layouts";
-import { PeriodSelector } from "@antelopejs/interface-dms/base/period-selector";
-import { HStack, Spacer } from "@antelopejs/interface-dms/base/stack";
-import { StatGroup } from "@antelopejs/interface-dms/base/stat-group";
-import { TopListCard } from "@antelopejs/interface-dms/base/top-list-card";
 import { PageController, RegisterPage } from "@antelopejs/interface-dms/page";
 import { logsLink } from "@/services/links";
+import { apiBlock } from "./blocks";
 import { monitorCategory } from "./module";
-import { requestTable } from "./request-table";
+import {
+  blockClientId,
+  followsLive,
+  liveBanner,
+  liveControl,
+  pageToolbar,
+} from "./live";
+import { requestDrawerHost, requestTable } from "./request-table";
 import { scopeChip } from "./scope-chip";
 
 const OVERVIEW_API = "/api/monitoring/overview";
 
-/** Scope of the period selector every chart of the page follows. */
+/** Scope of the period every card of the page follows. */
 const OVERVIEW_PERIOD = "api-overview";
+
+/**
+ * The page's period when neither its URL nor the tab names one: the last
+ * 24 hours, as on the request logs and Routes.
+ */
+export const OVERVIEW_DEFAULT_WINDOW = "24h";
 
 const RECENT_REQUESTS = 6;
 
+const ACTIVITY_ROWS = 8;
+
+/**
+ * The DMS blocks of the dashboard that stay live while Recent requests holds
+ * (a request open, Load more, a search): the charts and the activity. Each
+ * follows the live mode by itself (`followsLive`).
+ */
+const LIVE_BLOCKS = [
+  blockClientId("dashboard", "health", "errorShare"),
+  blockClientId("dashboard", "traffic", "chart"),
+  blockClientId("dashboard", "recent", "activity"),
+];
+
+/**
+ * The DMS hides the legend of a chart nested in a `ChartCard` (it draws only
+ * its "Period / Comparison" key), so a chart of several series names them
+ * through its raw ApexCharts options, which replace that setting.
+ */
+const SERIES_LEGEND = {
+  key: "legend",
+  value: JSON.stringify({
+    show: true,
+    position: "top",
+    horizontalAlign: "left",
+    fontSize: "12px",
+    markers: { size: 5, shape: "square", strokeWidth: 0 },
+    itemMargin: { horizontal: 8 },
+  }),
+};
+
 /**
  * Overview: is the API healthy, and where to look when it is not. The health
- * hero leads; every row below drills down to a route or to its requests.
+ * hero leads, what needs a look comes right under it, then the trends; every
+ * row drills down to a route or to its requests.
  */
 @RegisterPage()
 export class OverviewPage extends PageController(
@@ -43,166 +79,121 @@ export class OverviewPage extends PageController(
   },
   DefaultLayout(),
 ) {
-  static toolbar = HStack({ alignment: "center", spacing: "0.75rem" })
-    .child("scope", scopeChip())
-    .child("spacer", Spacer())
-    .child(
-      "period",
-      PeriodSelector({
-        id: OVERVIEW_PERIOD,
-        variant: "segmented",
-        presets: ["last-24h", "last-7-days", "last-30-days"],
-        presetLabels: {
-          "last-24h": "24H",
-          "last-7-days": "7D",
-          "last-30-days": "30D",
-        },
-        showRangeLabel: false,
-        defaultPreset: "last-7-days",
-        comparisons: ["previous-period"],
-        defaultComparison: "previous-period",
-        size: "sm",
-      }),
-    )
-    .meta({ name: "$api.overview.toolbar", icon: "i-ph-sliders-horizontal" });
+  // Opens the request a recent row asks for, from the right; draws nothing.
+  static requestDrawer = requestDrawerHost();
 
-  static beta = Banner({
-    title: "$api.overview.beta.title",
-    description: "$api.overview.beta.description",
-    tone: "info",
-    size: "sm",
-    dismissible: true,
-    dismissKey: "dms-api-beta-1",
+  // The toolbar of every monitoring page, Beta right of the scope. The
+  // period lives in the URL (`?window=24h`): the DMS PeriodSelector keeps
+  // its own in memory, so `PeriodWindow` drives the cards' period scope.
+  static toolbar = pageToolbar({
+    scope: scopeChip(),
+    badge: apiBlock("BetaBadge"),
+    live: liveControl({
+      page: "overview",
+      sinceUrl: "/api/monitoring/logs/recent/since",
+      defaultWindow: OVERVIEW_DEFAULT_WINDOW,
+      healthUrl: `${OVERVIEW_API}/health`,
+      liveBlocks: LIVE_BLOCKS,
+    }),
+    period: apiBlock("PeriodWindow", {
+      scope: OVERVIEW_PERIOD,
+      defaultWindow: OVERVIEW_DEFAULT_WINDOW,
+    }),
+  }).meta({ name: "$api.overview.toolbar", icon: "i-ph-sliders-horizontal" });
+
+  static health = apiBlock("HealthHero", {
+    fetchUrl: `${OVERVIEW_API}/health`,
   });
 
-  static health = Banner({
-    fetchUrl: `${OVERVIEW_API}/health`,
-  }).meta({ name: "$api.overview.health.verdict", icon: "i-ph-heartbeat" });
-
-  static figures = StatGroup({
-    fetchUrl: `${OVERVIEW_API}/health/figures`,
-    layout: "joined",
-    columns: 4,
-    skeletonCount: 4,
-    label: "$api.overview.health.figures",
-  }).meta({ name: "$api.overview.health.figures", icon: "i-ph-gauge" });
-
+  // The rows keep their ids whatever their order: the endpoints check their
+  // permission by them (`src/routes/overview.ts`).
   static dashboard = Grid({ gap: "1rem", minColumnWidth: "300px" })
-    .child(
-      "traffic",
-      GridRow()
-        .child(
-          "chart",
-          ChartCard({
-            title: "$api.overview.traffic.title",
-            description: "$api.overview.traffic.description",
-            icon: "i-ph-chart-line",
-            fetchUrl: `${OVERVIEW_API}/traffic`,
-            periodScope: OVERVIEW_PERIOD,
-            valueFormat: "compact",
-            showLegend: false,
-            chart: ChartMixed({
-              height: "260px",
-              xaxisType: "datetime",
-              smooth: true,
-              color: ["info", "error"],
-              seriesDefs: [
-                {
-                  name: "$api.overview.traffic.requests",
-                  type: ChartType.AREA,
-                },
-                {
-                  name: "$api.overview.traffic.errors",
-                  type: ChartType.COLUMN,
-                },
-              ],
-              rawOptions: [
-                {
-                  key: "yaxis",
-                  value: JSON.stringify([
-                    { min: 0, forceNiceScale: true },
-                    { opposite: true, min: 0, forceNiceScale: true },
-                  ]),
-                },
-              ],
-            }),
-          }),
-          { colSpan: 2 },
-        )
-        .child(
-          "classes",
-          TopListCard({
-            title: "$api.overview.classes.title",
-            description: "$api.overview.classes.description",
-            fetchUrl: `${OVERVIEW_API}/classes`,
-            periodScope: OVERVIEW_PERIOD,
-            valueFormat: "number",
-            showBar: true,
-            showRank: false,
-            showDelta: false,
-            skeletonCount: 3,
-            emptyLabel: "$api.overview.classes.empty",
-          }),
-        ),
-    )
     .child(
       "health",
       GridRow()
         .child(
           "attention",
-          ActivityFeed({
-            title: "$api.overview.attention.title",
+          apiBlock("AttentionList", {
             fetchUrl: `${OVERVIEW_API}/attention`,
-            groupByDay: false,
-            mono: true,
-            skeletonCount: 3,
-            empty: {
-              title: "$api.overview.attention.empty_title",
-              description: "$api.overview.attention.empty_description",
-            },
-            actions: [
-              {
-                label: "$api.overview.attention.all_errors",
-                to: logsLink({ tab: "5xx" }),
-              },
-            ],
-          }).meta({
-            name: "$api.overview.attention.title",
-            icon: "i-ph-first-aid-kit",
-          }),
-        )
-        .child(
-          "errorShare",
-          ChartCard({
-            title: "$api.overview.error_share.title",
-            description: "$api.overview.error_share.description",
-            icon: "i-ph-warning-diamond",
-            fetchUrl: `${OVERVIEW_API}/error-share`,
-            periodScope: OVERVIEW_PERIOD,
-            valueFormat: "percent",
-            valuePrecision: 1,
-            showLegend: false,
-            chart: ChartColumn({
-              height: "220px",
-              xaxisType: "datetime",
-              stacked: true,
-              color: ["warning", "error"],
+            errorsLink: logsLink({
+              tab: "5xx",
+              window: "24h",
+              from: "overview",
             }),
           }),
         )
         .child(
           "slowest",
-          TopListCard({
-            title: "$api.overview.slowest.title",
-            description: "$api.overview.slowest.description",
+          apiBlock("OverviewTopList", {
+            kind: "slowest",
             fetchUrl: `${OVERVIEW_API}/slowest`,
             periodScope: OVERVIEW_PERIOD,
-            valueFormat: "number",
-            showBar: true,
-            showRank: false,
-            showDelta: false,
-            skeletonCount: 5,
-            emptyLabel: "$api.overview.slowest.empty",
+          }).meta({ name: "$api.overview.slowest.title", icon: "i-ph-timer" }),
+        )
+        .child(
+          "errorShare",
+          followsLive(
+            ChartCard({
+              title: "$api.overview.error_share.title",
+              // Shown in place of the "vs" figure, so only when there is none.
+              description: "$api.overview.no_previous",
+              icon: "i-ph-warning-diamond",
+              fetchUrl: `${OVERVIEW_API}/error-share`,
+              periodScope: OVERVIEW_PERIOD,
+              valueFormat: "percent",
+              valuePrecision: 1,
+              // The DMS badge reads a delta as a relative change, good when up:
+              // a rate's change in points, bad when up, would read wrong. The
+              // "vs" figure stays (DMS-12).
+              showDelta: false,
+              showLegend: false,
+              chart: ChartColumn({
+                height: "220px",
+                xaxisType: "datetime",
+                stacked: true,
+                color: ["warning", "error"],
+                rawOptions: [SERIES_LEGEND],
+              }),
+            }),
+          ),
+        ),
+    )
+    .child(
+      "traffic",
+      GridRow()
+        .child(
+          "chart",
+          followsLive(
+            ChartCard({
+              title: "$api.overview.traffic.title",
+              description: "$api.overview.no_previous",
+              icon: "i-ph-chart-bar",
+              fetchUrl: `${OVERVIEW_API}/traffic`,
+              periodScope: OVERVIEW_PERIOD,
+              valueFormat: "compact",
+              showLegend: false,
+              // 2xx, 4xx and 5xx stacked on one axis: the height of a column
+              // is the traffic, its red part the server errors.
+              chart: ChartColumn({
+                height: "260px",
+                xaxisType: "datetime",
+                stacked: true,
+                color: ["success", "warning", "error"],
+                rawOptions: [SERIES_LEGEND],
+              }),
+            }),
+          ),
+          { colSpan: 2 },
+        )
+        .child(
+          "classes",
+          apiBlock("OverviewTopList", {
+            kind: "classes",
+            fetchUrl: `${OVERVIEW_API}/classes`,
+            periodScope: OVERVIEW_PERIOD,
+          }).meta({
+            name: "$api.overview.classes.title",
+            icon: "i-ph-chart-pie-slice",
           }),
         ),
     )
@@ -223,23 +214,27 @@ export class OverviewPage extends PageController(
               },
             ],
           })
+            .child("live", liveBanner({ pageSize: RECENT_REQUESTS }))
             .child(
               "table",
               requestTable({
+                page: "overview",
                 fetchUrl: "/api/monitoring/logs/recent",
+                // Status and duration before the path, the time last: on a
+                // phone the row shows what answered and how fast first.
                 columns: [
-                  "timestamp",
-                  "method",
-                  "path",
                   "status",
                   "responseTimeMs",
+                  "method",
+                  "path",
+                  "timestamp",
                 ],
                 sizes: {
-                  timestamp: 116,
+                  status: 84,
+                  responseTimeMs: 104,
                   method: 80,
                   path: 180,
-                  status: 84,
-                  responseTimeMs: 130,
+                  timestamp: 116,
                 },
                 layout: "compact",
                 pageSize: RECENT_REQUESTS,
@@ -265,14 +260,19 @@ export class OverviewPage extends PageController(
         )
         .child(
           "activity",
-          ActivityFeed({
-            title: "$api.overview.activity.title",
-            fetchUrl: `${OVERVIEW_API}/activity`,
-            groupByDay: false,
-            maxItems: 6,
-            skeletonCount: 4,
-            empty: { title: "$api.overview.activity.empty" },
-          }).meta({
+          // Grouped by day, each incident at its time: an absolute time does
+          // not go stale the way "Just now" did.
+          followsLive(
+            ActivityFeed({
+              title: "$api.overview.activity.title",
+              fetchUrl: `${OVERVIEW_API}/activity`,
+              groupByDay: true,
+              maxItems: ACTIVITY_ROWS,
+              fillHeight: true,
+              skeletonCount: 4,
+              empty: { title: "$api.overview.activity.empty" },
+            }),
+          ).meta({
             name: "$api.overview.activity.title",
             icon: "i-ph-clock-counter-clockwise",
           }),

@@ -1,18 +1,29 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { GetModel } from "@antelopejs/interface-database-decorators";
+import { DefaultLayout } from "@antelopejs/interface-dms/base/layouts";
 import {
   Category,
+  type ModuleCatalogContext,
   type ModuleReadoutLine,
   type ModuleStatus,
+  MODULE_URL_PREFIX,
+  PageController,
   RegisterModule,
+  RegisterPage,
 } from "@antelopejs/interface-dms/page";
 import { RequestLogModel, RouteModel, RouteStatisticsModel } from "@/db";
 import { getHealth } from "@/services/overview";
-import { countScopedRoutes, getScopedRouteKeys } from "@/services/scope";
+import { countRoutes } from "@/services/route-catalog";
+import { getScopedRouteKeys } from "@/services/scope";
 import { getActiveScope } from "@/services/settings";
+import { apiBlock } from "./blocks";
 
 const MODULE_ID = "api";
+
+/** The page the module opens on: the Overview, under the Monitor heading. */
+const LANDING_PAGE = "overview";
+const LANDING_URL = `${MODULE_URL_PREFIX}/${MODULE_ID}/${LANDING_PAGE}`;
 
 function packageVersion(): string | undefined {
   try {
@@ -36,7 +47,7 @@ async function currentHealth() {
       routes,
     },
     keys,
-    await countScopedRoutes(routes, keys),
+    countRoutes(keys),
   );
 }
 
@@ -47,18 +58,49 @@ async function catalogStatus(): Promise<ModuleStatus> {
     : "live";
 }
 
-async function catalogReadout(): Promise<ModuleReadoutLine[]> {
+/** Numbers written the way the catalog's reader writes them. */
+function numberFormat(language: string | undefined): Intl.NumberFormat {
+  try {
+    return new Intl.NumberFormat(language || undefined);
+  } catch {
+    return new Intl.NumberFormat();
+  }
+}
+
+/**
+ * The catalog tile's two lines. A readout line is an i18n key or a literal,
+ * without parameters: the state is a key, translated; the figures are a line
+ * of their own, in words both languages share, with the numbers formatted in
+ * the user's language. The state line carries the tone, so the red mark sits
+ * on "Routes failing", not on the route count.
+ */
+async function catalogReadout({
+  user,
+}: ModuleCatalogContext): Promise<ModuleReadoutLine[]> {
   const health = await currentHealth();
+  const number = numberFormat(user?.language);
   return [
+    stateReadout(health),
     {
-      tone: health.failingRoutes > 0 ? "error" : "success",
-      text: `${health.routes.value} routes · ${health.latency.value} ms avg`,
-    },
-    {
-      tone: health.errors.share > 0 ? "warning" : "info",
-      text: `${health.errors.share}% errors · 24 h`,
+      tone: "info",
+      text: `${number.format(health.routes.value)} routes · ${number.format(health.latency.value)} ms`,
     },
   ];
+}
+
+function stateReadout(
+  health: Awaited<ReturnType<typeof currentHealth>>,
+): ModuleReadoutLine {
+  if (health.calls.value === 0) {
+    return { tone: "info", text: "$api.module.readout.idle" };
+  }
+  if (health.failingRoutes > 0) {
+    return { tone: "error", text: "$api.module.readout.failing" };
+  }
+  if (health.routes.needingAttention > 0) {
+    return { tone: "warning", text: "$api.module.readout.attention" };
+  }
+  return { tone: "success", text: "$api.module.readout.healthy" };
 }
 
 export const apiModule = RegisterModule({
@@ -66,7 +108,7 @@ export const apiModule = RegisterModule({
   title: "$api.module.title",
   description: "$api.module.description",
   icon: "i-ph-plugs",
-  landingPage: "overview",
+  landingPage: LANDING_PAGE,
   version: packageVersion(),
   catalogCategory: "$api.module.catalog_category",
   status: catalogStatus,
@@ -102,3 +144,25 @@ export const configureCategory = Category("configure", {
   urlSlug: "/",
   order: 2,
 });
+
+/**
+ * `/modules/api`, the module's own address: a typed URL, a sign-in coming
+ * back to it, and the "API" crumb of the breadcrumb (a crumb links only to a
+ * page). The DMS has no page there and answered a 404; this hidden one draws
+ * nothing and sends to the landing page, in the server render too.
+ */
+@RegisterPage()
+export class ModuleLandingPage extends PageController(
+  "landing",
+  {
+    displayName: "$api.module.title",
+    module: MODULE_ID,
+    category: monitorCategory,
+    urlSlug: "/",
+    hidden: true,
+    noComponentPermissions: true,
+  },
+  DefaultLayout(),
+) {
+  static redirect = apiBlock("ModuleLanding", { to: LANDING_URL });
+}

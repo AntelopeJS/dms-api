@@ -1,14 +1,50 @@
-import type { RequestLogModel, RouteStatisticsModel } from "@/db";
+import type { RouteStatisticsModel } from "@/db";
 import type { RequestLogSample } from "@/db/models/request_log.model";
 import type { RouteStatistics } from "@/db/tables/routes_statistics.table";
 import type { DayStatistics } from "@/types";
+import { cached } from "./aggregate-cache";
 import { scopeRouteKey } from "./scope";
+import {
+  emptyHistogram,
+  exactQuantile,
+  histogramQuantile,
+  latencyBucketIndex,
+} from "./statistics-utils";
+import {
+  rangeKey,
+  samplesIn,
+  type SampleSource,
+  type ScopeKeys,
+  scanSamples,
+  timeOf,
+} from "./traffic-samples";
 import {
   bucketOf,
   bucketStarts,
+  CACHE_QUANTUM_MS,
+  horizonOf,
   type TimeRange,
   type WindowGranularity,
 } from "./window";
+
+export {
+  forgetRecentScan,
+  inScope,
+  loadErrorSamples,
+  loadSamples,
+  RECENT_SPAN_MS,
+  samplesIn,
+  type SampleSource,
+  type ScopeKeys,
+} from "./traffic-samples";
+
+/** What the traffic reads of the day rollups: all of them. */
+export type RollupSource = Pick<RouteStatisticsModel, "getAll">;
+/** The two stores a window's traffic is read from. */
+export interface TrafficModels {
+  logs: SampleSource;
+  stats: RollupSource;
+}
 
 /** Requests of one bucket of time, split by outcome. */
 export interface TrafficBucket {
@@ -16,15 +52,27 @@ export interface TrafficBucket {
   requests: number;
   clientErrors: number;
   serverErrors: number;
+  /** Sum and extremes of the measured durations. */
   totalLatency: number;
   maxLatency: number;
   minLatency: number;
+  /** Calls whose duration was measured; absent means all of them. */
+  timed?: number;
+  /**
+   * Measured durations per bucket of `LATENCY_BUCKETS_MS`, what a p95 is
+   * estimated from when the durations are not kept. It counts the calls of
+   * the parts that kept one: a day written before it existed adds none, so
+   * it may count fewer calls than `timed` (see {@link p95Coverage}).
+   */
+  histogram?: number[] | null;
+  /**
+   * Every measured duration, while every part of the bucket comes from the
+   * logs: the p95 is then exact. Null (or absent) once a day rollup is in.
+   */
+  durations?: number[] | null;
 }
 
-/** Route scope: `METHOD:uri` keys, or null for every route. */
-export type ScopeKeys = Set<string> | null;
-
-function emptyBucket(start: number): TrafficBucket {
+export function emptyBucket(start: number): TrafficBucket {
   return {
     start,
     requests: 0,
@@ -33,13 +81,29 @@ function emptyBucket(start: number): TrafficBucket {
     totalLatency: 0,
     maxLatency: 0,
     minLatency: 0,
+    timed: 0,
+    histogram: emptyHistogram(),
+    durations: [],
   };
+}
+
+/** Calls of `bucket` whose duration was measured. */
+export function timedOf(bucket: TrafficBucket): number {
+  return bucket.timed ?? bucket.requests;
 }
 
 function addLatency(bucket: TrafficBucket, min: number, max: number): void {
   bucket.minLatency =
-    bucket.requests === 0 ? min : Math.min(bucket.minLatency, min);
+    timedOf(bucket) === 0 ? min : Math.min(bucket.minLatency, min);
   bucket.maxLatency = Math.max(bucket.maxLatency, max);
+}
+
+/** The duration of a logged call, or null when it was not measured. */
+export function durationOf(
+  sample: Pick<RequestLogSample, "responseTimeMs">,
+): number | null {
+  const ms = sample.responseTimeMs as number | null | undefined;
+  return typeof ms === "number" && Number.isFinite(ms) ? ms : null;
 }
 
 /** Fold one logged request into its bucket. */
@@ -47,49 +111,177 @@ export function addSample(
   bucket: TrafficBucket,
   sample: Pick<RequestLogSample, "statusCode" | "responseTimeMs">,
 ): void {
-  addLatency(bucket, sample.responseTimeMs, sample.responseTimeMs);
+  const ms = durationOf(sample);
+  if (ms !== null) {
+    addLatency(bucket, ms, ms);
+    bucket.totalLatency += ms;
+    if (bucket.histogram) bucket.histogram[latencyBucketIndex(ms)] += 1;
+    bucket.durations?.push(ms);
+    bucket.timed = timedOf(bucket) + 1;
+  } else {
+    bucket.timed = timedOf(bucket);
+  }
   bucket.requests += 1;
-  bucket.totalLatency += sample.responseTimeMs;
   if (sample.statusCode >= 500) bucket.serverErrors += 1;
   else if (sample.statusCode >= 400) bucket.clientErrors += 1;
+}
+
+/** Add the counts of `histogram`, when there is one, to the target's. */
+function addHistogram(
+  target: TrafficBucket,
+  histogram: number[] | null | undefined,
+): void {
+  if (!histogram) return;
+  const sum = target.histogram ?? emptyHistogram();
+  histogram.forEach((count, index) => {
+    sum[index] = (sum[index] ?? 0) + count;
+  });
+  target.histogram = sum;
+}
+
+/** Add the durations of a part holding `timed` measured calls. */
+function addDurations(
+  target: TrafficBucket,
+  durations: number[] | null | undefined,
+  timed: number,
+): void {
+  if (timed === 0 || !target.durations) return;
+  if (!durations) {
+    target.durations = null;
+    return;
+  }
+  for (const ms of durations) target.durations.push(ms);
 }
 
 /** Fold one day rollup into its bucket. */
 export function addDay(bucket: TrafficBucket, day: DayStatistics): void {
   if (day.requestsCount === 0) return;
-  addLatency(bucket, day.minResponseTime, day.maxResponseTime);
+  const timed = day.timedRequestsCount ?? day.requestsCount;
+  if (timed > 0) addLatency(bucket, day.minResponseTime, day.maxResponseTime);
+  addDurations(bucket, null, timed);
+  bucket.timed = timedOf(bucket) + timed;
   bucket.requests += day.requestsCount;
   bucket.totalLatency += day.totalResponseTime;
   bucket.clientErrors += day.clientErrorsCount;
   bucket.serverErrors += day.serverErrorsCount;
+  addHistogram(bucket, day.latencyHistogram);
+}
+
+/** Fold `bucket` into `total`. */
+function addBucket(total: TrafficBucket, bucket: TrafficBucket): void {
+  if (bucket.requests === 0) return;
+  if (timedOf(bucket) > 0) {
+    addLatency(total, bucket.minLatency, bucket.maxLatency);
+  }
+  addDurations(total, bucket.durations, timedOf(bucket));
+  total.timed = timedOf(total) + timedOf(bucket);
+  total.requests += bucket.requests;
+  total.totalLatency += bucket.totalLatency;
+  total.clientErrors += bucket.clientErrors;
+  total.serverErrors += bucket.serverErrors;
+  addHistogram(total, bucket.histogram);
 }
 
 /** The sum of `buckets`, as one bucket starting at the first. */
 export function sumBuckets(buckets: TrafficBucket[]): TrafficBucket {
   const total = emptyBucket(buckets[0]?.start ?? 0);
-  for (const bucket of buckets) {
-    if (bucket.requests === 0) continue;
-    addLatency(total, bucket.minLatency, bucket.maxLatency);
-    total.requests += bucket.requests;
-    total.totalLatency += bucket.totalLatency;
-    total.clientErrors += bucket.clientErrors;
-    total.serverErrors += bucket.serverErrors;
-  }
+  for (const bucket of buckets) addBucket(total, bucket);
   return total;
 }
 
+/** Average of the measured durations; 0 without any. */
 export function averageLatency(bucket: TrafficBucket): number {
-  return bucket.requests > 0 ? bucket.totalLatency / bucket.requests : 0;
+  const timed = timedOf(bucket);
+  return timed > 0 ? bucket.totalLatency / timed : 0;
 }
 
+const P95 = 0.95;
+
+/** Calls the histogram of `bucket` counts. */
+function histogramCalls(bucket: TrafficBucket): number {
+  return bucket.histogram?.reduce((sum, count) => sum + count, 0) ?? 0;
+}
+
+/**
+ * The p95 of the measured durations: the one reading every block shares, so
+ * a route has one p95 per window wherever it is shown. Exact (nearest rank)
+ * while the bucket kept its durations, which every window read from the logs
+ * does; estimated from the histogram of the days that kept one otherwise,
+ * always within the bucket's min and max. Null when unknown.
+ */
+export function p95Latency(bucket: TrafficBucket): number | null {
+  if (timedOf(bucket) === 0) return null;
+  if (bucket.durations?.length) return exactQuantile(bucket.durations, P95);
+  if (!bucket.histogram) return null;
+  return histogramQuantile(bucket.histogram, P95, {
+    min: bucket.minLatency,
+    max: bucket.maxLatency,
+  });
+}
+
+/**
+ * Share (0-1) of the measured calls {@link p95Latency} reads: 1 when it is
+ * exact or every day kept its histogram, less when older days kept none, 0
+ * when it is unknown.
+ */
+export function p95Coverage(bucket: TrafficBucket): number {
+  const timed = timedOf(bucket);
+  if (timed === 0) return 0;
+  if (bucket.durations?.length) return 1;
+  return Math.min(1, histogramCalls(bucket) / timed);
+}
+
+/** Share (0-1) of the calls answered with a 4xx or a 5xx. */
 export function errorShare(bucket: TrafficBucket): number {
   return bucket.requests > 0
     ? (bucket.clientErrors + bucket.serverErrors) / bucket.requests
     : 0;
 }
 
-function inScope(keys: ScopeKeys, method: string, uri: string): boolean {
-  return !keys || keys.has(scopeRouteKey(method, uri));
+/** Share (0-1) of the calls answered with a 5xx. */
+export function serverErrorShare(bucket: TrafficBucket): number {
+  return bucket.requests > 0 ? bucket.serverErrors / bucket.requests : 0;
+}
+
+/** Share (0-1) of the calls answered with a 4xx. */
+export function clientErrorShare(bucket: TrafficBucket): number {
+  return bucket.requests > 0 ? bucket.clientErrors / bucket.requests : 0;
+}
+
+// ---------------------------------------------------------------------------
+// Bucketed traffic, per route
+// ---------------------------------------------------------------------------
+
+/** Per-route traffic over a window, every route bucketed on the same starts. */
+export interface WindowTraffic {
+  starts: number[];
+  routes: Map<string, TrafficBucket[]>;
+}
+
+function emptyBuckets(starts: number[]): TrafficBucket[] {
+  return starts.map(emptyBucket);
+}
+
+/** Per-route traffic of `samples` bucketed on `starts`. */
+export function bucketSamplesByRoute(
+  samples: RequestLogSample[],
+  starts: number[],
+  granularity: WindowGranularity,
+): Map<string, TrafficBucket[]> {
+  const index = new Map(starts.map((start, position) => [start, position]));
+  const routes = new Map<string, TrafficBucket[]>();
+  for (const sample of samples) {
+    const position = index.get(bucketOf(timeOf(sample), granularity));
+    if (position === undefined) continue;
+    const key = scopeRouteKey(sample.method, sample.uri);
+    let buckets = routes.get(key);
+    if (!buckets) {
+      buckets = emptyBuckets(starts);
+      routes.set(key, buckets);
+    }
+    addSample(buckets[position], sample);
+  }
+  return routes;
 }
 
 /** Per-bucket traffic of `samples` over `range`. */
@@ -98,70 +290,191 @@ export function bucketSamples(
   range: TimeRange,
   granularity: WindowGranularity,
 ): TrafficBucket[] {
-  const buckets = new Map(
-    bucketStarts(range, granularity).map((start) => [
-      start,
-      emptyBucket(start),
-    ]),
+  const starts = bucketStarts(range, granularity);
+  return scopeTraffic(
+    { starts, routes: bucketSamplesByRoute(samples, starts, granularity) },
+    null,
   );
-  for (const sample of samples) {
-    const bucket = buckets.get(
-      bucketOf(new Date(sample.timestamp).getTime(), granularity),
-    );
-    if (bucket) addSample(bucket, sample);
-  }
-  return [...buckets.values()];
 }
 
-/** Per-day traffic of the rollups in scope over `range`. */
-export function bucketRollups(
-  rollups: RouteStatistics[],
-  range: TimeRange,
-  keys: ScopeKeys,
-): TrafficBucket[] {
-  const buckets = new Map(
-    bucketStarts(range, "day").map((start) => [start, emptyBucket(start)]),
-  );
-  for (const route of rollups) {
-    if (!inScope(keys, route.method, route.uri)) continue;
-    for (const day of route.statistics) {
-      const bucket = buckets.get(day.day);
-      if (bucket) addDay(bucket, day);
-    }
-  }
-  return [...buckets.values()];
+/** One minute of one route on a past day: what a partial day is summed from. */
+interface MinuteTraffic {
+  minute: number;
+  bucket: TrafficBucket;
 }
 
-/** Logged requests in scope over `range`, reduced to what aggregations read. */
-export async function loadSamples(
-  model: RequestLogModel,
-  range: TimeRange,
-  keys: ScopeKeys,
-): Promise<RequestLogSample[]> {
-  if (keys && keys.size === 0) return [];
-  return model.samples({
-    since: range.from,
-    until: range.to,
-    routeKeys: keys ? [...keys] : undefined,
-  });
+/** A past day of logs, per route and per minute. */
+type DayProfile = Map<string, MinuteTraffic[]>;
+
+/** A past day does not change: its profile is kept for hours. */
+const PROFILE_TTL_MS = 6 * 60 * 60 * 1000;
+
+function startOfDay(timestamp: number): number {
+  const date = new Date(timestamp);
+  date.setHours(0, 0, 0, 0);
+  return date.getTime();
+}
+
+function nextDay(dayStart: number): number {
+  const date = new Date(dayStart);
+  date.setDate(date.getDate() + 1);
+  return date.getTime();
 }
 
 /**
- * Traffic over `range`, bucketed: hour buckets from the raw logs, day buckets
- * from the rollups (which outlive the logs and are cheaper to read).
+ * The minute-by-minute traffic of the day starting at `dayStart`, or null
+ * when its logs are already pruned. A rolling 7-day window starts in the
+ * middle of a day: the rollup of that day holds the whole of it, the profile
+ * the part inside the window.
  */
+function dayProfile(
+  model: SampleSource,
+  dayStart: number,
+): Promise<DayProfile | null> {
+  return cached(
+    `profile:${dayStart}`,
+    async () => {
+      if (dayStart < horizonOf("hour", new Date()).getTime()) return null;
+      const range = {
+        from: new Date(dayStart),
+        to: new Date(nextDay(dayStart)),
+      };
+      const { samples } = await scanSamples(model, range);
+      const profile: DayProfile = new Map();
+      for (const sample of samples) {
+        const key = scopeRouteKey(sample.method, sample.uri);
+        const minute = bucketOf(timeOf(sample), "minute");
+        const minutes = profile.get(key) ?? [];
+        let last = minutes[minutes.length - 1];
+        if (!last || last.minute !== minute) {
+          last = { minute, bucket: emptyBucket(minute) };
+          minutes.push(last);
+          profile.set(key, minutes);
+        }
+        addSample(last.bucket, sample);
+      }
+      return profile;
+    },
+    PROFILE_TTL_MS,
+  );
+}
+
+/**
+ * The part of a day bucket on one side of `boundary`, from its profile: its
+ * own calls, durations and histogram, never the whole day's (a whole day's
+ * p95 could exceed the part's max).
+ */
+function partialDay(
+  day: TrafficBucket,
+  minutes: MinuteTraffic[] | undefined,
+  keep: (minute: number) => boolean,
+): TrafficBucket {
+  const part = emptyBucket(day.start);
+  for (const entry of minutes ?? []) {
+    if (keep(entry.minute)) addBucket(part, entry.bucket);
+  }
+  return part;
+}
+
+/** The day rollups, shared by the blocks of a page. */
+export function loadRollups(model: RollupSource): Promise<RouteStatistics[]> {
+  return cached("rollups", async () => model.getAll(), CACHE_QUANTUM_MS);
+}
+
+/**
+ * Per-route day buckets over `range`, from the rollups. A bound that falls
+ * inside a past day trims that day with its profile, so a rolling window and
+ * the period before it split the day between them instead of both counting
+ * all of it. Today's rollup already stops at now.
+ */
+async function dayTraffic(
+  models: TrafficModels,
+  range: TimeRange,
+): Promise<WindowTraffic> {
+  const starts = bucketStarts(range, "day");
+  const from = range.from.getTime();
+  const to = range.to.getTime();
+  const today = startOfDay(Date.now());
+  const headDay = startOfDay(from);
+  const tailDay = startOfDay(to - 1);
+  const [rollups, head, tail] = await Promise.all([
+    loadRollups(models.stats),
+    from > headDay ? dayProfile(models.logs, headDay) : null,
+    to < nextDay(tailDay) && tailDay < today
+      ? dayProfile(models.logs, tailDay)
+      : null,
+  ]);
+  const index = new Map(starts.map((start, position) => [start, position]));
+  const fromMinute = bucketOf(from, "minute");
+  const toMinute = bucketOf(to, "minute");
+  const routes = new Map<string, TrafficBucket[]>();
+  for (const route of rollups) {
+    const key = scopeRouteKey(route.method, route.uri);
+    const buckets = emptyBuckets(starts);
+    for (const day of route.statistics) {
+      const position = index.get(day.day);
+      if (position !== undefined) addDay(buckets[position], day);
+    }
+    if (head) {
+      buckets[0] = partialDay(
+        buckets[0],
+        head.get(key),
+        (minute) => minute >= fromMinute,
+      );
+    }
+    if (tail) {
+      const last = buckets.length - 1;
+      buckets[last] = partialDay(
+        buckets[last],
+        tail.get(key),
+        (minute) => minute < toMinute,
+      );
+    }
+    routes.set(key, buckets);
+  }
+  return { starts, routes };
+}
+
+/**
+ * Per-route traffic over `range`: minute and hour buckets from the logs, day
+ * buckets from the rollups (which outlive the logs and are cheaper to read).
+ * Cached per range, so every block of a page reads the same computation.
+ */
+export function windowTraffic(
+  models: TrafficModels,
+  range: TimeRange,
+  granularity: WindowGranularity,
+): Promise<WindowTraffic> {
+  return cached(`traffic:${granularity}:${rangeKey(range)}`, async () => {
+    if (granularity === "day") return dayTraffic(models, range);
+    const starts = bucketStarts(range, granularity);
+    const samples = await samplesIn(models.logs, range);
+    return {
+      starts,
+      routes: bucketSamplesByRoute(samples, starts, granularity),
+    };
+  });
+}
+
+/** The traffic of the routes in scope, summed bucket by bucket. */
+export function scopeTraffic(
+  traffic: WindowTraffic,
+  keys: ScopeKeys,
+): TrafficBucket[] {
+  const total = emptyBuckets(traffic.starts);
+  for (const [key, buckets] of traffic.routes) {
+    if (keys && !keys.has(key)) continue;
+    buckets.forEach((bucket, position) => addBucket(total[position], bucket));
+  }
+  return total;
+}
+
+/** Traffic over `range` of the routes in scope, bucketed. */
 export async function loadTraffic(
-  models: { logs: RequestLogModel; stats: RouteStatisticsModel },
+  models: TrafficModels,
   range: TimeRange,
   granularity: WindowGranularity,
   keys: ScopeKeys,
 ): Promise<TrafficBucket[]> {
-  if (granularity === "hour") {
-    return bucketSamples(
-      await loadSamples(models.logs, range, keys),
-      range,
-      granularity,
-    );
-  }
-  return bucketRollups(await models.stats.getAll(), range, keys);
+  return scopeTraffic(await windowTraffic(models, range, granularity), keys);
 }

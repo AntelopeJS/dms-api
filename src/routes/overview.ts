@@ -8,11 +8,10 @@ import { GetModel } from "@antelopejs/interface-database-decorators";
 import type { User } from "@antelopejs/interface-dms/auth/db";
 import { AuthUserWithPermission } from "@antelopejs/interface-dms/guards";
 import { RequestLogModel, RouteModel, RouteStatisticsModel } from "@/db";
-import { OverviewPage } from "@/pages/overview";
+import { OVERVIEW_DEFAULT_WINDOW, OverviewPage } from "@/pages/overview";
 import { getActivity } from "@/services/activity";
-import { healthBanner, healthStats } from "@/services/health-blocks";
+import { ATTENTION_LIMIT, getAttention } from "@/services/attention";
 import {
-  getAttention,
   getErrorShareChart,
   getHealth,
   getSlowestRoutes,
@@ -20,11 +19,20 @@ import {
   getTrafficChart,
   type OverviewModels,
 } from "@/services/overview";
-import { countScopedRoutes, getScopedRouteKeys } from "@/services/scope";
+import { countRoutes } from "@/services/route-catalog";
+import { getScopedRouteKeys } from "@/services/scope";
 import { getActiveScope } from "@/services/settings";
-import { resolveWindow, type TimeWindow } from "@/services/window";
+import {
+  resolveWindow,
+  type TimeWindow,
+  type WindowPreset,
+  windowQueryFrom,
+} from "@/services/window";
 
-const DEFAULT_WINDOW_DAYS = 7;
+const DEFAULT_WINDOW: WindowPreset = OVERVIEW_DEFAULT_WINDOW;
+
+/** Most "Needs attention" rows one call returns (`?limit=`). */
+const MAX_ATTENTION_LIMIT = 100;
 
 function models(): OverviewModels {
   return {
@@ -39,47 +47,32 @@ function scopeKeys() {
 }
 
 function windowOf(context: RequestContext): TimeWindow {
-  const params = context.url.searchParams;
   return resolveWindow(
-    {
-      from: params.get("from") ?? undefined,
-      to: params.get("to") ?? undefined,
-      comparison: params.get("comparison") ?? undefined,
-    },
-    DEFAULT_WINDOW_DAYS,
+    windowQueryFrom(context.url.searchParams),
+    DEFAULT_WINDOW,
   );
 }
 
-/** The health of the scoped routes over the last 24 hours. */
-async function health() {
-  const keys = await scopeKeys();
-  return getHealth(
-    models(),
-    keys,
-    await countScopedRoutes(GetModel(RouteModel), keys),
-  );
+function attentionLimit(context: RequestContext): number {
+  const raw = Number(context.url.searchParams.get("limit"));
+  return Number.isInteger(raw) && raw > 0
+    ? Math.min(raw, MAX_ATTENTION_LIMIT)
+    : ATTENTION_LIMIT;
 }
 
 const grid = OverviewPage.dashboard;
 
 /**
- * The Overview's blocks. The charts and top lists follow the page's period
- * selector (`from` / `to` / `comparison`); the health hero, "Needs
- * attention" and the activity feed are about now.
+ * The Overview's blocks. The charts and top lists follow the page's window
+ * (`?window=`, or the period selector's `preset` / `from` / `to`); the health
+ * hero and "Needs attention" judge the last 24 h, the activity journal the
+ * last 7 days, and each says so in its payload.
  */
 export class OverviewController extends Controller("/api/monitoring/overview") {
   @Get("health")
-  async getHealthBanner(
-    @AuthUserWithPermission(OverviewPage.health) _user: User,
-  ) {
-    return healthBanner(await health());
-  }
-
-  @Get("health/figures")
-  async getHealthFigures(
-    @AuthUserWithPermission(OverviewPage.figures) _user: User,
-  ) {
-    return healthStats(await health());
+  async getHealth(@AuthUserWithPermission(OverviewPage.health) _user: User) {
+    const keys = await scopeKeys();
+    return getHealth(models(), keys, countRoutes(keys));
   }
 
   @Get("traffic")
@@ -111,8 +104,9 @@ export class OverviewController extends Controller("/api/monitoring/overview") {
   async getAttention(
     @AuthUserWithPermission(grid.targetChild("health", "attention"))
     _user: User,
+    @Context() context: RequestContext,
   ) {
-    return getAttention(models(), await scopeKeys());
+    return getAttention(models(), await scopeKeys(), attentionLimit(context));
   }
 
   @Get("slowest")

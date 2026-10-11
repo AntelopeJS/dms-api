@@ -1,65 +1,154 @@
-import { describe, expect, it } from "vitest";
-import { bucketOf, bucketStarts, resolveWindow } from "@/services/window";
-import { MS_PER_DAY, MS_PER_HOUR } from "@/types";
+import { afterEach, describe, expect, it } from "vitest";
+import { setConfig } from "@/config";
+import {
+  bucketOf,
+  bucketStarts,
+  CACHE_QUANTUM_MS,
+  resolveWindow,
+} from "@/services/window";
+import { MS_PER_DAY, MS_PER_HOUR, MS_PER_MINUTE } from "@/types";
 
-const NOW = new Date("2026-10-07T15:00:00.000Z");
+const NOW = new Date("2026-10-07T15:00:02.000Z");
+const PINNED = new Date("2026-10-07T15:00:00.000Z");
+
+afterEach(() => setConfig());
 
 describe("resolveWindow", () => {
-  it("falls back to the last N days, by day, against the period before", () => {
-    const window = resolveWindow({}, 7, NOW);
-    expect(window.granularity).toBe("day");
-    expect(window.to).toEqual(NOW);
+  it("rolls a preset back from now, pinned to the cache step", () => {
+    const window = resolveWindow({ window: "24h" }, "7d", NOW);
+    expect(window.preset).toBe("24h");
+    expect(window.to).toEqual(PINNED);
+    expect(window.to.getTime() - window.from.getTime()).toBe(MS_PER_DAY);
+    expect(window.granularity).toBe("hour");
+    expect(PINNED.getTime() % CACHE_QUANTUM_MS).toBe(0);
+  });
+
+  it("reads the selector's preset as ours, not its calendar range", () => {
+    const window = resolveWindow(
+      {
+        preset: "last-7-days",
+        from: "2026-10-01T00:00:00.000Z",
+        to: "2026-10-07T23:59:59.999Z",
+      },
+      "24h",
+      NOW,
+    );
+    expect(window.preset).toBe("7d");
+    expect(window.to).toEqual(PINNED);
     expect(window.to.getTime() - window.from.getTime()).toBe(7 * MS_PER_DAY);
+    expect(window.granularity).toBe("day");
+  });
+
+  it("falls back to its default preset and buckets an hour by the minute", () => {
+    expect(resolveWindow({}, "7d", NOW).preset).toBe("7d");
+    expect(resolveWindow({ window: "1h" }, "7d", NOW).granularity).toBe(
+      "minute",
+    );
+  });
+
+  it("compares to the period right before, of the same length", () => {
+    const window = resolveWindow({ window: "7d" }, "7d", NOW);
     expect(window.previous).toEqual({
       from: new Date(window.from.getTime() - 7 * MS_PER_DAY),
       to: window.from,
     });
+    expect(window.previousAvailable).toBe(true);
   });
 
-  it("reads hour buckets for a window of two days or less", () => {
+  it("takes a custom comparison as given", () => {
     const window = resolveWindow(
-      { from: "2026-10-06T15:00:00.000Z", to: NOW.toISOString() },
-      7,
+      {
+        from: "2026-10-06T15:00:00.000Z",
+        to: "2026-10-07T15:00:00.000Z",
+        comparison: "custom",
+        compareFrom: "2026-09-29T15:00:00.000Z",
+        compareTo: "2026-09-30T15:00:00.000Z",
+      },
+      "7d",
       NOW,
     );
-    expect(window.granularity).toBe("hour");
+    expect(window.preset).toBeNull();
+    expect(window.previous?.from).toEqual(new Date("2026-09-29T15:00:00.000Z"));
   });
 
   it("leaves the comparison out when the selector asks for none", () => {
-    expect(resolveWindow({ comparison: "none" }, 7, NOW).previous).toBeNull();
+    const window = resolveWindow({ comparison: "none" }, "7d", NOW);
+    expect(window.previous).toBeNull();
+  });
+
+  it("says when the period before 30 days is no longer kept", () => {
+    setConfig({ statisticsLifetime: 30 * MS_PER_DAY });
+    const short = resolveWindow({ window: "30d" }, "7d", NOW);
+    expect(short.previousAvailable).toBe(false);
+    expect(short.previous).toBeNull();
+    setConfig({ statisticsLifetime: 60 * MS_PER_DAY });
+    expect(resolveWindow({ window: "30d" }, "7d", NOW).previousAvailable).toBe(
+      true,
+    );
   });
 
   it("puts a reversed range back in order and ignores garbage", () => {
     const reversed = resolveWindow(
       { from: NOW.toISOString(), to: "2026-10-01T00:00:00.000Z" },
-      7,
+      "7d",
       NOW,
     );
     expect(reversed.from < reversed.to).toBe(true);
-    const garbage = resolveWindow({ from: "yesterday", to: "soon" }, 3, NOW);
-    expect(garbage.to.getTime() - garbage.from.getTime()).toBe(3 * MS_PER_DAY);
+    const garbage = resolveWindow(
+      { window: "14d", preset: "soon" },
+      "24h",
+      NOW,
+    );
+    expect(garbage.preset).toBe("24h");
   });
 
   it("never reaches further back than the statistics are kept", () => {
-    const window = resolveWindow({ from: "2020-01-01T00:00:00.000Z" }, 7, NOW);
+    setConfig({ statisticsLifetime: 30 * MS_PER_DAY });
+    const window = resolveWindow(
+      { from: "2020-01-01T00:00:00.000Z" },
+      "7d",
+      NOW,
+    );
     expect(NOW.getTime() - window.from.getTime()).toBeLessThanOrEqual(
-      30 * MS_PER_DAY,
+      31 * MS_PER_DAY,
     );
   });
 });
 
 describe("buckets", () => {
-  it("covers a window with one start per hour", () => {
-    const starts = bucketStarts(
-      { from: new Date(NOW.getTime() - 3 * MS_PER_HOUR), to: NOW },
+  it("covers [from, to) with one start per hour, none at `to`", () => {
+    const aligned = bucketStarts(
+      { from: new Date(PINNED.getTime() - 3 * MS_PER_HOUR), to: PINNED },
       "hour",
     );
-    expect(starts).toHaveLength(4);
-    expect(starts[1] - starts[0]).toBe(MS_PER_HOUR);
+    expect(aligned).toHaveLength(3);
+    expect(aligned[1] - aligned[0]).toBe(MS_PER_HOUR);
+    const offset = bucketStarts(
+      {
+        from: new Date(PINNED.getTime() - 3 * MS_PER_HOUR - 30 * MS_PER_MINUTE),
+        to: PINNED,
+      },
+      "hour",
+    );
+    expect(offset).toHaveLength(4);
+  });
+
+  it("does not start a day bucket at the end of a day window", () => {
+    const midnight = new Date(2026, 9, 7);
+    const starts = bucketStarts(
+      { from: new Date(2026, 9, 4), to: midnight },
+      "day",
+    );
+    expect(starts).toHaveLength(3);
+    expect(starts).not.toContain(midnight.getTime());
   });
 
   it("files a timestamp under the start of its bucket", () => {
-    const start = bucketOf(NOW.getTime() + 25 * 60_000, "hour");
-    expect(start).toBe(bucketOf(NOW.getTime(), "hour"));
+    expect(bucketOf(PINNED.getTime() + 25 * MS_PER_MINUTE, "hour")).toBe(
+      bucketOf(PINNED.getTime(), "hour"),
+    );
+    expect(bucketOf(PINNED.getTime() + 59_000, "minute")).toBe(
+      PINNED.getTime(),
+    );
   });
 });
