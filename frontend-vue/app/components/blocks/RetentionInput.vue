@@ -16,9 +16,10 @@ import {
   type RetentionImpact,
   retentionGuardOf,
 } from '../../utils/settingsForm'
+import SettingNumberInput from './SettingNumberInput.vue'
 
 // A retention of the Settings form, in days: a few choices (statistics) or a
-// number (request logs), drawn by the DMS inputs. Lowering it deletes the
+// number (request logs, `SettingNumberInput`), drawn by the DMS inputs. Lowering it deletes the
 // data older than the new value at the next hourly prune, so a lowered value
 // says what it deletes, and the save asks to confirm it first (one dialog for
 // both fields), the DMS form having no confirmation of its own on submit.
@@ -218,7 +219,7 @@ if (registerValidator) {
       :items="items"
       :disabled="props.disabled"
     />
-    <DmsInputNumber
+    <SettingNumberInput
       v-else
       :id="props.id"
       v-model="model"

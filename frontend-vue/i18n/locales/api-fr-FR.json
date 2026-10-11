@@ -916,6 +916,11 @@
         "down_rate": "Seuil « En panne »",
         "down_rate_description": "La santé de l'API passe à En panne quand les erreurs serveur (5xx) atteignent cette part des appels des 5 dernières minutes, à partir de 20 appels. Dès 1 % sur les 15 dernières minutes, elle est Dégradée et la route en échec, puis Rétablie pendant 15 minutes après le retour à la normale.",
         "fixed": "Fixe dans cette version"
+      },
+      "number": {
+        "adjusted_max": "{typed} dépasse le maximum : ramené à {value}.",
+        "adjusted_min": "{typed} est sous le minimum : ramené à {value}.",
+        "adjusted_step": "{typed} n'est pas un multiple de {step} : arrondi à {value}."
       }
     }
   }

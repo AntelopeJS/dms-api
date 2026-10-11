@@ -56,6 +56,20 @@ const scopeType = new DefaultDataTypes.SelectType({
 const { logRetentionDays, maxBodyKb, slowThresholdMs, capturedHeaders } =
   SETTINGS_BOUNDS;
 
+/**
+ * The numbers of the form are drawn by `SettingNumberInput`, the DMS number
+ * input at the width of a number, which says how it corrected a typed value
+ * ("1020 → 1,000") and takes the focus from a link to its field. The headers
+ * are drawn by `SettingTagsInput`, the DMS tags input that does the latter.
+ */
+const maxBodyInput = { min: maxBodyKb.min, max: maxBodyKb.max, step: 1 };
+
+const headersInput = {
+  max: capturedHeaders.max,
+  placeholder: "$api.settings.capture.headers_placeholder",
+  suggestions: ["stripe-signature", "x-forwarded-for", "x-idempotency-key"],
+};
+
 const retentionType = new DefaultDataTypes.NumberType({
   min: logRetentionDays.min,
   max: logRetentionDays.max,
@@ -134,11 +148,8 @@ const settingsForm = Form({
           label: "$api.settings.capture.max_body",
           description: "$api.settings.capture.max_body_description",
           hint: "$api.settings.capture.max_body_hint",
-          type: new DefaultDataTypes.NumberType({
-            min: maxBodyKb.min,
-            max: maxBodyKb.max,
-            step: 1,
-          }),
+          type: new DefaultDataTypes.NumberType(maxBodyInput),
+          inputComponent: apiInput("SettingNumberInput", maxBodyInput),
         },
         {
           id: SETTINGS_FIELDS.headers,
@@ -148,15 +159,8 @@ const settingsForm = Form({
           // The route checks the names: one HTTP does not allow, or one the
           // capture never stores, comes back as a field error naming it,
           // which the DMS input shows red.
-          type: new TagsType({
-            max: capturedHeaders.max,
-            placeholder: "$api.settings.capture.headers_placeholder",
-            suggestions: [
-              "stripe-signature",
-              "x-forwarded-for",
-              "x-idempotency-key",
-            ],
-          }),
+          type: new TagsType(headersInput),
+          inputComponent: apiInput("SettingTagsInput", headersInput),
         },
         {
           id: SETTINGS_FIELDS.redacted,
@@ -183,11 +187,8 @@ const settingsForm = Form({
           label: "$api.settings.thresholds.slow",
           description: "$api.settings.thresholds.slow_description",
           hint: "$api.settings.thresholds.slow_hint",
-          type: new DefaultDataTypes.NumberType({
-            min: slowThresholdMs.min,
-            max: slowThresholdMs.max,
-            step: slowThresholdMs.step,
-          }),
+          type: new DefaultDataTypes.NumberType(slowThresholdMs),
+          inputComponent: apiInput("SettingNumberInput", slowThresholdMs),
         },
         {
           id: SETTINGS_FIELDS.errorRate,

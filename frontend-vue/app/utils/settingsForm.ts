@@ -1,5 +1,71 @@
-// When a save of the Settings form waits for the user to confirm a lowered
-// retention. Pure, so it is tested without a form.
+// What the console's own inputs of the Settings form decide: how a number
+// field changed what was typed, which field the page was opened on, and when
+// a save waits for the user to confirm a lowered retention. Pure but for
+// `revealLinkedField`, so it is tested without a form.
+
+/**
+ * A number as typed in a field written in `locale` ("1,020", "1 020"):
+ * `null` when the field is empty, `NaN` when it does not read as a number.
+ */
+export function parseTypedNumber(text: string, locale: string): number | null {
+  const trimmed = text.trim()
+  if (!trimmed) return null
+  const parts = new Intl.NumberFormat(locale).formatToParts(11111.1)
+  const group = parts.find((part) => part.type === 'group')?.value
+  const decimal = parts.find((part) => part.type === 'decimal')?.value ?? '.'
+  let digits = trimmed.replace(/[\s  ]/g, '')
+  if (group) digits = digits.split(group).join('')
+  return Number(digits.split(decimal).join('.'))
+}
+
+/** Why a number field holds another value than the one typed. */
+export type NumberAdjustment = 'max' | 'min' | 'step'
+
+/**
+ * How the field changed what was typed (`typed`) into the value it holds
+ * (`value`): kept within its bounds, or put on its steps. `null` when it
+ * holds what was typed, or nothing.
+ */
+export function numberAdjustment(
+  typed: number | null,
+  value: number | null | undefined,
+  bounds: { min?: number; max?: number },
+): NumberAdjustment | null {
+  if (typed === null || Number.isNaN(typed) || typeof value !== 'number')
+    return null
+  if (value === typed) return null
+  if (bounds.max !== undefined && typed > bounds.max) return 'max'
+  if (bounds.min !== undefined && typed < bounds.min) return 'min'
+  return 'step'
+}
+
+/** Whether the page was opened on the anchor of field `id`. */
+export function isLinkedField(hash: string, id: string | undefined): boolean {
+  if (!id || !hash) return false
+  try {
+    return decodeURIComponent(hash.replace(/^#/, '')) === id
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Brings the field into view and focuses its input when the page was opened
+ * on its anchor (`/modules/api/settings#requestLogMaxBodyKb`). Called as the
+ * field mounts, on the field's own element: a link followed inside the app
+ * renders the page without the browser's own jump to the anchor, the field
+ * drawn only once the form loads.
+ */
+export function revealLinkedField(
+  id: string | undefined,
+  root: HTMLElement | null | undefined,
+): void {
+  if (!root || !isLinkedField(window.location.hash, id)) return
+  requestAnimationFrame(() => {
+    root.scrollIntoView({ block: 'center' })
+    root.querySelector<HTMLElement>('input')?.focus({ preventScroll: true })
+  })
+}
 
 /** What the next hourly prune deletes (`GET …/settings/retention-impact`). */
 export interface RetentionImpact {

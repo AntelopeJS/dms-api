@@ -1,10 +1,56 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
   createRetentionGuard,
+  isLinkedField,
   isLowered,
+  numberAdjustment,
+  parseTypedNumber,
   type RetentionChange,
   retentionGuardOf,
 } from '../app/utils/settingsForm'
+
+describe('parseTypedNumber', () => {
+  it('reads a number as typed in the locale', () => {
+    expect(parseTypedNumber('1020', 'en-GB')).toBe(1020)
+    expect(parseTypedNumber('1,020', 'en-GB')).toBe(1020)
+    expect(parseTypedNumber('1 020', 'fr-FR')).toBe(1020)
+    expect(parseTypedNumber(' -100 ', 'en-GB')).toBe(-100)
+  })
+
+  it('is null when empty and NaN when not a number', () => {
+    expect(parseTypedNumber('  ', 'en-GB')).toBeNull()
+    expect(parseTypedNumber('abc', 'en-GB')).toBeNaN()
+  })
+})
+
+describe('numberAdjustment', () => {
+  const bounds = { min: 50, max: 600_000 }
+
+  it('says why the field holds another value than the one typed', () => {
+    expect(numberAdjustment(1020, 1000, bounds)).toBe('step')
+    expect(numberAdjustment(999_999, 600_000, bounds)).toBe('max')
+    expect(numberAdjustment(-100, 50, bounds)).toBe('min')
+  })
+
+  it('is null when the field holds what was typed, or nothing', () => {
+    expect(numberAdjustment(2000, 2000, bounds)).toBeNull()
+    expect(numberAdjustment(null, undefined, bounds)).toBeNull()
+    expect(numberAdjustment(Number.NaN, undefined, bounds)).toBeNull()
+  })
+})
+
+describe('isLinkedField', () => {
+  it('matches the anchor the page was opened on', () => {
+    expect(isLinkedField('#requestLogMaxBodyKb', 'requestLogMaxBodyKb')).toBe(
+      true,
+    )
+    expect(
+      isLinkedField('#requestLogCaptureHeaders', 'requestLogMaxBodyKb'),
+    ).toBe(false)
+    expect(isLinkedField('', 'requestLogMaxBodyKb')).toBe(false)
+    expect(isLinkedField('#%E0%A4%A', 'requestLogMaxBodyKb')).toBe(false)
+  })
+})
 
 describe('isLowered', () => {
   it('is a value below the saved one', () => {

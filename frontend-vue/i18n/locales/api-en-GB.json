@@ -916,6 +916,11 @@
         "down_rate": "Down threshold",
         "down_rate_description": "API health turns Down when server errors (5xx) reach this share of the calls of the last 5 minutes, counted from 20 calls. From 1% over the last 15 minutes it is Degraded and the route Failing, then Recovered for 15 minutes once it is back.",
         "fixed": "Fixed in this version"
+      },
+      "number": {
+        "adjusted_max": "{typed} is above the maximum: set to {value}.",
+        "adjusted_min": "{typed} is below the minimum: set to {value}.",
+        "adjusted_step": "{typed} is not a step of {step}: rounded to {value}."
       }
     }
   }
