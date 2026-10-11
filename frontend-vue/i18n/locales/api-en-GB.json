@@ -266,7 +266,7 @@
       "table": "Request table",
       "search": "Path, request ID, error…",
       "count": "{count} request | {count} requests",
-      "keys_hint": "⇧F search · Esc close the panel · L live / pause · ? shortcuts",
+      "keys_hint": "⇧F search · J / K next / previous request · Esc close the panel · L live / pause · ? shortcuts",
       "toolbar": "Request logs toolbar",
       "drawer_title": "Request",
       "open_request": "Open request",
@@ -309,6 +309,7 @@
         "title": "Keyboard shortcuts",
         "open": "Keyboard shortcuts (?)",
         "search": "Search the requests",
+        "steps": "Next / previous request in the panel",
         "close": "Close the panel",
         "live": "Live or Pause for the whole page",
         "help": "Show these shortcuts"

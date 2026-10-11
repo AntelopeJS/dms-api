@@ -266,7 +266,7 @@
       "table": "Table des requêtes",
       "search": "Chemin, ID de requête, erreur…",
       "count": "{count} requête | {count} requêtes",
-      "keys_hint": "⇧F rechercher · Échap fermer le panneau · L direct / pause · ? raccourcis",
+      "keys_hint": "⇧F rechercher · J / K requête suivante / précédente · Échap fermer le panneau · L direct / pause · ? raccourcis",
       "toolbar": "Barre d'outils des journaux",
       "drawer_title": "Requête",
       "open_request": "Ouvrir la requête",
@@ -309,6 +309,7 @@
         "title": "Raccourcis clavier",
         "open": "Raccourcis clavier (?)",
         "search": "Rechercher dans les requêtes",
+        "steps": "Requête suivante / précédente dans le panneau",
         "close": "Fermer le panneau",
         "live": "En direct ou Pause pour toute la page",
         "help": "Afficher ces raccourcis"

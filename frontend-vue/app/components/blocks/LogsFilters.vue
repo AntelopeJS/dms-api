@@ -152,9 +152,11 @@ const origin = computed(() => {
 
 const shortcutsOpen = ref(false)
 
-// The table's search is the DMS table's own shortcut (Shift+F).
+// The table's search is the DMS table's own shortcut (Shift+F); J / K, Esc
+// and L are the DMS side panel's and live toggle's.
 const SHORTCUTS = [
   { keys: ['shift', 'F'], label: 'api.logs.shortcuts.search' },
+  { keys: ['J', 'K'], label: 'api.logs.shortcuts.steps' },
   { keys: ['Esc'], label: 'api.logs.shortcuts.close' },
   { keys: ['L'], label: 'api.logs.shortcuts.live' },
   { keys: ['?'], label: 'api.logs.shortcuts.help' },
