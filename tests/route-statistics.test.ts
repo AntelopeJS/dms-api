@@ -128,14 +128,14 @@ describe("route statistics", () => {
       { x: 2, y: null },
       { x: 3, y: 50 },
     ]);
-    expect(chart.slowThresholdMs).toBe(1000);
+    expect(chart).toMatchObject({ slowThresholdMs: 1000 });
     // Every p95 point within its bucket's max.
     expect(chart.series[2]?.data[0]?.y).toBeLessThanOrEqual(300);
   });
 
   it("sizes the axis to hold the slow threshold, above or below the points", () => {
     expect(latencyChart(traffic, 1000)).toMatchObject({ yMin: 0, yMax: 1100 });
-    expect(latencyChart(traffic, 100).yMax).toBe(400);
+    expect(latencyChart(traffic, 100)).toMatchObject({ yMax: 400 });
   });
 
   it("says when there is no previous period", () => {
@@ -153,6 +153,8 @@ describe("route statistics", () => {
       previous: null,
     };
     expect(routeSummary(empty, 250).items).toEqual([]);
-    expect(errorRateChart(empty)).toMatchObject({ value: 0, delta: null });
+    // No series: the charts show their empty state, not 0 %.
+    expect(errorRateChart(empty)).toEqual({ series: [] });
+    expect(latencyChart(empty, 1000)).toEqual({ series: [] });
   });
 });

@@ -47,6 +47,16 @@ export interface RouteChartPayload {
   window?: WindowInfo;
 }
 
+/**
+ * A chart of a route nobody called over the period: no series, so the DMS
+ * chart shows its empty state rather than a flat 0.
+ */
+export interface EmptyChartPayload {
+  series: [];
+}
+
+const EMPTY_CHART: EmptyChartPayload = { series: [] };
+
 /** The latency chart also says where "slow" starts. */
 export interface LatencyChartPayload extends RouteChartPayload {
   slowThresholdMs: number;
@@ -282,7 +292,10 @@ function gapPoints(
  * Share of 4xx and of 5xx per bucket, in percent, so a few errors stay
  * visible next to a busy day. The delta is in points.
  */
-export function errorRateChart(traffic: RouteTraffic): RouteChartPayload {
+export function errorRateChart(
+  traffic: RouteTraffic,
+): RouteChartPayload | EmptyChartPayload {
+  if (traffic.total.requests === 0) return EMPTY_CHART;
   const share =
     (part: (bucket: TrafficBucket) => number) => (bucket: TrafficBucket) =>
       (part(bucket) / bucket.requests) * PERCENT;
@@ -324,7 +337,8 @@ const Y_STEP_MS = 100;
 export function latencyChart(
   traffic: RouteTraffic,
   slowThresholdMs: number = getConfig().requestSlownessThreshold,
-): LatencyChartPayload {
+): LatencyChartPayload | EmptyChartPayload {
+  if (traffic.total.requests === 0) return EMPTY_CHART;
   // A bucket without a measured duration is a gap, not a 0 ms point.
   const points = (pick: (bucket: TrafficBucket) => number | null) =>
     traffic.buckets.map((bucket) => {

@@ -25,6 +25,7 @@ import {
 import { HEALTH_THRESHOLDS } from "@/services/health-rules";
 import {
   errorRateChart,
+  type EmptyChartPayload,
   type LatencyChartPayload,
   latencyChart,
   loadRouteTraffic,
@@ -234,7 +235,7 @@ export class RoutesController extends Controller("/api/monitoring/routes") {
     )
     _user: User,
     @Context() context: RequestContext,
-  ): Promise<RouteChartPayload> {
+  ): Promise<RouteChartPayload | EmptyChartPayload> {
     return errorRateChart(await trafficOf(context));
   }
 
@@ -245,7 +246,7 @@ export class RoutesController extends Controller("/api/monitoring/routes") {
     )
     _user: User,
     @Context() context: RequestContext,
-  ): Promise<LatencyChartPayload> {
+  ): Promise<LatencyChartPayload | EmptyChartPayload> {
     return latencyChart(await trafficOf(context));
   }
 
