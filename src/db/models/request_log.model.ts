@@ -418,10 +418,6 @@ export class RequestLogModel extends BasicDataModel(
             .key("routeMethod")
             .default(doc.key("method"))
             .cast<string>()
-            // Capture already uppercases the method, but the keys are built
-            // uppercase too — normalize so a row written by an older build
-            // can't fall out of its own scope.
-            .upcase()
             .concat(":")
             .concat(doc.key("uri")),
         ),

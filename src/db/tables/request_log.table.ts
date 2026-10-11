@@ -158,9 +158,9 @@ export class RequestLog extends Table {
   @Field("number")
   declare responseBodySize?: number;
 
-  /** What the capture redacted; absent on logs captured before it counted. */
+  /** What the capture redacted. */
   @Field("any")
-  declare redactions?: RequestLogRedactions;
+  declare redactions: RequestLogRedactions;
 
   @Field("any")
   declare error?: RequestLogError;

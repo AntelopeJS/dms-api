@@ -44,10 +44,7 @@ export interface RequestLogRow {
    */
   responseTimeMs: number | null;
   slow: boolean;
-  /**
-   * The error message. Not `error`: the column under that key had its
-   * visibility kept hidden in the table preferences of earlier versions.
-   */
+  /** The error message. */
   message: string | null;
   ip: string | null;
   /** `tester` for a request sent from the console's Tester. */

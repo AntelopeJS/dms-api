@@ -139,7 +139,7 @@ async function logDetail(id: string, context: RequestContext, table: LogTable) {
     requestHeaders: log.requestHeaders,
     requestBody: log.requestBody,
     requestBodyTruncated: log.requestBodyTruncated,
-    // Null on a log captured before the capture said why.
+    // Null when the body is stored.
     requestBodyOmitted: log.requestBodyOmitted ?? null,
     // The whole body's bytes when only its start is stored.
     requestBodySize: log.requestBodySize ?? null,
@@ -148,7 +148,7 @@ async function logDetail(id: string, context: RequestContext, table: LogTable) {
     responseBodyTruncated: log.responseBodyTruncated,
     responseBodyOmitted: log.responseBodyOmitted ?? null,
     responseBodySize: log.responseBodySize ?? null,
-    redactions: log.redactions ?? null,
+    redactions: log.redactions,
     error: log.error,
     route: ref,
     routeRegistered: route !== undefined,
