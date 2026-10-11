@@ -193,7 +193,7 @@
       },
       "slowest": {
         "title": "Routes les plus lentes",
-        "description": "Latence moyenne par route",
+        "description": "Latence moyenne par route, en ms",
         "empty": "Aucun appel sur la période",
         "detail": "p95 {p95} · max {max} · {calls} appel | p95 {p95} · max {max} · {calls} appels",
         "detail_no_p95": "max {max} · {calls} appel | max {max} · {calls} appels"

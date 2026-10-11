@@ -193,7 +193,7 @@
       },
       "slowest": {
         "title": "Slowest routes",
-        "description": "Average latency per route",
+        "description": "Average latency per route, in ms",
         "empty": "No calls in this period",
         "detail": "p95 {p95} · max {max} · {calls} call | p95 {p95} · max {max} · {calls} calls",
         "detail_no_p95": "max {max} · {calls} call | max {max} · {calls} calls"
