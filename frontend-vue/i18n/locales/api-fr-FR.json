@@ -18,10 +18,6 @@
     },
     "common": {
       "retry": "Réessayer",
-      "ago_s": "il y a {amount} s",
-      "ago_min": "il y a {amount} min",
-      "ago_h": "il y a {amount} h",
-      "ago_d": "il y a {amount} j",
       "percent": "{value} %",
       "ms": "{value} ms",
       "refresh": "Actualiser"
@@ -84,10 +80,6 @@
       "logs_empty_state": {
         "name": "Table des requêtes vide",
         "description": "Ce que dit la table des requêtes quand elle ne liste rien, et comment en sortir."
-      },
-      "live_control": {
-        "name": "En direct / Pause",
-        "description": "Le contrôle En direct / Pause de la page : mises à jour à l'arrivée des requêtes, ou page figée qui compte ce qu'elle manque."
       },
       "health_hero": {
         "name": "Santé de l'API",
@@ -278,31 +270,7 @@
       "summary_empty": "Aucune requête sur la dernière heure."
     },
     "live_mode": {
-      "label": "Mises à jour en direct",
-      "live": "En direct",
-      "pause": "Pause",
-      "hint": "En direct : la page suit les nouvelles requêtes. Pause : plus rien ne bouge.",
-      "updated": "Mis à jour {ago}",
-      "updated_now": "Mis à jour à l'instant",
-      "polling": "sans temps réel, relecture régulière",
-      "paused": "En pause",
-      "paused_because": "En pause · {reason}",
-      "reasons": {
-        "hidden": "onglet masqué",
-        "panel": "requête ouverte",
-        "tester": "saisie dans le testeur",
-        "search": "recherche active",
-        "sort": "tri autre que par date",
-        "load_more": "lignes supplémentaires chargées",
-        "scroll": "liste parcourue plus bas"
-      },
-      "new_requests": "{count} nouvelle requête | {count} nouvelles requêtes",
-      "server_errors": "{count} en 5xx",
-      "tester": "{count} envoyée par le testeur | {count} envoyées par le testeur",
-      "resume": "Reprendre",
-      "show": "Afficher",
       "verdict": {
-        "changed": "Statut changé : {from} → {to}",
         "title": "Santé de l'API : {verdict}",
         "description": "Avant : {previous}.",
         "tab": "● {verdict} · {page}"

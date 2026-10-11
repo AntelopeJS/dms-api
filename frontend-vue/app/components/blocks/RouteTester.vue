@@ -1180,12 +1180,7 @@ const shortcut = computed(() =>
 <template>
   <div v-if="!selection.ref.value" />
   <USkeleton v-else-if="pending" class="h-72" />
-  <div
-    v-else-if="route"
-    data-dms-api-tester
-    class="flex flex-col gap-4"
-    @keydown.capture="onKey"
-  >
+  <div v-else-if="route" class="flex flex-col gap-4" @keydown.capture="onKey">
     <DmsCard :padded="false">
       <!-- The method and the path keep a line of their own when the card is
            narrow: the buttons go under them, and a long path wraps. -->

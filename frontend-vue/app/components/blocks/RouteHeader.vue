@@ -140,7 +140,7 @@ const STATISTICS_TAB = '0'
 
 // Live, the route's state is read again on the Statistics tab only: the
 // documentation and the tester read the same detail, and must not move.
-usePageBlocksRefresh(() => {
+useLiveRefresh(() => {
   const tab = page.query[props.tabKey]
   if (!tab || tab === STATISTICS_TAB) void refresh()
 })

@@ -22,8 +22,7 @@ export type ApiBlock =
   | "LogsPeriod"
   | "LogsFilters"
   | "LogsEmptyState"
-  | "PeriodWindow"
-  | "LiveControl";
+  | "PeriodWindow";
 
 const BLOCK_ICONS: Record<ApiBlock, string> = {
   ScopeChip: "i-ph-funnel",
@@ -41,7 +40,6 @@ const BLOCK_ICONS: Record<ApiBlock, string> = {
   LogsFilters: "i-ph-funnel",
   LogsEmptyState: "i-ph-tray",
   PeriodWindow: "i-ph-calendar-blank",
-  LiveControl: "i-ph-broadcast",
 };
 
 /** `RouteTree` → `route_tree`: the i18n key segment of a block. */

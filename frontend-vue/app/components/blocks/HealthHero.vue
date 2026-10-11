@@ -18,8 +18,9 @@ import {
 // figures cover a short window (the last `thresholds.windowMinutes`), so the
 // hero says what is happening now and comes back to Healthy once an incident
 // is over. With no request captured yet, the same place explains how to get
-// the first one in. It follows the page's Live / Pause control: read again
-// with the page's blocks (the DMS page refresh), still while paused. A change
+// the first one in. It follows the page's Direct / Pause state (`usePageLive`,
+// the DMS `LiveToggle`): read again on the live feed and every minute in
+// Direct, still while paused. A change
 // of verdict seen live is told in a toast, and an unhealthy verdict shows in
 // the browser tab.
 defineOptions({ inheritAttrs: false })
@@ -153,15 +154,13 @@ const METRIC_TONE: Record<MetricTone, string> = {
 const { t } = useI18n()
 const locale = useFormatLocale()
 const toast = useToast()
-// TODO: read Live / Pause from the DMS `usePageLive()` once it lands, in
-// place of the console's own live state.
-const { live } = useLiveMode()
+const { isLive } = usePageLive()
 const { data, error, pending, receivedAt, refresh } =
   useApiResource<HealthPayload>(() => props.fetchUrl)
 
-// Read again with the page's blocks: the Live control refreshes them at the
-// page's pace, and never while paused.
-usePageBlocksRefresh(() => void refresh())
+// Read again on the live feed, and after a quiet minute: the verdict judges
+// time too. Never while paused.
+useLiveRefresh(() => void refresh(), { idleMs: 60_000 })
 
 /** Refresh reads the whole page again, not this block alone. */
 function refreshPage() {
@@ -250,7 +249,7 @@ const cardStyle = computed(() => ({
 
 const heading = computed(
   () =>
-    `${t('api.health.label')} · ${t(stale.value ? 'api.health.state.stale' : live.value ? 'api.health.state.live' : 'api.health.state.paused')}`,
+    `${t('api.health.label')} · ${t(stale.value ? 'api.health.state.stale' : isLive.value ? 'api.health.state.live' : 'api.health.state.paused')}`,
 )
 
 /** When the verdict on screen began: what "for 8 min" counts from. */

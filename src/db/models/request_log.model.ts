@@ -55,8 +55,6 @@ export interface RequestLogFilters {
    * so two adjacent windows never count the same request twice.
    */
   until?: Date;
-  /** Strictly after this instant: what arrived since a live view's cursor. */
-  after?: Date;
   /**
    * API traffic only: leaves out the requests a source marked (the Tester's),
    * as the statistics and the health do. The request table keeps them.
@@ -105,20 +103,6 @@ export interface RequestLogListPage {
   total: number;
 }
 
-/** The rows that arrived after a live view's cursor, newest first. */
-export interface RequestLogSincePage {
-  results: RequestLogListItem[];
-  /**
-   * Every matching API request after the cursor, beyond the `limit` returned
-   * too; the Tester's are counted apart, in `tester`.
-   */
-  count: number;
-  /** Of `count`, the ones answered with a 5xx. */
-  serverErrors: number;
-  /** Matching requests the Tester sent after the cursor. */
-  tester: number;
-}
-
 /** Columns a listing can be sorted on, each backed by an index. */
 export type RequestLogSortKey = "timestamp" | "statusCode" | "responseTimeMs";
 
@@ -148,7 +132,6 @@ const DEFAULT_LIMIT = 50;
 /** `source` of a request the console's Tester sent. */
 const TESTER_SOURCE = "tester";
 const CURSOR_SEPARATOR = "|";
-const SERVER_ERROR_MIN = 500;
 
 interface LogCursor {
   timestamp: Date;
@@ -231,41 +214,6 @@ export class RequestLogModel extends BasicDataModel(
     return { results, total };
   }
 
-  /**
-   * The rows matching `filters` that arrived after `after`, newest first, up
-   * to `limit` (none for 0: a live view counting what it misses), and how
-   * many there are in all: the API's, its 5xx among them, and the Tester's.
-   */
-  async since(
-    filters: RequestLogFilters,
-    after: Date,
-    limit: number,
-  ): Promise<RequestLogSincePage> {
-    const window = { ...filters, after };
-    const [results, byStatus, tester] = await Promise.all([
-      // A slice of 0 rows would read as "no limit" to the database.
-      limit > 0
-        ? this.listItems(
-            this.applyFilters(
-              this.table.orderBy(REQUEST_LOG_ORDER_INDEX, "desc"),
-              window,
-            ).slice(0, limit),
-          )
-        : [],
-      this.countByStatus({ ...window, apiTrafficOnly: true }),
-      this.applyFilters(this.table, { ...window, testerOnly: true })
-        .count()
-        .run(),
-    ]);
-    let count = 0;
-    let serverErrors = 0;
-    for (const [status, rows] of byStatus) {
-      count += rows;
-      if (status >= SERVER_ERROR_MIN) serverErrors += rows;
-    }
-    return { results, count, serverErrors, tester };
-  }
-
   /** Every row matching `filters`, reduced to the fields aggregations read. */
   async samples(filters: RequestLogFilters): Promise<RequestLogSample[]> {
     // The Tester's requests are logged, not counted (see RequestLogSource).
@@ -279,19 +227,6 @@ export class RequestLogModel extends BasicDataModel(
         errorMessage: doc.key("error").default(null).key("message"),
       }))
       .run() as Promise<RequestLogSample[]>;
-  }
-
-  /** The matching rows per status code, in one pass. */
-  private async countByStatus(
-    filters: RequestLogFilters,
-  ): Promise<Map<number, number>> {
-    const groups = (await this.applyFilters(this.table, filters)
-      .group("statusCode", (stream, statusCode) => ({
-        statusCode,
-        count: stream.count(),
-      }))
-      .run()) as Array<{ statusCode: number; count: number }>;
-    return new Map(groups.map((group) => [group.statusCode, group.count]));
   }
 
   private listItems(rows: this["table"]): Promise<RequestLogListItem[]> {
@@ -348,10 +283,6 @@ export class RequestLogModel extends BasicDataModel(
     const until = filters.until;
     if (until) {
       q = q.filter((doc) => doc.key("timestamp").lt(until));
-    }
-    const after = filters.after;
-    if (after) {
-      q = q.filter((doc) => doc.key("timestamp").gt(after));
     }
     if (filters.apiTrafficOnly) {
       q = q.filter((doc) => doc.key("source").default("").eq(""));

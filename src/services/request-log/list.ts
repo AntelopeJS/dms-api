@@ -21,8 +21,8 @@ import { parseRouteRef } from "../route-catalog";
  * and an incident's `?since=` / `?until=` reach it that way, in the list and
  * in the tab counts alike). `filter_from` / `filter_to` (ISO timestamps)
  * narrow to `[from, to)`,
- * `requestId=` finds the request a sender knows and, for `/logs/since`,
- * `after=` is the live cursor.
+ * `requestId=` finds the request a sender knows and `liveHeldAt` (ISO) bounds
+ * a held table to the rows it froze.
  */
 export type SourceQuery = Record<string, string | undefined>;
 
@@ -85,10 +85,6 @@ const DEFAULT_PAGE_SIZE = 50;
 /** Hundredths of a millisecond: what a sub-millisecond duration keeps. */
 const SUB_MS_PRECISION = 100;
 
-/** Default and largest number of rows `/logs/since` answers. */
-const SINCE_DEFAULT_LIMIT = 100;
-const SINCE_MAX_LIMIT = 500;
-
 /** `is:GET,POST` → `["GET", "POST"]`: the values of a filter, mode aside. */
 function filterValues(raw: string | undefined): string[] {
   if (!raw) return [];
@@ -107,7 +103,7 @@ function filterValue(raw: string | undefined): string | undefined {
 
 /** `is:<ISO timestamp>` as a date, or undefined when unreadable. */
 function filterDate(raw: string | undefined): Date | undefined {
-  return parseAfter(raw?.replace(/^[a-z_]+:/, ""));
+  return parseDate(raw?.replace(/^[a-z_]+:/, ""));
 }
 
 const STATUS_TONES: Record<string, Tone> = {
@@ -198,13 +194,29 @@ export function filtersFromQuery(
   // incident an Activity link names, a minute of the histogram.
   const since = periodStart(query, now, defaultWindow);
   if (since) filters.since = since;
-  const until = filterDate(query.filter_to);
+  const until = earliest(filterDate(query.filter_to), heldAt(query));
   if (until) filters.until = until;
   const search = query.search?.trim();
   if (search) filters.search = search;
   const requestId = query.requestId?.trim();
   if (requestId) filters.requestId = requestId;
   return filters;
+}
+
+/**
+ * `liveHeldAt`: the moment a held table froze its rows (its live page paused).
+ * Its search, sort and "Load more" list the rows as they stood then, like an
+ * incident's `filter_to`, so nothing that arrived since slips in.
+ */
+function heldAt(query: SourceQuery): Date | undefined {
+  return parseDate(query.liveHeldAt);
+}
+
+function earliest(...dates: (Date | undefined)[]): Date | undefined {
+  const known = dates.filter((date): date is Date => date !== undefined);
+  return known.length
+    ? new Date(Math.min(...known.map((date) => date.getTime())))
+    : undefined;
 }
 
 /**
@@ -338,70 +350,9 @@ function scopeOf(
   return options.findOutsideScope && named ? null : keys;
 }
 
-/** What arrived since a live view's cursor. */
-export interface RequestLogSince {
-  /** Newest first, up to `limit`. */
-  results: RequestLogRow[];
-  /**
-   * Every matching API request after the cursor, beyond `limit` too; the
-   * Tester's are in `tester`.
-   */
-  count: number;
-  /** Of `count`, the ones answered with a 5xx. */
-  serverErrors: number;
-  /** Matching requests the Tester sent. */
-  tester: number;
-  /** The `after` of the next call: the newest request's timestamp. */
-  cursor: string;
-  /** The server's clock as it answered: a cursor for a view with no row. */
-  now: string;
-}
-
-/** `after=` as a date, or undefined when missing or unreadable. */
-export function parseAfter(raw: string | undefined): Date | undefined {
+/** An ISO timestamp as a date, or undefined when missing or unreadable. */
+function parseDate(raw: string | undefined): Date | undefined {
   if (!raw) return undefined;
   const date = new Date(raw);
   return Number.isNaN(date.getTime()) ? undefined : date;
-}
-
-/**
- * The requests matching the table's filters that arrived after `after`: what
- * a live view adds on top of the rows it shows, without reloading them.
- */
-export async function listRequestLogsSince(
-  model: Pick<RequestLogModel, "since">,
-  query: SourceQuery,
-  after: Date,
-  keys: Set<string> | null,
-  options: RequestLogListOptions = {},
-): Promise<RequestLogSince> {
-  const now = new Date().toISOString();
-  const filters = filtersFromQuery(query, new Date(), options.defaultWindow);
-  const scope = scopeOf(filters, keys, options);
-  if (matchesNothing(query, scope, options)) {
-    return {
-      results: [],
-      count: 0,
-      serverErrors: 0,
-      tester: 0,
-      cursor: after.toISOString(),
-      now,
-    };
-  }
-  if (scope) filters.routeKeys = [...scope];
-  // `limit=0` counts without reading a row.
-  const limit = Math.min(
-    positiveInt(query.limit) ?? SINCE_DEFAULT_LIMIT,
-    SINCE_MAX_LIMIT,
-  );
-  const page = await model.since(filters, after, limit);
-  const newest = page.results[0]?.timestamp;
-  return {
-    results: page.results.map(toRow),
-    count: page.count,
-    serverErrors: page.serverErrors,
-    tester: page.tester,
-    cursor: (newest ?? after).toISOString(),
-    now,
-  };
 }

@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { GetMetadata } from "@antelopejs/interface-core";
+import { PageMetadata } from "@antelopejs/interface-dms/page";
 import { OverviewPage } from "@/pages/overview";
 
 interface Serialized {
@@ -31,7 +33,7 @@ describe("OverviewPage", () => {
       ["scope", "DmsApiScopeChip"],
       ["beta", "DmsApiBetaBadge"],
       ["spacer", expect.stringMatching(/spacer/)],
-      ["live", "DmsApiLiveControl"],
+      ["live", "dms-live-toggle-block"],
       ["period", "DmsApiPeriodWindow"],
     ]);
   });
@@ -53,22 +55,22 @@ describe("OverviewPage", () => {
     );
   });
 
-  it("leaves the refresh to the Live / Pause control, which can hold it", () => {
+  it("follows the live feed, which the page's Direct / Pause holds", () => {
+    const info = GetMetadata(OverviewPage, PageMetadata).pageInfo as {
+      live?: unknown;
+    };
+    expect(info.live).toEqual({ maxRate: 10 });
     for (const [row, id] of [
-      ["health", "errorShare"],
-      ["traffic", "chart"],
+      ["health", "attention"],
       ["recent", "activity"],
-    ]) {
+    ] as const) {
       const block = child(child(dashboard, row), id);
-      expect(block.options?.watchActions).toBeUndefined();
-      expect(block.options?.realtimeTopic).toBeUndefined();
+      expect(block.options?.realtimeTopic).toBe("api:monitor:requests");
     }
-  });
-
-  it("reads the verdict while paused, to tell a changed one", () => {
-    expect(child(toolbar, "live").options).toMatchObject({
-      page: "overview",
-      verdictUrl: "/api/monitoring/overview/health",
+    const table = child(child(child(dashboard, "recent"), "requests"), "table");
+    expect(table.options).toMatchObject({
+      realtimeTopic: "api:monitor:requests",
+      liveHold: true,
     });
   });
 });

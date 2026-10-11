@@ -12,8 +12,8 @@ import {
 
 // The shape of the last hour above the request table: requests per minute by
 // status class, for all traffic whatever the table's filters. It follows the
-// page's Live / Pause control (`LiveControl`): read again on each live
-// refresh, still while paused, and it says which. A read that fails says so
+// page's Direct / Pause state (`usePageLive`): read again on the live feed and
+// every minute in Direct, still while paused, and it says which. A read that fails says so
 // at once, with the time of the data still shown; the next refresh retries.
 defineOptions({ inheritAttrs: false })
 
@@ -40,7 +40,7 @@ const { data, error, pending, refresh } = useApiResource<LivePayload>(
   () => props.fetchUrl,
 )
 
-const { live } = useLiveMode()
+const { isLive } = usePageLive()
 const failures = ref(0)
 
 async function poll() {
@@ -48,7 +48,7 @@ async function poll() {
   failures.value = error.value ? failures.value + 1 : 0
 }
 
-usePageBlocksRefresh(() => void poll())
+useLiveRefresh(() => void poll(), { idleMs: 60_000 })
 
 // A first load that failed counts as a failed poll: the graph says it is
 // reconnecting at once, not after the next poll.
@@ -56,7 +56,7 @@ watch(pending, (loading) => {
   if (!loading && error.value && failures.value === 0) failures.value = 1
 })
 
-const status = computed(() => liveStatus(live.value, failures.value))
+const status = computed(() => liveStatus(isLive.value, failures.value))
 
 const count = (value: number) => formatCount(value, locale.value)
 const minute = (start: number) =>

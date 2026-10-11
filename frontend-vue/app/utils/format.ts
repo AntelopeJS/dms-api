@@ -1,6 +1,5 @@
 const MS_PER_SECOND = 1000
 const MS_PER_MINUTE = 60_000
-const MS_PER_HOUR = 3_600_000
 const MS_PER_DAY = 86_400_000
 const BYTES_PER_KB = 1024
 const SECONDS_DISPLAY_FROM_MS = 10_000
@@ -238,25 +237,6 @@ export function spanPart(ms: number): { amount: number; unit: DurationUnit } {
   const hours = Math.round(minutes / MINUTES_PER_HOUR)
   if (hours <= 2 * HOURS_PER_DAY) return { amount: hours, unit: 'h' }
   return { amount: Math.round(hours / HOURS_PER_DAY), unit: 'd' }
-}
-
-/** "12 s", "3 min", "2 h", "4 d": how long ago, short. */
-export function formatAgo(
-  value: string | number | Date | undefined,
-  now: number = Date.now(),
-): { amount: number; unit: 's' | 'min' | 'h' | 'd' } | null {
-  if (!value) return null
-  const elapsed = Math.max(0, now - new Date(value).getTime())
-  if (elapsed < MS_PER_MINUTE) {
-    return { amount: Math.round(elapsed / MS_PER_SECOND), unit: 's' }
-  }
-  if (elapsed < MS_PER_HOUR) {
-    return { amount: Math.round(elapsed / MS_PER_MINUTE), unit: 'min' }
-  }
-  if (elapsed < MS_PER_DAY) {
-    return { amount: Math.round(elapsed / MS_PER_HOUR), unit: 'h' }
-  }
-  return { amount: Math.round(elapsed / MS_PER_DAY), unit: 'd' }
 }
 
 /** Pretty JSON when the text parses, the text itself otherwise. */

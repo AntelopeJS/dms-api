@@ -36,7 +36,7 @@ const { t } = useI18n()
 const locale = useFormatLocale()
 const route = useDmsRoute()
 const router = useDmsRouter()
-const { live } = useLiveMode()
+const { isLive: live } = usePageLive()
 
 const items = computed(() =>
   LOG_WINDOWS.map((value) => ({

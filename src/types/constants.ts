@@ -104,9 +104,10 @@ export const REQUEST_ID_MAX_LENGTH = 128;
 export const REQUEST_LOG_LIST_MAX_ROWS = 5000;
 
 /**
- * Realtime topic the console's live mode listens on: the capture publishes on
- * it what it logged since its last message (see `services/live-feed.ts`), and
- * the Overview, Request logs and Routes pages are bound to it.
+ * Realtime topic the live blocks follow (`realtimeTopic`): the capture
+ * publishes on it what it logged since its last message (see
+ * `services/live-feed.ts`), and the Overview, Request logs and Routes pages,
+ * declared `live`, are bound to it.
  */
 export const LIVE_REQUESTS_TOPIC = "api:monitor:requests";
 

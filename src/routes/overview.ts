@@ -76,7 +76,7 @@ const grid = OverviewPage.dashboard;
 export class OverviewController extends Controller("/api/monitoring/overview") {
   /**
    * The verdict, since when and why, and its figures: the Overview's health
-   * reads it, and the Live / Pause control its verdict while paused.
+   * hero reads it.
    */
   @Get("health")
   async getHealth(@AuthUserWithPermission(OverviewPage.health) _user: User) {

@@ -3,7 +3,7 @@ import { PageController, RegisterPage } from "@antelopejs/interface-dms/page";
 import { getConfig } from "@/config";
 import { apiBlock } from "./blocks";
 import { monitorCategory } from "./module";
-import { liveControl, pageToolbar } from "./live";
+import { pageToolbar } from "./toolbar";
 import { requestTable } from "./request-table";
 import { scopeChip } from "./scope-chip";
 
@@ -56,18 +56,15 @@ export class LogsPage extends PageController(
     module: "api",
     category: monitorCategory,
     order: 1,
+    // Direct / Pause over the live feed, each block read at most every 5 s.
+    live: { maxRate: 5 },
   },
   DefaultLayout(),
 ) {
   // The toolbar of every monitoring page (`pageToolbar`): the scope, then
-  // the page's Live / Pause control and the period.
+  // the DMS Direct / Pause toggle and the period.
   static toolbar = pageToolbar({
     scope: scopeChip(),
-    live: liveControl({
-      page: "logs",
-      sinceUrl: "/api/monitoring/logs/since",
-      defaultWindow: LOGS_DEFAULT_WINDOW,
-    }),
     period: apiBlock("LogsPeriod"),
   }).meta({ name: "$api.logs.toolbar", icon: "i-ph-sliders-horizontal" });
 

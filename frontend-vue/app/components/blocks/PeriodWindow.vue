@@ -45,7 +45,7 @@ const { t } = useI18n()
 const locale = useFormatLocale()
 const route = useDmsRoute()
 const router = useDmsRouter()
-const { live } = useLiveMode()
+const { isLive: live } = usePageLive()
 
 const current = computed<Preset>(
   () => readWindow(route.query) ?? props.defaultWindow,

@@ -82,7 +82,7 @@ const { data, error, pending, refresh } = useApiResource<{
 
 // Live, the states and counts are read again in place: the list keeps its
 // order, its scroll and the focus.
-usePageBlocksRefresh(() => void refresh())
+useLiveRefresh(() => void refresh())
 
 const search = ref('')
 const method = ref('all')

@@ -7,6 +7,7 @@ import {
 } from "@antelopejs/interface-dms/base/table-view";
 import type { ComponentBuilder } from "@antelopejs/interface-dms/component";
 import { LOG_WINDOWS } from "@/services/request-log/list";
+import { LIVE_REQUESTS_TOPIC } from "@/types";
 import { apiBlock } from "./blocks";
 import { TimeDisplay } from "./displays";
 
@@ -271,6 +272,10 @@ export function requestTable(
     columns: picked,
     fetchUrl,
     rowIdKey: "_id",
+    // Read again on the live feed, and held while the page is paused ("12
+    // new · Show"): the route lists the rows as they stood (`liveHeldAt`).
+    realtimeTopic: LIVE_REQUESTS_TOPIC,
+    liveHold: true,
     rowClick: "single",
     // A `?record=` beyond the rows listed (a link, an older request).
     fetchRowUrl: `${DETAIL_URLS[page]}/{id}`,

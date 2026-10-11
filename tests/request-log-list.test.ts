@@ -4,9 +4,7 @@ import type { RequestLog } from "@/db/tables/request_log.table";
 import {
   filtersFromQuery,
   listRequestLogs,
-  listRequestLogsSince,
   namesUnknownRoute,
-  parseAfter,
   statusClassOf,
   toRow,
 } from "@/services/request-log/list";
@@ -95,6 +93,21 @@ describe("filtersFromQuery", () => {
     );
     expect(filters.since).toEqual(new Date("2026-10-03T18:31:00.000Z"));
     expect(filters.until).toEqual(new Date("2026-10-03T18:46:00.000Z"));
+  });
+
+  it("lists a held table as it stood when it froze", () => {
+    const held = "2026-10-07T14:58:00.000Z";
+    expect(
+      filtersFromQuery({ search: "orders", liveHeldAt: held }, NOW).until,
+    ).toEqual(new Date(held));
+    // An incident ending earlier keeps its own end.
+    expect(
+      filtersFromQuery(
+        { filter_to: "is:2026-10-07T14:00:00.000Z", liveHeldAt: held },
+        NOW,
+      ).until,
+    ).toEqual(new Date("2026-10-07T14:00:00.000Z"));
+    expect(filtersFromQuery({ liveHeldAt: "soon" }, NOW).until).toBeUndefined();
   });
 
   it("keeps the colons of an error message", () => {
@@ -223,9 +236,6 @@ describe("toRow, unmeasured and Tester requests", () => {
 function fakeModel() {
   return {
     list: vi.fn(() => Promise.resolve({ results: [], total: 3 })),
-    since: vi.fn(() =>
-      Promise.resolve({ results: [], count: 0, serverErrors: 0, tester: 0 }),
-    ),
   };
 }
 
@@ -316,9 +326,6 @@ describe("listRequestLogs", () => {
     const page = await listRequestLogs(model, {}, null, options);
     expect(page.total).toBe(0);
     expect(model.list).not.toHaveBeenCalled();
-    const since = await listRequestLogsSince(model, {}, NOW, null, options);
-    expect(since).toMatchObject({ results: [], count: 0 });
-    expect(model.since).not.toHaveBeenCalled();
     await listRequestLogs(
       model,
       { filter_route: "is:GET /api/orders" },
@@ -333,74 +340,6 @@ describe("listRequestLogs", () => {
     const page = await listRequestLogs(model, {}, new Set());
     expect(page.total).toBe(0);
     expect(model.list).not.toHaveBeenCalled();
-  });
-});
-
-describe("listRequestLogsSince", () => {
-  it("reads the rows after the cursor and moves the cursor to the newest", async () => {
-    const model = fakeModel();
-    const newest = new Date("2026-10-07T15:00:05.000Z");
-    model.since.mockResolvedValue({
-      results: [
-        {
-          _id: "b",
-          timestamp: newest,
-          method: "GET",
-          uri: "/api/orders",
-          rawPath: "/api/orders",
-          statusCode: 200,
-          responseTimeMs: 12,
-        },
-      ],
-      count: 7,
-    } as never);
-    const after = parseAfter("2026-10-07T15:00:00.000Z");
-    expect(after).toEqual(NOW);
-    const page = await listRequestLogsSince(
-      model,
-      { filter_statusClass: "is:2xx", limit: "9999" },
-      NOW,
-      new Set(["GET:/api/orders"]),
-    );
-    expect(model.since).toHaveBeenCalledWith(
-      { statusClass: "success", routeKeys: ["GET:/api/orders"] },
-      NOW,
-      500,
-    );
-    expect(page.count).toBe(7);
-    expect(page.cursor).toBe(newest.toISOString());
-    expect(page.results.map((row) => row._id)).toEqual(["b"]);
-  });
-
-  it("keeps the cursor when nothing arrived", async () => {
-    const page = await listRequestLogsSince(fakeModel(), {}, NOW, null);
-    expect(page).toEqual({
-      results: [],
-      count: 0,
-      serverErrors: 0,
-      tester: 0,
-      cursor: NOW.toISOString(),
-      now: expect.any(String),
-    });
-  });
-
-  it("counts without reading a row for `limit=0`, the Tester apart", async () => {
-    const model = fakeModel();
-    model.since.mockResolvedValue({
-      results: [],
-      count: 23,
-      serverErrors: 4,
-      tester: 1,
-    });
-    const page = await listRequestLogsSince(model, { limit: "0" }, NOW, null);
-    expect(model.since).toHaveBeenCalledWith({}, NOW, 0);
-    expect(page).toMatchObject({ count: 23, serverErrors: 4, tester: 1 });
-    expect(page.cursor).toBe(NOW.toISOString());
-  });
-
-  it("refuses an unreadable cursor", () => {
-    expect(parseAfter("yesterday-ish")).toBeUndefined();
-    expect(parseAfter(undefined)).toBeUndefined();
   });
 });
 

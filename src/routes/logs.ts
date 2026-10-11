@@ -22,8 +22,6 @@ import { canReadLog, type LogTable } from "@/services/request-log/access";
 import { getRequestLog, getRouteLatency } from "@/services/request-log/read";
 import {
   listRequestLogs,
-  listRequestLogsSince,
-  parseAfter,
   type RequestLogListOptions,
   type SourceQuery,
 } from "@/services/request-log/list";
@@ -49,22 +47,6 @@ async function listOf(
   return listRequestLogs(
     GetModel(RequestLogModel),
     query,
-    await scopeKeys(),
-    options,
-  );
-}
-
-/** What arrived after `?after=`, under the list's filters (`/since`). */
-async function sinceOf(
-  query: SourceQuery,
-  options: RequestLogListOptions = {},
-) {
-  const after = parseAfter(query.after);
-  assert(after, 400, "after must be an ISO timestamp");
-  return listRequestLogsSince(
-    GetModel(RequestLogModel),
-    query,
-    after,
     await scopeKeys(),
     options,
   );
@@ -183,8 +165,8 @@ async function logDetail(id: string, context: RequestContext, table: LogTable) {
 
 /**
  * The request tables' route (the request logs page and the Overview's recent
- * requests), what arrived since a live table's last rows, the live histogram
- * above the logs, and one request in full for the drawer.
+ * requests), the live histogram above the logs, and one request in full for
+ * the side panel.
  *
  * The list answers `{ results, total }`. `?requestId=<id>` finds the request
  * sent with that `x-request-id` (the Tester's "Captured" tab).
@@ -200,30 +182,6 @@ export class LogsController extends Controller("/api/monitoring/logs") {
     @Context() context: RequestContext,
   ) {
     return listOf(context, sourceQuery(context), LOGS_TABLE);
-  }
-
-  /**
-   * What the Overview's recent requests miss while they do not move (live
-   * mode paused, or held), by the table's permission: see `/since`.
-   */
-  @Get("recent/since")
-  async listRecentSince(
-    @AuthUserWithPermission(overviewTable) _user: User,
-    @Context() context: RequestContext,
-  ) {
-    return sinceOf(sourceQuery(context), OVERVIEW_TABLE);
-  }
-
-  /**
-   * The same for the recent requests of the Routes page, by its permission:
-   * nothing without a route.
-   */
-  @Get("routes/since")
-  async listRoutesSince(
-    @AuthUserWithPermission(routesTable) _user: User,
-    @Context() context: RequestContext,
-  ) {
-    return sinceOf(sourceQuery(context), ROUTE_TABLE);
   }
 
   /**
@@ -268,21 +226,6 @@ export class LogsController extends Controller("/api/monitoring/logs") {
     return listRequestLogs(GetModel(RequestLogModel), { requestId }, null, {
       testerOnly: true,
     });
-  }
-
-  /**
-   * `GET /logs/since?after=<ISO timestamp>&<the list's filters>`: the rows
-   * newer than `after`, newest first (`limit`, 100 by default, 500 at most,
-   * 0 to count only), `count` of the API's (`serverErrors` of them in 5xx),
-   * `tester` of the Tester's, and the `cursor` to send as the next `after`.
-   * What the live mode's "n new requests" counts.
-   */
-  @Get("since")
-  async listSince(
-    @AuthUserWithPermission(LogsPage.requests) _user: User,
-    @Context() context: RequestContext,
-  ) {
-    return sinceOf(sourceQuery(context), LOGS_TABLE);
   }
 
   @Get("live")

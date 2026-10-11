@@ -8,9 +8,10 @@ import { Tab } from "@antelopejs/interface-dms/base/tab";
 import { TopListCard } from "@antelopejs/interface-dms/base/top-list-card";
 import { PageController, RegisterPage } from "@antelopejs/interface-dms/page";
 import { getConfig } from "@/config";
+import { LIVE_REQUESTS_TOPIC } from "@/types";
 import { apiBlock } from "./blocks";
 import { exploreCategory } from "./module";
-import { liveControl, pageToolbar } from "./live";
+import { pageToolbar } from "./toolbar";
 import { requestTable } from "./request-table";
 import { scopeChip } from "./scope-chip";
 
@@ -80,6 +81,7 @@ function summaryRow() {
       StatGroup({
         fetchUrl: statisticsUrl("summary"),
         periodScope: ROUTES_PERIOD,
+        realtimeTopic: LIVE_REQUESTS_TOPIC,
         layout: "joined",
         columns: 4,
         skeletonCount: 4,
@@ -295,18 +297,14 @@ export class RoutesPage extends PageController(
     module: "api",
     category: exploreCategory,
     order: 0,
+    // Direct / Pause over the live feed, each block read at most every 15 s.
+    live: { maxRate: 15 },
   },
   DefaultLayout(),
 ) {
   // The toolbar of every monitoring page (`pageToolbar`).
   static toolbar = pageToolbar({
     scope: scopeChip(),
-    live: liveControl({
-      page: "routes",
-      sinceUrl: "/api/monitoring/logs/routes/since",
-      defaultWindow: ROUTES_DEFAULT_WINDOW,
-      routeKey: ROUTE_QUERY_KEY,
-    }),
     period: apiBlock("PeriodWindow", {
       scope: ROUTES_PERIOD,
       defaultWindow: ROUTES_DEFAULT_WINDOW,

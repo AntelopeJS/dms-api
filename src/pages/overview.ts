@@ -7,8 +7,9 @@ import { DefaultLayout } from "@antelopejs/interface-dms/base/layouts";
 import { TopListCard } from "@antelopejs/interface-dms/base/top-list-card";
 import { PageController, RegisterPage } from "@antelopejs/interface-dms/page";
 import { logsLink } from "@/services/links";
+import { LIVE_REQUESTS_TOPIC } from "@/types";
 import { apiBlock } from "./blocks";
-import { liveControl, pageToolbar } from "./live";
+import { pageToolbar } from "./toolbar";
 import { monitorCategory } from "./module";
 import { requestTable } from "./request-table";
 import { scopeChip } from "./scope-chip";
@@ -54,8 +55,8 @@ const SERIES_LEGEND = {
 /**
  * Overview: is the API healthy, and where to look when it is not. The verdict
  * leads with its figures, what needs a look comes right under it, then the
- * trends; every row drills down to a route or to its requests. The Live /
- * Pause control of the toolbar refreshes every block.
+ * trends; every row drills down to a route or to its requests. The blocks
+ * follow the live feed, which the toolbar's Direct / Pause toggle holds.
  */
 @RegisterPage()
 export class OverviewPage extends PageController(
@@ -67,6 +68,8 @@ export class OverviewPage extends PageController(
     module: "api",
     category: monitorCategory,
     order: 0,
+    // Direct / Pause over the live feed, each block read at most every 10 s.
+    live: { maxRate: 10 },
   },
   DefaultLayout(),
 ) {
@@ -77,12 +80,6 @@ export class OverviewPage extends PageController(
     scope: scopeChip(),
     // Still in beta: a pill beside the scope, its meaning in a tooltip.
     badge: apiBlock("BetaBadge"),
-    live: liveControl({
-      page: "overview",
-      sinceUrl: "/api/monitoring/logs/recent/since",
-      defaultWindow: OVERVIEW_DEFAULT_WINDOW,
-      verdictUrl: `${OVERVIEW_API}/health`,
-    }),
     period: apiBlock("PeriodWindow", {
       scope: OVERVIEW_PERIOD,
       defaultWindow: OVERVIEW_DEFAULT_WINDOW,
@@ -109,6 +106,7 @@ export class OverviewPage extends PageController(
             fetchUrl: `${OVERVIEW_API}/attention`,
             groupByDay: false,
             mono: true,
+            realtimeTopic: LIVE_REQUESTS_TOPIC,
             maxItems: ATTENTION_ROWS,
             fillHeight: true,
             skeletonCount: 3,
@@ -281,6 +279,7 @@ export class OverviewPage extends PageController(
             title: "$api.overview.activity.title",
             fetchUrl: `${OVERVIEW_API}/activity`,
             groupByDay: true,
+            realtimeTopic: LIVE_REQUESTS_TOPIC,
             maxItems: ACTIVITY_ROWS,
             fillHeight: true,
             skeletonCount: 4,

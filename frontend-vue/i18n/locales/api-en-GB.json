@@ -18,10 +18,6 @@
     },
     "common": {
       "retry": "Retry",
-      "ago_s": "{amount} s ago",
-      "ago_min": "{amount} min ago",
-      "ago_h": "{amount} h ago",
-      "ago_d": "{amount} d ago",
       "percent": "{value}%",
       "ms": "{value} ms",
       "refresh": "Refresh"
@@ -84,10 +80,6 @@
       "logs_empty_state": {
         "name": "Empty request table",
         "description": "What the request table says when it lists nothing, and the way out."
-      },
-      "live_control": {
-        "name": "Live / Pause",
-        "description": "The page's Live / Pause control: updates as requests arrive, or a still page that counts what it misses."
       },
       "health_hero": {
         "name": "API health",
@@ -278,31 +270,7 @@
       "summary_empty": "No request over the last hour."
     },
     "live_mode": {
-      "label": "Live updates",
-      "live": "Live",
-      "pause": "Pause",
-      "hint": "Live: the page follows new requests. Pause: nothing moves.",
-      "updated": "Updated {ago}",
-      "updated_now": "Updated just now",
-      "polling": "no realtime, polling",
-      "paused": "Paused",
-      "paused_because": "Paused · {reason}",
-      "reasons": {
-        "hidden": "tab hidden",
-        "panel": "request open",
-        "tester": "typing in the Tester",
-        "search": "search active",
-        "sort": "sorted otherwise than by time",
-        "load_more": "more rows loaded",
-        "scroll": "scrolled down"
-      },
-      "new_requests": "{count} new request | {count} new requests",
-      "server_errors": "{count} in 5xx",
-      "tester": "{count} from the Tester | {count} from the Tester",
-      "resume": "Resume",
-      "show": "Show",
       "verdict": {
-        "changed": "Status changed: {from} → {to}",
         "title": "API health: {verdict}",
         "description": "It was {previous}.",
         "tab": "● {verdict} · {page}"
