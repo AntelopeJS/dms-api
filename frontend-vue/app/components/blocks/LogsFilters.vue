@@ -9,7 +9,6 @@ import {
   LINK_FILTER_KEYS,
   LOG_METHODS,
   readLogsFilters,
-  routeLabel,
   routeMethod,
   withLogsFilters,
   type LogsFiltersPatch,
@@ -123,7 +122,7 @@ function linkChip(key: (typeof LINK_FILTER_KEYS)[number], value: string): Chip {
   return {
     key,
     label: t(`api.logs.linked.${key}`, {
-      value: key === 'route' ? routeLabel(value) : value,
+      value: value,
     }),
     remove: { [key]: null } as LogsFiltersPatch,
   }
@@ -163,31 +162,20 @@ const origin = computed(() => {
 
 const shortcutsOpen = ref(false)
 
+// The table's search is the DMS table's own shortcut (Shift+F).
 const SHORTCUTS = [
-  { keys: ['/'], label: 'api.logs.shortcuts.search' },
-  { keys: ['J', 'K'], label: 'api.logs.shortcuts.step' },
+  { keys: ['shift', 'F'], label: 'api.logs.shortcuts.search' },
   { keys: ['Esc'], label: 'api.logs.shortcuts.close' },
   { keys: ['L'], label: 'api.logs.shortcuts.live' },
   { keys: ['?'], label: 'api.logs.shortcuts.help' },
 ]
-
-// "/" opens the table's search: the DMS table opens it on Shift+F, the key
-// it listens to on the window.
-function openSearch() {
-  window.dispatchEvent(
-    new KeyboardEvent('keydown', { key: 'F', code: 'KeyF', shiftKey: true }),
-  )
-}
 
 function onKey(event: KeyboardEvent) {
   const target = event.target as HTMLElement | null
   if (target?.closest('input, textarea, select, [contenteditable="true"]'))
     return
   if (event.metaKey || event.ctrlKey || event.altKey) return
-  if (event.key === '/') {
-    event.preventDefault()
-    openSearch()
-  } else if (event.key === '?') {
+  if (event.key === '?') {
     event.preventDefault()
     shortcutsOpen.value = true
   }
@@ -203,7 +191,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       :text="
         methodLocked
           ? t('api.logs.filters.method_locked', {
-              route: routeLabel(filters.route ?? ''),
+              route: filters.route ?? '',
             })
           : undefined
       "

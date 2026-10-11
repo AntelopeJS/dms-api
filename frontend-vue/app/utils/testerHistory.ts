@@ -1,10 +1,5 @@
 import { byteLength } from './format'
-import {
-  acceptsRequestBody,
-  normalizeRouteRef,
-  parseRouteRef,
-  startsWithRequestBody,
-} from './http'
+import { startsWithRequestBody } from './http'
 import {
   type BodyMode,
   decodedValue,
@@ -69,9 +64,6 @@ export const HISTORY_MAX = 25
 const STORED_BODY_MAX = 4096
 
 const HISTORY_PREFIX = 'dmsApi.tester.history.'
-/** The format the stored history is in, once migrated. */
-const HISTORY_VERSION_KEY = 'dmsApi.tester.historyVersion'
-const HISTORY_VERSION = 2
 const DRAFT_PREFIX = 'dmsApi.tester.draft.'
 const COMMON_HEADERS_KEY = 'dmsApi.tester.commonHeaders'
 const CONFIRMED_WRITES_KEY = 'dmsApi.tester.confirmedWrites'
@@ -168,134 +160,6 @@ export function patchResult(
       ? { ...entry, result: { ...entry.result, ...patch } }
       : entry,
   )
-}
-
-/** An entry of the tester before the per-route drafts (one flat request). */
-interface LegacyEntry {
-  at: number
-  path: string
-  headers?: Record<string, string>
-  query?: Record<string, string>
-  pathValues?: Record<string, string>
-  body?: string
-  useSession?: boolean
-  result: {
-    status: number
-    durationMs?: number
-    headers?: Record<string, string>
-    body?: string
-    error?: 'network' | 'request'
-    message?: string
-    sentWithSession?: boolean
-  }
-}
-
-function fromLegacy(method: string, value: unknown): HistoryEntry | null {
-  const entry = value as LegacyEntry | null
-  if (
-    !entry ||
-    typeof entry.at !== 'number' ||
-    typeof entry.path !== 'string' ||
-    typeof entry.result?.status !== 'number'
-  )
-    return null
-  const toRows = (record: Record<string, string> | undefined): KeyValue[] =>
-    Object.entries(record ?? {}).map(([name, item]) => ({
-      name,
-      value: String(item),
-    }))
-  const body = typeof entry.body === 'string' ? entry.body : ''
-  const old = entry.result
-  const withSession = old.sentWithSession === true
-  return {
-    at: entry.at,
-    method,
-    path: entry.path,
-    request: {
-      bodyMode: body.trim() && acceptsRequestBody(method) ? 'json' : 'none',
-      body,
-      form: [],
-      headers: splitSecrets(toRows(entry.headers)).kept,
-      query: toRows(entry.query),
-      pathValues: { ...entry.pathValues },
-      useSession: entry.useSession !== false,
-    },
-    result: {
-      status: old.status,
-      durationMs: old.durationMs ?? 0,
-      headers: old.headers ?? {},
-      body: old.body ?? '',
-      ...(old.error
-        ? {
-            error:
-              old.error === 'network' ? 'network' : ('unexpected' as const),
-            message: old.message,
-          }
-        : {}),
-      sentWithSession: withSession,
-      auth: withSession ? 'session' : 'none',
-      at: entry.at,
-    },
-  }
-}
-
-/**
- * Brings the history stored by earlier versions to the current format, once
- * per browser: flat entries become a request, and a route named with its
- * trailing slash (`POST /api/orders/`) joins the canonical one. What cannot
- * be read is cleared, and counted for the tester to say so.
- */
-export function migrateHistory(): { migrated: number; dropped: number } {
-  const outcome = { migrated: 0, dropped: 0 }
-  if (typeof window === 'undefined') return outcome
-  if (read<number>('localStorage', HISTORY_VERSION_KEY) === HISTORY_VERSION)
-    return outcome
-  const keys: string[] = []
-  try {
-    const storage = window.localStorage
-    for (let index = 0; index < storage.length; index++) {
-      const key = storage.key(index)
-      if (key?.startsWith(HISTORY_PREFIX)) keys.push(key)
-    }
-  } catch {
-    return outcome
-  }
-  const routes = new Map<string, HistoryEntry[]>()
-  for (const key of keys) {
-    const ref = key.slice(HISTORY_PREFIX.length)
-    const route = parseRouteRef(ref)
-    const parsed = read<unknown>('localStorage', key)
-    const items = Array.isArray(parsed) ? parsed : []
-    const entries: HistoryEntry[] = []
-    for (const item of items) {
-      const entry = !route
-        ? null
-        : isEntry(item)
-          ? item
-          : fromLegacy(route.method, item)
-      if (!entry) {
-        outcome.dropped++
-        continue
-      }
-      if (entry !== item || ref !== normalizeRouteRef(ref)) outcome.migrated++
-      entries.push(entry)
-    }
-    if (!Array.isArray(parsed)) outcome.dropped++
-    write('localStorage', key, null)
-    if (!route) continue
-    const target = normalizeRouteRef(ref)
-    routes.set(target, [...(routes.get(target) ?? []), ...entries])
-  }
-  for (const [ref, entries] of routes) {
-    // The same call may sit under both names of its route: kept once.
-    const byTime = new Map(entries.map((entry) => [entry.at, entry]))
-    saveHistory(
-      ref,
-      [...byTime.values()].sort((a, b) => b.at - a.at),
-    )
-  }
-  write('localStorage', HISTORY_VERSION_KEY, HISTORY_VERSION)
-  return outcome
 }
 
 /**

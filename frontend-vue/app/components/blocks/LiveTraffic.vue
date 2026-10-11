@@ -48,7 +48,7 @@ async function poll() {
   failures.value = error.value ? failures.value + 1 : 0
 }
 
-useLiveRefresh(() => void poll())
+usePageBlocksRefresh(() => void poll())
 
 // A first load that failed counts as a failed poll: the graph says it is
 // reconnecting at once, not after the next poll.

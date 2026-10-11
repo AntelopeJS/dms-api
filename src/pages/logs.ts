@@ -3,8 +3,8 @@ import { PageController, RegisterPage } from "@antelopejs/interface-dms/page";
 import { getConfig } from "@/config";
 import { apiBlock } from "./blocks";
 import { monitorCategory } from "./module";
-import { liveBanner, liveControl, pageToolbar } from "./live";
-import { requestDrawerHost, requestTable } from "./request-table";
+import { liveControl, pageToolbar } from "./live";
+import { requestTable } from "./request-table";
 import { scopeChip } from "./scope-chip";
 
 const LOGS_PAGE_SIZE = 50;
@@ -59,9 +59,6 @@ export class LogsPage extends PageController(
   },
   DefaultLayout(),
 ) {
-  // Opens the request a row asks for, from the right; draws nothing.
-  static requestDrawer = requestDrawerHost();
-
   // The toolbar of every monitoring page (`pageToolbar`): the scope, then
   // the page's Live / Pause control and the period.
   static toolbar = pageToolbar({
@@ -89,12 +86,6 @@ export class LogsPage extends PageController(
     ...options,
     slowThresholdMs: getConfig().requestSlownessThreshold,
   }));
-
-  // "n new requests" over the table, while it does not take them in.
-  static newRequests = liveBanner({
-    pageSize: LOGS_PAGE_SIZE,
-    followScroll: true,
-  });
 
   // Named like `LOGS_TABLE_KEY`: links put the table's tab under this key.
   static requests = requestTable({

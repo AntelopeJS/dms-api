@@ -9,7 +9,7 @@
 // all keep. `?from=` names the page a link came from, for the band that says
 // so.
 
-import { normalizeRouteRef, parseRouteRef } from './http'
+import { parseRouteRef } from './http'
 
 type Query = Record<string, unknown>
 
@@ -130,11 +130,6 @@ export function hasLinkFilters(filters: LogsFilters): boolean {
   return LINK_FILTER_KEYS.some((key) => !!filters[key]) || hasIncident(filters)
 }
 
-/** `METHOD /path` as the module names it: canonical path, method upper case. */
-export function routeLabel(route: string): string {
-  return normalizeRouteRef(route)
-}
-
 /** Whether a `?route=` can name a route at all (`garbage` cannot). */
 export function isRouteRef(route: string): boolean {
   return parseRouteRef(route) !== null
@@ -246,126 +241,4 @@ export function bodyLimit(bytes: number): {
   if (bytes <= 0) return { unit: 'none', amount: 0 }
   if (bytes < BYTES_PER_KB) return { unit: 'b', amount: Math.round(bytes) }
   return { unit: 'kb', amount: Math.round((bytes / BYTES_PER_KB) * 10) / 10 }
-}
-
-/** Where the request logs live, and the key their table's tab is under. */
-const LOGS_PATH = '/modules/api/logs'
-const TAB_QUERY_KEY = 'requests.tab'
-const ALL_TAB = 'all'
-
-interface RouteLike {
-  path: string
-  query: Query
-}
-
-/**
- * A move within the request logs. The first navigation of a visit may come
- * "from" the same location: it is an arrival.
- */
-function movesInside(to: RouteLike, from: RouteLike | undefined): boolean {
-  return (
-    from?.path === LOGS_PATH &&
-    JSON.stringify(from.query) !== JSON.stringify(to.query)
-  )
-}
-
-/** The filters a link sets, which the filters bar only ever removes. */
-const LINKED_KEYS = [...LINK_FILTER_KEYS, 'since', 'until'] as const
-
-/**
- * Whether `to` brings a link's filter `from` does not hold: a "See also" of
- * the request panel, say. Removing a chip, choosing a period or opening a
- * request brings none.
- */
-function bringsLink(to: RouteLike, from: RouteLike): boolean {
-  const next = readLogsFilters(to.query)
-  const previous = readLogsFilters(from.query)
-  return LINKED_KEYS.some((key) => !!next[key] && next[key] !== previous[key])
-}
-
-/** Where a link to the request logs lands, and how. */
-export interface LogsArrival {
-  to: RouteLike
-  /**
-   * The table is mounted already, and reads its tab from the URL only when
-   * it mounts (`TableView.vue`, `urlTab`): a visit keeping the page would
-   * leave the tab kept from the last visit, whatever the URL says.
-   */
-  reload: boolean
-}
-
-/**
- * A link to the request logs with a filter but no tab would open the table
- * on the tab kept from the last visit (the 5xx, say) and hide most of what
- * the link names: it lands on the "All" tab instead. The console's links
- * name the tab themselves (`logsLink`, backend), so the table mounts on it;
- * this covers the URLs that do not. Where the table is mounted already (a
- * link followed by a visit within the page, or a page that mounted before
- * this ran), the landing loads the page anew. Undefined when nothing is to
- * change.
- */
-export function logsArrival(
-  to: RouteLike,
-  from: RouteLike | undefined,
-): LogsArrival | undefined {
-  if (to.path !== LOGS_PATH) return undefined
-  if (!hasLinkFilters(readLogsFilters(to.query))) return undefined
-  const tab = single(to.query[TAB_QUERY_KEY])
-  const target =
-    tab === undefined
-      ? { path: to.path, query: { ...to.query, [TAB_QUERY_KEY]: ALL_TAB } }
-      : to
-  if (from && movesInside(to, from))
-    return bringsLink(to, from) ? { to: target, reload: true } : undefined
-  if (tab !== undefined) return undefined
-  return { to: target, reload: from?.path === LOGS_PATH }
-}
-
-function href(location: RouteLike): string {
-  const query = new URLSearchParams()
-  for (const [key, value] of Object.entries(location.query)) {
-    const text = single(value)
-    if (text !== undefined) query.set(key, text)
-  }
-  return `${location.path}?${query}`
-}
-
-/**
- * A DMS middleware (`dms.frontend.ts`) landing the links to the request logs
- * (`logsArrival`): a redirect, or in the browser, over a mounted table, a
- * page load. The location already shown is replaced; a link followed is a
- * new entry, which Back leaves. Undefined lets the navigation go on.
- */
-export function logsArrivalMiddleware(
-  to: RouteLike,
-  from: RouteLike | undefined,
-): RouteLike | false | undefined {
-  const arrival = logsArrival(to, from)
-  if (!arrival?.reload || typeof window === 'undefined') return arrival?.to
-  if (from && movesInside(to, from)) window.location.assign(href(arrival.to))
-  else window.location.replace(href(arrival.to))
-  return false
-}
-
-/** The tab the DMS table marks as shown, among its status tabs. */
-const SHOWN_TAB_SELECTOR = '[aria-current="true"]'
-
-/** The part of an element the table's tabs are read through. */
-interface TabElement {
-  textContent: string | null
-  parentElement: { children: ArrayLike<unknown> } | null
-}
-
-/**
- * The status tab a request table's card shows: `all` (its first tab, under
- * a translated label) or the class (`5xx`). The DMS table shares it with
- * nothing it draws, the empty body included: it is read from its tabs.
- */
-export function shownTab(card: {
-  querySelector(selector: string): TabElement | null
-}): string | undefined {
-  const tab = card.querySelector(SHOWN_TAB_SELECTOR)
-  const tabs = tab?.parentElement?.children
-  if (!tab || !tabs) return undefined
-  return tabs[0] === tab ? ALL_TAB : tab.textContent?.trim().slice(0, 3)
 }

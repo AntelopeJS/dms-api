@@ -17,17 +17,17 @@ function blockAt(
 describe("RoutesPage", () => {
   it("holds the toolbar of the monitoring pages: scope, live, period", () => {
     const toolbar = RoutesPage.toolbar.serializeSync();
-    expect(toolbar.componentName).toBe("DmsApiPageToolbar");
+    expect(toolbar.componentName).toBe("dms-h-stack");
     expect(
-      toolbar.children?.map(({ id, slot, component }) => [
+      toolbar.children?.map(({ id, component }) => [
         id,
-        slot,
         component.componentName,
       ]),
     ).toEqual([
-      ["scope", "scope", "DmsApiScopeChip"],
-      ["live", "live", "DmsApiLiveControl"],
-      ["period", "period", "DmsApiPeriodWindow"],
+      ["scope", "DmsApiScopeChip"],
+      ["spacer", expect.stringMatching(/spacer/)],
+      ["live", "DmsApiLiveControl"],
+      ["period", "DmsApiPeriodWindow"],
     ]);
   });
 

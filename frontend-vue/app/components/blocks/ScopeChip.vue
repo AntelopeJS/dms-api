@@ -47,7 +47,7 @@ function refreshIfStale() {
   void summary.refresh()
 }
 
-useLiveRefresh(refreshIfStale)
+usePageBlocksRefresh(refreshIfStale)
 
 function refreshWhenShown() {
   if (document.visibilityState === 'visible') void summary.refresh()

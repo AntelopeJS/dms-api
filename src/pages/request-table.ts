@@ -7,14 +7,7 @@ import {
 } from "@antelopejs/interface-dms/base/table-view";
 import type { ComponentBuilder } from "@antelopejs/interface-dms/component";
 import { LOG_WINDOWS } from "@/services/request-log/list";
-import { apiBlock } from "./blocks";
-import {
-  ErrorDisplay,
-  PathDisplay,
-  RequestDurationDisplay,
-  RequestIdDisplay,
-  TimeDisplay,
-} from "./displays";
+import { TimeDisplay } from "./displays";
 
 /** Route answering the request tables, in the `TableView.fromSource` shape. */
 const REQUEST_LOGS_URL = "/api/monitoring/logs";
@@ -83,7 +76,7 @@ const REQUEST_COLUMNS: Record<string, TableViewSourceColumn> = {
   responseTimeMs: {
     name: "$api.logs.columns.duration",
     type: new DefaultDataTypes.NumberType(),
-    display: new RequestDurationDisplay(),
+    display: new DefaultDisplays.DurationDisplay(),
     sortable: true,
     size: 132,
     order: 3,
@@ -99,7 +92,7 @@ const REQUEST_COLUMNS: Record<string, TableViewSourceColumn> = {
   path: {
     name: "$api.logs.columns.path",
     type: new DefaultDataTypes.StringType(),
-    display: new PathDisplay(),
+    display: new DefaultDisplays.MonoDisplay(),
     filterable: false,
     size: 160,
     order: 5,
@@ -112,7 +105,6 @@ const REQUEST_COLUMNS: Record<string, TableViewSourceColumn> = {
   message: {
     name: "$api.logs.columns.error",
     type: new DefaultDataTypes.StringType(),
-    display: new ErrorDisplay(),
     filterable: false,
     size: 140,
     order: 6,
@@ -120,7 +112,7 @@ const REQUEST_COLUMNS: Record<string, TableViewSourceColumn> = {
   _id: {
     name: "$api.logs.columns.request_id",
     type: new DefaultDataTypes.StringType(),
-    display: new RequestIdDisplay(),
+    display: new DefaultDisplays.MonoDisplay({ copy: true }),
     isVisible: false,
     size: 128,
     order: 7,
@@ -171,43 +163,23 @@ const FILTER_COLUMNS = new Set([
 export type RequestTablePage = "logs" | "overview" | "routes";
 
 /**
- * Query key a row writes the request it opens under: the frontend turns it
- * into `?record=` over the page's own query, without a visit
- * (`utils/requestDrawer.ts`), and the page's `RequestDrawerHost` block opens
- * that request in the side panel on the right.
+ * Opens a request of the table in the side panel on the right: a page target
+ * naming `?record=` on the page the table is on, which the module's
+ * middleware turns into the panel opening in place, without a visit
+ * (`frontend-vue/app/utils/requestDrawer.ts`). Drawn inline, and run by a
+ * double click on the row.
  */
-const OPEN_REQUEST_KEY = "open-request";
-
-/**
- * Icon of a row's action opening its request. The DMS names the button
- * `row-action-<id>-<icon>`, by which the panel finds the rows: keep it equal
- * to `REQUEST_ACTION_ICON` in `frontend-vue/app/utils/requestDrawer.ts`.
- */
-const REQUEST_ACTION_ICON = "i-ph-sidebar-simple";
-
-/** Opens a request of the table: the same page, with the request named. */
-function requestDrawerAction(page: RequestTablePage) {
+function requestPanelAction(page: RequestTablePage) {
   return {
     label: "$api.logs.open_request",
-    icon: REQUEST_ACTION_ICON,
-    // Drawn inline: the panel finds the rows by it, and a click on a row
-    // clicks it (the DMS table runs an `isDefault` action on a double click
-    // only).
+    icon: "i-ph-sidebar-simple",
     isVisible: true,
     isDefault: true,
     target: {
       type: "page" as const,
-      url: `/modules/api/${page}?${OPEN_REQUEST_KEY}={_id}`,
+      url: `/modules/api/${page}?record={_id}`,
     },
   };
-}
-
-/**
- * The invisible block opening the request a row asks for, from the right.
- * Every page holding a request table holds one.
- */
-export function requestDrawerHost(): ComponentBuilder<unknown> {
-  return apiBlock("RequestDrawerHost") as ComponentBuilder<unknown>;
 }
 
 /**
@@ -237,8 +209,7 @@ type RequestTableOptions = Omit<
 
 /**
  * A table over the captured requests. The route pages, searches, sorts and
- * filters on the server; a row opens the request panel of the page's
- * `RequestDrawerHost` block, which the page must hold. `?route=`,
+ * filters on the server; a row opens its request in the side panel. `?route=`,
  * `?error=` and `?slow=` in the page URL filter it on arrival, so another
  * page can link to "the 5xx of this route".
  */
@@ -283,7 +254,7 @@ export function requestTable(
     fetchUrl,
     rowIdKey: "_id",
     capabilities: { search: true, sort: true, paginate: true, filter: true },
-    rowActions: { custom: [requestDrawerAction(page)] },
+    rowActions: { custom: [requestPanelAction(page)] },
   }).mergeOptions({
     // A source table does not take `queryParamFilters` in its options, but
     // its client honours them like any table: they are how a link narrows it.

@@ -10,55 +10,37 @@ import { CustomComponent } from "@antelopejs/interface-dms/base/custom";
 export type ApiBlock =
   | "ScopeChip"
   | "ModuleLanding"
-  | "HealthHero"
   | "LiveTraffic"
   | "RequestDetail"
-  | "RequestDrawerHost"
   | "RouteTree"
   | "RouteHeader"
   | "RouteDocumentation"
   | "RouteTester"
   | "SplitLayout"
-  | "ColumnsLayout"
-  | "RouteStatistics"
   | "LogsPeriod"
   | "LogsFilters"
   | "LogsEmptyState"
-  | "BetaBadge"
   | "PeriodWindow"
-  | "AttentionList"
-  | "OverviewTopList"
-  | "LiveControl"
-  | "LiveBanner"
-  | "PageToolbar";
+  | "LiveControl";
 
 const BLOCK_ICONS: Record<ApiBlock, string> = {
   ScopeChip: "i-ph-funnel",
   ModuleLanding: "i-ph-arrow-bend-down-right",
-  HealthHero: "i-ph-heartbeat",
   LiveTraffic: "i-ph-broadcast",
   RequestDetail: "i-ph-sidebar-simple",
-  RequestDrawerHost: "i-ph-sidebar-simple",
   RouteTree: "i-ph-tree-structure",
   RouteHeader: "i-ph-signpost",
   RouteDocumentation: "i-ph-book-open-text",
   RouteTester: "i-ph-paper-plane-tilt",
   SplitLayout: "i-ph-columns",
-  ColumnsLayout: "i-ph-squares-four",
-  RouteStatistics: "i-ph-chart-bar",
   LogsPeriod: "i-ph-clock",
   LogsFilters: "i-ph-funnel",
   LogsEmptyState: "i-ph-tray",
-  BetaBadge: "i-ph-flask",
   PeriodWindow: "i-ph-calendar-blank",
-  AttentionList: "i-ph-first-aid-kit",
-  OverviewTopList: "i-ph-list-numbers",
   LiveControl: "i-ph-broadcast",
-  LiveBanner: "i-ph-arrow-line-up",
-  PageToolbar: "i-ph-sliders-horizontal",
 };
 
-/** `HealthHero` → `health_hero`: the i18n key segment of a block. */
+/** `RouteTree` → `route_tree`: the i18n key segment of a block. */
 function i18nSegment(block: ApiBlock): string {
   return block.replace(/(?<!^)([A-Z])/g, "_$1").toLowerCase();
 }

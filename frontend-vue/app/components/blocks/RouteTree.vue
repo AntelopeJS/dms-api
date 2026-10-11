@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { formatCount } from '../../utils/format'
-import { sameRoute } from '../../utils/http'
 import {
   bySeverity,
   groupRoutes,
@@ -83,7 +82,7 @@ const { data, error, pending, refresh } = useApiResource<{
 
 // Live, the states and counts are read again in place: the list keeps its
 // order, its scroll and the focus.
-useLiveRefresh(() => void refresh())
+usePageBlocksRefresh(() => void refresh())
 
 const search = ref('')
 const method = ref('all')
@@ -116,11 +115,11 @@ const indexOf = computed(
 )
 const folderOf = computed(() => listedFolders(routes.value))
 
-/** The listed route the URL names, with or without its trailing slash. */
+/** The listed route the URL names. */
 const selected = computed(() => {
   const current = selection.ref.value
   if (!current) return null
-  return routes.value.find((route) => sameRoute(route.ref, current)) ?? null
+  return routes.value.find((route) => route.ref === current) ?? null
 })
 const active = computed(() => cursor.value ?? selected.value?.ref ?? null)
 const activeId = computed(() => {

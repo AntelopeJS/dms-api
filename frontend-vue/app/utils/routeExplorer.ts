@@ -171,19 +171,6 @@ export function optionId(index: number): string {
   return `api-route-option-${index}`
 }
 
-/** The period presets of the page's selector, as the `?window=` of a link. */
-const PRESET_WINDOWS: Record<string, string> = {
-  'last-hour': '1h',
-  'last-24h': '24h',
-  'last-7-days': '7d',
-  'last-30-days': '30d',
-}
-
-/** The `window=` a link carries for a period preset; none for a custom range. */
-export function windowOfPreset(preset: string | undefined): string | null {
-  return (preset && PRESET_WINDOWS[preset]) || null
-}
-
 const MINUTES_PER_HOUR = 60
 const MINUTES_PER_DAY = 1440
 

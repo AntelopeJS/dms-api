@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { OverviewPage } from "@/pages/overview";
-import { blockClientId } from "@/pages/live";
 
 interface Serialized {
   componentName: string;
   options?: Record<string, unknown> & {
     watchActions?: { event: string; functionId: string }[];
+    realtimeTopic?: unknown;
   };
   children?: { id: string; slot?: string; component: Serialized }[];
 }
@@ -18,58 +18,61 @@ function child(parent: Serialized, id: string): Serialized {
 
 describe("OverviewPage", () => {
   const toolbar = OverviewPage.toolbar.serializeSync() as Serialized;
+  const dashboard = OverviewPage.dashboard.serializeSync() as Serialized;
 
-  it("holds the toolbar of the monitoring pages: scope, Beta, live, period", () => {
-    expect(toolbar.componentName).toBe("DmsApiPageToolbar");
+  it("holds the toolbar of the monitoring pages: scope, live, period", () => {
+    expect(toolbar.componentName).toBe("dms-h-stack");
     expect(
       toolbar.children?.map((entry) => [
         entry.id,
-        entry.slot,
         entry.component.componentName,
       ]),
     ).toEqual([
-      ["scope", "scope", "DmsApiScopeChip"],
-      ["beta", "badge", "DmsApiBetaBadge"],
-      ["live", "live", "DmsApiLiveControl"],
-      ["period", "period", "DmsApiPeriodWindow"],
+      ["scope", "DmsApiScopeChip"],
+      ["spacer", expect.stringMatching(/spacer/)],
+      ["live", "DmsApiLiveControl"],
+      ["period", "DmsApiPeriodWindow"],
     ]);
   });
 
-  it("keeps the charts and the activity live while Recent requests holds", () => {
-    const live = child(toolbar, "live").options as { liveBlocks: string[] };
-    const dashboard = OverviewPage.dashboard.serializeSync() as Serialized;
-    const watched = [
+  it("draws the health with DMS blocks read from the overview routes", () => {
+    const health = OverviewPage.health.serializeSync() as Serialized;
+    const figures = OverviewPage.figures.serializeSync() as Serialized;
+    expect(health.componentName).toMatch(/banner/);
+    expect(health.options).toMatchObject({
+      fetchUrl: "/api/monitoring/overview/health",
+    });
+    expect(figures.componentName).toMatch(/stat-group/);
+    expect(figures.options).toMatchObject({
+      fetchUrl: "/api/monitoring/overview/health/figures",
+    });
+  });
+
+  it("lists what needs a look and the top routes with DMS blocks", () => {
+    const row = child(dashboard, "health");
+    expect(child(row, "attention").componentName).toMatch(/activity-feed/);
+    expect(child(row, "slowest").componentName).toMatch(/top-list/);
+    expect(child(child(dashboard, "traffic"), "classes").componentName).toMatch(
+      /top-list/,
+    );
+  });
+
+  it("leaves the refresh to the Live / Pause control, which can hold it", () => {
+    for (const [row, id] of [
       ["health", "errorShare"],
       ["traffic", "chart"],
       ["recent", "activity"],
-    ];
-    expect(live.liveBlocks).toEqual(
-      watched.map((path) => blockClientId("dashboard", ...path)),
-    );
-    for (const [row, id] of watched) {
+    ]) {
       const block = child(child(dashboard, row), id);
-      expect(block.options?.watchActions).toEqual([
-        expect.objectContaining({
-          event: "dms-api:live-blocks",
-          functionId: "dms-api:live-blocks",
-        }),
-      ]);
+      expect(block.options?.watchActions).toBeUndefined();
+      expect(block.options?.realtimeTopic).toBeUndefined();
     }
-    // The table itself follows no such event: it holds.
-    const table = child(child(child(dashboard, "recent"), "requests"), "table");
-    expect(table.options?.watchActions).toBeUndefined();
   });
 
-  it("names a block by the id the DMS renderer gives it", () => {
-    expect(blockClientId("dashboard", "traffic", "chart")).toBe(
-      "dashboard-child-traffic-child-chart",
-    );
-  });
-
-  it("reads the health while paused, to tell a changed verdict", () => {
+  it("reads the verdict while paused, to tell a changed one", () => {
     expect(child(toolbar, "live").options).toMatchObject({
       page: "overview",
-      healthUrl: "/api/monitoring/overview/health",
+      verdictUrl: "/api/monitoring/overview/health/verdict",
     });
   });
 });

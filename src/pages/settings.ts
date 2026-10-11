@@ -22,7 +22,6 @@ import { configureCategory } from "./module";
 
 const SETTINGS_URL = "/api/monitoring/settings";
 const RETENTION_IMPACT_URL = `${SETTINGS_URL}/retention-impact`;
-const SENSITIVE_HEADERS_URL = `${SETTINGS_URL}/sensitive-headers`;
 
 /** An input of the console's own, in place of the type's default one. */
 function apiInput<T>(name: string, options: T): ComponentInfoSerialized<T> {
@@ -61,6 +60,12 @@ const retentionType = new DefaultDataTypes.NumberType({
   min: logRetentionDays.min,
   max: logRetentionDays.max,
   step: 1,
+});
+
+const statisticsRetentionType = new DefaultDataTypes.NumberType({
+  min: Math.min(...STATISTICS_LIFETIME_DAY_CHOICES),
+  max: Math.max(...STATISTICS_LIFETIME_DAY_CHOICES),
+  step: STATISTICS_LIFETIME_DAY_CHOICES[0],
 });
 
 const settingsForm = Form({
@@ -104,13 +109,11 @@ const settingsForm = Form({
           }),
         },
         {
-          // The number type keeps a value set in the module configuration
-          // outside the choices (45 days) valid; the input offers it as the
-          // current value beside them, and the route accepts only a choice.
+          // 30, 60 or 90 days: the steps of 30 from 30 to 90.
           id: SETTINGS_FIELDS.statsRetention,
           label: "$api.settings.retention.statistics",
           description: "$api.settings.retention.statistics_description",
-          type: retentionType,
+          type: statisticsRetentionType,
           inputComponent: apiInput("RetentionInput", {
             kind: "statistics",
             choices: [...STATISTICS_LIFETIME_DAY_CHOICES],
@@ -136,28 +139,20 @@ const settingsForm = Form({
             max: maxBodyKb.max,
             step: 1,
           }),
-          inputComponent: apiInput("SettingNumberInput", {
-            min: maxBodyKb.min,
-            max: maxBodyKb.max,
-            step: 1,
-          }),
         },
         {
           id: SETTINGS_FIELDS.headers,
           label: "$api.settings.capture.headers",
           description: "$api.settings.capture.headers_description",
           hint: "$api.settings.capture.headers_hint",
-          type: new TagsType({ max: capturedHeaders.max }),
-          // Checks each name as it is added, in lower case: a name HTTP does
-          // not allow, or one the capture never stores, shows red and blocks
-          // the save before it is sent.
-          inputComponent: apiInput("HeaderTagsInput", {
+          // The route checks the names: one HTTP does not allow, or one the
+          // capture never stores, comes back as a field error naming it,
+          // which the DMS input shows red.
+          type: new TagsType({
             max: capturedHeaders.max,
-            sensitiveUrl: SENSITIVE_HEADERS_URL,
             placeholder: "$api.settings.capture.headers_placeholder",
             suggestions: [
               "stripe-signature",
-              "x-request-id",
               "x-forwarded-for",
               "x-idempotency-key",
             ],
@@ -189,11 +184,6 @@ const settingsForm = Form({
           description: "$api.settings.thresholds.slow_description",
           hint: "$api.settings.thresholds.slow_hint",
           type: new DefaultDataTypes.NumberType({
-            min: slowThresholdMs.min,
-            max: slowThresholdMs.max,
-            step: slowThresholdMs.step,
-          }),
-          inputComponent: apiInput("SettingNumberInput", {
             min: slowThresholdMs.min,
             max: slowThresholdMs.max,
             step: slowThresholdMs.step,

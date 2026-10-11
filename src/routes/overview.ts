@@ -11,6 +11,7 @@ import { RequestLogModel, RouteModel, RouteStatisticsModel } from "@/db";
 import { OVERVIEW_DEFAULT_WINDOW, OverviewPage } from "@/pages/overview";
 import { getActivity } from "@/services/activity";
 import { ATTENTION_LIMIT, getAttention } from "@/services/attention";
+import { healthBanner, healthStats } from "@/services/health-blocks";
 import {
   getErrorShareChart,
   getHealth,
@@ -46,6 +47,11 @@ function scopeKeys() {
   return getScopedRouteKeys(GetModel(RouteModel), getActiveScope());
 }
 
+async function currentHealth() {
+  const keys = await scopeKeys();
+  return getHealth(models(), keys, countRoutes(keys));
+}
+
 function windowOf(context: RequestContext): TimeWindow {
   return resolveWindow(
     windowQueryFrom(context.url.searchParams),
@@ -65,14 +71,33 @@ const grid = OverviewPage.dashboard;
 /**
  * The Overview's blocks. The charts and top lists follow the page's window
  * (`?window=`, or the period selector's `preset` / `from` / `to`); the health
- * hero and "Needs attention" judge the last 24 h, the activity journal the
- * last 7 days, and each says so in its payload.
+ * and "Needs attention" judge the last 24 h, the activity journal the last
+ * 7 days.
  */
 export class OverviewController extends Controller("/api/monitoring/overview") {
+  /** The verdict, as the page's DMS `Banner` reads it. */
   @Get("health")
   async getHealth(@AuthUserWithPermission(OverviewPage.health) _user: User) {
-    const keys = await scopeKeys();
-    return getHealth(models(), keys, countRoutes(keys));
+    return healthBanner(await currentHealth());
+  }
+
+  /** The figures under the verdict, as the page's DMS `StatGroup` reads them. */
+  @Get("health/figures")
+  async getHealthFigures(
+    @AuthUserWithPermission(OverviewPage.figures) _user: User,
+  ) {
+    return healthStats(await currentHealth());
+  }
+
+  /**
+   * The verdict alone: the Live / Pause control reads it while paused, to
+   * say when it changed.
+   */
+  @Get("health/verdict")
+  async getHealthVerdict(
+    @AuthUserWithPermission(OverviewPage.health) _user: User,
+  ) {
+    return { verdict: (await currentHealth()).verdict };
   }
 
   @Get("traffic")

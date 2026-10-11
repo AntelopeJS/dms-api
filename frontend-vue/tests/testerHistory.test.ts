@@ -10,7 +10,6 @@ import {
   loadDraft,
   loadHistory,
   lostSecrets,
-  migrateHistory,
   patchResult,
   rememberConfirmedWrite,
   sameRequest,
@@ -64,7 +63,6 @@ function result(overrides: Partial<TesterResult> = {}): TesterResult {
     durationMs: 12,
     headers: {},
     body: 'x'.repeat(10_000),
-    sentWithSession: true,
     auth: 'manual',
     at: 1,
     ...overrides,
@@ -166,78 +164,6 @@ describe('tester history', () => {
         { name: 'x-api-key', value: '' },
       ]),
     ).toEqual(['X-Api-Key'])
-  })
-})
-
-describe('history of an earlier version', () => {
-  beforeEach(() => {
-    local.clear()
-    session.clear()
-  })
-
-  const legacy = {
-    at: 5,
-    path: '/api/orders',
-    headers: { 'x-qa': 'TS', Authorization: 'Bearer old' },
-    query: { page: '2' },
-    pathValues: {},
-    body: '{"items":[]}',
-    useSession: true,
-    result: {
-      status: 400,
-      durationMs: 31,
-      headers: { 'content-type': 'application/json' },
-      body: '{"error":"Cart is empty"}',
-      sentWithSession: true,
-    },
-  }
-
-  it('brings flat entries and slash-ended routes to the current format, once', () => {
-    local.set(
-      'dmsApi.tester.history.POST /api/orders/',
-      JSON.stringify([legacy]),
-    )
-    local.set(
-      'dmsApi.tester.history.POST /api/orders',
-      JSON.stringify([entry(9)]),
-    )
-    expect(migrateHistory()).toEqual({ migrated: 1, dropped: 0 })
-    expect(local.has('dmsApi.tester.history.POST /api/orders/')).toBe(false)
-    const [current, migrated] = loadHistory('POST /api/orders')
-    expect(current.at).toBe(9)
-    expect(migrated).toMatchObject({
-      at: 5,
-      method: 'POST',
-      path: '/api/orders',
-      request: {
-        bodyMode: 'json',
-        body: '{"items":[]}',
-        headers: [{ name: 'x-qa', value: 'TS' }],
-        query: [{ name: 'page', value: '2' }],
-        useSession: true,
-      },
-      result: { status: 400, auth: 'session', sentWithSession: true, at: 5 },
-    })
-    local.set('dmsApi.tester.history.GET /x/', JSON.stringify([legacy]))
-    expect(migrateHistory()).toEqual({ migrated: 0, dropped: 0 })
-    expect(local.has('dmsApi.tester.history.GET /x/')).toBe(true)
-  })
-
-  it('clears what it cannot read, and counts it', () => {
-    local.set('dmsApi.tester.history.GET /a', '{not json')
-    local.set(
-      'dmsApi.tester.history.GET /b',
-      JSON.stringify([
-        { at: 1, result: {} },
-        { ...legacy, at: 2 },
-      ]),
-    )
-    local.set('dmsApi.tester.history.no route', JSON.stringify([legacy]))
-    expect(migrateHistory()).toEqual({ migrated: 1, dropped: 3 })
-    expect(local.has('dmsApi.tester.history.GET /a')).toBe(false)
-    expect(local.has('dmsApi.tester.history.no route')).toBe(false)
-    expect(loadHistory('GET /b')).toHaveLength(1)
-    expect(loadHistory('GET /b')[0].request.bodyMode).toBe('none')
   })
 })
 

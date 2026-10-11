@@ -60,7 +60,9 @@ const DROPPED_HEADERS = new Set([
   'connection',
   'transfer-encoding',
   'accept-encoding',
-  'x-dms-api-source',
+  // A call of its own: not the Tester's, not the captured call again.
+  'x-antelopejs-api-source',
+  'x-request-id',
 ])
 const REDACTED_TEXT = /\[REDACTED\]|%5BREDACTED%5D/gi
 const COMPRESSED = /\b(?:gzip|deflate|br)\b/i

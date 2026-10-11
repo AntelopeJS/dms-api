@@ -78,7 +78,7 @@ describe("LogsPage", () => {
       componentName: string;
       children: { id: string; component: { componentName: string } }[];
     };
-    expect(toolbar.componentName).toBe("DmsApiPageToolbar");
+    expect(toolbar.componentName).toBe("dms-h-stack");
     expect(
       toolbar.children.map((child) => [
         child.id,
@@ -86,15 +86,10 @@ describe("LogsPage", () => {
       ]),
     ).toEqual([
       ["scope", "DmsApiScopeChip"],
+      ["spacer", expect.stringMatching(/spacer/)],
       ["live", "DmsApiLiveControl"],
       ["period", "DmsApiLogsPeriod"],
     ]);
-  });
-
-  it("offers the new requests over the table, which it follows by scroll", () => {
-    const banner = LogsPage.newRequests.serializeSync();
-    expect(banner.componentName).toBe("DmsApiLiveBanner");
-    expect(banner.options).toMatchObject({ pageSize: 50, followScroll: true });
   });
 
   it("serves the slowness threshold and the body limit in force", async () => {

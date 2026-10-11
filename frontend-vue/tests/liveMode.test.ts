@@ -2,8 +2,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   createPacer,
   hasPending,
-  isCustomSort,
-  isTableReason,
   isLiveShortcut,
   latestTime,
   liveCadence,
@@ -13,8 +11,6 @@ import {
   reasonsKey,
   sinceQuery,
   storedPaused,
-  tableReasons,
-  tableStatus,
   urlPaused,
   verdictChange,
 } from '../app/utils/liveMode'
@@ -27,17 +23,14 @@ describe('liveStatus', () => {
   })
 
   it('pauses by itself, naming the most telling reason', () => {
-    expect(liveStatus({ ...live, reasons: ['sort', 'panel'] })).toEqual({
+    expect(liveStatus({ ...live, reasons: ['tester'] })).toEqual({
       mode: 'auto',
-      reason: 'panel',
+      reason: 'tester',
     })
-    expect(liveStatus({ ...live, reasons: ['loadMore'] }).reason).toBe(
-      'loadMore',
-    )
   })
 
   it('lifts the automatic pause with its cause', () => {
-    const paused = liveStatus({ ...live, reasons: ['panel'] })
+    const paused = liveStatus({ ...live, reasons: ['tester'] })
     const closed = liveStatus({ ...live, reasons: [] })
     expect(paused.mode).toBe('auto')
     expect(closed.mode).toBe('live')
@@ -45,18 +38,18 @@ describe('liveStatus', () => {
 
   it("keeps the user's own pause when the cause goes", () => {
     const user = { ...live, userPaused: true }
-    expect(liveStatus({ ...user, reasons: ['panel'] }).mode).toBe('paused')
+    expect(liveStatus({ ...user, reasons: ['tester'] }).mode).toBe('paused')
     expect(liveStatus(user).mode).toBe('paused')
   })
 
   it('stays live over the reasons the user chose Live over, not new ones', () => {
-    const override = reasonsKey(['sort', 'panel'])
+    const override = reasonsKey(['tester'])
+    expect(liveStatus({ ...live, reasons: ['tester'], override }).mode).toBe(
+      'live',
+    )
     expect(
-      liveStatus({ ...live, reasons: ['panel', 'sort'], override }).mode,
-    ).toBe('live')
-    expect(
-      liveStatus({ ...live, reasons: ['panel', 'sort', 'search'], override }),
-    ).toEqual({ mode: 'auto', reason: 'panel' })
+      liveStatus({ ...live, reasons: ['tester', 'hidden'], override }),
+    ).toEqual({ mode: 'auto', reason: 'hidden' })
   })
 
   it('always stops in a hidden tab', () => {
@@ -84,14 +77,11 @@ describe('the kept choice', () => {
 
 describe('liveCadence', () => {
   it('paces each page, slower over a week or a month', () => {
-    expect(liveCadence('logs')).toEqual({ custom: 5000, blocks: 5000 })
-    expect(liveCadence('overview', '24h').blocks).toBe(10_000)
-    expect(liveCadence('overview', '7d')).toEqual({
-      custom: 10_000,
-      blocks: 60_000,
-    })
-    expect(liveCadence('routes', '24h').blocks).toBe(15_000)
-    expect(liveCadence('routes', '30d').blocks).toBe(60_000)
+    expect(liveCadence('logs')).toBe(5000)
+    expect(liveCadence('overview', '24h')).toBe(10_000)
+    expect(liveCadence('overview', '7d')).toBe(30_000)
+    expect(liveCadence('routes', '24h')).toBe(15_000)
+    expect(liveCadence('routes', '30d')).toBe(30_000)
   })
 })
 
@@ -183,27 +173,24 @@ describe('the count of new requests', () => {
     expect(latestTime([null, undefined])).toBeNull()
   })
 
-  it("asks under the table's filters, without reading a row", () => {
+  it("asks under the page's URL filters, without reading a row", () => {
     const after = '2026-10-10T12:00:00.000Z'
     const logs = sinceQuery({
       page: 'logs',
       after,
       query: { route: 'GET /api/orders', slow: 'true', window: '24h' },
-      tab: '5xx',
     })
     expect(Object.fromEntries(logs)).toEqual({
       after,
       limit: '0',
       filter_route: 'is:GET /api/orders',
       filter_slow: 'is:true',
-      filter_statusClass: 'is:5xx',
     })
     const routes = sinceQuery({
       page: 'routes',
       after,
       query: { route: 'POST /api/orders', tab: '0' },
       routeKey: 'route',
-      tab: 'All',
     })
     expect(Object.fromEntries(routes)).toEqual({
       after,
@@ -218,7 +205,7 @@ describe('the count of new requests', () => {
     expect(Object.fromEntries(overview)).toEqual({ after, limit: '0' })
   })
 
-  it("keeps to an incident's range and the table's search", () => {
+  it("keeps to an incident's range", () => {
     const after = '2026-10-10T12:00:00.000Z'
     const logs = sinceQuery({
       page: 'logs',
@@ -227,54 +214,19 @@ describe('the count of new requests', () => {
         since: '2026-10-10T08:00:00.000Z',
         until: '2026-10-10T09:00:00.000Z',
       },
-      search: '  timeout ',
     })
     expect(Object.fromEntries(logs)).toEqual({
       after,
       limit: '0',
       filter_from: 'is:2026-10-10T08:00:00.000Z',
       filter_to: 'is:2026-10-10T09:00:00.000Z',
-      search: 'timeout',
     })
     const routes = sinceQuery({
       page: 'routes',
       after,
       query: { since: '2026-10-10T08:00:00.000Z' },
-      search: '',
     })
     expect(Object.fromEntries(routes)).toEqual({ after, limit: '0' })
-  })
-})
-
-describe('the request table', () => {
-  it('holds while searched, sorted or grown by Load more', () => {
-    const table = { rows: 50, pageSize: 50, customSort: false, search: false }
-    expect(tableReasons(null)).toEqual([])
-    expect(tableReasons(table)).toEqual([])
-    expect(tableReasons({ ...table, rows: 100 })).toEqual(['loadMore'])
-    expect(tableReasons({ ...table, search: true, customSort: true })).toEqual([
-      'search',
-      'sort',
-    ])
-  })
-
-  it('follows again the rows taken back to live, until more are loaded', () => {
-    const table = { rows: 12, pageSize: 6, customSort: false, search: false }
-    expect(tableReasons(table, 12)).toEqual([])
-    expect(tableReasons({ ...table, rows: 18 }, 12)).toEqual(['loadMore'])
-    expect(tableReasons({ ...table, search: true }, 12)).toEqual(['search'])
-  })
-
-  it('reads newest first as no sort of the user’s', () => {
-    expect(isCustomSort([{ sort: 'descending', time: true }])).toBe(false)
-    expect(isCustomSort([{ sort: 'none', time: true }])).toBe(false)
-    expect(isCustomSort([{ sort: 'ascending', time: true }])).toBe(true)
-    expect(
-      isCustomSort([
-        { sort: 'none', time: true },
-        { sort: 'descending', time: false },
-      ]),
-    ).toBe(true)
   })
 })
 
@@ -296,44 +248,6 @@ describe('isLiveShortcut', () => {
     expect(isLiveShortcut(key({ ctrlKey: true }))).toBe(false)
     expect(isLiveShortcut(key({ repeat: true }))).toBe(false)
     expect(isLiveShortcut(key({ key: 'k' }))).toBe(false)
-  })
-})
-
-describe('the table, paused alone', () => {
-  const live = { userPaused: false, reasons: [], override: null }
-
-  it('holds the table alone for what is done with it', () => {
-    for (const reason of [
-      'panel',
-      'search',
-      'sort',
-      'loadMore',
-      'scroll',
-    ] as const)
-      expect(isTableReason(reason)).toBe(true)
-    expect(isTableReason('hidden')).toBe(false)
-    expect(isTableReason('tester')).toBe(false)
-  })
-
-  it('leaves the page live while the table holds', () => {
-    const page = liveStatus(live)
-    expect(page.mode).toBe('live')
-    expect(tableStatus(page, ['loadMore', 'panel'])).toEqual({
-      mode: 'auto',
-      reason: 'panel',
-    })
-    expect(tableStatus(page, ['scroll']).reason).toBe('scroll')
-    expect(tableStatus(page, [])).toEqual({ mode: 'live', reason: null })
-  })
-
-  it('stops with the page, whatever its own state', () => {
-    const paused = liveStatus({ ...live, userPaused: true })
-    expect(tableStatus(paused, [])).toEqual({ mode: 'paused', reason: null })
-    const hidden = liveStatus({ ...live, reasons: ['hidden'] })
-    expect(tableStatus(hidden, ['search'])).toEqual({
-      mode: 'auto',
-      reason: 'hidden',
-    })
   })
 })
 

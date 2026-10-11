@@ -1,13 +1,9 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import {
   bodyLimit,
   clearedLogsFilters,
   hasLogsFilters,
   isRouteRef,
-  logsArrival,
-  logsArrivalMiddleware,
-  shownTab,
-  routeLabel,
   withDefaultWindow,
   logsEmptyCause,
   readLogsFilters,
@@ -212,129 +208,8 @@ describe('the default period', () => {
 })
 
 describe('route chips', () => {
-  it('names a route without the trailing slash of an older link', () => {
-    expect(routeLabel('post /webhooks/stripe/')).toBe('POST /webhooks/stripe')
+  it('tells a route reference from anything else', () => {
     expect(isRouteRef('GET /api/orders')).toBe(true)
     expect(isRouteRef('garbage')).toBe(false)
-  })
-})
-
-describe('logsArrival', () => {
-  const logs = '/modules/api/logs'
-  const overview = { path: '/modules/api/overview', query: {} }
-
-  it('opens a link on the All tab rather than the one kept', () => {
-    expect(
-      logsArrival({ path: logs, query: { route: 'GET /a' } }, overview),
-    ).toEqual({
-      to: { path: logs, query: { route: 'GET /a', 'requests.tab': 'all' } },
-      reload: false,
-    })
-  })
-
-  it('loads the page anew over a table mounted without the tab', () => {
-    const to = { path: logs, query: { error: 'boom' } }
-    expect(logsArrival(to, to)).toEqual({
-      to: { path: logs, query: { error: 'boom', 'requests.tab': 'all' } },
-      reload: true,
-    })
-  })
-
-  it('loads the page anew for a link followed by a visit within it', () => {
-    const from = { path: logs, query: { record: 'r1', 'requests.tab': 'all' } }
-    expect(logsArrival({ path: logs, query: { path: '/x' } }, from)).toEqual({
-      to: { path: logs, query: { path: '/x', 'requests.tab': 'all' } },
-      reload: true,
-    })
-    // A tab the link names is the one opened.
-    const named = {
-      path: logs,
-      query: { route: 'GET /a', 'requests.tab': '5xx' },
-    }
-    expect(logsArrival(named, from)).toEqual({ to: named, reload: true })
-  })
-
-  it('leaves a named tab, a bare visit and the filters bar alone', () => {
-    const named = {
-      path: logs,
-      query: { route: 'GET /a', 'requests.tab': '5xx' },
-    }
-    expect(logsArrival(named, overview)).toBeUndefined()
-    expect(logsArrival(named, named)).toBeUndefined()
-    expect(logsArrival({ path: logs, query: {} }, undefined)).toBeUndefined()
-    const linked = { path: logs, query: { route: 'GET /a', error: 'boom' } }
-    // A period chosen, a chip removed: no link brought.
-    expect(
-      logsArrival(
-        { path: logs, query: { ...linked.query, window: '7d' } },
-        linked,
-      ),
-    ).toBeUndefined()
-    expect(
-      logsArrival({ path: logs, query: { route: 'GET /a' } }, linked),
-    ).toBeUndefined()
-    expect(
-      logsArrival(
-        { path: '/modules/api/routes', query: { route: 'GET /a' } },
-        linked,
-      ),
-    ).toBeUndefined()
-  })
-})
-
-describe('logsArrivalMiddleware', () => {
-  const logs = '/modules/api/logs'
-
-  afterEach(() => vi.unstubAllGlobals())
-
-  it('redirects where no table is mounted, and in a server render', () => {
-    expect(
-      logsArrivalMiddleware(
-        { path: logs, query: { route: 'GET /a' } },
-        { path: '/modules/api/overview', query: {} },
-      ),
-    ).toEqual({ path: logs, query: { route: 'GET /a', 'requests.tab': 'all' } })
-    const to = { path: logs, query: { route: 'GET /a' } }
-    expect(logsArrivalMiddleware(to, to)).toEqual({
-      path: logs,
-      query: { route: 'GET /a', 'requests.tab': 'all' },
-    })
-  })
-
-  it('loads the page anew over a mounted table', () => {
-    const location = { assign: vi.fn(), replace: vi.fn() }
-    vi.stubGlobal('window', { location })
-    const from = { path: logs, query: { record: 'r1' } }
-    expect(
-      logsArrivalMiddleware({ path: logs, query: { path: '/a b' } }, from),
-    ).toBe(false)
-    expect(location.assign).toHaveBeenCalledWith(
-      '/modules/api/logs?path=%2Fa+b&requests.tab=all',
-    )
-    const shown = { path: logs, query: { path: '/x' } }
-    expect(logsArrivalMiddleware(shown, shown)).toBe(false)
-    expect(location.replace).toHaveBeenCalledWith(
-      '/modules/api/logs?path=%2Fx&requests.tab=all',
-    )
-  })
-})
-
-describe('shownTab', () => {
-  function card(labels: string[], shown: number | null) {
-    const parent = { children: [] as unknown[] }
-    const tabs = labels.map((textContent) => ({
-      textContent,
-      parentElement: parent,
-    }))
-    parent.children = tabs
-    return {
-      querySelector: () => (shown === null ? null : tabs[shown]),
-    }
-  }
-
-  it('reads the first tab as All, whatever its label, and a class by its label', () => {
-    expect(shownTab(card(['Tous 1 204', '2xx 900', '5xx 12'], 0))).toBe('all')
-    expect(shownTab(card(['All 1,204', '2xx 900', '5xx 12'], 2))).toBe('5xx')
-    expect(shownTab(card([], null))).toBeUndefined()
   })
 })

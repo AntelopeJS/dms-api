@@ -29,7 +29,6 @@ it('registers the blocks the backend pages name, and nothing else', async () => 
       'LogsFilters',
       'LogsPeriod',
       'RequestDetail',
-      'RequestDrawerHost',
       'RouteTree',
       'RouteHeader',
       'RouteDocumentation',
@@ -45,16 +44,14 @@ it('registers the blocks the backend pages name, and nothing else', async () => 
   expect(registerPlugin).toHaveBeenCalledTimes(2)
   for (const [, options] of registerPlugin.mock.calls)
     expect(options).toEqual({ clientOnly: false })
-  // A row opens its request over the page's query, whatever page it is on.
+  // A row opens its request in the side panel, over the page's query.
   expect(registerMiddleware).toHaveBeenCalledWith(
     'dms-api-open-request',
     expect.any(Function),
     { global: true },
   )
-  // A link to the request logs opens on the "All" tab, after the above.
   expect(registerMiddleware.mock.calls.map(([name]) => name)).toEqual([
     'dms-api-open-request',
-    'dms-api-logs-arrival',
   ])
   for (const [, , options] of registerMiddleware.mock.calls)
     expect(options).toEqual({ global: true })

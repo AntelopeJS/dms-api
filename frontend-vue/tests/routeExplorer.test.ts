@@ -13,7 +13,6 @@ import {
   rememberRoute,
   type RouteState,
   stepFrom,
-  windowOfPreset,
   windowParts,
 } from '../app/utils/routeExplorer'
 
@@ -180,15 +179,6 @@ describe('opening the page', () => {
 })
 
 describe('periods', () => {
-  it('turns a period preset into the window a link carries', () => {
-    expect(windowOfPreset('last-hour')).toBe('1h')
-    expect(windowOfPreset('last-24h')).toBe('24h')
-    expect(windowOfPreset('last-7-days')).toBe('7d')
-    expect(windowOfPreset('last-30-days')).toBe('30d')
-    expect(windowOfPreset('custom')).toBeNull()
-    expect(windowOfPreset(undefined)).toBeNull()
-  })
-
   it('writes a health window in its largest whole unit', () => {
     expect(windowParts(15)).toEqual({ unit: 'min', amount: 15 })
     expect(windowParts(90)).toEqual({ unit: 'min', amount: 90 })

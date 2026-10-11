@@ -1,45 +1,33 @@
-// How a request table opens a request in the panel on the right.
+// How a request table opens a request in the DMS side panel on the right.
 //
-// A DMS drawer target slides up from the bottom and takes no side, and a
-// drawer opened with `useDrawer()` lists the table under it again (its
-// container reads the DMS route, whose query the table's filters watch). So
-// the request opens in the DMS side panel instead (`registerSidePanel`):
-// docked next to the page from `lg`, which shrinks to make room and stays
-// clickable, a sheet over it below. A row's action is a page target,
-// `?open-request=<id>` on the page it is on (`src/pages/request-table.ts`),
-// which the middleware below stops: it writes `?record=<id>` into the URL the
-// page already has (its route, its filters, its tab) without a visit, and
-// tells the page's `RequestDrawerHost` block, which opens the panel on it.
-// `?record=` is also the deep link: a link or a reload opens it.
+// The panel is the DMS's own (`registerSidePanel`, `useSidePanel`): docked
+// next to the page from `lg`, which shrinks to make room and stays usable, a
+// sheet over it below. No row action target opens a side panel yet, so a
+// row's action is a page target, `?record=<id>` on the page it is on
+// (`src/pages/request-table.ts`), which the module's middleware below takes:
+// on the page already, the request joins the URL in place, without a visit
+// (a visit would list the table again, newer rows pushing the opened one
+// out), and the panel opens on it. `?record=` is also the deep link: a link
+// or a reload opens it.
 //
-// History: opening, stepping and closing all rewrite the current entry in
-// place (`writeRecord`), never add one. An entry pushed for the panel makes
-// Back and Forward traverse between two entries of the same page, and
-// Inertia answers every traverse by mounting the page anew from its history
-// state: every block lists again, the loaded rows, the pause and the focus
-// are lost. Stopping the `popstate` does not prevent it. The trade-off: Back
-// leaves the page, it does not close the panel; a reload or a shared link
-// still opens the request.
+// History: opening and closing rewrite the current entry in place
+// (`writeRecord`), never add one. An entry pushed for the panel makes Back
+// and Forward traverse between two entries of the same page, and Inertia
+// answers every traverse by mounting the page anew. The trade-off: Back
+// leaves the page, it does not close the panel.
 
-type Query = Record<string, string>
+type Query = Record<string, unknown>
 
 interface RouteLike {
   path: string
   query: Query
 }
 
-/** Query key a row action names the request it opens under. */
-export const OPEN_REQUEST_KEY = 'open-request'
+/** Where the console's pages are. */
+const MODULE_BASE = '/modules/api'
 
 /** Query key of the request the page has open: the deep link. */
 export const RECORD_KEY = 'record'
-
-/** Window event a row opening a request sends (`OpenRequestDetail`). */
-export const OPEN_REQUEST_EVENT = 'dms-api:open-request'
-
-export interface OpenRequestDetail {
-  id: string
-}
 
 /** Id of the DMS side panel the requests open in. */
 export const REQUEST_PANEL_ID = 'dms-api-request'
@@ -61,80 +49,16 @@ export const REQUEST_PANEL = {
   maxWidth: 960,
 }
 
-/**
- * Icon of the request tables' row action (`src/pages/request-table.ts`). The
- * DMS names a row's inline action button `row-action-<row id>-<icon>`: the
- * panel finds the rows, their order and their ids by it, whatever columns the
- * table shows.
- */
-export const REQUEST_ACTION_ICON = 'i-ph-sidebar-simple'
-
-const ACTION_ID_PREFIX = 'row-action-'
-const ACTION_ID_SUFFIX = `-${REQUEST_ACTION_ICON}`
-
-/** The buttons opening a request, one per row of a request table. */
-export const REQUEST_ACTION_SELECTOR = `button[id^="${ACTION_ID_PREFIX}"][id$="${ACTION_ID_SUFFIX}"]`
-
-/** The request a row's action button opens, from its id. */
-export function requestOfActionId(id: string | null): string | null {
-  if (!id?.startsWith(ACTION_ID_PREFIX) || !id.endsWith(ACTION_ID_SUFFIX))
-    return null
-  const request = id.slice(ACTION_ID_PREFIX.length, -ACTION_ID_SUFFIX.length)
-  return request || null
-}
-
-/** The selector of the action button of the row of `id`. */
-export function requestActionSelector(id: string): string {
-  const escaped = id.replace(/["\\]/g, '\\$&')
-  return `button[id="${ACTION_ID_PREFIX}${escaped}${ACTION_ID_SUFFIX}"]`
-}
-
-/** The requests the tables under `root` show, in their order, once each. */
-export function listedRequestIds(root: ParentNode): string[] {
-  const ids = new Set<string>()
-  for (const button of root.querySelectorAll(REQUEST_ACTION_SELECTOR)) {
-    const id = requestOfActionId(button.getAttribute('id'))
-    if (id) ids.add(id)
-  }
-  return [...ids]
-}
-
-/** `query` with `id` as its open request, or with none. */
-export function withRecord(query: Query, id?: string): Query {
-  const { [RECORD_KEY]: _open, [OPEN_REQUEST_KEY]: _asked, ...rest } = query
-  return id ? { ...rest, [RECORD_KEY]: id } : rest
-}
-
-/** The request the URL has open, if any. */
-export function readRecord(query: Record<string, unknown>): string | null {
-  const value = query[RECORD_KEY]
+/** The request a query has open, if any. */
+export function readRecord(query: Query): string | null {
+  const raw = query[RECORD_KEY]
+  const value = Array.isArray(raw) ? raw[0] : raw
   return typeof value === 'string' && value !== '' ? value : null
 }
 
-/**
- * The visit a row's `?open-request=` stands for: the same page with its query
- * kept and the request open. Undefined for any other visit. A row opening a
- * request on another page (or a link carrying the key) opens it there.
- */
-export function openRequestRedirect(
-  to: RouteLike,
-  from: RouteLike,
-): { path: string; query: Query } | undefined {
-  const id = to.query[OPEN_REQUEST_KEY]
-  if (typeof id !== 'string' || id === '') return undefined
-  const kept = to.path === from.path ? { ...from.query, ...to.query } : to.query
-  return { path: to.path, query: withRecord(kept, id) }
-}
-
-/** The request the browser's URL has open, if any. */
-export function readLocationRecord(href: string): string | null {
-  return readRecord(Object.fromEntries(new URL(href).searchParams))
-}
-
 /** `href` with `id` as its open request, or with none. */
-export function hrefWithRecord(href: string, id?: string): string {
+export function hrefWithRecord(href: string, id?: string | null): string {
   const url = new URL(href)
-  url.searchParams.delete(OPEN_REQUEST_KEY)
   if (id) url.searchParams.set(RECORD_KEY, id)
   else url.searchParams.delete(RECORD_KEY)
   return url.href
@@ -146,7 +70,7 @@ export function hrefWithRecord(href: string, id?: string): string {
  * answer by mounting the page anew. Inertia's state of the entry is kept as
  * it is, scroll positions included.
  */
-export function writeRecord(id?: string) {
+export function writeRecord(id?: string | null) {
   window.history.replaceState(
     window.history.state,
     '',
@@ -154,96 +78,51 @@ export function writeRecord(id?: string) {
   )
 }
 
-/**
- * The middleware of a row opening its request. On the page already, in the
- * browser: the request joins the URL in place (a visit would list the table
- * again, newer rows pushing the opened one out) and the host is told.
- * Anywhere else (another page, a server render of a link carrying the key):
- * a visit to the page with the request open.
- */
-export function openRequestMiddleware(to: RouteLike, from: RouteLike) {
-  const redirect = openRequestRedirect(to, from)
-  if (!redirect || typeof window === 'undefined') return redirect
-  if (to.path !== window.location.pathname) return redirect
-  const id = redirect.query[RECORD_KEY]
-  writeRecord(id)
-  const detail: OpenRequestDetail = { id }
-  window.dispatchEvent(new CustomEvent(OPEN_REQUEST_EVENT, { detail }))
-  return false
-}
-
-// --- the rows around the open request ---
-
-export interface RowNavigation {
-  index: number
-  total: number
-  hasPrev: boolean
-  hasNext: boolean
-  prev: () => void
-  next: () => void
-}
-
-/**
- * What the page's `RequestDrawerHost` tells the panel, which the DMS renders
- * outside the page (`RequestDetail.vue`).
- */
+/** What the panel, which the DMS renders outside the page, is told. */
 export interface RequestPanelState {
-  /** A host is on the page: it names the request, else the URL does. */
-  hosted: boolean
-  /** The request on screen. */
+  /** The request a row of the page opened, and the page it is on. */
   id: string | null
-  /** Its place among the rows of the table it was opened from. */
-  navigation: RowNavigation | null
+  path: string | null
   /** The panel takes the focus once it shows the request: a row opened it. */
   focus: boolean
-  /** Closes the panel the way the page wants: its URL follows. */
-  close: (() => void) | null
 }
 
 /** The panel's state, one per app (and per server render). */
 export function useRequestPanel() {
   return useDmsState<RequestPanelState>('dms-api:request-panel', () => ({
-    hosted: false,
     id: null,
-    navigation: null,
+    path: null,
     focus: false,
-    close: null,
   }))
 }
 
 /**
- * The open request's place among the rows of its table, and the steps to its
- * neighbours. A request the table does not show (a deep link, a filtered-out
- * row) has none.
+ * Whether a visit only opens a request on the page already shown: the same
+ * path, and `?record=` the one thing added or changed.
  */
-export function navigationAmong(
-  ids: string[],
-  id: string,
-  step: (id: string) => void,
-): RowNavigation | null {
-  const index = ids.indexOf(id)
-  if (index < 0) return null
-  return {
-    index,
-    total: ids.length,
-    hasPrev: index > 0,
-    hasNext: index < ids.length - 1,
-    prev: () => index > 0 && step(ids[index - 1]),
-    next: () => index < ids.length - 1 && step(ids[index + 1]),
-  }
+export function opensRequestInPlace(to: RouteLike, from: RouteLike): boolean {
+  if (to.path !== from.path || !readRecord(to.query)) return false
+  return Object.entries(to.query).every(
+    ([key, value]) => key === RECORD_KEY || from.query[key] === value,
+  )
 }
 
 /**
- * Indexes of the rows that start a day, given each row's day in table order:
- * the list is cut by day only when it runs through time (sorted on it), not
- * when another sort interleaves the days.
+ * The middleware of a row opening its request (a page target naming
+ * `?record=`). The side panel opens on it; on the page already, in the
+ * browser, the request joins the URL in place and the visit stops there.
+ * Anywhere else (a server render, a link from another page), the visit goes
+ * on: the page loads with the request open.
  */
-export function dayStarts(days: string[]): number[] {
-  const changes = days.flatMap((day, index) =>
-    index > 0 && day !== days[index - 1] ? [index] : [],
-  )
-  const distinct = new Set(days).size
-  return changes.length === distinct - 1 ? changes : []
+export function openRequestMiddleware(to: RouteLike, from: RouteLike) {
+  const id = readRecord(to.query)
+  if (!id || !to.path.startsWith(`${MODULE_BASE}/`)) return undefined
+  useSidePanel(REQUEST_PANEL_ID).open()
+  if (typeof window === 'undefined' || !opensRequestInPlace(to, from))
+    return undefined
+  writeRecord(id)
+  useRequestPanel().value = { id, path: to.path, focus: true }
+  return false
 }
 
 // --- reading a request ---
@@ -508,37 +387,12 @@ export interface Redactions {
   headers: string[]
 }
 
-const REDACTED = '[REDACTED]'
-
-function maskedIn(text: string | undefined): number {
-  return text ? text.split(REDACTED).length - 1 : 0
-}
-
-/**
- * What was masked, as the capture recorded it; for a log captured before it
- * did, the `[REDACTED]` values its bodies and query hold.
- */
-export function redactionsOf(log: {
-  redactions?: Partial<Redactions> | null
-  query?: Record<string, string | string[]>
-  requestBody?: string
-  responseBody?: string
-}): Redactions {
-  if (log.redactions)
-    return {
-      query: log.redactions.query ?? 0,
-      requestBody: log.redactions.requestBody ?? 0,
-      responseBody: log.redactions.responseBody ?? 0,
-      headers: log.redactions.headers ?? [],
-    }
-  return {
-    query: Object.values(log.query ?? {})
-      .flat()
-      .filter((value) => value === REDACTED).length,
-    requestBody: maskedIn(log.requestBody),
-    responseBody: maskedIn(log.responseBody),
-    headers: [],
-  }
+/** Nothing masked: what the panel shows before a request is read. */
+export const NO_REDACTIONS: Redactions = {
+  query: 0,
+  requestBody: 0,
+  responseBody: 0,
+  headers: [],
 }
 
 /** Whether a URL could name a captured request: a link may hold anything. */
@@ -552,9 +406,6 @@ export function withParam(href: string, key: string, value: string): string {
   url.searchParams.set(key, value)
   return `${url.pathname}?${url.searchParams}`
 }
-
-/** The request logs page. */
-const LOGS_PAGE = '/modules/api/logs'
 
 /** How the route of a request behaves, read with it (`routeLatency`). */
 export interface RouteLatency {
@@ -589,12 +440,9 @@ export function requestPivots(log: {
   links: { sameRoute: string; samePath?: string | null }
 }): RequestPivot[] {
   if (!log.routeRegistered)
-    return [
-      {
-        kind: 'same_path',
-        to: log.links.samePath ?? withParam(LOGS_PAGE, 'path', log.rawPath),
-      },
-    ]
+    return log.links.samePath
+      ? [{ kind: 'same_path', to: log.links.samePath }]
+      : []
   const pivots: RequestPivot[] = [
     { kind: 'same_route', to: log.links.sameRoute },
   ]

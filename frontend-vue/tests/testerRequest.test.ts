@@ -9,6 +9,7 @@ import {
   formatJson,
   inputProblem,
   jsonProblem,
+  createSourceTokens,
   markedHeaders,
   mergeHeaders,
   newRequestId,
@@ -268,13 +269,37 @@ describe('building the request', () => {
 
   it('marks the call as the tester’s, with its own request id', () => {
     expect(
-      markedHeaders({ 'X-Request-Id': 'mine', accept: '*/*' }, 'id-1'),
+      markedHeaders(
+        { 'X-Request-Id': 'mine', accept: '*/*' },
+        'id-1',
+        'tester.1.sig',
+      ),
     ).toEqual({
       accept: '*/*',
       'x-request-id': 'id-1',
-      'x-dms-api-source': 'tester',
-      'x-antelopejs-api-source': 'tester',
+      'x-antelopejs-api-source': 'tester.1.sig',
     })
+  })
+
+  it('reuses a signed source token until a minute before it expires', async () => {
+    let clock = 0
+    let issued = 0
+    const tokens = createSourceTokens(
+      async () => {
+        issued += 1
+        return {
+          header: 'x-antelopejs-api-source',
+          value: `tester.${issued}`,
+          expiresAt: new Date(clock + 15 * 60_000).toISOString(),
+        }
+      },
+      () => clock,
+    )
+    expect((await tokens.get()).value).toBe('tester.1')
+    clock = 13 * 60_000
+    expect((await tokens.get()).value).toBe('tester.1')
+    clock = 14 * 60_000 + 1
+    expect((await tokens.get()).value).toBe('tester.2')
   })
 
   it('makes version 4 request ids, outside secure contexts too', () => {
