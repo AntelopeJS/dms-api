@@ -1,5 +1,7 @@
 <script setup lang="ts">
-// A block of code or of a payload, in the mono font, with a copy button.
+// A block of code or of a payload, in the mono font, with a copy button. Long
+// lines wrap between words where they can, and the button keeps its corner
+// clear of the text.
 withDefaults(
   defineProps<{
     code: string
@@ -21,7 +23,8 @@ withDefaults(
     </div>
     <DmsCopyButton v-else :value="code" class="absolute right-1.5 top-1.5" />
     <pre
-      class="text-default overflow-auto whitespace-pre-wrap break-all px-3 py-2.5 font-mono text-[12px] leading-relaxed"
+      class="text-default overflow-auto whitespace-pre-wrap py-2.5 pl-3 font-mono text-[12px] leading-relaxed [overflow-wrap:anywhere]"
+      :class="label ? 'pr-3' : 'pr-10'"
       :style="{ maxHeight }"
     ><code>{{ code }}</code></pre>
   </div>
