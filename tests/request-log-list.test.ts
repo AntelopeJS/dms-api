@@ -7,8 +7,10 @@ import {
   listRequestLogsSince,
   namesUnknownRoute,
   parseAfter,
+  statusClassOf,
   toRow,
 } from "@/services/request-log/list";
+import { STATUS_CLASS_RANGES } from "@/db/models/request_log.status";
 import { getRouteLatency } from "@/services/request-log/read";
 import { MS_PER_DAY, MS_PER_HOUR } from "@/types";
 
@@ -114,6 +116,23 @@ describe("filtersFromQuery", () => {
       const filters = filtersFromQuery({ filter_window }, NOW, "24h");
       expect(filters.since).toEqual(new Date(NOW.getTime() - MS_PER_DAY));
     }
+  });
+});
+
+describe("status classes", () => {
+  it("names each status by its hundred", () => {
+    expect([101, 200, 204, 304, 404, 503].map(statusClassOf)).toEqual([
+      "1xx",
+      "2xx",
+      "2xx",
+      "3xx",
+      "4xx",
+      "5xx",
+    ]);
+  });
+
+  it("keeps the 3xx out of the 2xx tab", () => {
+    expect(STATUS_CLASS_RANGES.success).toEqual({ min: 200, max: 300 });
   });
 });
 

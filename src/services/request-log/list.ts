@@ -120,11 +120,13 @@ function statusToneOf(status: number): Tone {
   return STATUS_TONES[statusClassOf(status)] ?? "neutral";
 }
 
+/** `2xx`… of a status, as the tabs and the pills group them. */
 export function statusClassOf(status: number): string {
   if (status >= 500) return "5xx";
   if (status >= 400) return "4xx";
   if (status >= 300) return "3xx";
-  return "2xx";
+  if (status >= 200) return "2xx";
+  return "1xx";
 }
 
 /** The period a filter names, when it is one the table offers. */
