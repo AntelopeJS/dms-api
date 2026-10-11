@@ -5,12 +5,13 @@ import { LogsPage } from "@/pages/logs";
 const context = { tenantId: "t1", user: undefined };
 
 describe("LogsPage", () => {
-  it("filters its table from the URL, period and method included", () => {
+  it("filters its table from the URL, every period and method included", () => {
     const options = LogsPage.requests.serializeSync().options as Record<
       string,
       unknown
     >;
     expect(Object.keys(options.queryParamFilters as object).sort()).toEqual([
+      "all",
       "error",
       "method",
       "path",
@@ -18,8 +19,9 @@ describe("LogsPage", () => {
       "since",
       "slow",
       "until",
-      "window",
     ]);
+    // The period is the toolbar selector's, which the table follows.
+    expect(JSON.stringify(options)).toContain('"periodScope":"api"');
     // The URL is the one filter state: no quick filter kept in a cookie.
     expect(options.quickFilters).toBeUndefined();
   });
@@ -106,7 +108,7 @@ describe("LogsPage", () => {
       ["scope", "DmsApiScopeChip"],
       ["spacer", expect.stringMatching(/spacer/)],
       ["live", "dms-live-toggle-block"],
-      ["period", "DmsApiLogsPeriod"],
+      ["period", "dms-period-selector"],
     ]);
   });
 

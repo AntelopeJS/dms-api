@@ -1,38 +1,18 @@
 // The request logs page keeps its filters in its URL.
 //
-// `?window=`, `?method=`, `?slow=`, `?route=`, `?path=`, `?error=`,
-// `?since=` and `?until=` are the request table's arrival filters
-// (`queryParamFilters`, `src/pages/logs.ts`): the table reads them from the
-// URL whatever wrote them (a link of another page, the period selector, the
-// filters bar), counts its tabs with them, and follows them as they change.
-// So the page has one filter state, which a reload, Back and a shared link
-// all keep. `?from=` names the page a link came from, for the band that says
-// so.
+// `?method=`, `?slow=`, `?all=`, `?route=`, `?path=`, `?error=`, `?since=`
+// and `?until=` are the request table's arrival filters (`queryParamFilters`,
+// `src/pages/logs.ts`): the table reads them from the URL whatever wrote them
+// (a link of another page, the filters bar), counts its tabs with them, and
+// follows them as they change. So the page has one filter state, which a
+// reload, Back and a shared link all keep. The period is the toolbar's DMS
+// selector's (`?api.period=`), which the table follows through its period
+// scope. `?from=` names the page a link came from, for the band that says so.
 
 import { parseRouteRef } from './http'
+import { DEFAULT_PERIOD, readPeriod, type PeriodPresetName } from './period'
 
 type Query = Record<string, unknown>
-
-/** Periods of the request logs, the presets every console page shares. */
-export const LOG_WINDOWS = ['1h', '24h', '7d', '30d'] as const
-export type LogWindow = (typeof LOG_WINDOWS)[number]
-
-/**
- * The period when the URL names none and the session has none to restore:
- * the table's route applies the same (`LOGS_DEFAULT_WINDOW`, backend).
- */
-export const DEFAULT_LOG_WINDOW: LogWindow = '24h'
-
-/**
- * Every request kept, whatever its age: a choice of the page only, never the
- * default nor kept for the session (`?window=all`, which the route reads as
- * no period).
- */
-export const ALL_LOG_WINDOW = 'all'
-
-/** What the period selector of the request logs offers. */
-export const LOG_PERIODS = [...LOG_WINDOWS, ALL_LOG_WINDOW] as const
-export type LogPeriod = (typeof LOG_PERIODS)[number]
 
 /** Methods the filters bar offers. */
 export const LOG_METHODS = [
@@ -55,7 +35,10 @@ export type LinkOrigin = (typeof LINK_ORIGINS)[number]
 
 /** The filters of the request logs, as the URL holds them. */
 export interface LogsFilters {
-  window?: LogPeriod
+  /** The toolbar's period (`?api.period=`). */
+  period?: PeriodPresetName
+  /** Every request kept, whatever the period (`?all=true`). */
+  all: boolean
   method?: string
   slow: boolean
   route?: string
@@ -70,7 +53,7 @@ export interface LogsFilters {
 
 /** A change to the filters: `null` or `false` removes one. */
 export interface LogsFiltersPatch {
-  window?: LogPeriod | null
+  all?: boolean
   method?: string | null
   slow?: boolean
   route?: null
@@ -99,7 +82,8 @@ function oneOf<T extends string>(
 /** The filters a URL query holds; a value the table would not apply is left out. */
 export function readLogsFilters(query: Query): LogsFilters {
   return {
-    window: oneOf(LOG_PERIODS, single(query.window)),
+    period: readPeriod(query),
+    all: single(query.all) === 'true',
     method: oneOf(LOG_METHODS, single(query.method)),
     // The table sends the value as it is, and the server reads "true" only.
     slow: single(query.slow) === 'true',
@@ -112,9 +96,9 @@ export function readLogsFilters(query: Query): LogsFilters {
   }
 }
 
-/** The filters with the period the table applies: the default when none. */
-export function withDefaultWindow(filters: LogsFilters): LogsFilters {
-  return { ...filters, window: filters.window ?? DEFAULT_LOG_WINDOW }
+/** The filters with the period the selector applies: the default when none. */
+export function withDefaultPeriod(filters: LogsFilters): LogsFilters {
+  return { ...filters, period: filters.period ?? DEFAULT_PERIOD }
 }
 
 /** Whether the filters hold an incident's range. */
@@ -143,10 +127,10 @@ export function routeMethod(route: string | undefined): string | undefined {
 
 /**
  * `query` with `patch` applied, every other key kept (the table's tab, the
- * open request). Changing the period drops an incident's range, which the
- * period would no longer frame. Changing the period, or removing the last
- * linked filter, forgets the page the link came from: the band would name an
- * origin the filters no longer come from.
+ * open request, the period). Every period on or off drops an incident's
+ * range, which it would no longer frame. That, or removing the last linked
+ * filter, forgets the page the link came from: the band would name an origin
+ * the filters no longer come from.
  */
 export function withLogsFilters(
   query: Query,
@@ -161,25 +145,28 @@ export function withLogsFilters(
     if (value) next[key] = value
     else delete next[key]
   }
-  if ('window' in patch) set('window', patch.window)
+  if ('all' in patch) set('all', patch.all ? 'true' : null)
   if ('method' in patch) set('method', patch.method)
   if ('slow' in patch) set('slow', patch.slow ? 'true' : null)
   if ('route' in patch) set('route', null)
   if ('path' in patch) set('path', null)
   if ('error' in patch) set('error', null)
-  if ('incident' in patch || 'window' in patch) {
+  if ('incident' in patch || 'all' in patch) {
     set('since', null)
     set('until', null)
   }
   const linked = hasLinkFilters(readLogsFilters(next))
-  if ('window' in patch || !linked) delete next.from
+  if ('all' in patch || !linked) delete next.from
   return next
 }
 
-/** The filters' part of the URL, cleared: the period, method, slowness and links. */
+/**
+ * The filters' part of the URL, cleared: every period, method, slowness and
+ * links. The period stays the selector's.
+ */
 export function clearedLogsFilters(query: Query): Record<string, string> {
   return withLogsFilters(query, {
-    window: null,
+    all: false,
     method: null,
     slow: false,
     route: null,
@@ -190,16 +177,11 @@ export function clearedLogsFilters(query: Query): Record<string, string> {
 }
 
 /**
- * Whether the URL narrows the request table. "All" is no filter: it lists
- * every request kept.
+ * Whether the URL narrows the request table besides its period: a method,
+ * the slow requests, a link's filters.
  */
 export function hasLogsFilters(filters: LogsFilters): boolean {
-  return (
-    (!!filters.window && filters.window !== ALL_LOG_WINDOW) ||
-    !!filters.method ||
-    filters.slow ||
-    hasLinkFilters(filters)
-  )
+  return !!filters.method || filters.slow || hasLinkFilters(filters)
 }
 
 /** Why the request table is empty, to word its empty state. */
@@ -224,7 +206,8 @@ export function logsEmptyCause(
   if (state === 'error') return 'error'
   if (search?.trim()) return 'search'
   if (hasLinkFilters(filters)) return 'link'
-  if (hasLogsFilters(filters)) return 'filters'
+  // A period frames the rows unless every period is asked for.
+  if (hasLogsFilters(filters) || !filters.all) return 'filters'
   return 'first-run'
 }
 

@@ -2,8 +2,6 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { formatThreshold } from '../../utils/format'
 import {
-  ALL_LOG_WINDOW,
-  DEFAULT_LOG_WINDOW,
   hasIncident,
   isRouteRef,
   LINK_FILTER_KEYS,
@@ -13,18 +11,14 @@ import {
   withLogsFilters,
   type LogsFiltersPatch,
 } from '../../utils/logsQuery'
-import {
-  readStoredWindow,
-  sessionWindowStorage,
-} from '../../utils/periodWindow'
 import { localDay } from '../../utils/requestDrawer'
 
 // The filters bar right above the request table: the method, the slow
 // requests, every period kept, and the filters a link brought (route, path,
 // error, an incident's range), each removable.
 // Everything here reads and writes the URL (`utils/logsQuery.ts`), as the
-// period does: the table follows the URL, so what the bar shows is what
-// the table lists, and the tab counts with it.
+// toolbar's period selector does: the table follows the URL, so what the bar
+// shows is what the table lists, and the tab counts with it.
 defineOptions({ inheritAttrs: false })
 
 const props = defineProps<{
@@ -74,15 +68,11 @@ const slowLabel = computed(() =>
       }),
 )
 
-// Every request kept, whatever its age: past the toolbar's presets, which
-// hold the module's common period. Off again, the period kept for the tab.
-const allPeriods = computed(() => filters.value.window === ALL_LOG_WINDOW)
+// Every request kept, whatever its age: past the toolbar's presets. Off
+// again, the toolbar's period frames the rows.
+const allPeriods = computed(() => filters.value.all)
 function toggleAllPeriods() {
-  apply({
-    window: allPeriods.value
-      ? (readStoredWindow(sessionWindowStorage()) ?? DEFAULT_LOG_WINDOW)
-      : ALL_LOG_WINDOW,
-  })
+  apply({ all: !allPeriods.value })
 }
 
 /** "18:31", with the day in front once it is not today. */
@@ -149,12 +139,12 @@ const chips = computed<Chip[]>(() => {
 // it brought while it is still the page's. An incident's range frames the
 // rows instead of the period: its chip says it.
 const origin = computed(() => {
-  const { from, window } = filters.value
+  const { from, period, all } = filters.value
   if (!from) return undefined
   const page = t(`api.logs.linked.pages.${from}`)
-  return window && !hasIncident(filters.value)
+  return period && !all && !hasIncident(filters.value)
     ? t('api.logs.linked.origin_window', {
-        window: t(`api.logs.windows.${window}`),
+        window: t(`api.logs.windows.${period}`),
         page,
       })
     : t('api.logs.linked.origin', { page })

@@ -415,7 +415,7 @@ export async function routeTopErrors(
           route: ref,
           error: group.message ?? undefined,
           tab: isServer ? "5xx" : "4xx",
-          window: window.preset,
+          period: window.preset,
           from: "routes",
         }),
         status: group.status,

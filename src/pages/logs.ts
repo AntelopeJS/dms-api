@@ -3,6 +3,7 @@ import { PageController, RegisterPage } from "@antelopejs/interface-dms/page";
 import { getConfig } from "@/config";
 import { apiBlock } from "./blocks";
 import { monitorCategory } from "./module";
+import { periodSelector } from "./period";
 import { pageToolbar } from "./toolbar";
 import { requestTable } from "./request-table";
 import { scopeChip } from "./scope-chip";
@@ -10,19 +11,13 @@ import { scopeChip } from "./scope-chip";
 const LOGS_PAGE_SIZE = 50;
 
 /**
- * The period of the request logs when its URL names none and the module has
- * no period of the session to restore (`LogsPeriod`): the table's route
- * applies it, so no visit lists every request kept.
- */
-export const LOGS_DEFAULT_WINDOW = "24h";
-
-/**
  * The page's filters, read from its URL by the request table: a link sets
- * them (`?route=`, `?path=`, `?error=`, `?slow=`, `?window=`, and an
- * incident's `?since=` / `?until=`), the period selector and the filters bar
- * change them. Unlike the table's own quick filters, kept in a cookie, they
- * are one state that a reload, Back and a shared link keep, and that the tab
- * counts follow. A URL filter needs no column: the table sends it to the
+ * them (`?route=`, `?path=`, `?error=`, `?slow=`, and an incident's
+ * `?since=` / `?until=`), the filters bar changes them (`?method=`,
+ * `?slow=`, `?all=true` for every period kept). The period is the toolbar's
+ * selector's (`periodScope`). Unlike the table's own quick filters, kept in
+ * a cookie, they are one state that a reload, Back and a shared link keep,
+ * and that the tab counts follow. A URL filter needs no column: the table sends it to the
  * route as `filter_<field>`, which reads `filter_from` / `filter_to` as the
  * `[from, to)` range of the incident.
  */
@@ -31,7 +26,7 @@ const LOGS_QUERY_FILTERS = {
   path: { field: "path", mode: "is" },
   error: { field: "error", mode: "is" },
   slow: { field: "slow", mode: "is" },
-  window: { field: "window", mode: "is" },
+  all: { field: "all", mode: "is" },
   method: { field: "method", mode: "is" },
   since: { field: "from", mode: "is" },
   until: { field: "to", mode: "is" },
@@ -65,7 +60,7 @@ export class LogsPage extends PageController(
   // the DMS Direct / Pause toggle and the period.
   static toolbar = pageToolbar({
     scope: scopeChip(),
-    period: apiBlock("LogsPeriod"),
+    period: periodSelector(),
   }).meta({ name: "$api.logs.toolbar", icon: "i-ph-sliders-horizontal" });
 
   static live = apiBlock<{ fetchUrl: string; maxBodyBytes?: number }>(

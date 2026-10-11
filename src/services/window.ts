@@ -4,29 +4,43 @@ import { getMaxLogDays, getMaxStatsDays } from "./period";
 /**
  * The one definition of a time window, for every endpoint and every link.
  *
- * A window is a half-open range `[from, to)`. The presets are rolling: `24h`
- * is the 24 hours before now, `7d` the 7 × 24 hours before now, the same span
- * the logs page filters on. The previous period has the same length and ends
- * where the window starts, so no request is counted in both.
+ * A window is a half-open range `[from, to)`. The presets are rolling:
+ * `last-24h` is the 24 hours before now, `last-7-days` the 7 × 24 hours
+ * before now, the same span the logs page filters on. The previous period has
+ * the same length and ends where the window starts, so no request is counted
+ * in both.
  */
 
-/** The presets every page offers, as they appear in a URL (`?window=24h`). */
-export const WINDOW_PRESETS = ["1h", "24h", "7d", "30d"] as const;
+/**
+ * The presets every page's DMS `PeriodSelector` offers, by their DMS names:
+ * what its period scope sends (`preset`) and what its URL holds
+ * (`?api.period=last-24h`).
+ */
+export const WINDOW_PRESETS = [
+  "last-hour",
+  "last-24h",
+  "last-7-days",
+  "last-30-days",
+] as const;
 export type WindowPreset = (typeof WINDOW_PRESETS)[number];
 
-const PRESET_SPAN_MS: Record<WindowPreset, number> = {
-  "1h": MS_PER_HOUR,
-  "24h": MS_PER_DAY,
-  "7d": 7 * MS_PER_DAY,
-  "30d": 30 * MS_PER_DAY,
-};
+/** The period of every page when neither its URL nor the user names one. */
+export const DEFAULT_WINDOW: WindowPreset = "last-24h";
 
-/** The DMS `PeriodSelector` presets that name one of ours. */
-const SELECTOR_PRESETS: Record<string, WindowPreset> = {
-  "last-hour": "1h",
-  "last-24h": "24h",
-  "last-7-days": "7d",
-  "last-30-days": "30d",
+/**
+ * Id of the `PeriodSelector` of every console page: the period scope its
+ * blocks follow, and the prefix of its URL keys (`?api.period=last-24h`).
+ */
+export const PERIOD_SCOPE = "api";
+
+/** The URL key the page's period is kept under. */
+export const PERIOD_QUERY_KEY = `${PERIOD_SCOPE}.period`;
+
+const PRESET_SPAN_MS: Record<WindowPreset, number> = {
+  "last-hour": MS_PER_HOUR,
+  "last-24h": MS_PER_DAY,
+  "last-7-days": 7 * MS_PER_DAY,
+  "last-30-days": 30 * MS_PER_DAY,
 };
 
 export function isWindowPreset(value: unknown): value is WindowPreset {
@@ -34,13 +48,13 @@ export function isWindowPreset(value: unknown): value is WindowPreset {
 }
 
 /**
- * What a request says about its window. `window` is ours (`?window=24h`). The
- * DMS `PeriodSelector` appends `preset`, `from` / `to` (its own reading of the
- * preset, in calendar days), `comparison` and `compareFrom` / `compareTo`: a
- * preset we know wins over its range, a custom range is taken as given.
+ * What a request says about its window, as the DMS period scope sends it to
+ * a chart, a card or a source table: `preset`, `from` / `to` (its own reading
+ * of the preset), `comparison` and `compareFrom` / `compareTo`. A preset we
+ * know wins over its range, rolling up to now; a custom range is taken as
+ * given.
  */
 export interface WindowQuery {
-  window?: string;
   preset?: string;
   from?: string;
   to?: string;
@@ -50,7 +64,6 @@ export interface WindowQuery {
 }
 
 const WINDOW_QUERY_KEYS = [
-  "window",
   "preset",
   "from",
   "to",
@@ -59,11 +72,15 @@ const WINDOW_QUERY_KEYS = [
   "compareTo",
 ] as const;
 
-/** The window parameters of a request URL. */
-export function windowQueryFrom(params: URLSearchParams): WindowQuery {
+/** The window parameters of a request URL, or of a list query. */
+export function windowQueryFrom(
+  params: URLSearchParams | Record<string, string | undefined>,
+): WindowQuery {
+  const read = (key: string) =>
+    params instanceof URLSearchParams ? params.get(key) : params[key];
   const query: WindowQuery = {};
   for (const key of WINDOW_QUERY_KEYS) {
-    const value = params.get(key);
+    const value = read(key);
     if (value) query[key] = value;
   }
   return query;
@@ -128,7 +145,7 @@ export function granularityOf(range: TimeRange): WindowGranularity {
   return span <= HOURLY_MAX_SPAN_MS ? "hour" : "day";
 }
 
-function parseDate(raw: string | undefined): Date | undefined {
+export function parseDate(raw: string | undefined): Date | undefined {
   if (!raw) return undefined;
   const date = new Date(raw);
   return Number.isNaN(date.getTime()) ? undefined : date;
@@ -156,7 +173,11 @@ function orderedRange(from: Date, to: Date): TimeRange {
   return from < to ? { from, to } : { from: to, to: from };
 }
 
-function currentRange(
+/**
+ * The range a query names before any clamp: its preset up to `now`, else its
+ * custom `from` / `to`, else the `fallback` preset.
+ */
+export function currentRange(
   query: WindowQuery,
   preset: WindowPreset | null,
   fallback: WindowPreset,
@@ -190,9 +211,11 @@ export function resolveWindow(
 ): TimeWindow {
   const pinned = pinnedNow(now);
   const customRange = Boolean(query.from || query.to);
-  const preset = isWindowPreset(query.window)
-    ? query.window
-    : (SELECTOR_PRESETS[query.preset ?? ""] ?? (customRange ? null : fallback));
+  const preset = isWindowPreset(query.preset)
+    ? query.preset
+    : customRange
+      ? null
+      : fallback;
   const range = currentRange(query, preset, fallback, pinned);
   const granularity = granularityOf(range);
   const horizon = horizonOf(granularity, pinned);

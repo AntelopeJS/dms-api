@@ -8,20 +8,28 @@ import type {
   RequestLogStatusClass,
 } from "@/db/models/request_log.model";
 import { normalizeRoutePath } from "@/db/tables/routes_statistics.table";
-import { MS_PER_DAY, MS_PER_HOUR, REQUEST_LOG_LIST_MAX_ROWS } from "@/types";
+import { MS_PER_DAY, REQUEST_LOG_LIST_MAX_ROWS } from "@/types";
 import { routeRef } from "../links";
 import { getMaxLogDays } from "../period";
 import { parseRouteRef } from "../route-catalog";
+import {
+  currentRange,
+  DEFAULT_WINDOW,
+  isWindowPreset,
+  parseDate,
+  type TimeRange,
+  windowQueryFrom,
+} from "../window";
 
 /**
  * The list query a `TableView.fromSource` table sends its route: `offset` /
  * `limit`, `sortKey` / `sortDirection`, `search` and one
  * `filter_<column>=<mode>:<value>` per filtered column (the page's URL
- * filters `?window=`, `?method=`, `?slow=`, `?route=`, `?path=`, `?error=`
- * and an incident's `?since=` / `?until=` reach it that way, in the list and
- * in the tab counts alike). `filter_from` / `filter_to` (ISO timestamps)
- * narrow to `[from, to)`,
- * `requestId=` finds the request a sender knows and `liveHeldAt` (ISO) bounds
+ * filters `?method=`, `?slow=`, `?all=`, `?route=`, `?path=`, `?error=` and
+ * an incident's `?since=` / `?until=` reach it that way, in the list and in
+ * the tab counts alike). `filter_from` / `filter_to` (ISO timestamps)
+ * narrow to `[from, to)`. The page's period comes as the charts get it, from
+ * its `periodScope`: `preset`, `from`, `to`. `requestId=` finds the request a sender knows and `liveHeldAt` (ISO) bounds
  * a held table to the rows it froze.
  */
 export type SourceQuery = Record<string, string | undefined>;
@@ -56,17 +64,6 @@ export interface RequestLogRow {
   /** The request's own `x-request-id`. */
   requestId: string | null;
 }
-
-/** Period quick filter values, as the request table offers them. */
-export const LOG_WINDOWS = ["1h", "24h", "7d", "30d"] as const;
-export type LogWindow = (typeof LOG_WINDOWS)[number];
-
-const WINDOW_MS: Record<LogWindow, number> = {
-  "1h": MS_PER_HOUR,
-  "24h": MS_PER_DAY,
-  "7d": 7 * MS_PER_DAY,
-  "30d": 30 * MS_PER_DAY,
-};
 
 const STATUS_CLASS_OF_TAB: Record<string, RequestLogStatusClass> = {
   "2xx": "success",
@@ -126,46 +123,35 @@ export function statusClassOf(status: number): string {
   return "1xx";
 }
 
-/** The period a filter names, when it is one the table offers. */
-function readWindow(raw: string | undefined): LogWindow | undefined {
-  const window = filterValue(raw);
-  return LOG_WINDOWS.find((each) => each === window);
-}
-
-function windowSince(window: LogWindow, now: Date): Date {
-  const ms = Math.min(WINDOW_MS[window], getMaxLogDays() * MS_PER_DAY);
-  return new Date(now.getTime() - ms);
-}
-
 function positiveInt(raw: string | undefined): number | undefined {
   const value = Number.parseInt(raw ?? "", 10);
   return Number.isFinite(value) && value >= 0 ? value : undefined;
 }
 
 /**
- * Where the rows start: `filter_from`, else the period's start. The range
- * frames the rows itself: the period, the page's default one included,
- * would cut an incident older than it.
+ * The rows the page's period frames, as the charts read it (`preset`, `from`,
+ * `to` of its period scope): a rolling preset up to now, the newest rows
+ * included, or a custom range; never past the log retention. `?all=true`
+ * (`filter_all`) lists every request kept, and a query naming no period (the
+ * Tester's reads) has no bound.
  */
-function periodStart(
-  query: SourceQuery,
-  now: Date,
-  defaultWindow: LogWindow | undefined,
-): Date | undefined {
-  const from = filterDate(query.filter_from);
-  if (from) return from;
-  const window = readWindow(query.filter_window) ?? defaultWindow;
-  return window ? windowSince(window, now) : undefined;
+function periodRange(query: SourceQuery, now: Date): Partial<TimeRange> {
+  if (filterValue(query.filter_all) === "true") return {};
+  const window = windowQueryFrom(query);
+  const preset = isWindowPreset(window.preset) ? window.preset : null;
+  if (!preset && !window.from && !window.to) return {};
+  const range = currentRange(window, preset, DEFAULT_WINDOW, now);
+  const horizon = new Date(now.getTime() - getMaxLogDays() * MS_PER_DAY);
+  return {
+    from: range.from < horizon ? horizon : range.from,
+    to: preset ? undefined : range.to,
+  };
 }
 
-/**
- * The log filters a source list query names. A period it does not name, or
- * names wrong (`?window=14d`), is `defaultWindow`: never no bound at all.
- */
+/** The log filters a source list query names. */
 export function filtersFromQuery(
   query: SourceQuery,
   now: Date = new Date(),
-  defaultWindow?: LogWindow,
 ): RequestLogFilters {
   const filters: RequestLogFilters = {};
   const statusClass =
@@ -191,10 +177,16 @@ export function filtersFromQuery(
   const error = query.filter_error?.replace(/^[a-z_]+:/, "");
   if (error) filters.errorMessage = error;
   // `filter_from` / `filter_to` (ISO) narrow to a `[from, to)` range: an
-  // incident an Activity link names, a minute of the histogram.
-  const since = periodStart(query, now, defaultWindow);
-  if (since) filters.since = since;
-  const until = earliest(filterDate(query.filter_to), heldAt(query));
+  // incident an Activity link names, a minute of the histogram. The range
+  // frames the rows itself: the period would cut an incident older than it.
+  const incident = {
+    from: filterDate(query.filter_from),
+    to: filterDate(query.filter_to),
+  };
+  const range =
+    incident.from || incident.to ? incident : periodRange(query, now);
+  if (range.from) filters.since = range.from;
+  const until = earliest(range.to, heldAt(query));
   if (until) filters.until = until;
   const search = query.search?.trim();
   if (search) filters.search = search;
@@ -244,8 +236,6 @@ export function namesUnknownRoute(query: SourceQuery): boolean {
 
 /** How a request table reads the list, besides its query. */
 export interface RequestLogListOptions {
-  /** The table's period when the query names none it knows. */
-  defaultWindow?: LogWindow;
   /**
    * List nothing until the query names a route (`filter_route`): the tables
    * of the Routes page show the requests of the route it selects, never
@@ -314,7 +304,7 @@ export async function listRequestLogs(
   keys: Set<string> | null,
   options: RequestLogListOptions = {},
 ): Promise<RequestLogTablePage> {
-  const filters = filtersFromQuery(query, new Date(), options.defaultWindow);
+  const filters = filtersFromQuery(query);
   const scope = scopeOf(filters, keys, options);
   if (matchesNothing(query, scope, options)) {
     return { results: [], total: 0 };
@@ -348,11 +338,4 @@ function scopeOf(
 ): Set<string> | null {
   const named = filters.requestId || filters.rawPath;
   return options.findOutsideScope && named ? null : keys;
-}
-
-/** An ISO timestamp as a date, or undefined when missing or unreadable. */
-function parseDate(raw: string | undefined): Date | undefined {
-  if (!raw) return undefined;
-  const date = new Date(raw);
-  return Number.isNaN(date.getTime()) ? undefined : date;
 }

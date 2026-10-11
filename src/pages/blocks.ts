@@ -19,10 +19,8 @@ export type ApiBlock =
   | "RouteDocumentation"
   | "RouteTester"
   | "SplitLayout"
-  | "LogsPeriod"
   | "LogsFilters"
-  | "LogsEmptyState"
-  | "PeriodWindow";
+  | "LogsEmptyState";
 
 const BLOCK_ICONS: Record<ApiBlock, string> = {
   ScopeChip: "i-ph-funnel",
@@ -36,10 +34,8 @@ const BLOCK_ICONS: Record<ApiBlock, string> = {
   RouteDocumentation: "i-ph-book-open-text",
   RouteTester: "i-ph-paper-plane-tilt",
   SplitLayout: "i-ph-columns",
-  LogsPeriod: "i-ph-clock",
   LogsFilters: "i-ph-funnel",
   LogsEmptyState: "i-ph-tray",
-  PeriodWindow: "i-ph-calendar-blank",
 };
 
 /** `RouteTree` → `route_tree`: the i18n key segment of a block. */

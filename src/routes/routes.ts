@@ -12,7 +12,7 @@ import { AuthUserWithPermission } from "@antelopejs/interface-dms/guards";
 import { getConfig } from "@/config";
 import { RequestLogModel, RouteModel, RouteStatisticsModel } from "@/db";
 import { normalizeRoutePath } from "@/db/tables/routes_statistics.table";
-import { ROUTES_DEFAULT_WINDOW, RoutesPage } from "@/pages/routes";
+import { RoutesPage } from "@/pages/routes";
 import { apiOriginOf } from "@/services/api-origin";
 import { isInternalTraffic } from "@/services/request-log/capture";
 import { loadRouteHealth } from "@/services/overview";
@@ -39,14 +39,12 @@ import { getScopedRouteKeys, scopeRouteKey } from "@/services/scope";
 import { getActiveScope } from "@/services/settings";
 import { loadRollups } from "@/services/traffic";
 import {
+  DEFAULT_WINDOW,
   resolveWindow,
   type TimeWindow,
-  type WindowPreset,
   windowQueryFrom,
 } from "@/services/window";
 
-/** The page's own default: a statistic read without `?window=` matches it. */
-const DEFAULT_WINDOW: WindowPreset = ROUTES_DEFAULT_WINDOW;
 const ROUTE_NOT_FOUND = "Route not found";
 
 function models(): CatalogModels {

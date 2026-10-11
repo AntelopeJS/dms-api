@@ -27,7 +27,7 @@ describe("RoutesPage", () => {
       ["scope", "DmsApiScopeChip"],
       ["spacer", expect.stringMatching(/spacer/)],
       ["live", "dms-live-toggle-block"],
-      ["period", "DmsApiPeriodWindow"],
+      ["period", "dms-period-selector"],
     ]);
   });
 

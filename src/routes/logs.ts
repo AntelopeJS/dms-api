@@ -12,9 +12,9 @@ import { AuthUserWithPermission } from "@antelopejs/interface-dms/guards";
 import { getConfig } from "@/config";
 import { RequestLogModel, RouteModel, RouteStatisticsModel } from "@/db";
 import { normalizeRoutePath } from "@/db/tables/routes_statistics.table";
-import { LOGS_DEFAULT_WINDOW, LogsPage } from "@/pages/logs";
-import { OVERVIEW_DEFAULT_WINDOW, OverviewPage } from "@/pages/overview";
-import { ROUTES_DEFAULT_WINDOW, RoutesPage } from "@/pages/routes";
+import { LogsPage } from "@/pages/logs";
+import { OverviewPage } from "@/pages/overview";
+import { RoutesPage } from "@/pages/routes";
 import { apiOriginOf } from "@/services/api-origin";
 import { logsLink, routeLink, routeRef } from "@/services/links";
 import { getMaxLogDays } from "@/services/period";
@@ -59,18 +59,11 @@ async function listOf(
  */
 const ROUTE_TABLE: RequestLogListOptions = {
   requireRoute: true,
-  defaultWindow: ROUTES_DEFAULT_WINDOW,
 };
 
 /** The request logs page: a request named by id or path is found out of scope. */
 const LOGS_TABLE: RequestLogListOptions = {
   findOutsideScope: true,
-  defaultWindow: LOGS_DEFAULT_WINDOW,
-};
-
-/** The Overview's recent requests, over the page's period. */
-const OVERVIEW_TABLE: RequestLogListOptions = {
-  defaultWindow: OVERVIEW_DEFAULT_WINDOW,
 };
 
 /** The request tables outside the request logs page, by their permission. */
@@ -173,8 +166,8 @@ async function logDetail(id: string, context: RequestContext, table: LogTable) {
  */
 export class LogsController extends Controller("/api/monitoring/logs") {
   /**
-   * The request logs page's rows, over its period: its default when the URL
-   * names none, as the period selector shows it (`LogsPeriod`).
+   * The request logs page's rows, over the period its selector sends
+   * (`periodScope`), every period with `?all=true`.
    */
   @Get("")
   async listLogs(
@@ -187,20 +180,19 @@ export class LogsController extends Controller("/api/monitoring/logs") {
   /**
    * The same rows for the Overview: the recent requests table lives on a page
    * of its own permission, so it reads through a route of its own, over the
-   * page's period: its default when the URL names none.
+   * page's period.
    */
   @Get("recent")
   async listRecent(
     @AuthUserWithPermission(overviewTable) _user: User,
     @Context() context: RequestContext,
   ) {
-    return listOf(context, sourceQuery(context), OVERVIEW_TABLE);
+    return listOf(context);
   }
 
   /**
    * The last requests of the route the Routes page selects, by the table's
-   * permission, over the page's period (its default when the URL names
-   * none). Without a route there is nothing to list, rather than every
+   * permission, over the page's period. Without a route there is nothing to list, rather than every
    * request of the API.
    */
   @Get("routes")

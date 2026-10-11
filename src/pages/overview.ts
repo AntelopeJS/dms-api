@@ -6,24 +6,16 @@ import { Grid, GridRow } from "@antelopejs/interface-dms/base/grid";
 import { DefaultLayout } from "@antelopejs/interface-dms/base/layouts";
 import { TopListCard } from "@antelopejs/interface-dms/base/top-list-card";
 import { PageController, RegisterPage } from "@antelopejs/interface-dms/page";
-import { logsLink } from "@/services/links";
+import { logsLink, serverErrorsLink } from "@/services/links";
 import { LIVE_REQUESTS_TOPIC } from "@/types";
 import { apiBlock } from "./blocks";
+import { PERIOD_SCOPE, periodSelector } from "./period";
 import { pageToolbar } from "./toolbar";
 import { monitorCategory } from "./module";
 import { requestTable } from "./request-table";
 import { scopeChip } from "./scope-chip";
 
 const OVERVIEW_API = "/api/monitoring/overview";
-
-/** Scope of the period every card of the page follows. */
-const OVERVIEW_PERIOD = "api-overview";
-
-/**
- * The page's period when neither its URL nor the tab names one: the last
- * 24 hours, as on the request logs and Routes.
- */
-export const OVERVIEW_DEFAULT_WINDOW = "24h";
 
 const RECENT_REQUESTS = 6;
 
@@ -73,17 +65,13 @@ export class OverviewPage extends PageController(
   },
   DefaultLayout(),
 ) {
-  // The toolbar of every monitoring page. The period lives in the URL
-  // (`?window=24h`): the DMS PeriodSelector keeps its own in memory, so
-  // `PeriodWindow` drives the cards' period scope.
+  // The toolbar of every monitoring page. The period selector keeps its
+  // period in the URL (`?api.period=last-24h`), against the period before.
   static toolbar = pageToolbar({
     scope: scopeChip(),
     // Still in beta: a pill beside the scope, its meaning in a tooltip.
     badge: apiBlock("BetaBadge"),
-    period: apiBlock("PeriodWindow", {
-      scope: OVERVIEW_PERIOD,
-      defaultWindow: OVERVIEW_DEFAULT_WINDOW,
-    }),
+    period: periodSelector({ compare: true }),
   }).meta({ name: "$api.overview.toolbar", icon: "i-ph-sliders-horizontal" });
 
   // The verdict, since when and why, with the figures it rests on: a DMS
@@ -113,7 +101,7 @@ export class OverviewPage extends PageController(
             actions: [
               {
                 label: "$api.overview.attention.all_errors",
-                to: logsLink({ tab: "5xx", window: "24h", from: "overview" }),
+                to: serverErrorsLink(),
               },
             ],
             empty: {
@@ -131,7 +119,7 @@ export class OverviewPage extends PageController(
             title: "$api.overview.slowest.title",
             description: "$api.overview.slowest.description",
             fetchUrl: `${OVERVIEW_API}/slowest`,
-            periodScope: OVERVIEW_PERIOD,
+            periodScope: PERIOD_SCOPE,
             valueFormat: "number",
             valuePrecision: 0,
             showBar: true,
@@ -149,7 +137,7 @@ export class OverviewPage extends PageController(
             description: "$api.overview.no_previous",
             icon: "i-ph-warning-diamond",
             fetchUrl: `${OVERVIEW_API}/error-share`,
-            periodScope: OVERVIEW_PERIOD,
+            periodScope: PERIOD_SCOPE,
             valueFormat: "percent",
             valuePrecision: 1,
             // The DMS badge reads a delta as a relative change, good when up:
@@ -177,7 +165,7 @@ export class OverviewPage extends PageController(
             description: "$api.overview.no_previous",
             icon: "i-ph-chart-bar",
             fetchUrl: `${OVERVIEW_API}/traffic`,
-            periodScope: OVERVIEW_PERIOD,
+            periodScope: PERIOD_SCOPE,
             valueFormat: "compact",
             showLegend: false,
             // 2xx, 4xx and 5xx stacked on one axis: the height of a column
@@ -198,7 +186,7 @@ export class OverviewPage extends PageController(
             title: "$api.overview.classes.title",
             description: "$api.overview.classes.description",
             fetchUrl: `${OVERVIEW_API}/classes`,
-            periodScope: OVERVIEW_PERIOD,
+            periodScope: PERIOD_SCOPE,
             valueFormat: "number",
             showBar: true,
             showRank: false,

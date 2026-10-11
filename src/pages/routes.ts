@@ -11,15 +11,13 @@ import { getConfig } from "@/config";
 import { LIVE_REQUESTS_TOPIC } from "@/types";
 import { apiBlock } from "./blocks";
 import { exploreCategory } from "./module";
+import { PERIOD_SCOPE, periodSelector } from "./period";
 import { pageToolbar } from "./toolbar";
 import { requestTable } from "./request-table";
 import { scopeChip } from "./scope-chip";
 
 const ROUTES_API = "/api/monitoring/routes";
 const DETAIL_URL = `${ROUTES_API}/detail`;
-
-/** Scope of the period the Statistics tab follows, set by `PeriodWindow`. */
-const ROUTES_PERIOD = "api-routes";
 
 /** Query parameter holding the selected route, as `METHOD /path`. */
 const ROUTE_QUERY_KEY = "route";
@@ -39,12 +37,6 @@ function statisticsUrl(name: string): string {
 
 const RECENT_REQUESTS = 6;
 const MS_PER_SECOND = 1000;
-
-/**
- * The page's period when neither its URL (`?window=`) nor the period kept for
- * the session names one: the last 24 hours, as on the Overview and the logs.
- */
-export const ROUTES_DEFAULT_WINDOW = "24h";
 
 /** Narrowest a chart stays readable at beside the other one. */
 const CHART_MIN_WIDTH = "340px";
@@ -80,7 +72,7 @@ function summaryRow() {
       "summary",
       StatGroup({
         fetchUrl: statisticsUrl("summary"),
-        periodScope: ROUTES_PERIOD,
+        periodScope: PERIOD_SCOPE,
         realtimeTopic: LIVE_REQUESTS_TOPIC,
         layout: "joined",
         columns: 4,
@@ -160,7 +152,7 @@ function chartRow() {
         title: "$api.routes.statistics.error_rate_chart",
         icon: "i-ph-chart-line",
         fetchUrl: statisticsUrl("status"),
-        periodScope: ROUTES_PERIOD,
+        periodScope: PERIOD_SCOPE,
         valueFormat: "percent",
         valuePrecision: 1,
         // A rate's change in points, bad when up: the DMS badge would show it
@@ -184,7 +176,7 @@ function chartRow() {
         title: "$api.routes.statistics.response_time",
         icon: "i-ph-timer",
         fetchUrl: statisticsUrl("latency-chart"),
-        periodScope: ROUTES_PERIOD,
+        periodScope: PERIOD_SCOPE,
         valueFormat: "number",
         // Whole milliseconds: the axis spreads its ticks evenly between the
         // bounds autoYRange widens to the threshold, fractions otherwise
@@ -207,7 +199,7 @@ function errorRow() {
         title: "$api.routes.statistics.top_errors",
         description: "$api.routes.statistics.top_errors_description",
         fetchUrl: statisticsUrl("errors"),
-        periodScope: ROUTES_PERIOD,
+        periodScope: PERIOD_SCOPE,
         valueFormat: "number",
         showBar: true,
         showRank: false,
@@ -220,12 +212,7 @@ function errorRow() {
     .meta({ name: "$api.routes.statistics.top_errors" });
 }
 
-/**
- * The latest requests of the route over the page's period: a DMS table
- * follows no period scope, but `PeriodWindow` writes `?window=` through the
- * router, which the table reads as a filter. Without one in the URL, its
- * route applies the page's default.
- */
+/** The latest requests of the route over the page's period. */
 function recentRow() {
   return GridRow()
     .child(
@@ -284,8 +271,8 @@ function routeStatistics() {
  * Routes: every registered route in a list, the selected one beside it (under
  * it on a phone) with its statistics, its contract and a tester. The route
  * and the tab live in the URL, so both can be linked to, and so does the
- * period (`?window=24h`, through `PeriodWindow`: the DMS PeriodSelector keeps
- * its own in memory). The tabs wait for a route that exists.
+ * period (`?api.period=last-24h`, the DMS PeriodSelector's). The tabs wait for
+ * a route that exists.
  */
 @RegisterPage()
 export class RoutesPage extends PageController(
@@ -305,10 +292,7 @@ export class RoutesPage extends PageController(
   // The toolbar of every monitoring page (`pageToolbar`).
   static toolbar = pageToolbar({
     scope: scopeChip(),
-    period: apiBlock("PeriodWindow", {
-      scope: ROUTES_PERIOD,
-      defaultWindow: ROUTES_DEFAULT_WINDOW,
-    }),
+    period: periodSelector({ compare: true }),
   }).meta({ name: "$api.routes.toolbar", icon: "i-ph-sliders-horizontal" });
 
   static explorer = apiBlock("SplitLayout", {

@@ -5,7 +5,7 @@
  */
 
 import { normalizeRoutePath } from "@/db/tables/routes_statistics.table";
-import type { WindowPreset } from "./window";
+import { PERIOD_QUERY_KEY, type WindowPreset } from "./window";
 
 const MODULE_BASE = "/modules/api";
 
@@ -31,10 +31,11 @@ export interface LogsLinkOptions {
   error?: string;
   slow?: boolean;
   /**
-   * The window the figure that links here was computed over, so the logs
-   * open on the same requests (`?window=24h`).
+   * The period the figure that links here was computed over, so the logs
+   * open on the same requests: the page's `PeriodSelector` reads it from
+   * `?api.period=last-24h`.
    */
-  window?: WindowPreset | null;
+  period?: WindowPreset | null;
   /**
    * Bounds of a span inside the window, `[since, until)`, written as ISO
    * timestamps (`?since=` / `?until=`, the list's `filter_from` /
@@ -76,7 +77,7 @@ export function logsLink(options: LogsLinkOptions = {}): string {
   if (options.path) query.path = options.path;
   if (options.error) query.error = options.error;
   if (options.slow) query.slow = "true";
-  if (options.window) query.window = options.window;
+  if (options.period) query[PERIOD_QUERY_KEY] = options.period;
   if (options.since) query.since = options.since.toISOString();
   if (options.until) query.until = options.until.toISOString();
   if (options.from) query.from = options.from;
@@ -91,14 +92,19 @@ export function logsLink(options: LogsLinkOptions = {}): string {
   return withQuery(`${MODULE_BASE}/logs`, query);
 }
 
+/** The server errors of the last 24 hours, from the Overview. */
+export function serverErrorsLink(): string {
+  return logsLink({ tab: "5xx", period: "last-24h", from: "overview" });
+}
+
 export function routeLink(
   route: string,
   tab?: string,
-  window?: WindowPreset | null,
+  period?: WindowPreset | null,
 ): string {
   const query: Record<string, string> = { route };
   if (tab) query.tab = tab;
-  if (window) query.window = window;
+  if (period) query[PERIOD_QUERY_KEY] = period;
   return withQuery(`${MODULE_BASE}/routes`, query);
 }
 

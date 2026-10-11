@@ -25,7 +25,7 @@ describe("filtersFromQuery", () => {
         filter_statusClass: "is:5xx",
         filter_method: "is:POST",
         filter_slow: "is:true",
-        filter_window: "is:1h",
+        preset: "last-hour",
         search: "  stripe ",
       },
       NOW,
@@ -56,7 +56,7 @@ describe("filtersFromQuery", () => {
 
   it("reads the 30-day period and a request id", () => {
     const filters = filtersFromQuery(
-      { filter_window: "is:30d", requestId: " 6f1c " },
+      { preset: "last-30-days", requestId: " 6f1c " },
       NOW,
     );
     expect(filters.requestId).toBe("6f1c");
@@ -70,7 +70,7 @@ describe("filtersFromQuery", () => {
     const filters = filtersFromQuery(
       {
         filter_method: "is:GET,POST",
-        filter_window: "is:24h",
+        preset: "last-24h",
         filter_from: "is:2026-10-07T14:59:00.000Z",
         filter_to: "is:2026-10-07T15:00:00.000Z",
       },
@@ -85,7 +85,7 @@ describe("filtersFromQuery", () => {
   it("frames an incident older than the period by its own range", () => {
     const filters = filtersFromQuery(
       {
-        filter_window: "is:24h",
+        preset: "last-24h",
         filter_from: "is:2026-10-03T18:31:00.000Z",
         filter_to: "is:2026-10-03T18:46:00.000Z",
       },
@@ -127,12 +127,45 @@ describe("filtersFromQuery", () => {
       }),
     ).toEqual({});
   });
+});
 
-  it("falls back to the default period for one it does not know", () => {
-    for (const filter_window of ["is:14d", "is:garbage", undefined]) {
-      const filters = filtersFromQuery({ filter_window }, NOW, "24h");
-      expect(filters.since).toEqual(new Date(NOW.getTime() - MS_PER_DAY));
-    }
+describe("filtersFromQuery, the period", () => {
+  it("rolls a preset up to now, the newest rows included", () => {
+    const filters = filtersFromQuery(
+      {
+        preset: "last-24h",
+        from: "2026-10-06T00:00:00.000Z",
+        to: "2026-10-07T23:59:59.999Z",
+      },
+      NOW,
+    );
+    expect(filters.since).toEqual(new Date(NOW.getTime() - MS_PER_DAY));
+    expect(filters.until).toBeUndefined();
+  });
+
+  it("takes a custom range as given, within the log retention", () => {
+    const filters = filtersFromQuery(
+      {
+        preset: "custom",
+        from: "2026-10-06T00:00:00.000Z",
+        to: "2026-10-06T12:00:00.000Z",
+      },
+      NOW,
+    );
+    expect(filters.since).toEqual(new Date("2026-10-06T00:00:00.000Z"));
+    expect(filters.until).toEqual(new Date("2026-10-06T12:00:00.000Z"));
+    const old = filtersFromQuery({ from: "2020-01-01T00:00:00.000Z" }, NOW);
+    expect(NOW.getTime() - (old.since?.getTime() ?? 0)).toBeLessThanOrEqual(
+      30 * MS_PER_DAY,
+    );
+  });
+
+  it("lists every period with `all`, and no bound without a period", () => {
+    expect(
+      filtersFromQuery({ preset: "last-hour", filter_all: "is:true" }, NOW)
+        .since,
+    ).toBeUndefined();
+    expect(filtersFromQuery({ requestId: "6f1c" }, NOW).since).toBeUndefined();
   });
 });
 

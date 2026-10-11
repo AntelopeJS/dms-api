@@ -114,7 +114,7 @@ function attentionLink(route: RouteHealthState): string {
     return logsLink({
       route: ref,
       tab: "5xx",
-      window: "24h",
+      period: "last-24h",
       from: "overview",
     });
   }
@@ -122,11 +122,16 @@ function attentionLink(route: RouteHealthState): string {
     return logsLink({
       route: ref,
       tab: "4xx",
-      window: "24h",
+      period: "last-24h",
       from: "overview",
     });
   }
-  return logsLink({ route: ref, slow: true, window: "24h", from: "overview" });
+  return logsLink({
+    route: ref,
+    slow: true,
+    period: "last-24h",
+    from: "overview",
+  });
 }
 
 function lastServerErrorOf(route: RouteHealthState): Date | null {

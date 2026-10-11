@@ -37,10 +37,6 @@
         "name": "Adresse du module",
         "description": "Envoie /modules/api vers la page d'accueil du module. N'affiche rien."
       },
-      "period_window": {
-        "name": "Période",
-        "description": "La période des cartes de la page, gardée dans son adresse (1H, 24H, 7J, 30J)."
-      },
       "live_traffic": {
         "name": "Trafic en direct",
         "description": "Requêtes par minute sur la dernière heure, au rythme du contrôle En direct / Pause de la page."
@@ -68,10 +64,6 @@
       "split_layout": {
         "name": "Routes et détail",
         "description": "La liste des routes à côté de la route sélectionnée."
-      },
-      "logs_period": {
-        "name": "Période des journaux",
-        "description": "La période que liste la table des requêtes, dans la barre d'outils de la page."
       },
       "logs_filters": {
         "name": "Filtres des requêtes",
@@ -162,14 +154,6 @@
       "beta": {
         "title": "Bêta",
         "description": "La console API est en lecture seule pour l'instant : inspecter, surveiller et tester les routes."
-      },
-      "window": {
-        "aria": "Période des cartes",
-        "range": "depuis {from}",
-        "1h": "1 h",
-        "24h": "24 h",
-        "7d": "7 j",
-        "30d": "30 j"
       },
       "no_previous": "Pas de période précédente à comparer",
       "traffic": {
@@ -299,22 +283,10 @@
         "all_periods_hint": "Toutes les requêtes conservées, au-delà des 30 jours des périodes de la barre d'outils"
       },
       "windows": {
-        "1h": "Dernière heure",
-        "24h": "Dernières 24 heures",
-        "7d": "7 derniers jours",
-        "30d": "30 derniers jours",
-        "all": "Toutes les périodes"
-      },
-      "period": {
-        "aria": "Période de la table des requêtes",
-        "range": "depuis {from}",
-        "all_range": "toutes les requêtes conservées",
-        "short": {
-          "1h": "1 h",
-          "24h": "24 h",
-          "7d": "7 j",
-          "30d": "30 j"
-        }
+        "last-hour": "Dernière heure",
+        "last-24h": "Dernières 24 heures",
+        "last-7-days": "7 derniers jours",
+        "last-30-days": "30 derniers jours"
       },
       "linked": {
         "title": "Filtres du lien :",
@@ -350,7 +322,6 @@
         "request_id": "ID de requête",
         "status_class": "Classe de statut",
         "slow": "Lente",
-        "window": "Période",
         "route": "Route",
         "error": "Erreur"
       },

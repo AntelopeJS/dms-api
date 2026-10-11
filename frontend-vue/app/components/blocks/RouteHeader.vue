@@ -4,7 +4,7 @@ import { usePageRecordLabel } from '#dms-core/app/build/composables/page/usePage
 import { routeSnippetRequest, toCurl } from '../../utils/snippets'
 import { hasRequestBody } from '../../utils/http'
 import { windowParts } from '../../utils/routeExplorer'
-import { readWindow } from '../../utils/periodWindow'
+import { PERIOD_QUERY_KEY, readPeriod } from '../../utils/period'
 import ApiMethodBadge from '../internal/ApiMethodBadge.vue'
 import ApiPath from '../internal/ApiPath.vue'
 
@@ -75,9 +75,9 @@ const auth = computed(() =>
 const requestsLink = computed(() => {
   if (!route.value) return ''
   const query = new URLSearchParams({ route: route.value.ref })
-  // The page's period (`?window=`), which the request logs read the same.
-  const span = readWindow(page.query)
-  if (span) query.set('window', span)
+  // The page's period, which the request logs' selector reads the same.
+  const period = readPeriod(page.query)
+  if (period) query.set(PERIOD_QUERY_KEY, period)
   return `/modules/api/logs?${query}`
 })
 

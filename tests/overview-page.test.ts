@@ -34,8 +34,18 @@ describe("OverviewPage", () => {
       ["beta", "DmsApiBetaBadge"],
       ["spacer", expect.stringMatching(/spacer/)],
       ["live", "dms-live-toggle-block"],
-      ["period", "DmsApiPeriodWindow"],
+      ["period", "dms-period-selector"],
     ]);
+  });
+
+  it("keeps its period in the URL with the DMS selector, against the one before", () => {
+    expect(child(toolbar, "period").options).toMatchObject({
+      id: "api",
+      variant: "segmented",
+      presets: ["last-hour", "last-24h", "last-7-days", "last-30-days"],
+      defaultPreset: "last-24h",
+      comparisons: ["previous-period"],
+    });
   });
 
   it("leads with the health hero, read from the overview's health route", () => {

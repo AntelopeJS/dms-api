@@ -111,7 +111,7 @@ describe("getActivity", () => {
     );
     expect(link.searchParams.get("route")).toBe("POST /hook");
     expect(link.searchParams.get("requests.tab")).toBe("5xx");
-    expect(link.searchParams.get("window")).toBe("24h");
+    expect(link.searchParams.get("api.period")).toBe("last-24h");
     expect(closed.params).toMatchObject({
       topStatus: "500",
       topMessage: "TypeError",

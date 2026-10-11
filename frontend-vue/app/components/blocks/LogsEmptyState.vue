@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import {
-  ALL_LOG_WINDOW,
   clearedLogsFilters,
   hasIncident,
   hasLogsFilters,
   logsEmptyCause,
   readLogsFilters,
-  withDefaultWindow,
+  withDefaultPeriod,
   withLogsFilters,
   type LogsFilters,
 } from '../../utils/logsQuery'
@@ -30,8 +29,8 @@ const { t } = useI18n()
 const route = useDmsRoute()
 const router = useDmsRouter()
 
-// With the period the table applies when the URL names none.
-const filters = computed(() => withDefaultWindow(readLogsFilters(route.query)))
+// With the period the selector applies when the URL names none.
+const filters = computed(() => withDefaultPeriod(readLogsFilters(route.query)))
 const cause = computed(() =>
   logsEmptyCause(props.state, props.search, filters.value),
 )
@@ -39,8 +38,8 @@ const cause = computed(() =>
 /** "Last hour · POST · Slow only": the URL's filters, besides the links. */
 function describeFilters(current: LogsFilters): string[] {
   return [
-    current.window && current.window !== ALL_LOG_WINDOW && !hasIncident(current)
-      ? t(`api.logs.windows.${current.window}`)
+    current.period && !current.all && !hasIncident(current)
+      ? t(`api.logs.windows.${current.period}`)
       : undefined,
     current.method,
     current.slow ? t('api.logs.filters.slow') : undefined,
@@ -79,15 +78,14 @@ function clearFilters() {
 // Every period, while a narrower one may hide the requests.
 function widen() {
   const current = filters.value
-  if (current.window === ALL_LOG_WINDOW || hasIncident(current)) return []
+  if (current.all || hasIncident(current)) return []
   return [
     {
       label: t('api.logs.empty.widen'),
       icon: 'i-ph-arrows-out-line-horizontal',
       color: 'neutral' as const,
       variant: 'outline' as const,
-      onClick: () =>
-        go(withLogsFilters(route.query, { window: ALL_LOG_WINDOW })),
+      onClick: () => go(withLogsFilters(route.query, { all: true })),
     },
   ]
 }
@@ -170,18 +168,14 @@ const content = computed(() => {
         title: t('api.logs.empty.filtered_title'),
         description: [
           narrowedLine,
-          current.window !== ALL_LOG_WINDOW
-            ? t('api.logs.empty.period_hint')
-            : '',
+          current.all ? '' : t('api.logs.empty.period_hint'),
         ]
           .filter(Boolean)
           .join(' '),
-        // The default period alone is nothing to clear.
+        // The period alone is the selector's, nothing to clear.
         actions: [
           ...widen(),
-          ...(hasLogsFilters(readLogsFilters(route.query))
-            ? [clearFilters()]
-            : []),
+          ...(hasLogsFilters(current) ? [clearFilters()] : []),
         ],
       }
     default:

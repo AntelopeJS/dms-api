@@ -371,8 +371,7 @@ watch(
   (all) => {
     if (selection.ref.value || all.length === 0) return
     const first = initialRoute(all, lastRoute())
-    if (first)
-      void selection.select(first.ref, { replace: true, restoreWindow: true })
+    if (first) void selection.select(first.ref, { replace: true })
   },
   { immediate: true },
 )

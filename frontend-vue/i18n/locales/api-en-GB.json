@@ -37,10 +37,6 @@
         "name": "Module address",
         "description": "Sends /modules/api to the module's landing page. Draws nothing."
       },
-      "period_window": {
-        "name": "Period",
-        "description": "The period of the page's cards, kept in its address (1H, 24H, 7D, 30D)."
-      },
       "live_traffic": {
         "name": "Live traffic",
         "description": "Requests per minute over the last hour, following the page's Live / Pause control."
@@ -68,10 +64,6 @@
       "split_layout": {
         "name": "Routes and detail",
         "description": "The route list beside the selected route."
-      },
-      "logs_period": {
-        "name": "Request logs period",
-        "description": "The period the request table lists, in the page toolbar."
       },
       "logs_filters": {
         "name": "Request filters",
@@ -162,14 +154,6 @@
       "beta": {
         "title": "Beta",
         "description": "The API console is read-only for now: inspect, monitor and test routes."
-      },
-      "window": {
-        "aria": "Period of the cards",
-        "range": "since {from}",
-        "1h": "1H",
-        "24h": "24H",
-        "7d": "7D",
-        "30d": "30D"
       },
       "no_previous": "No previous period to compare with",
       "traffic": {
@@ -299,22 +283,10 @@
         "all_periods_hint": "Every request kept, past the 30 days of the toolbar's periods"
       },
       "windows": {
-        "1h": "Last hour",
-        "24h": "Last 24 hours",
-        "7d": "Last 7 days",
-        "30d": "Last 30 days",
-        "all": "Every period"
-      },
-      "period": {
-        "aria": "Period of the request table",
-        "range": "since {from}",
-        "all_range": "every request kept",
-        "short": {
-          "1h": "1H",
-          "24h": "24H",
-          "7d": "7D",
-          "30d": "30D"
-        }
+        "last-hour": "Last hour",
+        "last-24h": "Last 24 hours",
+        "last-7-days": "Last 7 days",
+        "last-30-days": "Last 30 days"
       },
       "linked": {
         "title": "Linked filters:",
@@ -350,7 +322,6 @@
         "request_id": "Request ID",
         "status_class": "Status class",
         "slow": "Slow",
-        "window": "Period",
         "route": "Route",
         "error": "Error"
       },

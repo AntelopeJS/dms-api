@@ -128,7 +128,7 @@ describe("rolling day windows", () => {
     const now = pinnedNow();
     const rows = history(now.getTime());
     const { models: m } = models(rows);
-    const current = presetRange("7d", now);
+    const current = presetRange("last-7-days", now);
     const previous = {
       from: new Date(current.from.getTime() - 7 * MS_PER_DAY),
       to: current.from,
@@ -150,11 +150,11 @@ describe("shared computation", () => {
   it("scans the logs once for every block reading the last day", async () => {
     const now = pinnedNow();
     const { logs, models: m } = models(history(now.getTime()));
-    const range = presetRange("24h", now);
+    const range = presetRange("last-24h", now);
     const [hourly, again, lastHour] = await Promise.all([
       loadTraffic(m, range, "hour", null),
       loadTraffic(m, range, "hour", new Set(["GET:/a"])),
-      loadTraffic(m, presetRange("1h", now), "minute", null),
+      loadTraffic(m, presetRange("last-hour", now), "minute", null),
     ]);
     expect(logs.scans).toBe(1);
     expect(sumBuckets(hourly).requests).toBe(72);
@@ -167,7 +167,7 @@ describe("shared computation", () => {
     const { models: m } = models(history(now.getTime()));
     const buckets = await loadTraffic(
       m,
-      presetRange("24h", now),
+      presetRange("last-24h", now),
       "hour",
       new Set(["POST:/b"]),
     );
@@ -184,7 +184,7 @@ describe("the last day, as the clock moves", () => {
     vi.setSystemTime(start);
     const rows = history(start);
     const { logs, models: m } = models(rows);
-    await loadTraffic(m, presetRange("24h", pinnedNow()), "hour", null);
+    await loadTraffic(m, presetRange("last-24h", pinnedNow()), "hour", null);
     expect(logs.scans).toBe(1);
 
     // Stored after the first scan: one timestamped just before its end, one
@@ -198,7 +198,7 @@ describe("the last day, as the clock moves", () => {
     });
     rows.push(late(start - 2_000), late(start + 3_000));
     vi.setSystemTime(start + 10_000);
-    const range = presetRange("24h", pinnedNow());
+    const range = presetRange("last-24h", pinnedNow());
     const buckets = await loadTraffic(m, range, "hour", null);
     expect(logs.scans).toBe(2);
     expect(logs.lastFilters?.since).toEqual(new Date(start - 30_000));
@@ -221,7 +221,12 @@ describe("the last day, as the clock moves", () => {
     vi.setSystemTime(start);
     const rows = history(start);
     const { logs } = models(rows);
-    await loadErrorSamples(logs, presetRange("7d", pinnedNow()), null, 500);
+    await loadErrorSamples(
+      logs,
+      presetRange("last-7-days", pinnedNow()),
+      null,
+      500,
+    );
     expect(logs.scans).toBe(1);
 
     rows.push(
@@ -241,7 +246,7 @@ describe("the last day, as the clock moves", () => {
       },
     );
     vi.setSystemTime(start + 10_000);
-    const range = presetRange("7d", pinnedNow());
+    const range = presetRange("last-7-days", pinnedNow());
     const errors = await loadErrorSamples(logs, range, null, 500);
     expect(logs.scans).toBe(2);
     expect(logs.lastFilters).toMatchObject({
@@ -258,7 +263,7 @@ describe("the last day, as the clock moves", () => {
     );
 
     // A window in the past is scanned whole, and extends nothing.
-    const past = presetRange("7d", new Date(start - MS_PER_DAY));
+    const past = presetRange("last-7-days", new Date(start - MS_PER_DAY));
     await loadErrorSamples(logs, past, null, 500);
     expect(logs.lastFilters?.since).toEqual(past.from);
   });
@@ -280,7 +285,7 @@ describe("one p95 per route and window", () => {
     const now = pinnedNow();
     const rows = slowRoute(now.getTime());
     const { models: m } = models(rows);
-    const range = presetRange("24h", now);
+    const range = presetRange("last-24h", now);
     const total = sumBuckets(await loadTraffic(m, range, "hour", null));
     const health = evaluateRoutes(rows, range, 1000).get("GET:/pdf");
     expect(total.maxLatency).toBe(2313);

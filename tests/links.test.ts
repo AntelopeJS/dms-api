@@ -22,7 +22,15 @@ describe("logsLink", () => {
     expect(
       query(logsLink({ route: "GET /a", tab: "5xx" })).get("requests.tab"),
     ).toBe("5xx");
-    expect(query(logsLink({ window: "24h" })).has("requests.tab")).toBe(false);
+    expect(query(logsLink({ period: "last-24h" })).has("requests.tab")).toBe(
+      false,
+    );
     expect(logsLink()).toBe("/modules/api/logs");
+  });
+
+  it("carries the period for the page's period selector", () => {
+    expect(query(logsLink({ period: "last-7-days" })).get("api.period")).toBe(
+      "last-7-days",
+    );
   });
 });

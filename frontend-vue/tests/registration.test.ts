@@ -26,7 +26,6 @@ it('registers the blocks the backend pages name, and nothing else', async () => 
       'LiveTraffic',
       'LogsEmptyState',
       'LogsFilters',
-      'LogsPeriod',
       'RequestDetail',
       'RouteTree',
       'RouteHeader',

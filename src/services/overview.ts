@@ -14,7 +14,7 @@ import {
   type RuleWindowsInfo,
   ruleWindowsInfo,
 } from "./health-rules";
-import { logsLink, routeLink, routeRef } from "./links";
+import { logsLink, routeLink, routeRef, serverErrorsLink } from "./links";
 import {
   type RouteHealthState,
   type RouteState,
@@ -342,7 +342,7 @@ export async function getHealth(
       value: routeCount,
       needingAttention: routesNeedingAttention(routes).length,
     },
-    serverErrorsLink: logsLink({ tab: "5xx", window: "24h", from: "overview" }),
+    serverErrorsLink: serverErrorsLink(),
     firstRun: traffic.requests === 0 && !(await hasAnyRequest(models)),
   };
 }
@@ -522,7 +522,7 @@ export async function getStatusClasses(
         value: calls,
         share: roundPercent(calls / total.requests),
         icon: row.icon,
-        to: logsLink({ tab: row.id, window: window.preset, from: "overview" }),
+        to: logsLink({ tab: row.id, period: window.preset, from: "overview" }),
       };
     }),
     total: total.requests,

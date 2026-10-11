@@ -6,9 +6,9 @@ import {
   type TableViewSourceOptions,
 } from "@antelopejs/interface-dms/base/table-view";
 import type { ComponentBuilder } from "@antelopejs/interface-dms/component";
-import { LOG_WINDOWS } from "@/services/request-log/list";
 import { LIVE_REQUESTS_TOPIC } from "@/types";
 import { apiBlock } from "./blocks";
+import { PERIOD_SCOPE } from "./period";
 import { TimeDisplay } from "./displays";
 
 /** Route answering the request tables, in the `TableView.fromSource` shape. */
@@ -139,19 +139,12 @@ const REQUEST_COLUMNS: Record<string, TableViewSourceColumn> = {
     filterable: false,
     order: 9,
   },
-  window: {
-    name: "$api.logs.columns.window",
-    type: select(LOG_WINDOWS, "$api.logs.windows"),
-    isVisible: false,
-    filterable: false,
-    order: 10,
-  },
   route: {
     name: "$api.logs.columns.route",
     type: new DefaultDataTypes.StringType(),
     isVisible: false,
     filterable: false,
-    order: 11,
+    order: 10,
   },
 };
 
@@ -159,13 +152,7 @@ const REQUEST_COLUMNS: Record<string, TableViewSourceColumn> = {
  * Columns a table keeps, hidden, when its page does not show them: the tabs
  * and the URL filter on them.
  */
-const FILTER_COLUMNS = new Set([
-  "method",
-  "statusClass",
-  "slow",
-  "window",
-  "route",
-]);
+const FILTER_COLUMNS = new Set(["method", "statusClass", "slow", "route"]);
 
 /** The console pages holding a request table. */
 export type RequestTablePage = "logs" | "overview" | "routes";
@@ -202,14 +189,13 @@ function requestPanelAction(page: RequestTablePage) {
 }
 
 /**
- * Query parameters another page links to the request table with, and the
- * page's period (`?window=`). The logs page declares its own set.
+ * Query parameters another page links to the request table with. The logs
+ * page declares its own set.
  */
 const QUERY_PARAM_FILTERS = {
   route: { field: "route", mode: "is" },
   error: { field: "error", mode: "is" },
   slow: { field: "slow", mode: "is" },
-  window: { field: "window", mode: "is" },
 };
 
 type RequestTableOptions = Omit<
@@ -227,8 +213,9 @@ type RequestTableOptions = Omit<
 };
 
 /**
- * A table over the captured requests. The route pages, searches, sorts and
- * filters on the server; a row opens its request in the side panel. `?route=`,
+ * A table over the captured requests, over the page's period. The route
+ * pages, searches, sorts and filters on the server; a row opens its request
+ * in the side panel. `?route=`,
  * `?error=` and `?slow=` in the page URL filter it on arrival, so another
  * page can link to "the 5xx of this route".
  */
@@ -280,6 +267,8 @@ export function requestTable(
     // A `?record=` beyond the rows listed (a link, an older request).
     fetchRowUrl: `${DETAIL_URLS[page]}/{id}`,
     capabilities: { search: true, sort: true, paginate: true, filter: true },
+    // The page's period, as its charts read it (`preset`, `from`, `to`).
+    periodScope: PERIOD_SCOPE,
     rowActions: { custom: [requestPanelAction(page)] },
   }).mergeOptions({
     // A source table does not take `queryParamFilters` in its options, but

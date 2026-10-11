@@ -8,7 +8,7 @@ import { GetModel } from "@antelopejs/interface-database-decorators";
 import type { User } from "@antelopejs/interface-dms/auth/db";
 import { AuthUserWithPermission } from "@antelopejs/interface-dms/guards";
 import { RequestLogModel, RouteModel, RouteStatisticsModel } from "@/db";
-import { OVERVIEW_DEFAULT_WINDOW, OverviewPage } from "@/pages/overview";
+import { OverviewPage } from "@/pages/overview";
 import { getActivity } from "@/services/activity";
 import { ATTENTION_LIMIT, getAttention } from "@/services/attention";
 import {
@@ -23,13 +23,11 @@ import { countRoutes } from "@/services/route-catalog";
 import { getScopedRouteKeys } from "@/services/scope";
 import { getActiveScope } from "@/services/settings";
 import {
+  DEFAULT_WINDOW,
   resolveWindow,
   type TimeWindow,
-  type WindowPreset,
   windowQueryFrom,
 } from "@/services/window";
-
-const DEFAULT_WINDOW: WindowPreset = OVERVIEW_DEFAULT_WINDOW;
 
 /** Most "Needs attention" rows one call returns (`?limit=`). */
 const MAX_ATTENTION_LIMIT = 100;
@@ -68,8 +66,8 @@ function attentionLimit(context: RequestContext): number {
 const grid = OverviewPage.dashboard;
 
 /**
- * The Overview's blocks. The charts and top lists follow the page's window
- * (`?window=`, or the period selector's `preset` / `from` / `to`); the health
+ * The Overview's blocks. The charts and top lists follow the page's period
+ * (the period selector's `preset` / `from` / `to`); the health
  * and "Needs attention" judge the last 24 h, the activity journal the last
  * 7 days.
  */

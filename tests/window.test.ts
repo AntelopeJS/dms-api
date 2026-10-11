@@ -15,39 +15,39 @@ afterEach(() => setConfig());
 
 describe("resolveWindow", () => {
   it("rolls a preset back from now, pinned to the cache step", () => {
-    const window = resolveWindow({ window: "24h" }, "7d", NOW);
-    expect(window.preset).toBe("24h");
+    const window = resolveWindow({ preset: "last-24h" }, "last-7-days", NOW);
+    expect(window.preset).toBe("last-24h");
     expect(window.to).toEqual(PINNED);
     expect(window.to.getTime() - window.from.getTime()).toBe(MS_PER_DAY);
     expect(window.granularity).toBe("hour");
     expect(PINNED.getTime() % CACHE_QUANTUM_MS).toBe(0);
   });
 
-  it("reads the selector's preset as ours, not its calendar range", () => {
+  it("reads a preset as rolling up to now, not as its calendar range", () => {
     const window = resolveWindow(
       {
         preset: "last-7-days",
         from: "2026-10-01T00:00:00.000Z",
         to: "2026-10-07T23:59:59.999Z",
       },
-      "24h",
+      "last-24h",
       NOW,
     );
-    expect(window.preset).toBe("7d");
+    expect(window.preset).toBe("last-7-days");
     expect(window.to).toEqual(PINNED);
     expect(window.to.getTime() - window.from.getTime()).toBe(7 * MS_PER_DAY);
     expect(window.granularity).toBe("day");
   });
 
   it("falls back to its default preset and buckets an hour by the minute", () => {
-    expect(resolveWindow({}, "7d", NOW).preset).toBe("7d");
-    expect(resolveWindow({ window: "1h" }, "7d", NOW).granularity).toBe(
-      "minute",
-    );
+    expect(resolveWindow({}, "last-7-days", NOW).preset).toBe("last-7-days");
+    expect(
+      resolveWindow({ preset: "last-hour" }, "last-7-days", NOW).granularity,
+    ).toBe("minute");
   });
 
   it("compares to the period right before, of the same length", () => {
-    const window = resolveWindow({ window: "7d" }, "7d", NOW);
+    const window = resolveWindow({ preset: "last-7-days" }, "last-7-days", NOW);
     expect(window.previous).toEqual({
       from: new Date(window.from.getTime() - 7 * MS_PER_DAY),
       to: window.from,
@@ -64,7 +64,7 @@ describe("resolveWindow", () => {
         compareFrom: "2026-09-29T15:00:00.000Z",
         compareTo: "2026-09-30T15:00:00.000Z",
       },
-      "7d",
+      "last-7-days",
       NOW,
     );
     expect(window.preset).toBeNull();
@@ -72,41 +72,38 @@ describe("resolveWindow", () => {
   });
 
   it("leaves the comparison out when the selector asks for none", () => {
-    const window = resolveWindow({ comparison: "none" }, "7d", NOW);
+    const window = resolveWindow({ comparison: "none" }, "last-7-days", NOW);
     expect(window.previous).toBeNull();
   });
 
   it("says when the period before 30 days is no longer kept", () => {
     setConfig({ statisticsLifetime: 30 * MS_PER_DAY });
-    const short = resolveWindow({ window: "30d" }, "7d", NOW);
+    const short = resolveWindow({ preset: "last-30-days" }, "last-7-days", NOW);
     expect(short.previousAvailable).toBe(false);
     expect(short.previous).toBeNull();
     setConfig({ statisticsLifetime: 60 * MS_PER_DAY });
-    expect(resolveWindow({ window: "30d" }, "7d", NOW).previousAvailable).toBe(
-      true,
-    );
+    expect(
+      resolveWindow({ preset: "last-30-days" }, "last-7-days", NOW)
+        .previousAvailable,
+    ).toBe(true);
   });
 
   it("puts a reversed range back in order and ignores garbage", () => {
     const reversed = resolveWindow(
       { from: NOW.toISOString(), to: "2026-10-01T00:00:00.000Z" },
-      "7d",
+      "last-7-days",
       NOW,
     );
     expect(reversed.from < reversed.to).toBe(true);
-    const garbage = resolveWindow(
-      { window: "14d", preset: "soon" },
-      "24h",
-      NOW,
-    );
-    expect(garbage.preset).toBe("24h");
+    const garbage = resolveWindow({ preset: "soon" }, "last-24h", NOW);
+    expect(garbage.preset).toBe("last-24h");
   });
 
   it("never reaches further back than the statistics are kept", () => {
     setConfig({ statisticsLifetime: 30 * MS_PER_DAY });
     const window = resolveWindow(
       { from: "2020-01-01T00:00:00.000Z" },
-      "7d",
+      "last-7-days",
       NOW,
     );
     expect(NOW.getTime() - window.from.getTime()).toBeLessThanOrEqual(

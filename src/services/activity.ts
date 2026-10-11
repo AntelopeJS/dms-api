@@ -22,7 +22,7 @@ export interface ActivityModels {
 }
 
 /** What the journal covers. */
-export const ACTIVITY_WINDOW: WindowPreset = "7d";
+export const ACTIVITY_WINDOW: WindowPreset = "last-7-days";
 
 /**
  * Quiet time that closes an incident: the window the health rules read, so
@@ -132,8 +132,8 @@ export function findIncidents(
 /** The narrowest preset still holding `since`, for the logs to open on. */
 function windowFor(since: Date, now: number): WindowPreset {
   const age = now - since.getTime();
-  if (age <= 60 * MS_PER_MINUTE) return "1h";
-  return age <= MS_PER_DAY ? "24h" : "7d";
+  if (age <= 60 * MS_PER_MINUTE) return "last-hour";
+  return age <= MS_PER_DAY ? "last-24h" : "last-7-days";
 }
 
 /** One journal entry per incident, and its numbers. */
@@ -170,7 +170,7 @@ function incidentLink(incident: Incident, now: number): string {
   return logsLink({
     route: incident.route,
     tab: "5xx",
-    window: windowFor(incident.start, now),
+    period: windowFor(incident.start, now),
     since: floorMinute(incident.start.getTime()),
     until: floorMinute(incident.end.getTime() + MS_PER_MINUTE),
     from: "overview",
