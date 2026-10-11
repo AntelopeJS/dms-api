@@ -170,7 +170,7 @@ function decodeCursor(raw?: string): LogCursor | undefined {
 export const REQUEST_LOG_MAX_LIMIT = 200;
 
 /** The cursor of a log: listings resume past it, newest first. */
-export function logCursor(log: Pick<RequestLog, "_id" | "timestamp">): string {
+function logCursor(log: Pick<RequestLog, "_id" | "timestamp">): string {
   return `${log.timestamp.toISOString()}${CURSOR_SEPARATOR}${log._id}`;
 }
 
