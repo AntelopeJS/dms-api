@@ -1,9 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import {
+  acceptsRequestBody,
   isWritingMethod,
   methodTone,
+  normalizeRoutePath,
+  normalizeRouteRef,
   parseRouteRef,
   pathSegments,
+  sameRoute,
+  startsWithRequestBody,
   statusClassOf,
   statusText,
   statusTone,
@@ -32,6 +37,15 @@ describe('http', () => {
     expect(isWritingMethod('delete')).toBe(true)
   })
 
+  it('knows which calls carry a body, and which start with one', () => {
+    expect(acceptsRequestBody('get')).toBe(false)
+    expect(acceptsRequestBody('HEAD')).toBe(false)
+    expect(acceptsRequestBody('DELETE')).toBe(true)
+    expect(startsWithRequestBody('post')).toBe(true)
+    expect(startsWithRequestBody('DELETE')).toBe(false)
+    expect(startsWithRequestBody('GET')).toBe(false)
+  })
+
   it('splits a path on its params', () => {
     expect(pathSegments('/api/orders/:id/refund')).toEqual([
       { text: '/api/orders/', param: false },
@@ -46,5 +60,22 @@ describe('http', () => {
       path: '/api/orders/:id',
     })
     expect(parseRouteRef('nope')).toBeNull()
+  })
+
+  it('matches a route with or without its trailing slash', () => {
+    expect(sameRoute('GET /api/orders/', 'GET /api/orders')).toBe(true)
+    expect(sameRoute('get /api/orders', 'GET /api/orders/')).toBe(true)
+    expect(sameRoute('GET /', 'GET /')).toBe(true)
+    expect(sameRoute('POST /api/orders', 'GET /api/orders')).toBe(false)
+  })
+
+  it('names a route by its canonical path, as the module does', () => {
+    expect(normalizeRoutePath('/api/orders/')).toBe('/api/orders')
+    expect(normalizeRoutePath('/api/orders//')).toBe('/api/orders')
+    expect(normalizeRoutePath('/')).toBe('/')
+    expect(normalizeRoutePath('//')).toBe('/')
+    expect(normalizeRouteRef('post /api/orders/')).toBe('POST /api/orders')
+    expect(normalizeRouteRef('GET /api/orders/:id')).toBe('GET /api/orders/:id')
+    expect(normalizeRouteRef('nope')).toBe('nope')
   })
 })

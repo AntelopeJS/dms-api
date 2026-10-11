@@ -35,6 +35,18 @@ export function hasRequestBody(method: string | undefined): boolean {
   return isWritingMethod(method)
 }
 
+/** Methods a body may go with: the tester's proxy refuses one on GET and HEAD. */
+export function acceptsRequestBody(method: string | undefined): boolean {
+  return !['GET', 'HEAD'].includes((method ?? '').toUpperCase())
+}
+
+/** Methods the tester starts with a body: DELETE gets one only on demand. */
+const BODY_METHODS = new Set(['POST', 'PUT', 'PATCH'])
+
+export function startsWithRequestBody(method: string | undefined): boolean {
+  return BODY_METHODS.has((method ?? '').toUpperCase())
+}
+
 export type StatusClass = '2xx' | '3xx' | '4xx' | '5xx'
 
 export function statusClassOf(status: number): StatusClass {
@@ -110,6 +122,29 @@ export function pathParams(path: string): string[] {
 /** A route as the URL names it: `METHOD /path`. */
 export function routeRef(method: string, path: string): string {
   return `${method.toUpperCase()} ${path}`
+}
+
+/**
+ * A route path as the module names it: without the trailing slash a
+ * controller path may carry, except for the root `/` (the backend's
+ * `normalizeRoutePath`).
+ */
+export function normalizeRoutePath(path: string): string {
+  return path.length > 1 ? path.replace(/\/+$/, '') || '/' : path
+}
+
+/** `METHOD /path` with its path canonical; anything else as it is. */
+export function normalizeRouteRef(ref: string): string {
+  const parsed = parseRouteRef(ref)
+  return parsed ? routeRef(parsed.method, normalizeRoutePath(parsed.path)) : ref
+}
+
+/**
+ * Whether two references name the same route, with or without the trailing
+ * slash a controller path may carry.
+ */
+export function sameRoute(a: string, b: string): boolean {
+  return normalizeRouteRef(a) === normalizeRouteRef(b)
 }
 
 export function parseRouteRef(

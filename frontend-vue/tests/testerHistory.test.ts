@@ -1,59 +1,369 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import {
+  type DraftRequest,
+  exampleRequest,
+  hasConfirmedWrite,
   type HistoryEntry,
+  historyEntry,
+  lastSuccessfulPathValues,
+  loadCommonHeaders,
+  loadDraft,
   loadHistory,
+  lostSecrets,
+  migrateHistory,
+  patchResult,
+  rememberConfirmedWrite,
+  sameRequest,
+  saveCommonHeaders,
+  saveDraft,
   saveHistory,
+  secretNames,
 } from '../app/utils/testerHistory'
+import type { TesterResult } from '../app/utils/testerRequest'
 
-const store = new Map<string, string>()
+function memoryStorage(store: Map<string, string>) {
+  return {
+    getItem: (key: string) => store.get(key) ?? null,
+    setItem: (key: string, value: string) => store.set(key, value),
+    removeItem: (key: string) => store.delete(key),
+    get length() {
+      return store.size
+    },
+    key: (index: number) => [...store.keys()][index] ?? null,
+  }
+}
+
+const local = new Map<string, string>()
+const session = new Map<string, string>()
 Object.assign(globalThis, {
   window: {
-    localStorage: {
-      getItem: (key: string) => store.get(key) ?? null,
-      setItem: (key: string, value: string) => store.set(key, value),
-      removeItem: (key: string) => store.delete(key),
-    },
+    localStorage: memoryStorage(local),
+    sessionStorage: memoryStorage(session),
   },
 })
+
+function request(overrides: Partial<DraftRequest> = {}): DraftRequest {
+  return {
+    bodyMode: 'json',
+    body: '{}',
+    form: [],
+    headers: [
+      { name: 'Authorization', value: 'Bearer secret' },
+      { name: 'content-type', value: 'application/json' },
+    ],
+    query: [],
+    pathValues: {},
+    useSession: true,
+    ...overrides,
+  }
+}
+
+function result(overrides: Partial<TesterResult> = {}): TesterResult {
+  return {
+    status: 201,
+    durationMs: 12,
+    headers: {},
+    body: 'x'.repeat(10_000),
+    sentWithSession: true,
+    auth: 'manual',
+    at: 1,
+    ...overrides,
+  }
+}
 
 function entry(at: number): HistoryEntry {
   return {
     at,
+    method: 'POST',
     path: '/api/orders',
-    headers: {
-      Authorization: 'Bearer secret',
-      'content-type': 'application/json',
-    },
-    query: {},
-    pathValues: {},
-    body: '{}',
-    useSession: true,
-    result: {
-      status: 201,
-      durationMs: 12,
-      headers: {},
-      body: 'x'.repeat(10_000),
-      sentWithSession: true,
-    },
+    request: request(),
+    result: result({ at }),
   }
 }
 
 describe('tester history', () => {
-  beforeEach(() => store.clear())
+  beforeEach(() => {
+    local.clear()
+    session.clear()
+  })
 
-  it('keeps 25 calls per route, without credentials or huge bodies', () => {
+  it('keeps 25 calls per route, without credentials, cutting bodies but not their size', () => {
     saveHistory(
       'POST /api/orders',
       Array.from({ length: 30 }, (_, index) => entry(index)),
     )
     const saved = loadHistory('POST /api/orders')
     expect(saved).toHaveLength(25)
-    expect(saved[0].headers).toEqual({ 'content-type': 'application/json' })
+    expect(saved[0].request.headers).toEqual([
+      { name: 'content-type', value: 'application/json' },
+    ])
     expect(saved[0].result.body.length).toBe(4096)
+    expect(saved[0].result.bodySize).toBe(10_000)
+    expect(saved[0].result.bodyTruncated).toBe(true)
   })
 
   it('ignores what it cannot read', () => {
-    store.set('dmsApi.tester.history.GET /x', '{not json')
+    local.set('dmsApi.tester.history.GET /x', '{not json')
     expect(loadHistory('GET /x')).toEqual([])
+    local.set(
+      'dmsApi.tester.history.GET /y',
+      JSON.stringify([{ at: 1, path: '/y', query: {}, result: {} }]),
+    )
+    expect(loadHistory('GET /y')).toEqual([])
+  })
+
+  it('says which credentials an entry left out', () => {
+    const made = historyEntry('POST', '/api/orders', request(), result())
+    expect(made.request.headers).toEqual([
+      { name: 'content-type', value: 'application/json' },
+    ])
+    expect(made.secretsRemoved).toEqual(['Authorization'])
+  })
+
+  it('finds the path values of the last successful call', () => {
+    const calls: HistoryEntry[] = [
+      {
+        ...entry(3),
+        request: request({ pathValues: { id: 'TS-404' } }),
+        result: result({ status: 404 }),
+      },
+      {
+        ...entry(2),
+        request: request({ pathValues: { id: '10477' } }),
+        result: result({ status: 200 }),
+      },
+    ]
+    expect(lastSuccessfulPathValues(calls, ['id'])).toEqual({ id: '10477' })
+    expect(lastSuccessfulPathValues(calls, ['other'])).toEqual({})
+    expect(lastSuccessfulPathValues(calls, [])).toEqual({})
+  })
+
+  it('keeps what the module captured with the call it belongs to', () => {
+    const calls = [
+      { ...entry(2), result: result({ at: 2, requestId: 'a' }) },
+      { ...entry(1), result: result({ at: 1, requestId: 'b' }) },
+    ]
+    const captured = {
+      id: 'log-a',
+      status: 500,
+      responseTimeMs: 9,
+      slow: false,
+    }
+    const patched = patchResult(calls, 'a', { captured })
+    expect(patched[0].result.captured).toEqual(captured)
+    expect(patched[1]).toBe(calls[1])
+  })
+
+  it('says which credentials a restored call no longer holds', () => {
+    expect(
+      secretNames({ Authorization: 'x', accept: '*/*', Cookie: 'c' }),
+    ).toEqual(['Authorization', 'Cookie'])
+    const sent = ['Authorization', 'authorization', 'X-Api-Key']
+    expect(lostSecrets(sent, [])).toEqual(['Authorization', 'X-Api-Key'])
+    expect(
+      lostSecrets(sent, [
+        { name: 'AUTHORIZATION', value: 'Bearer x' },
+        { name: 'x-api-key', value: '' },
+      ]),
+    ).toEqual(['X-Api-Key'])
+  })
+})
+
+describe('history of an earlier version', () => {
+  beforeEach(() => {
+    local.clear()
+    session.clear()
+  })
+
+  const legacy = {
+    at: 5,
+    path: '/api/orders',
+    headers: { 'x-qa': 'TS', Authorization: 'Bearer old' },
+    query: { page: '2' },
+    pathValues: {},
+    body: '{"items":[]}',
+    useSession: true,
+    result: {
+      status: 400,
+      durationMs: 31,
+      headers: { 'content-type': 'application/json' },
+      body: '{"error":"Cart is empty"}',
+      sentWithSession: true,
+    },
+  }
+
+  it('brings flat entries and slash-ended routes to the current format, once', () => {
+    local.set(
+      'dmsApi.tester.history.POST /api/orders/',
+      JSON.stringify([legacy]),
+    )
+    local.set(
+      'dmsApi.tester.history.POST /api/orders',
+      JSON.stringify([entry(9)]),
+    )
+    expect(migrateHistory()).toEqual({ migrated: 1, dropped: 0 })
+    expect(local.has('dmsApi.tester.history.POST /api/orders/')).toBe(false)
+    const [current, migrated] = loadHistory('POST /api/orders')
+    expect(current.at).toBe(9)
+    expect(migrated).toMatchObject({
+      at: 5,
+      method: 'POST',
+      path: '/api/orders',
+      request: {
+        bodyMode: 'json',
+        body: '{"items":[]}',
+        headers: [{ name: 'x-qa', value: 'TS' }],
+        query: [{ name: 'page', value: '2' }],
+        useSession: true,
+      },
+      result: { status: 400, auth: 'session', sentWithSession: true, at: 5 },
+    })
+    local.set('dmsApi.tester.history.GET /x/', JSON.stringify([legacy]))
+    expect(migrateHistory()).toEqual({ migrated: 0, dropped: 0 })
+    expect(local.has('dmsApi.tester.history.GET /x/')).toBe(true)
+  })
+
+  it('clears what it cannot read, and counts it', () => {
+    local.set('dmsApi.tester.history.GET /a', '{not json')
+    local.set(
+      'dmsApi.tester.history.GET /b',
+      JSON.stringify([
+        { at: 1, result: {} },
+        { ...legacy, at: 2 },
+      ]),
+    )
+    local.set('dmsApi.tester.history.no route', JSON.stringify([legacy]))
+    expect(migrateHistory()).toEqual({ migrated: 1, dropped: 3 })
+    expect(local.has('dmsApi.tester.history.GET /a')).toBe(false)
+    expect(local.has('dmsApi.tester.history.no route')).toBe(false)
+    expect(loadHistory('GET /b')).toHaveLength(1)
+    expect(loadHistory('GET /b')[0].request.bodyMode).toBe('none')
+  })
+})
+
+describe('tester drafts', () => {
+  beforeEach(() => {
+    local.clear()
+    session.clear()
+  })
+
+  it('keeps a draft per route for the session, credentials in memory only', () => {
+    saveDraft('POST /api/orders', {
+      request: request({ body: '{"edited":true}' }),
+      origin: 'edited',
+      replay: null,
+      result: result(),
+    })
+    const stored = session.get('dmsApi.tester.draft.POST /api/orders') ?? ''
+    expect(stored).not.toContain('Bearer secret')
+    const draft = loadDraft('POST /api/orders')
+    expect(draft?.request.body).toBe('{"edited":true}')
+    expect(draft?.request.headers).toContainEqual({
+      name: 'Authorization',
+      value: 'Bearer secret',
+    })
+    expect(draft?.result?.status).toBe(201)
+    expect(loadDraft('GET /api/orders')).toBeNull()
+    saveDraft('POST /api/orders', null)
+    expect(loadDraft('POST /api/orders')).toBeNull()
+  })
+
+  it('tells an edited request from its starting point', () => {
+    const start = request({ headers: [] })
+    expect(
+      sameRequest(start, { ...start, headers: [{ name: '', value: '' }] }),
+    ).toBe(true)
+    expect(sameRequest(start, { ...start, body: '{"a":1}' })).toBe(false)
+    expect(
+      sameRequest(
+        { ...start, bodyMode: 'none', body: 'x' },
+        { ...start, bodyMode: 'none', body: 'y' },
+      ),
+    ).toBe(true)
+  })
+
+  it('starts without a body for GET and DELETE, with the session only where auth is expected', () => {
+    const history: HistoryEntry[] = [
+      {
+        ...entry(1),
+        request: request({ pathValues: { id: '10477' } }),
+        result: result({ status: 200 }),
+      },
+    ]
+    const route = (
+      method: string,
+      authStatus: 'required' | 'probable' | 'unknown',
+      exampleBody: unknown = null,
+    ) => ({ method, pathParams: ['id'], exampleBody, authStatus })
+    expect(exampleRequest(route('DELETE', 'required'), history)).toMatchObject({
+      bodyMode: 'none',
+      body: '',
+      pathValues: { id: '10477' },
+      useSession: true,
+    })
+    expect(exampleRequest(route('GET', 'probable'), [])).toMatchObject({
+      bodyMode: 'none',
+      body: '',
+      useSession: true,
+    })
+    expect(
+      exampleRequest(route('POST', 'unknown', { a: 1 }), []),
+    ).toMatchObject({
+      bodyMode: 'json',
+      body: '{\n  "a": 1\n}',
+      headers: [],
+      useSession: false,
+    })
+    expect(exampleRequest(route('PATCH', 'unknown'), [])).toMatchObject({
+      bodyMode: 'json',
+      body: '',
+      pathValues: { id: '' },
+    })
+  })
+
+  it('falls back on the path of the route’s last successful call, decoded', () => {
+    const route = {
+      method: 'GET',
+      pathParams: ['id'],
+      exampleBody: null,
+      examplePath: { id: 'commande-%C3%A9' },
+      authStatus: 'unknown' as const,
+    }
+    expect(exampleRequest(route, []).pathValues).toEqual({ id: 'commande-é' })
+    expect(
+      exampleRequest(route, [
+        {
+          ...entry(1),
+          request: request({ pathValues: { id: '10477' } }),
+          result: result({ status: 204 }),
+        },
+      ]).pathValues,
+    ).toEqual({ id: '10477' })
+  })
+
+  it('keeps the headers of every route in this browser, credentials until reload', () => {
+    saveCommonHeaders([
+      { name: 'x-env', value: 'qa' },
+      { name: 'Cookie', value: 'sid=1' },
+      { name: '', value: '' },
+    ])
+    expect(local.get('dmsApi.tester.commonHeaders')).toBe(
+      JSON.stringify([{ name: 'x-env', value: 'qa' }]),
+    )
+    expect(loadCommonHeaders()).toEqual([
+      { name: 'x-env', value: 'qa' },
+      { name: 'Cookie', value: 'sid=1' },
+    ])
+  })
+
+  it('remembers the routes a write was confirmed on, for the session', () => {
+    expect(hasConfirmedWrite('POST /api/orders')).toBe(false)
+    rememberConfirmedWrite('POST /api/orders')
+    rememberConfirmedWrite('POST /api/orders')
+    expect(hasConfirmedWrite('POST /api/orders')).toBe(true)
+    expect(hasConfirmedWrite('PUT /api/orders/:id')).toBe(false)
+    expect(session.get('dmsApi.tester.confirmedWrites')).toBe(
+      JSON.stringify(['POST /api/orders']),
+    )
   })
 })

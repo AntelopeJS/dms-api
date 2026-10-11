@@ -1,18 +1,19 @@
-import { computed } from 'vue'
-
-interface PublicConfig {
-  dms?: { baseURL?: string }
-}
+import { computed, toValue, type MaybeRefOrGetter } from 'vue'
 
 /**
  * Where the API answers, for the snippets the console hands out (cURL,
- * fetch): the DMS backend URL when the frontend knows it, else this origin.
+ * fetch). The backend resolves it, from the dms-api module's `publicApiUrl`
+ * or else the address its API server was reached on, and sends it as the
+ * `apiOrigin` of the payloads that need it (a route's detail, a captured
+ * request). Never this page's own origin: behind the DMS frontend that is
+ * the frontend, whose proxy refuses the writes a copied command sends.
+ * Null while unknown: the snippets then write `$API_URL` and say so.
  */
-export function useApiOrigin() {
-  const config = useDmsRuntimeConfig()
+export function useApiOrigin(
+  reported: MaybeRefOrGetter<string | null | undefined>,
+) {
   return computed(() => {
-    const configured = (config.public as PublicConfig).dms?.baseURL
-    if (configured) return configured.replace(/\/$/, '')
-    return typeof window === 'undefined' ? '' : window.location.origin
+    const origin = toValue(reported)?.trim()
+    return origin ? origin.replace(/\/+$/, '') : null
   })
 }
