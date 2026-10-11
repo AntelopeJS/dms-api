@@ -28,6 +28,7 @@ import {
 } from "@/services/request-log/list";
 import { getScopedRouteKeys } from "@/services/scope";
 import { getActiveScope } from "@/services/settings";
+import { testerBlock } from "./tester";
 import { getLiveTraffic } from "@/services/live";
 import { findRoute } from "@/services/route-catalog";
 
@@ -98,7 +99,7 @@ const routesTable = RoutesPage.explorer.targetChild(
   "requests",
   "table",
 );
-const tester = RoutesPage.explorer.targetChild("tabs", "tester");
+const tester = testerBlock;
 
 /** One request in full, as the side panel shows it. */
 async function logDetail(id: string, context: RequestContext) {

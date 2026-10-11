@@ -4,7 +4,11 @@ import {
   HTTP_STATUS_OK,
   REQUEST_LOG_TEXT_CONTENT_TYPE_PREFIXES,
 } from "@/types/constants";
-import { isSensitiveKey, redactSearchParams, sanitizeBody } from "./redaction";
+import {
+  isSensitiveHeader,
+  redactSearchParams,
+  sanitizeBody,
+} from "./redaction";
 
 /**
  * The allow-listed headers, lower-cased. Allow-listed names that look like a
@@ -21,7 +25,7 @@ export function pickHeaders(
   for (const [name, value] of Object.entries(headers)) {
     if (!allow.has(name.toLowerCase())) continue;
     if (value === undefined) continue;
-    if (isSensitiveKey(name)) {
+    if (isSensitiveHeader(name)) {
       dropped?.push(name.toLowerCase());
       continue;
     }

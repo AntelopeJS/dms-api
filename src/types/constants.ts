@@ -84,14 +84,11 @@ export const INTERNAL_PATH_PREFIXES = [
 export const INTERNAL_ROUTE_SUFFIX = "/pagelayout";
 
 /**
- * Headers a request names its source in (`tester`). The Tester sends both:
- * the DMS frontend's proxy strips every `x-dms-*` header before forwarding,
- * so only `x-antelopejs-api-source` reaches the API through it today.
+ * Header the Tester marks its calls with: a token the server signs (see
+ * `services/tester-source.ts`). Not `x-dms-*`: the DMS frontend's proxy
+ * strips those before forwarding. Never stored with the captured headers.
  */
-export const REQUEST_SOURCE_HEADERS = [
-  "x-dms-api-source",
-  "x-antelopejs-api-source",
-] as const;
+export const TESTER_SOURCE_HEADER = "x-antelopejs-api-source";
 
 /** Header a request names its own id in, stored to find the request again. */
 export const REQUEST_ID_HEADER = "x-request-id";

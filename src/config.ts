@@ -42,6 +42,12 @@ export interface DmsApiConfig {
    * out (`https://api.example.com`). Unset, the origin of the request.
    */
   publicApiUrl?: string;
+  /**
+   * Key the Tester's tokens are signed with (see `services/tester-source.ts`).
+   * Set the same value on every instance behind one console; unset, each
+   * instance draws its own at start.
+   */
+  testerSourceSecret?: string;
 }
 
 const DEFAULT_CONFIG: DmsApiConfig = {

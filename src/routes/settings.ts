@@ -19,7 +19,7 @@ import {
 } from "@/db";
 import { SettingsPage } from "@/pages/settings";
 import {
-  isSensitiveKey,
+  isSensitiveHeader,
   REDACTED_KEY_WORDS,
 } from "@/services/request-log/redaction";
 import { countRoutes } from "@/services/route-catalog";
@@ -82,7 +82,7 @@ export class SettingsController extends Controller("/api/monitoring/settings") {
     const current = editableValues(getEffectiveSettings());
     const result = validateSettings(
       changedFields(body, current),
-      isSensitiveKey,
+      isSensitiveHeader,
     );
     if (!result.ok) throw new HTTPResult(HTTP_BAD_REQUEST, result.error);
     await updateSettings(
@@ -128,7 +128,7 @@ export class SettingsController extends Controller("/api/monitoring/settings") {
     @AuthUserWithPermission(SettingsPage.form) _user: User,
     @Parameter("names", "query") names: string | undefined,
   ) {
-    return { sensitive: sensitiveHeaderNames(names ?? "", isSensitiveKey) };
+    return { sensitive: sensitiveHeaderNames(names ?? "", isSensitiveHeader) };
   }
 
   /**

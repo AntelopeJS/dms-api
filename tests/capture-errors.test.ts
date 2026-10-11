@@ -6,7 +6,6 @@ import {
   isDmsConsolePage,
   isInternalTraffic,
   requestIdOf,
-  requestSource,
   resolveRequestRoute,
 } from "@/services/request-log/capture";
 import { captureBody, pickHeaders } from "@/services/request-log/util";
@@ -196,17 +195,6 @@ describe("isDmsConsolePage", () => {
 });
 
 describe("request marks", () => {
-  it("recognizes the Tester by either source header", () => {
-    expect(requestSource({ "x-dms-api-source": "tester" })).toBe("tester");
-    expect(requestSource({ "x-antelopejs-api-source": "Tester" })).toBe(
-      "tester",
-    );
-    expect(requestSource({ "x-antelopejs-api-source": "other" })).toBe(
-      undefined,
-    );
-    expect(requestSource({})).toBeUndefined();
-  });
-
   it("keeps an x-request-id that is short enough to be an id", () => {
     expect(requestIdOf({ "x-request-id": " 3f2c " })).toBe("3f2c");
     expect(requestIdOf({ "x-request-id": "x".repeat(200) })).toBeUndefined();

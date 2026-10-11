@@ -19,6 +19,7 @@ import type {
 } from "@/db/tables/request_log.table";
 import { normalizeRoutePath } from "@/db/tables/routes_statistics.table";
 import { recordLiveRequest } from "@/services/live-feed";
+import { requestSource } from "@/services/tester-source";
 import { addRequestStatistics } from "@/services/statistics-write";
 import type { HttpMethod } from "@/types";
 import {
@@ -27,7 +28,6 @@ import {
   NS_TO_MS,
   REQUEST_ID_HEADER,
   REQUEST_ID_MAX_LENGTH,
-  REQUEST_SOURCE_HEADERS,
 } from "@/types";
 import {
   type CapturedBody,
@@ -233,16 +233,6 @@ function headerValue(
 ): string | undefined {
   const value = headers[name];
   return (Array.isArray(value) ? value[0] : value)?.trim() || undefined;
-}
-
-/** `tester` when the request says it comes from the console's Tester. */
-export function requestSource(
-  headers: IncomingHttpHeaders,
-): RequestLogSource | undefined {
-  const fromTester = REQUEST_SOURCE_HEADERS.some(
-    (name) => headerValue(headers, name)?.toLowerCase() === "tester",
-  );
-  return fromTester ? "tester" : undefined;
 }
 
 /** The request's `x-request-id`, when it is short enough to be an id. */

@@ -1,3 +1,5 @@
+import { TESTER_SOURCE_HEADER } from "@/types/constants";
+
 const REDACTED = "[REDACTED]";
 const MAX_REDACTION_DEPTH = 32;
 
@@ -79,6 +81,14 @@ export function isSensitiveKey(key: string): boolean {
         return words.at(-1) === word;
     }
   });
+}
+
+/**
+ * Headers never stored: the ones named like a credential, and the Tester's
+ * token, which would let a reader of the logs pass for the Tester.
+ */
+export function isSensitiveHeader(name: string): boolean {
+  return name.toLowerCase() === TESTER_SOURCE_HEADER || isSensitiveKey(name);
 }
 
 /**
