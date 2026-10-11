@@ -115,6 +115,9 @@ export class OverviewPage extends PageController(
         )
         .child(
           "slowest",
+          // TODO(dms TopListCard valueSuffix): write the average "1,931 ms"
+          // as mwesto did, with `valueSuffix: " ms"`, once the DMS ships it,
+          // and drop "in ms" from the description.
           TopListCard({
             title: "$api.overview.slowest.title",
             description: "$api.overview.slowest.description",

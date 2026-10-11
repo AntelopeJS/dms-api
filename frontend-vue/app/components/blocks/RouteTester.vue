@@ -85,6 +85,14 @@ import ApiStatusBadge from '../internal/ApiStatusBadge.vue'
 // answer shows its status, the browser and server times and what the module
 // captured of it (`x-request-id`). `?replay=<request id>` loads a captured
 // request once, then leaves the URL.
+//
+// TODO(dms live hold): while the focus is in one of the Tester's fields, hold
+// the page's live mode, as mwesto's console did ("Paused · typing in the
+// Tester"): once the DMS ships `usePageLive().hold(reason)`, call it on
+// `focusin` of a field (input, textarea, select, contenteditable) of the root
+// below, with the reason "typing in the Tester", and release the hold it
+// returns on `focusout` to outside the Tester and on unmount. Nothing holds
+// the page today: the DMS has no hold yet, only Direct / Pause.
 defineOptions({ inheritAttrs: false })
 
 const props = withDefaults(
