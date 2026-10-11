@@ -17,12 +17,23 @@ export function normalizeRouteMethod(method: string): string {
 }
 
 /**
+ * Canonical form of a route path as stored in the route tables: without its
+ * trailing slash, except for the root `/`. A controller mounted on
+ * `/api/orders` registers its index handler as `/api/orders/`, while clients
+ * call `/api/orders`; both name the same route.
+ */
+export function normalizeRoutePath(uri: string): string {
+  return uri.length > 1 ? uri.replace(/\/+$/, "") || "/" : uri;
+}
+
+/**
  * Generate composite key for route statistics
  * Format: "METHOD:uri" (e.g., "GET:/api/users/:id")
- * Method is normalized to uppercase for consistency
+ * Method is normalized to uppercase and the path to its canonical form, so a
+ * key built from a handler location (`/api/orders/`) matches the stored one.
  */
 export function getRouteStatsKey(method: string, uri: string): string {
-  return `${normalizeRouteMethod(method)}:${uri}`;
+  return `${normalizeRouteMethod(method)}:${normalizeRoutePath(uri)}`;
 }
 
 @RegisterTable(routesStatisticsTableName, SCHEMA_NAME)
