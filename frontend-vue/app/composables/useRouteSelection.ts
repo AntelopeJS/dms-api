@@ -1,5 +1,42 @@
 import { computed } from 'vue'
 import { parseRouteRef } from '../utils/http'
+import {
+  readStoredWindow,
+  readWindow,
+  sessionWindowStorage,
+  WINDOW_QUERY_KEY,
+} from '../utils/periodWindow'
+
+/** The request the tester replays (`?replay=<id>`, `RouteTester.vue`). */
+const REPLAY_QUERY_KEY = 'replay'
+
+export interface SelectOptions {
+  /**
+   * Replace the history entry instead of adding one: for a selection the
+   * user did not ask for (the route a bare `/routes` opens on) and for the
+   * keyboard, so Back leaves the page instead of walking every route seen.
+   */
+  replace?: boolean
+  /**
+   * The page opened bare (the sidebar): the module's last period comes along
+   * when the URL names none. The period block restores it too, but by a
+   * visit of its own, which this one would cancel or overwrite.
+   */
+  restoreWindow?: boolean
+}
+
+/**
+ * The page's query as the address bar holds it. A block may write it past
+ * the router (`PeriodWindow` keeps `?window=` that way), and a navigation
+ * built from the router's copy would put back the value it replaced.
+ */
+export function liveQuery(
+  route: ReturnType<typeof useDmsRoute>,
+): Record<string, string> {
+  if (typeof window === 'undefined')
+    return { ...route.query } as Record<string, string>
+  return Object.fromEntries(new URLSearchParams(window.location.search))
+}
 
 /**
  * The route the Routes page shows, as `?route=METHOD%20/path` in the URL: a
@@ -16,12 +53,19 @@ export function useRouteSelection(queryKey = 'route') {
   })
   const parsed = computed(() => parseRouteRef(ref.value))
 
-  async function select(next: string | null) {
+  async function select(next: string | null, options: SelectOptions = {}) {
     if (next === ref.value) return
-    const query: Record<string, string> = { ...route.query }
+    const query = liveQuery(route)
+    // A replayed request belongs to the route it was sent to: another route
+    // opens its tester blank.
+    delete query[REPLAY_QUERY_KEY]
     if (next) query[queryKey] = next
     else delete query[queryKey]
-    await router.push({ query })
+    if (options.restoreWindow && !readWindow(query)) {
+      const kept = readStoredWindow(sessionWindowStorage())
+      if (kept) query[WINDOW_QUERY_KEY] = kept
+    }
+    await (options.replace ? router.replace({ query }) : router.push({ query }))
   }
 
   return { ref, parsed, select }

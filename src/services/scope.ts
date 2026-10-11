@@ -1,5 +1,6 @@
-import { GetModuleInfo, ListModules } from "@antelopejs/interface-core/modules";
 import type { RouteModel } from "@/db";
+import { getRouteStatsKey } from "@/db/tables/routes_statistics.table";
+import { ensureRoutesSynced } from "./routes-sync";
 
 /**
  * Route visibility scope for the monitoring pages.
@@ -17,39 +18,27 @@ export function isRouteScope(value: unknown): value is RouteScope {
 }
 
 /**
- * Resolve the set of module ids considered "own": modules whose source is the
- * local project rather than a downloaded package. Routes registered by any
- * other module (or with no resolvable module) belong to the `modules` bucket.
+ * Composite key shared with routes_statistics / request_log lookups. The path
+ * is canonical (no trailing slash), so a key built from a handler location
+ * matches the stored one.
  */
-export async function getOwnModuleIds(): Promise<Set<string>> {
-  const ids = await ListModules();
-  const own = new Set<string>();
-  await Promise.all(
-    ids.map(async (id: string) => {
-      try {
-        const info = await GetModuleInfo(id);
-        if (info.source.type === "local") own.add(id);
-      } catch {
-        // Module vanished between list and info — treat as not own.
-      }
-    }),
-  );
-  return own;
-}
-
-/** Composite key shared with routes_statistics / request_log lookups. */
 export function scopeRouteKey(method: string, uri: string): string {
-  return `${method.toUpperCase()}:${uri}`;
+  return getRouteStatsKey(method, uri);
 }
 
 /**
  * Set of `METHOD:uri` keys visible under `scope`, resolved from the synced
  * routes table. Returns null for `all` — callers skip filtering entirely.
+ *
+ * Resolved on every call, never cached: the routes table is first synced
+ * again when the registered routes changed (a module reloaded), so the scope
+ * follows the routes and the setting the moment they change.
  */
 export async function getScopedRouteKeys(
   routesModel: RouteModel,
   scope: RouteScope,
 ): Promise<Set<string> | null> {
+  await ensureRoutesSynced(routesModel);
   if (scope === "all") return null;
   const wanted = scope === "own";
   const routes = await routesModel.table
@@ -57,13 +46,4 @@ export async function getScopedRouteKeys(
     .map((route) => ({ method: route.key("method"), uri: route.key("uri") }))
     .run();
   return new Set(routes.map((route) => scopeRouteKey(route.method, route.uri)));
-}
-
-/** Routes in scope: the size of the key set, or every synced route for `all`. */
-export async function countScopedRoutes(
-  routesModel: RouteModel,
-  keys: Set<string> | null,
-): Promise<number> {
-  if (keys) return keys.size;
-  return routesModel.table.count().run();
 }

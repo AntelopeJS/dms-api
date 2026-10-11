@@ -2,25 +2,27 @@ import {
   getRegisteredRouteHandlers,
   type RegisteredRouteHandler,
 } from "@antelopejs/interface-api";
-import { getConfig } from "@/config";
 import type { RequestLogModel, RouteModel, RouteStatisticsModel } from "@/db";
-import type { RequestLog } from "@/db/tables/request_log.table";
-import { MS_PER_DAY } from "@/types";
+import { normalizeRoutePath } from "@/db/tables/routes_statistics.table";
 import {
   getRouteInspection,
   type MiddlewareInfo,
   type RouteInspection,
 } from "./introspection";
 import { routeRef } from "./links";
-import { computeRouteHealth, issueOf, type RouteIssue } from "./route-health";
-import { scopeRouteKey } from "./scope";
+import { isPageLayoutPath } from "./request-log/capture";
 import {
-  loadSamples,
-  loadTraffic,
-  type ScopeKeys,
-  sumBuckets,
-  type TrafficBucket,
-} from "./traffic";
+  contractOf,
+  type DocumentedParameter,
+  documentParameters,
+  loadContractTraffic,
+  type ObservedContract,
+  type ObservedStatus,
+} from "./route-contract";
+import { createMemo } from "@/memo";
+import { CACHE_TTL_MS } from "./aggregate-cache";
+import { scopeRouteKey } from "./scope";
+import type { ScopeKeys } from "./traffic";
 
 export interface CatalogModels {
   logs: RequestLogModel;
@@ -28,20 +30,23 @@ export interface CatalogModels {
   routes: RouteModel;
 }
 
-/** A route's state in the tree: its issue, or idle without traffic. */
-export type RouteState = RouteIssue | "healthy" | "idle";
-
-/** One route of the Routes tree. */
+/**
+ * One route of the Routes tree. Its traffic and state are the Overview's
+ * (see the routes controller), merged in by the caller.
+ */
 export interface RouteRow {
   ref: string;
   method: string;
+  /**
+   * Canonical path (see `normalizeRoutePath`): the one clients call, shown
+   * and called by the Tester. The runtime matches it to the handler location
+   * either way, empty segments aside.
+   */
   path: string;
   /** Leading static segments the tree groups routes under. */
   folder: string;
   controller: string | null;
   handler: string;
-  requests: number;
-  state: RouteState;
 }
 
 const FOLDER_DEPTH = 2;
@@ -57,46 +62,44 @@ export function folderOf(path: string): string {
   return `/${statics.join("/")}`;
 }
 
+/**
+ * Registered handlers in scope, the DMS page layouts (`<page>/pagelayout`)
+ * aside: the DMS registers one for every page, in the module that declares
+ * the page, and the console never captures them.
+ */
 function routeHandlers(keys: ScopeKeys): RegisteredRouteHandler[] {
   return getRegisteredRouteHandlers().filter(
     ({ handler }) =>
       handler.mode === "handler" &&
+      !isPageLayoutPath(handler.location) &&
       (!keys || keys.has(scopeRouteKey(handler.method, handler.location))),
   );
 }
 
-function stateOf(traffic: TrafficBucket | undefined): RouteState {
-  if (!traffic || traffic.requests === 0) return "idle";
-  return issueOf(traffic, getConfig().requestSlownessThreshold) ?? "healthy";
+/**
+ * Registered routes in scope: the count the tree lists, which the scope chip
+ * and the health show too. The synced routes table may still hold a route no
+ * longer registered.
+ */
+export function countRoutes(keys: ScopeKeys): number {
+  return routeHandlers(keys).length;
 }
 
-/** Every route in scope, with its traffic and state over the last 24 h. */
-export async function listRoutes(
-  models: CatalogModels,
-  keys: ScopeKeys,
-  now: Date = new Date(),
-): Promise<RouteRow[]> {
-  const range = { from: new Date(now.getTime() - MS_PER_DAY), to: now };
-  const health = computeRouteHealth(
-    await loadSamples(models.logs, range, keys),
-  );
+/** Every registered route in scope. */
+export function listRoutes(keys: ScopeKeys): RouteRow[] {
   return routeHandlers(keys)
     .map(({ handler }) => {
       const method = handler.method.toUpperCase();
-      const traffic = health.get(
-        scopeRouteKey(method, handler.location),
-      )?.traffic;
+      const path = normalizeRoutePath(handler.location);
       return {
-        ref: routeRef(method, handler.location),
+        ref: routeRef(method, path),
         method,
-        path: handler.location,
-        folder: folderOf(handler.location),
+        path,
+        folder: folderOf(path),
         controller:
           (handler.proto as { constructor?: { name?: string } } | undefined)
             ?.constructor?.name ?? null,
         handler: handler.callback.name || "anonymous",
-        requests: traffic?.requests ?? 0,
-        state: stateOf(traffic),
       };
     })
     .sort(
@@ -113,122 +116,33 @@ export function parseRouteRef(
 ): { method: string; path: string } | undefined {
   const match = ref?.trim().match(/^([A-Za-z]+)\s+(\/\S*)$/);
   if (!match) return undefined;
-  return { method: match[1].toUpperCase(), path: match[2] };
+  return { method: match[1].toUpperCase(), path: normalizeRoutePath(match[2]) };
 }
 
 /** The registered handler a `METHOD /path` reference names. */
-export function findRoute(
+function findHandler(
   ref: string | undefined,
-): RouteInspection | undefined {
+): RegisteredRouteHandler | undefined {
   const parsed = parseRouteRef(ref);
   if (!parsed) return undefined;
-  const found = getRegisteredRouteHandlers().find(
+  return getRegisteredRouteHandlers().find(
     ({ handler }) =>
       handler.mode === "handler" &&
       handler.method.toUpperCase() === parsed.method &&
-      handler.location === parsed.path,
+      normalizeRoutePath(handler.location) === parsed.path,
   );
+}
+
+/** Whether `ref` names a route the API registers (not a stray path). */
+export function isRegisteredRoute(ref: string | undefined): boolean {
+  return findHandler(ref) !== undefined;
+}
+
+export function findRoute(
+  ref: string | undefined,
+): RouteInspection | undefined {
+  const found = findHandler(ref);
   return found ? getRouteInspection(found.id) : undefined;
-}
-
-/** A body field seen in the logged requests of a route. */
-export interface InferredField {
-  name: string;
-  types: string[];
-  /** Present in every sampled body. */
-  required: boolean;
-}
-
-/** What the logged requests of a route say about its contract. */
-export interface ObservedContract {
-  /** The most recent successful JSON body, the tester's starting point. */
-  exampleBody: unknown;
-  bodyFields: InferredField[];
-  queryParams: string[];
-  /** Status codes the route answered, with their count. */
-  statuses: Array<{ status: number; count: number; message: string | null }>;
-  sampled: number;
-}
-
-const CONTRACT_SAMPLE = 50;
-
-function parseJson(text: string | undefined): unknown {
-  if (!text) return undefined;
-  try {
-    return JSON.parse(text);
-  } catch {
-    return undefined;
-  }
-}
-
-function typeName(value: unknown): string {
-  if (value === null) return "null";
-  if (Array.isArray(value)) return "array";
-  return typeof value;
-}
-
-function inferBodyFields(bodies: Record<string, unknown>[]): InferredField[] {
-  const fields = new Map<string, { types: Set<string>; seen: number }>();
-  for (const body of bodies) {
-    for (const [name, value] of Object.entries(body)) {
-      const field = fields.get(name) ?? { types: new Set<string>(), seen: 0 };
-      field.types.add(typeName(value));
-      field.seen += 1;
-      fields.set(name, field);
-    }
-  }
-  return [...fields].map(([name, field]) => ({
-    name,
-    types: [...field.types].sort(),
-    required: field.seen === bodies.length,
-  }));
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function observedStatuses(logs: RequestLog[]): ObservedContract["statuses"] {
-  const statuses = new Map<number, { count: number; message: string | null }>();
-  for (const log of logs) {
-    const entry = statuses.get(log.statusCode) ?? {
-      count: 0,
-      message: log.error?.message ?? null,
-    };
-    entry.count += 1;
-    statuses.set(log.statusCode, entry);
-  }
-  return [...statuses]
-    .map(([status, entry]) => ({ status, ...entry }))
-    .sort((a, b) => a.status - b.status);
-}
-
-/** Infer the contract of a route from its last logged requests. */
-export async function observeContract(
-  model: RequestLogModel,
-  method: string,
-  path: string,
-): Promise<ObservedContract> {
-  const { results } = await model.query({
-    method,
-    uri: path,
-    limit: CONTRACT_SAMPLE,
-  });
-  const successful = results.filter((log) => log.statusCode < 400);
-  const bodies = successful
-    .map((log) => parseJson(log.requestBody))
-    .filter(isRecord);
-  const queryParams = new Set<string>();
-  for (const log of results) {
-    for (const key of Object.keys(log.query ?? {})) queryParams.add(key);
-  }
-  return {
-    exampleBody: bodies[0] ?? null,
-    bodyFields: inferBodyFields(bodies),
-    queryParams: [...queryParams].sort(),
-    statuses: observedStatuses(results),
-    sampled: results.length,
-  };
 }
 
 /** One step of the request pipeline, in the order it runs. */
@@ -267,7 +181,7 @@ export function pipelineOf(inspection: RouteInspection): PipelineStep[] {
         : inspection.callbackName,
       location: inspection.location,
       priority: inspection.priority,
-      isAuth: false,
+      isAuth: inspection.authGuards.length > 0,
     },
   });
   return steps
@@ -278,81 +192,124 @@ export function pipelineOf(inspection: RouteInspection): PipelineStep[] {
     .map(({ step }) => step);
 }
 
-const AUTH_PROVIDER = /authori[sz]ation|AuthUser|AuthRawUser|authenticat/i;
-
 /**
- * Whether a call needs a signed-in user: an auth middleware runs before the
- * handler, or one of its parameters reads the session. Inferred, like the
- * rest of the introspection.
+ * Whether a call needs a signed-in user, as the introspection sees it: an
+ * auth middleware runs before the handler, a guard decorates it (the DMS
+ * @AuthUserWithPermission…), or one of its parameters reads the session.
  */
 export function requiresAuth(inspection: RouteInspection): boolean {
-  return (
-    inspection.applicableMiddleware.some(
-      (middleware) => middleware.isAuth && middleware.mode === "prefix",
-    ) ||
-    inspection.parameters.some((parameter) =>
-      AUTH_PROVIDER.test(parameter.rawProviderSource ?? ""),
-    )
-  );
+  return inspection.authGuards.length > 0;
+}
+
+/**
+ * - `required`: a guard was found in the code;
+ * - `probable`: none was found, but the route answered 401;
+ * - `unknown`: neither. Never "public": the introspection can miss a check
+ *   made inside the handler.
+ */
+export type AuthStatus = "required" | "probable" | "unknown";
+
+export interface RouteAuth {
+  status: AuthStatus;
+  /** The guards found in the code. */
+  guards: string[];
+  /** 401 answers over the contract window. */
+  unauthorized: number;
+}
+
+const HTTP_UNAUTHORIZED = 401;
+
+/** What is known of a route's authentication, from its code and its traffic. */
+export function authOf(
+  inspection: RouteInspection,
+  statuses: Array<Pick<ObservedStatus, "status" | "count">>,
+): RouteAuth {
+  const unauthorized =
+    statuses.find((entry) => entry.status === HTTP_UNAUTHORIZED)?.count ?? 0;
+  const guards = inspection.authGuards;
+  let status: AuthStatus = "unknown";
+  if (guards.length > 0) status = "required";
+  else if (unauthorized > 0) status = "probable";
+  return { status, guards, unauthorized };
 }
 
 /** Everything the Routes page shows about a route, around its tabs. */
 export interface RouteDetail {
   ref: string;
   method: string;
+  /** Canonical path, as in `RouteRow`; the pipeline keeps the handler's. */
   path: string;
   folder: string;
   controller: string | null;
   handler: string;
   module: string | null;
   own: boolean | null;
+  /** Signed-in calls expected: a guard was found, or 401s were answered. */
   requiresAuth: boolean;
+  auth: RouteAuth;
   registeredAt: string | null;
-  state: RouteState;
   pathParams: string[];
+  parameters: DocumentedParameter[];
   pipeline: PipelineStep[];
   inspection: RouteInspection;
   contract: ObservedContract;
+  /**
+   * Where clients reach the API, for the snippets (see `apiOriginOf`); null
+   * when the caller could not tell.
+   */
+  apiOrigin: string | null;
 }
+
+/**
+ * The traffic contracts of the routes opened lately. Every block around the
+ * selected route reads its detail, and reading a busy route's week of logs
+ * is what costs.
+ */
+const contracts = createMemo(16, CACHE_TTL_MS);
 
 /** The route a `METHOD /path` reference names, with its contract. */
 export async function getRouteDetail(
   models: CatalogModels,
   ref: string,
+  apiOrigin: string | null = null,
   now: Date = new Date(),
 ): Promise<RouteDetail | undefined> {
   const inspection = findRoute(ref);
   if (!inspection) return undefined;
   const method = inspection.method.toUpperCase();
-  const range = { from: new Date(now.getTime() - 7 * MS_PER_DAY), to: now };
-  const [stored, contract, traffic] = await Promise.all([
+  const path = normalizeRoutePath(inspection.location);
+  const [stored, observed] = await Promise.all([
     models.routes.getByRoute(method, inspection.location),
-    observeContract(models.logs, method, inspection.location),
-    loadTraffic(
-      models,
-      range,
-      "day",
-      new Set([scopeRouteKey(method, inspection.location)]),
+    contracts.cached(`${method} ${path}`, () =>
+      loadContractTraffic(models.logs, method, inspection.location, now),
     ),
   ]);
+  const contract = contractOf(observed);
+  const auth = authOf(inspection, contract.statuses);
   return {
-    ref: routeRef(method, inspection.location),
+    ref: routeRef(method, path),
     method,
-    path: inspection.location,
-    folder: folderOf(inspection.location),
+    path,
+    folder: folderOf(path),
     controller: inspection.controllerName,
     handler: inspection.callbackName,
     module: inspection.module ?? stored?.module ?? null,
     own: stored ? stored.own : null,
-    requiresAuth: requiresAuth(inspection),
+    requiresAuth: auth.status !== "unknown",
+    auth,
     registeredAt: stored?.createdAt?.toISOString() ?? null,
-    state: stateOf(sumBuckets(traffic)),
     pathParams: inspection.location
       .split("/")
       .filter((segment) => segment.startsWith(":"))
       .map((segment) => segment.slice(1)),
+    parameters: documentParameters(
+      inspection,
+      observed.successful,
+      contract.queryParams,
+    ),
     pipeline: pipelineOf(inspection),
     inspection,
     contract,
+    apiOrigin,
   };
 }

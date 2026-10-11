@@ -11,27 +11,41 @@ import type { User } from "@antelopejs/interface-dms/auth/db";
 import { AuthUserWithPermission } from "@antelopejs/interface-dms/guards";
 import { getConfig } from "@/config";
 import { RequestLogModel, RouteModel, RouteStatisticsModel } from "@/db";
-import { RoutesPage } from "@/pages/routes";
+import { normalizeRoutePath } from "@/db/tables/routes_statistics.table";
+import { ROUTES_DEFAULT_WINDOW, RoutesPage } from "@/pages/routes";
+import { apiOriginOf } from "@/services/api-origin";
+import { isInternalTraffic } from "@/services/request-log/capture";
+import { loadRouteHealth } from "@/services/overview";
 import {
   type CatalogModels,
   findRoute,
   getRouteDetail,
   listRoutes,
 } from "@/services/route-catalog";
+import { HEALTH_THRESHOLDS } from "@/services/health-rules";
 import {
+  errorRateChart,
+  type LatencyChartPayload,
   latencyChart,
   loadRouteTraffic,
   routeSummary,
   type RouteChartPayload,
+  type RouteSummaryPayload,
   type RouteTraffic,
   routeTopErrors,
-  statusChart,
 } from "@/services/route-statistics";
-import { getScopedRouteKeys } from "@/services/scope";
+import { getScopedRouteKeys, scopeRouteKey } from "@/services/scope";
 import { getActiveScope } from "@/services/settings";
-import { resolveWindow, type TimeWindow } from "@/services/window";
+import { loadRollups } from "@/services/traffic";
+import {
+  resolveWindow,
+  type TimeWindow,
+  type WindowPreset,
+  windowQueryFrom,
+} from "@/services/window";
 
-const DEFAULT_WINDOW_DAYS = 7;
+/** The page's own default: a statistic read without `?window=` matches it. */
+const DEFAULT_WINDOW: WindowPreset = ROUTES_DEFAULT_WINDOW;
 const ROUTE_NOT_FOUND = "Route not found";
 
 function models(): CatalogModels {
@@ -46,14 +60,9 @@ const explorer = RoutesPage.explorer;
 const statistics = ["tabs", "statistics"] as const;
 
 function windowOf(context: RequestContext): TimeWindow {
-  const params = context.url.searchParams;
   return resolveWindow(
-    {
-      from: params.get("from") ?? undefined,
-      to: params.get("to") ?? undefined,
-      comparison: params.get("comparison") ?? undefined,
-    },
-    DEFAULT_WINDOW_DAYS,
+    windowQueryFrom(context.url.searchParams),
+    DEFAULT_WINDOW,
   );
 }
 
@@ -72,9 +81,81 @@ function trafficOf(context: RequestContext): Promise<RouteTraffic> {
 }
 
 /**
+ * The first day each route was called, from the day rollups: the oldest
+ * kept, so never further back than the statistics retention.
+ */
+async function firstCalls(): Promise<Map<string, string>> {
+  const first = new Map<string, string>();
+  for (const route of await loadRollups(GetModel(RouteStatisticsModel))) {
+    const days = route.statistics
+      .filter((day) => day.requestsCount > 0)
+      .map((day) => day.day);
+    if (days.length > 0) {
+      first.set(
+        scopeRouteKey(route.method, route.uri),
+        new Date(Math.min(...days)).toISOString(),
+      );
+    }
+  }
+  return first;
+}
+
+/**
+ * Every route's health by the rules the Overview applies, over the same last
+ * 24 h, with the first day it was called: what the tree and the header show
+ * next to a route.
+ */
+async function routeHealth() {
+  const [{ lookback, routes }, first] = await Promise.all([
+    loadRouteHealth(models()),
+    firstCalls(),
+  ]);
+  const healthWindow = {
+    from: lookback.from.toISOString(),
+    to: lookback.to.toISOString(),
+    minutes: HEALTH_THRESHOLDS.lookbackMinutes,
+  };
+  const of = (method: string, path: string) => {
+    const key = scopeRouteKey(method, path);
+    const health = routes.get(key);
+    return {
+      requests: health?.traffic.requests ?? 0,
+      state: health?.state ?? ("idle" as const),
+      verdict: health?.verdict ?? ("idle" as const),
+      incident: health?.incident
+        ? {
+            start: health.incident.start?.toISOString() ?? null,
+            end: health.incident.end?.toISOString() ?? null,
+          }
+        : null,
+      p95Ms: health?.p95Ms ?? null,
+      firstCallAt: first.get(key) ?? null,
+      lastCallAt: health?.lastCall.toISOString() ?? null,
+    };
+  };
+  return { healthWindow, of };
+}
+
+/**
+ * The latest call of a route older than the health lookback, the Tester's
+ * aside. By the route's method: a HEAD its GET handler served counts.
+ */
+async function lastCallBefore(method: string, path: string) {
+  const { results } = await GetModel(RequestLogModel).query({
+    routeMethod: method,
+    uri: normalizeRoutePath(path),
+    apiTrafficOnly: true,
+    limit: 1,
+  });
+  return results[0]?.timestamp.toISOString() ?? null;
+}
+
+/**
  * The Routes page's blocks: the tree, then everything about the route the
  * URL names (`?route=METHOD%20/path`). A route is named by its method and
- * path, never by the runtime's route id, which changes on every start.
+ * path, never by the runtime's route id, which changes on every start. The
+ * Statistics blocks follow the page's window; a route's state, in the tree
+ * as in the header, is the one the Overview gives it over the last 24 h.
  */
 export class RoutesController extends Controller("/api/monitoring/routes") {
   @Get("list")
@@ -85,18 +166,50 @@ export class RoutesController extends Controller("/api/monitoring/routes") {
       GetModel(RouteModel),
       getActiveScope(),
     );
-    return { routes: await listRoutes(models(), keys) };
+    const health = await routeHealth();
+    return {
+      routes: listRoutes(keys).map((row) => ({
+        ...row,
+        ...health.of(row.method, row.path),
+      })),
+      healthWindowMinutes: HEALTH_THRESHOLDS.lookbackMinutes,
+      requestsWindowMinutes: HEALTH_THRESHOLDS.lookbackMinutes,
+      healthWindow: health.healthWindow,
+      thresholds: HEALTH_THRESHOLDS,
+    };
   }
 
+  /**
+   * Read by every block of the explorer around the selected route (the
+   * header, the tabs, the layout): guarded by the explorer itself.
+   */
   @Get("detail")
   async getDetail(
-    @AuthUserWithPermission(explorer.targetChild("header"))
+    @AuthUserWithPermission(explorer)
     _user: User,
+    @Context() context: RequestContext,
     @Parameter("route", "query") route?: string,
   ) {
-    const detail = route ? await getRouteDetail(models(), route) : undefined;
+    const [detail, health, keys] = await Promise.all([
+      route ? getRouteDetail(models(), route, apiOriginOf(context)) : undefined,
+      routeHealth(),
+      getScopedRouteKeys(GetModel(RouteModel), getActiveScope()),
+    ]);
     assert(detail, 404, ROUTE_NOT_FOUND);
-    return detail;
+    const { requests, ...state } = health.of(detail.method, detail.path);
+    return {
+      ...detail,
+      ...state,
+      lastCallAt:
+        state.lastCallAt ?? (await lastCallBefore(detail.method, detail.path)),
+      inScope: !keys || keys.has(scopeRouteKey(detail.method, detail.path)),
+      // The console's own routes are never logged: no Captured tab for them.
+      captured: !isInternalTraffic(detail.path),
+      requests24h: requests,
+      healthWindowMinutes: HEALTH_THRESHOLDS.lookbackMinutes,
+      healthWindow: health.healthWindow,
+      thresholds: HEALTH_THRESHOLDS,
+    };
   }
 
   @Get("statistics/summary")
@@ -106,13 +219,14 @@ export class RoutesController extends Controller("/api/monitoring/routes") {
     )
     _user: User,
     @Context() context: RequestContext,
-  ) {
+  ): Promise<RouteSummaryPayload> {
     return routeSummary(
       await trafficOf(context),
       getConfig().requestSlownessThreshold,
     );
   }
 
+  /** The 4xx and 5xx rates per bucket, in percent. */
   @Get("statistics/status")
   async getStatusChart(
     @AuthUserWithPermission(
@@ -121,7 +235,7 @@ export class RoutesController extends Controller("/api/monitoring/routes") {
     _user: User,
     @Context() context: RequestContext,
   ): Promise<RouteChartPayload> {
-    return statusChart(await trafficOf(context));
+    return errorRateChart(await trafficOf(context));
   }
 
   @Get("statistics/latency-chart")
@@ -131,7 +245,7 @@ export class RoutesController extends Controller("/api/monitoring/routes") {
     )
     _user: User,
     @Context() context: RequestContext,
-  ): Promise<RouteChartPayload> {
+  ): Promise<LatencyChartPayload> {
     return latencyChart(await trafficOf(context));
   }
 

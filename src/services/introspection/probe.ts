@@ -20,6 +20,7 @@ import type { ComputedParameter } from "@antelopejs/interface-api";
  */
 
 export type ParameterSource =
+  | "auth"
   | "body"
   | "query"
   | "param"
@@ -49,12 +50,24 @@ export interface ProbedParameter {
   hint?: string;
 }
 
+/** What a provider reads when it authenticates the request. */
+export const AUTH_PROVIDER =
+  /authori[sz]ation|AuthUser|AuthRawUser|authenticat/i;
+
 const PROVIDER_PATTERNS: Array<{
   source: ParameterSource;
   multi?: boolean;
   match: RegExp;
   nameGroup?: number;
 }> = [
+  // An authentication guard: interface-auth's CreateAuthDecorator providers
+  // call CheckAuthentication, the DMS tenant guards authenticate the request,
+  // hand-written ones read the authorization header. First, because the
+  // header and stream patterns below would claim them.
+  {
+    source: "auth",
+    match: AUTH_PROVIDER,
+  },
   // Route-param access with a literal name: routeParameters["x"] /
   // routeParameters.x (hand-written providers; not the stock @Parameter)
   {
@@ -195,6 +208,7 @@ function inferType(
   source: ParameterSource,
   providerText: string,
 ): InferredType {
+  if (source === "auth") return "object";
   if (source === "raw") return "buffer";
   if (source === "stream") return "stream";
   if (source === "connection") return "object";
@@ -265,6 +279,9 @@ export function probeProperty(param: ComputedParameter): ProbedProperty {
   }
   const source = providerSource(param.provider);
 
+  if (AUTH_PROVIDER.test(source)) {
+    return { decorator: "Auth" };
+  }
   // @Model(...) from interface-database-decorators reaches into GetModel
   if (/\bGetModel\b/.test(source)) {
     return { decorator: "Model" };

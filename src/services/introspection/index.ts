@@ -20,6 +20,12 @@ import {
   type RouteHandlerMode,
 } from "@antelopejs/interface-api";
 import { isAuthMiddleware } from "./auth";
+import {
+  type ControllerDecorators,
+  controllerDecorators,
+  type DecoratedParameter,
+  isAuthDecorator,
+} from "./decorators";
 import { type InferredErrorCode, probeHandlerErrors } from "./errors";
 import {
   type InferredType,
@@ -38,6 +44,8 @@ export interface ParameterInfo {
   multi: boolean;
   inferredType: InferredType;
   modifierCount: number;
+  /** The decorator that declared it, when the compiled source names it. */
+  decorator?: string;
   rawProviderSource?: string;
   hint?: string;
 }
@@ -77,6 +85,11 @@ export interface RouteInspection {
   properties: PropertyInfo[];
   applicableMiddleware: MiddlewareInfo[];
   errorCodes: InferredErrorCode[];
+  /**
+   * The authentication guards found around the handler: auth middleware
+   * before it, guard decorators on its parameters, its class or members.
+   */
+  authGuards: string[];
 }
 
 const MIDDLEWARE_MODES: ReadonlySet<RouteHandlerMode> = new Set([
@@ -85,33 +98,89 @@ const MIDDLEWARE_MODES: ReadonlySet<RouteHandlerMode> = new Set([
   "monitor",
 ]);
 
+const PARAMETER_SOURCES: ReadonlySet<string> = new Set([
+  "param",
+  "query",
+  "header",
+]);
+
+const DECLARED_TYPES: Record<string, InferredType> = {
+  String: "string",
+  Number: "number",
+  Boolean: "boolean",
+  Object: "object",
+  Buffer: "buffer",
+};
+
+/**
+ * What its decorator says about a parameter, over what its provider showed:
+ * the stock @Parameter keeps its name in a closure, and a provider crossing a
+ * module boundary is a proxy whose source is unreadable.
+ */
+function declaredParameter(
+  decorated: DecoratedParameter,
+): Partial<ParameterInfo> | undefined {
+  if (isAuthDecorator(decorated.decorator)) {
+    return {
+      source: "auth",
+      inferredType: "object",
+      hint: decorated.decorator,
+    };
+  }
+  if (
+    decorated.decorator !== "Parameter" &&
+    decorated.decorator !== "MultiParameter"
+  ) {
+    return undefined;
+  }
+  const [name, source = "param"] = decorated.args;
+  if (!name || !source || !PARAMETER_SOURCES.has(source)) return undefined;
+  const multi = decorated.decorator === "MultiParameter";
+  return {
+    name,
+    source: source as ParameterSource,
+    multi,
+    inferredType: multi
+      ? "object"
+      : (DECLARED_TYPES[decorated.type ?? ""] ?? "string"),
+  };
+}
+
 function inspectParameter(
   param: ComputedParameter | null,
   index: number,
+  decorated: DecoratedParameter | undefined,
 ): ParameterInfo {
   const probed = probeProvider(param);
-  return {
+  const info: ParameterInfo = {
     index,
     name: probed.name,
     source: probed.source,
     multi: probed.multi,
     inferredType: probed.inferredType,
     modifierCount: param?.modifiers.length ?? 0,
+    decorator: decorated?.decorator,
     rawProviderSource: probed.rawProviderSource,
     hint: probed.hint,
   };
+  const declared = decorated ? declaredParameter(decorated) : undefined;
+  return declared
+    ? { ...info, ...declared, rawProviderSource: undefined }
+    : info;
 }
 
 function inspectProperties(
   properties: Record<string, ComputedParameter>,
+  decorators: ControllerDecorators | undefined,
 ): PropertyInfo[] {
   return Object.entries(properties).map(([key, param]) => {
     const probed = probeProperty(param);
+    const guard = decorators?.propertyDecorators[key]?.find(isAuthDecorator);
     return {
       key,
-      decorator: probed.decorator,
+      decorator: guard ?? probed.decorator,
       modifierCount: param.modifiers.length,
-      rawProviderSource: probed.rawProviderSource,
+      rawProviderSource: guard ? undefined : probed.rawProviderSource,
       hint: probed.hint,
     };
   });
@@ -219,24 +288,77 @@ function controllerNameOf(handler: RouteHandler): string | null {
   return name && name !== "Object" ? name : null;
 }
 
+/**
+ * The handler as written. The callback the runtime hands out can be a proxy
+ * whose source is unreadable; the controller prototype, passed as is, still
+ * holds the method itself.
+ */
+export function handlerMethod(
+  handler: Pick<RouteHandler, "callback" | "proto">,
+): unknown {
+  const name = handler.callback.name;
+  const method = name
+    ? (handler.proto as Record<string, unknown> | undefined)?.[name]
+    : undefined;
+  return typeof method === "function" ? method : handler.callback;
+}
+
+function authGuardsOf(
+  parameters: ParameterInfo[],
+  properties: PropertyInfo[],
+  middleware: MiddlewareInfo[],
+  decorators: ControllerDecorators | undefined,
+): string[] {
+  return [
+    ...new Set([
+      ...middleware
+        .filter((entry) => entry.isAuth && entry.mode === "prefix")
+        .map((entry) => entry.callbackName),
+      ...(decorators?.classDecorators.filter(isAuthDecorator) ?? []),
+      ...properties
+        .map((property) => property.decorator)
+        .filter(
+          (decorator) => decorator === "Auth" || isAuthDecorator(decorator),
+        ),
+      ...parameters
+        .filter((parameter) => parameter.source === "auth")
+        .map((parameter) => parameter.decorator ?? "authentication"),
+    ]),
+  ];
+}
+
 function inspectHandler(id: string, handler: RouteHandler): RouteInspection {
+  const isHandler = handler.mode === "handler";
+  const callbackName = handler.callback.name || "anonymous";
+  const decorators = isHandler
+    ? controllerDecorators(handler.proto)
+    : undefined;
+  const decorated = decorators?.methods[callbackName] ?? [];
+  const parameters = handler.parameters.map((param, index) =>
+    inspectParameter(
+      param,
+      index,
+      decorated.find((entry) => entry.index === index),
+    ),
+  );
+  const properties = inspectProperties(handler.properties, decorators);
+  const middleware = isHandler
+    ? applicableMiddleware(handler.location, handler.method)
+    : [];
   return {
     id,
     location: handler.location,
     method: handler.method,
     mode: handler.mode,
-    callbackName: handler.callback.name || "anonymous",
+    callbackName,
     controllerName: controllerNameOf(handler),
     module: handler.module ?? null,
     priority: handler.priority,
-    parameters: handler.parameters.map(inspectParameter),
-    properties: inspectProperties(handler.properties),
-    applicableMiddleware:
-      handler.mode === "handler"
-        ? applicableMiddleware(handler.location, handler.method)
-        : [],
-    errorCodes:
-      handler.mode === "handler" ? probeHandlerErrors(handler.callback) : [],
+    parameters,
+    properties,
+    applicableMiddleware: middleware,
+    errorCodes: isHandler ? probeHandlerErrors(handlerMethod(handler)) : [],
+    authGuards: authGuardsOf(parameters, properties, middleware, decorators),
   };
 }
 

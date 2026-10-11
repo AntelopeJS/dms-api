@@ -1,10 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
+  errorRateChart,
   latencyChart,
   routeSummary,
   type RouteTraffic,
-  statusChart,
 } from "@/services/route-statistics";
+import {
+  emptyHistogram,
+  latencyBucketIndex,
+} from "@/services/statistics-utils";
 import { sumBuckets, type TrafficBucket } from "@/services/traffic";
 
 function bucket(start: number, fields: Partial<TrafficBucket>): TrafficBucket {
@@ -16,8 +20,16 @@ function bucket(start: number, fields: Partial<TrafficBucket>): TrafficBucket {
     totalLatency: 0,
     maxLatency: 0,
     minLatency: 0,
+    histogram: emptyHistogram(),
     ...fields,
   };
+}
+
+/** A histogram of `durations`. */
+function histogram(durations: number[]): number[] {
+  const counts = emptyHistogram();
+  for (const ms of durations) counts[latencyBucketIndex(ms)] += 1;
+  return counts;
 }
 
 const buckets = [
@@ -28,48 +40,121 @@ const buckets = [
     totalLatency: 800,
     maxLatency: 300,
     minLatency: 20,
+    histogram: histogram([20, 50, 50, 60, 80, 90, 150, 300]),
   }),
   bucket(2, {}),
-  bucket(3, { requests: 2, totalLatency: 100, maxLatency: 60, minLatency: 40 }),
+  bucket(3, {
+    requests: 2,
+    totalLatency: 100,
+    maxLatency: 60,
+    minLatency: 40,
+    histogram: histogram([40, 60]),
+  }),
 ];
 
 const traffic: RouteTraffic = {
   buckets,
   total: sumBuckets(buckets),
-  previous: bucket(0, { requests: 5, totalLatency: 400, maxLatency: 100 }),
+  previous: bucket(0, {
+    requests: 5,
+    clientErrors: 1,
+    totalLatency: 400,
+    maxLatency: 100,
+  }),
 };
 
 describe("route statistics", () => {
-  it("sums up calls, latency, errors and the slowest call", () => {
+  it("sums up calls, latency with its p95, errors and the slowest call", () => {
     const [requests, latency, errors, max] = routeSummary(traffic, 250).items;
     expect(requests).toMatchObject({ value: 10, detailTone: "success" });
     expect(requests?.detail).toMatchObject({
       params: { delta: { value: 1 } },
     });
     expect(latency?.value).toMatchObject({ params: { value: { value: 90 } } });
+    // The p95 under the average, not the minimum.
+    expect(latency?.detail).toMatchObject({
+      key: "api.routes.statistics.p95_detail",
+    });
     expect(errors?.value).toMatchObject({
       params: { rate: { value: 0.2 } },
+    });
+    expect(errors?.detail).toMatchObject({
+      params: { client: { value: 1 }, server: { value: 1 } },
     });
     expect(errors?.detailTone).toBe("error");
     expect(max).toMatchObject({ tone: "warning", detailTone: "warning" });
   });
 
-  it("splits the requests by status class", () => {
-    const chart = statusChart(traffic);
-    expect(chart.series.map((series) => series.name)).toEqual([
-      "2xx",
-      "4xx",
-      "5xx",
-    ]);
-    expect(chart.series[0]?.data[0]).toEqual({ x: 1, y: 6 });
+  it("gives the delta of an error rate in points", () => {
+    expect(errorRateChart(traffic)).toMatchObject({
+      value: 20,
+      delta: 0,
+      deltaUnit: "pt",
+    });
   });
 
-  it("draws latency only where the route was called", () => {
-    const chart = latencyChart(traffic);
+  it("says when no duration was measured, or no p95 kept", () => {
+    const days = [
+      bucket(1, { requests: 3, totalLatency: 90, histogram: null }),
+    ];
+    const old = { ...traffic, buckets: days, total: sumBuckets(days) };
+    expect(routeSummary(old, 250).items[1]?.detail).toBe(
+      "$api.routes.statistics.p95_none",
+    );
+    const untimed = [bucket(1, { requests: 2, timed: 0 })];
+    const [, latency, , max] = routeSummary(
+      { ...traffic, buckets: untimed, total: sumBuckets(untimed) },
+      250,
+    ).items;
+    expect(latency?.value).toBe("—");
+    expect(max).toMatchObject({ value: "—", tone: "muted" });
+  });
+
+  it("charts the 4xx and 5xx rates, a gap where nobody called", () => {
+    const chart = errorRateChart(traffic);
+    expect(chart.series.map((series) => series.name)).toEqual(["4xx", "5xx"]);
+    expect(chart.series[1]?.data).toEqual([
+      { x: 1, y: 12.5 },
+      { x: 2, y: null },
+      { x: 3, y: 0 },
+    ]);
+  });
+
+  it("charts average, max and p95 with gaps, and gives the slow threshold", () => {
+    const chart = latencyChart(traffic, 1000);
+    expect(chart.series.map((series) => series.name)).toEqual([
+      "$api.routes.statistics.series_average",
+      "$api.routes.statistics.series_max",
+      "$api.routes.statistics.series_p95",
+    ]);
     expect(chart.series[0]?.data).toEqual([
       { x: 1, y: 100 },
+      { x: 2, y: null },
       { x: 3, y: 50 },
     ]);
+    expect(chart.slowThresholdMs).toBe(1000);
+    // Every p95 point within its bucket's max.
+    expect(chart.series[2]?.data[0]?.y).toBeLessThanOrEqual(300);
+    expect(chart.p95Coverage).toBe(1);
+  });
+
+  it("sizes the axis to hold the slow threshold, above or below the points", () => {
+    expect(latencyChart(traffic, 1000)).toMatchObject({ yMin: 0, yMax: 1100 });
+    expect(latencyChart(traffic, 100).yMax).toBe(400);
+  });
+
+  it("leaves a day without a latency histogram out of the p95", () => {
+    const days = [
+      bucket(1, { requests: 3, totalLatency: 90, histogram: null }),
+    ];
+    const old = { ...traffic, buckets: days, total: sumBuckets(days) };
+    expect(latencyChart(old, 1000).series[2]?.data).toEqual([
+      { x: 1, y: null },
+    ]);
+    expect(latencyChart(old, 1000).p95Coverage).toBe(0);
+    expect(latencyChart(old, 1000).series[2]?.name).toBe(
+      "$api.routes.statistics.series_p95_partial",
+    );
   });
 
   it("says when there is no previous period", () => {
@@ -85,5 +170,6 @@ describe("route statistics", () => {
       detailTone: "neutral",
     });
     expect(errors?.tone).toBe("muted");
+    expect(errorRateChart(empty)).toMatchObject({ value: 0, delta: null });
   });
 });

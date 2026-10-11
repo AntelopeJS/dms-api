@@ -1,13 +1,27 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { formatCount } from '../../utils/format'
+import { sameRoute } from '../../utils/http'
+import {
+  bySeverity,
+  groupRoutes,
+  initialRoute,
+  lastRoute,
+  listedFolders,
+  needsAttention,
+  optionId,
+  rememberRoute,
+  type RouteState,
+  stepFrom,
+  windowParts,
+} from '../../utils/routeExplorer'
 import { closestMatch } from '../../utils/search'
 import ApiMethodBadge from '../internal/ApiMethodBadge.vue'
 import ApiPath from '../internal/ApiPath.vue'
 
 // Every route in scope, grouped by folder, with its traffic and health over
-// the last 24 h. The selection is the page's `?route=`, so the rest of the
-// page follows it and it survives a reload.
+// the health window the list states. The selection is the page's `?route=`,
+// so the rest of the page follows it and it survives a reload.
 defineOptions({ inheritAttrs: false })
 
 const props = withDefaults(
@@ -16,8 +30,6 @@ const props = withDefaults(
     queryKey: 'route',
   },
 )
-
-type RouteState = 'failing' | 'slow' | 'client-errors' | 'healthy' | 'idle'
 
 interface RouteRow {
   ref: string
@@ -30,47 +42,102 @@ interface RouteRow {
   state: RouteState
 }
 
-interface Folder {
-  path: string
-  routes: RouteRow[]
-  worst: RouteState
-}
-
 const METHOD_FILTERS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']
-const STATE_RANK: Record<RouteState, number> = {
-  failing: 0,
-  slow: 1,
-  'client-errors': 2,
-  healthy: 3,
-  idle: 4,
-}
+/** A shape per issue, so slow and a high 4xx rate never read alike. */
+const STATE_ICON: Partial<Record<RouteState, { name: string; class: string }>> =
+  {
+    failing: { name: 'i-ph-x-circle-fill', class: 'text-error' },
+    slow: { name: 'i-ph-timer-bold', class: 'text-warning' },
+    'client-errors': { name: 'i-ph-warning-fill', class: 'text-warning' },
+    recovered: {
+      name: 'i-ph-arrow-counter-clockwise-bold',
+      class: 'text-info',
+    },
+  }
 const STATE_DOT: Record<RouteState, string> = {
-  failing: 'bg-error shadow-[0_0_8px_var(--ui-error)]',
+  failing: 'bg-error',
   slow: 'bg-warning',
   'client-errors': 'bg-warning',
+  recovered: 'bg-info',
   healthy: 'bg-success',
   idle: 'bg-(--ui-border-accented)',
 }
+/** Below `lg` the list sits above the detail instead of beside it. */
+const STACKED_QUERY = '(max-width: 1023.98px)'
+/** Rest after the last ↑ / ↓ before the page loads the route reached. */
+const KEYBOARD_SETTLE_MS = 150
+const REVEAL_MARGIN_PX = 8
+/** Room under the card, and above it once the aside sticks (`lg:top-4`). */
+const VIEWPORT_MARGIN_PX = 16
 
 const { t } = useI18n()
 const locale = useFormatLocale()
 const selection = useRouteSelection(props.queryKey)
 const { data, error, pending, refresh } = useApiResource<{
   routes: RouteRow[]
+  /** Minutes of traffic each state is judged on. */
+  healthWindowMinutes?: number
+  /** Minutes of traffic each request count covers. */
+  requestsWindowMinutes?: number
 }>(() => props.fetchUrl)
+
+// Live, the states and counts are read again in place: the list keeps its
+// order, its scroll and the focus.
+useLiveRefresh(() => void refresh())
 
 const search = ref('')
 const method = ref('all')
 const onlyAttention = ref(false)
+const hideIdle = ref(false)
 const collapsed = ref<Set<string>>(new Set())
+// Open while nothing is selected; once a route is, the stacked layout folds
+// the list to its header so the detail comes first.
+const listOpen = ref(!selection.ref.value)
+/** The route the keyboard asked for, until the page has loaded it. */
+const cursor = ref<string | null>(null)
+let settle: ReturnType<typeof setTimeout> | null = null
 const searchInput = ref<{ inputRef?: HTMLInputElement } | null>(null)
-const list = ref<HTMLElement | null>(null)
+const scroller = ref<HTMLElement | null>(null)
+const tree = ref<HTMLElement | null>(null)
+const card = ref<{ $el?: HTMLElement } | null>(null)
+/** Where the card starts on screen, which its height ends at the fold from. */
+const cardTop = ref<number | null>(null)
+let measureFrame = 0
 
 const routes = computed(() => data.value?.routes ?? [])
-const needsAttention = (route: RouteRow) =>
-  STATE_RANK[route.state] < STATE_RANK.healthy
 const attentionCount = computed(
   () => routes.value.filter(needsAttention).length,
+)
+const idleCount = computed(
+  () => routes.value.filter((route) => route.state === 'idle').length,
+)
+const indexOf = computed(
+  () => new Map(routes.value.map((route, index) => [route.ref, index])),
+)
+const folderOf = computed(() => listedFolders(routes.value))
+
+/** The listed route the URL names, with or without its trailing slash. */
+const selected = computed(() => {
+  const current = selection.ref.value
+  if (!current) return null
+  return routes.value.find((route) => sameRoute(route.ref, current)) ?? null
+})
+const active = computed(() => cursor.value ?? selected.value?.ref ?? null)
+const activeId = computed(() => {
+  const index = active.value ? indexOf.value.get(active.value) : undefined
+  return index === undefined ? undefined : optionId(index)
+})
+
+function windowLabel(minutes: number | undefined) {
+  if (!minutes) return null
+  const { unit, amount } = windowParts(minutes)
+  return t(`api.routes.window.${unit}`, { amount })
+}
+const healthWindow = computed(() =>
+  windowLabel(data.value?.healthWindowMinutes),
+)
+const requestsWindow = computed(() =>
+  windowLabel(data.value?.requestsWindowMinutes),
 )
 
 const methodItems = computed(() => [
@@ -87,6 +154,7 @@ const visible = computed(() => {
     (route) =>
       (method.value === 'all' || route.method === method.value) &&
       (!onlyAttention.value || needsAttention(route)) &&
+      (!hideIdle.value || route.state !== 'idle') &&
       (!needle ||
         route.path.toLowerCase().includes(needle) ||
         route.handler.toLowerCase().includes(needle) ||
@@ -94,28 +162,26 @@ const visible = computed(() => {
   )
 })
 
-const folders = computed<Folder[]>(() => {
-  const groups = new Map<string, RouteRow[]>()
-  for (const route of visible.value) {
-    const group = groups.get(route.folder) ?? []
-    group.push(route)
-    groups.set(route.folder, group)
-  }
-  return [...groups].map(([path, members]) => ({
-    path,
-    routes: members,
-    worst: members.reduce<RouteState>(
-      (worst, route) =>
-        STATE_RANK[route.state] < STATE_RANK[worst] ? route.state : worst,
-      'idle',
-    ),
-  }))
-})
-
+// Needing attention, the list is flat and worst first, like the Overview.
+const flatMode = computed(() => onlyAttention.value)
+const folders = computed(() => groupRoutes(visible.value, folderOf.value))
 const flat = computed(() =>
-  folders.value.flatMap((folder) =>
-    collapsed.value.has(folder.path) ? [] : folder.routes,
-  ),
+  flatMode.value
+    ? bySeverity(visible.value)
+    : folders.value.flatMap((folder) =>
+        collapsed.value.has(folder.path) ? [] : folder.routes,
+      ),
+)
+/** What the list draws: its folders, or one flat run worst first. */
+const sections = computed(() =>
+  flatMode.value
+    ? [{ path: null, routes: flat.value, worst: 'idle' as RouteState }]
+    : folders.value,
+)
+const allCollapsed = computed(
+  () =>
+    folders.value.length > 0 &&
+    folders.value.every((folder) => collapsed.value.has(folder.path)),
 )
 
 const suggestion = computed(() =>
@@ -127,6 +193,20 @@ const suggestion = computed(() =>
     : null,
 )
 
+function stateLabel(state: RouteState) {
+  return t(`api.routes.state.${state.replace('-', '_')}`)
+}
+
+function requestsLabel(route: RouteRow) {
+  const count = formatCount(route.requests, locale.value)
+  return requestsWindow.value
+    ? t('api.routes.tree.requests_window', {
+        count,
+        window: requestsWindow.value,
+      })
+    : t('api.routes.tree.requests', { count })
+}
+
 function toggleFolder(path: string) {
   const next = new Set(collapsed.value)
   if (next.has(path)) next.delete(path)
@@ -134,27 +214,98 @@ function toggleFolder(path: string) {
   collapsed.value = next
 }
 
-function select(route: RouteRow) {
-  void selection.select(route.ref)
+function toggleAll() {
+  collapsed.value = allCollapsed.value
+    ? new Set()
+    : new Set(folders.value.map((folder) => folder.path))
 }
 
-async function move(step: number) {
-  const items = flat.value
-  if (items.length === 0) return
-  const index = items.findIndex((route) => route.ref === selection.ref.value)
-  const next = items[Math.min(items.length - 1, Math.max(0, index + step))]
-  if (!next) return
-  select(next)
+function stopSettling() {
+  if (settle) clearTimeout(settle)
+  settle = null
+}
+
+/**
+ * Scrolls the list, and only the list, until the active route shows: to the
+ * nearest edge as the keyboard walks, in the middle on arrival so the route
+ * reads with what surrounds it.
+ */
+function revealActive(center = false) {
+  const container = scroller.value
+  if (!container || !active.value) return
+  const row = container.querySelector<HTMLElement>(
+    `[data-route="${CSS.escape(active.value)}"]`,
+  )
+  if (!row) return
+  const top = row.offsetTop
+  const bottom = top + row.offsetHeight
+  const above = top < container.scrollTop
+  const below = bottom > container.scrollTop + container.clientHeight
+  if (!above && !below) return
+  if (center) {
+    container.scrollTop = top - (container.clientHeight - row.offsetHeight) / 2
+  } else if (above) {
+    container.scrollTop = top - REVEAL_MARGIN_PX
+  } else {
+    container.scrollTop = bottom - container.clientHeight + REVEAL_MARGIN_PX
+  }
+}
+
+/**
+ * The card ends at the fold wherever it starts: under the page's header on
+ * arrival, at the top once the aside sticks. A height taken from the viewport
+ * alone left its footer, and the route revealed, below the fold until the
+ * page was scrolled.
+ */
+function measureTop() {
+  measureFrame = 0
+  const element = card.value?.$el
+  if (!(element instanceof HTMLElement)) return
+  cardTop.value = Math.max(
+    VIEWPORT_MARGIN_PX,
+    Math.round(element.getBoundingClientRect().top),
+  )
+}
+
+function scheduleMeasure() {
+  if (!measureFrame) measureFrame = requestAnimationFrame(measureTop)
+}
+
+/** A route clicked: a history entry, and on a phone the detail comes up. */
+async function choose(route: RouteRow) {
+  stopSettling()
+  cursor.value = null
+  await selection.select(route.ref)
+  if (!window.matchMedia(STACKED_QUERY).matches) return
+  listOpen.value = false
   await nextTick()
-  list.value
-    ?.querySelector(`[data-route="${CSS.escape(next.ref)}"]`)
-    ?.scrollIntoView({ block: 'nearest' })
+  document
+    .getElementById('api-route-detail')
+    ?.scrollIntoView({ block: 'start', behavior: 'smooth' })
+}
+
+/**
+ * ↑ / ↓ walk the list at once and load the route reached once the keys rest,
+ * replacing the history entry: Back then leaves the page.
+ */
+async function move(step: number) {
+  const next = stepFrom(flat.value, active.value, step)
+  if (!next) return
+  cursor.value = next.ref
+  await nextTick()
+  revealActive()
+  stopSettling()
+  settle = setTimeout(() => {
+    settle = null
+    void selection.select(next.ref, { replace: true })
+  }, KEYBOARD_SETTLE_MS)
 }
 
 function clearFilters() {
   search.value = ''
   method.value = 'all'
   onlyAttention.value = false
+  hideIdle.value = false
 }
 
 function onKey(event: KeyboardEvent) {
@@ -164,35 +315,93 @@ function onKey(event: KeyboardEvent) {
   )
   if (event.key === '/' && !typing) {
     event.preventDefault()
-    searchInput.value?.inputRef?.focus()
+    listOpen.value = true
+    void nextTick(() => searchInput.value?.inputRef?.focus())
   }
 }
 
 function onListKey(event: KeyboardEvent) {
+  const length = flat.value.length
+  const steps: Record<string, number> = {
+    ArrowDown: 1,
+    ArrowUp: -1,
+    Home: -length,
+    End: length,
+  }
+  const step = steps[event.key]
+  if (step === undefined) return
+  event.preventDefault()
+  void move(step)
+}
+
+/** ↓ from the filter goes down into the list; Enter opens the first match. */
+function onSearchKey(event: KeyboardEvent) {
   if (event.key === 'ArrowDown') {
     event.preventDefault()
+    tree.value?.focus()
     void move(1)
-  } else if (event.key === 'ArrowUp') {
+  } else if (event.key === 'Enter' && flat.value[0]) {
     event.preventDefault()
-    void move(-1)
+    void choose(flat.value[0])
   }
 }
 
-onMounted(() => window.addEventListener('keydown', onKey))
-onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
+onMounted(() => {
+  window.addEventListener('keydown', onKey)
+  // Whichever element scrolls the page: scroll events do not bubble.
+  window.addEventListener('scroll', scheduleMeasure, {
+    capture: true,
+    passive: true,
+  })
+  window.addEventListener('resize', scheduleMeasure)
+  measureTop()
+})
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', onKey)
+  window.removeEventListener('scroll', scheduleMeasure, { capture: true })
+  window.removeEventListener('resize', scheduleMeasure)
+  cancelAnimationFrame(measureFrame)
+  stopSettling()
+})
 
-// A page opened without a route shows the one that needs a look first.
+// A page opened without a route shows the last one looked at in this tab,
+// else the one needing a look first, without a history entry of its own,
+// over the module's last period.
 watch(
   routes,
   (all) => {
     if (selection.ref.value || all.length === 0) return
-    const first = [...all].sort(
-      (a, b) => STATE_RANK[a.state] - STATE_RANK[b.state],
-    )[0]
-    if (first) void selection.select(first.ref)
+    const first = initialRoute(all, lastRoute())
+    if (first)
+      void selection.select(first.ref, { replace: true, restoreWindow: true })
   },
   { immediate: true },
 )
+
+watch(selection.ref, (current) => {
+  if (!settle) cursor.value = null
+  if (current) rememberRoute(current)
+})
+
+// The selected route is never hidden: its folder opens and the list
+// scrolls to it, on arrival as on a link followed.
+watch(
+  [() => selected.value?.ref, () => routes.value.length],
+  async ([current]) => {
+    if (!current) return
+    const folder = folderOf.value.get(current)
+    if (!flatMode.value && folder && collapsed.value.has(folder))
+      toggleFolder(folder)
+    await nextTick()
+    revealActive(true)
+  },
+  { flush: 'post' },
+)
+onMounted(() => {
+  if (selection.ref.value) rememberRoute(selection.ref.value)
+  // Once the card's height follows where it starts.
+  void nextTick(() => revealActive(true))
+})
 
 const count = (value: number) =>
   new Intl.NumberFormat(locale.value, {
@@ -203,175 +412,302 @@ const count = (value: number) =>
 
 <template>
   <DmsCard
+    ref="card"
     :padded="false"
-    class="flex min-h-[24rem] flex-col overflow-hidden lg:max-h-[calc(100vh-7rem)]"
+    class="flex flex-col overflow-hidden lg:max-h-[calc(100dvh-var(--api-tree-top,6rem)-1rem)] lg:min-h-[24rem]"
+    :style="cardTop === null ? undefined : { '--api-tree-top': `${cardTop}px` }"
   >
-    <div class="border-default flex flex-col gap-2.5 border-b p-3">
-      <UInput
-        ref="searchInput"
-        v-model="search"
-        icon="i-ph-magnifying-glass"
-        size="sm"
-        :placeholder="t('api.routes.tree.search')"
-        :aria-label="t('api.routes.tree.search')"
-      >
-        <template #trailing>
-          <UKbd value="/" />
-        </template>
-      </UInput>
-      <DmsSegmented
-        v-model="method"
-        :items="methodItems"
-        size="sm"
-        variant="mono"
-        block
-        :aria-label="t('api.routes.tree.method')"
-      />
-      <label
-        class="text-muted flex cursor-pointer items-center gap-2 text-[13px]"
-      >
-        <USwitch v-model="onlyAttention" size="sm" />
-        <span class="grow">{{ t('api.routes.tree.only_attention') }}</span>
-        <DmsStatusPill
-          v-if="attentionCount"
-          tone="warning"
-          :label="String(attentionCount)"
-          dot="none"
-          size="sm"
-        />
-      </label>
-    </div>
-
-    <div
-      ref="list"
-      class="min-h-0 flex-1 overflow-y-auto py-1.5 focus:outline-none"
-      tabindex="0"
-      role="listbox"
-      :aria-label="t('api.routes.tree.label')"
-      :aria-activedescendant="
-        selection.ref.value ? `route-${selection.ref.value}` : undefined
-      "
-      @keydown="onListKey"
+    <!-- Stacked above the detail, the list folds to the route it shows. -->
+    <button
+      type="button"
+      class="hover:bg-elevated flex items-center gap-2 px-3 py-2.5 text-left text-[13px] lg:hidden"
+      :aria-expanded="listOpen"
+      aria-controls="api-route-list"
+      @click="listOpen = !listOpen"
     >
-      <div v-if="pending" class="flex flex-col gap-2 px-3 py-2">
-        <USkeleton v-for="index in 8" :key="index" class="h-6 w-full" />
-      </div>
-      <DmsEmptyState
-        v-else-if="error && !data"
-        size="sm"
-        variant="error"
-        :title="t('api.routes.tree.error')"
-        :actions="[{ label: t('api.common.retry'), onClick: () => refresh() }]"
-      />
-      <DmsEmptyState
-        v-else-if="routes.length === 0"
-        size="sm"
-        :title="t('api.routes.tree.empty_title')"
-        :description="t('api.routes.tree.empty_description')"
-      />
-      <DmsEmptyState
-        v-else-if="visible.length === 0"
-        size="sm"
-        variant="no-result"
-        :title="
-          search.trim()
-            ? t('api.routes.tree.no_match', { search: search.trim() })
-            : t('api.routes.tree.no_match_filters')
-        "
-        :actions="[
-          {
-            label: t('api.routes.tree.clear'),
-            color: 'neutral',
-            variant: 'outline',
-            onClick: clearFilters,
-          },
-        ]"
-      >
-        <p v-if="suggestion" class="text-muted text-sm">
-          {{ t('api.routes.tree.did_you_mean') }}
-          <button
-            type="button"
-            class="text-primary font-mono hover:underline"
-            @click="search = suggestion"
-          >
-            {{ suggestion }}
-          </button>
-        </p>
-      </DmsEmptyState>
-
-      <template v-else>
-        <div v-for="folder in folders" :key="folder.path" class="mb-1">
-          <button
-            type="button"
-            class="text-muted hover:text-default flex w-full items-center gap-1.5 px-3 py-1.5 font-mono text-[12px]"
-            :aria-expanded="!collapsed.has(folder.path)"
-            @click="toggleFolder(folder.path)"
-          >
-            <UIcon
-              :name="
-                collapsed.has(folder.path)
-                  ? 'i-ph-caret-right'
-                  : 'i-ph-caret-down'
-              "
-              class="size-3"
-            />
-            <span class="truncate">{{ folder.path }}</span>
-            <span class="grow" />
-            <span
-              v-if="STATE_RANK[folder.worst] < STATE_RANK.healthy"
-              class="size-1.5 rounded-full"
-              :class="STATE_DOT[folder.worst]"
-            />
-            <span class="text-dimmed">{{ folder.routes.length }}</span>
-          </button>
-          <template v-if="!collapsed.has(folder.path)">
-            <button
-              v-for="route in folder.routes"
-              :id="`route-${route.ref}`"
-              :key="route.ref"
-              type="button"
-              role="option"
-              :aria-selected="route.ref === selection.ref.value"
-              :data-route="route.ref"
-              class="group mx-1.5 flex w-[calc(100%-0.75rem)] items-center gap-2 rounded-md border px-2 py-1.5 text-left text-[12.5px] transition-colors"
-              :class="
-                route.ref === selection.ref.value
-                  ? 'border-primary/60 bg-primary/10 text-highlighted'
-                  : 'hover:bg-elevated text-default border-transparent'
-              "
-              @click="select(route)"
-            >
-              <ApiMethodBadge :method="route.method" size="sm" />
-              <ApiPath :path="route.path" :prefix="folder.path" class="grow" />
-              <span class="text-dimmed font-mono text-[11px] tabular-nums">
-                {{ count(route.requests) }}
-              </span>
-              <span
-                class="size-1.5 shrink-0 rounded-full"
-                :class="STATE_DOT[route.state]"
-                :title="t(`api.routes.state.${route.state.replace('-', '_')}`)"
-              />
-            </button>
-          </template>
-        </div>
+      <UIcon name="i-ph-tree-structure" class="text-muted size-4 shrink-0" />
+      <template v-if="selected">
+        <ApiMethodBadge :method="selected.method" size="sm" />
+        <ApiPath :path="selected.path" class="grow" />
       </template>
-    </div>
+      <span v-else class="text-default grow">
+        {{ t('api.routes.tree.label') }}
+      </span>
+      <span class="text-dimmed font-mono text-[11px] tabular-nums">
+        {{ formatCount(routes.length, locale) }}
+      </span>
+      <UIcon
+        :name="listOpen ? 'i-ph-caret-up' : 'i-ph-caret-down'"
+        class="text-muted size-3.5 shrink-0"
+      />
+    </button>
 
     <div
-      class="border-default text-dimmed flex items-center gap-2 border-t px-3 py-2 font-mono text-[11px]"
+      id="api-route-list"
+      class="border-default flex min-h-0 flex-1 flex-col max-lg:border-t"
+      :class="!listOpen && 'max-lg:hidden'"
     >
-      <span>
-        {{
-          t('api.routes.tree.footer', {
-            shown: formatCount(visible.length, locale),
-            total: formatCount(routes.length, locale),
-            folders: folders.length,
-          })
-        }}
-      </span>
-      <span class="grow" />
-      <UKbd value="↑" size="sm" />
-      <UKbd value="↓" size="sm" />
+      <div class="border-default flex flex-col gap-2.5 border-b p-3">
+        <UInput
+          ref="searchInput"
+          v-model="search"
+          icon="i-ph-magnifying-glass"
+          size="sm"
+          :placeholder="t('api.routes.tree.search')"
+          :aria-label="t('api.routes.tree.search')"
+          @keydown="onSearchKey"
+        >
+          <template #trailing>
+            <UKbd value="/" />
+          </template>
+        </UInput>
+        <DmsSegmented
+          v-model="method"
+          :items="methodItems"
+          size="sm"
+          variant="mono"
+          block
+          :aria-label="t('api.routes.tree.method')"
+        />
+        <label
+          class="text-muted flex cursor-pointer items-center gap-2 text-[13px]"
+        >
+          <USwitch v-model="onlyAttention" size="sm" />
+          <span class="grow">{{ t('api.routes.tree.only_attention') }}</span>
+          <DmsStatusPill
+            v-if="attentionCount"
+            tone="warning"
+            :label="String(attentionCount)"
+            dot="none"
+            size="sm"
+          />
+        </label>
+        <label
+          class="text-muted flex cursor-pointer items-center gap-2 text-[13px]"
+        >
+          <USwitch v-model="hideIdle" size="sm" />
+          <span class="grow">{{ t('api.routes.tree.hide_idle') }}</span>
+          <span
+            v-if="idleCount"
+            class="text-dimmed font-mono text-[11px] tabular-nums"
+          >
+            {{ formatCount(idleCount, locale) }}
+          </span>
+        </label>
+      </div>
+
+      <div
+        ref="scroller"
+        class="relative min-h-0 flex-1 overflow-y-auto py-1.5 max-lg:max-h-[50vh]"
+      >
+        <p
+          v-if="healthWindow && routes.length"
+          class="text-dimmed px-3 pb-1.5 pt-0.5 font-mono text-[11px]"
+        >
+          {{ t('api.routes.tree.window', { window: healthWindow }) }}
+        </p>
+        <div v-if="pending" class="flex flex-col gap-2 px-3 py-2">
+          <USkeleton v-for="index in 8" :key="index" class="h-6 w-full" />
+        </div>
+        <DmsEmptyState
+          v-else-if="error && !data"
+          size="sm"
+          variant="error"
+          :title="t('api.routes.tree.error')"
+          :actions="[
+            { label: t('api.common.retry'), onClick: () => refresh() },
+          ]"
+        />
+        <DmsEmptyState
+          v-else-if="routes.length === 0"
+          size="sm"
+          :title="t('api.routes.tree.empty_title')"
+          :description="t('api.routes.tree.empty_description')"
+        />
+        <DmsEmptyState
+          v-else-if="visible.length === 0"
+          size="sm"
+          variant="no-result"
+          :title="
+            search.trim()
+              ? t('api.routes.tree.no_match', { search: search.trim() })
+              : t('api.routes.tree.no_match_filters')
+          "
+          :actions="[
+            {
+              label: t('api.routes.tree.clear'),
+              color: 'neutral',
+              variant: 'outline',
+              onClick: clearFilters,
+            },
+          ]"
+        >
+          <p v-if="suggestion" class="text-muted text-sm">
+            {{ t('api.routes.tree.did_you_mean') }}
+            <button
+              type="button"
+              class="text-primary font-mono hover:underline"
+              @click="search = suggestion"
+            >
+              {{ suggestion }}
+            </button>
+          </p>
+        </DmsEmptyState>
+
+        <!-- One focus stop: ↑ / ↓ move the active route
+             (aria-activedescendant), a click opens it. -->
+        <div
+          v-else
+          ref="tree"
+          role="tree"
+          tabindex="0"
+          class="focus:outline-none"
+          :aria-label="t('api.routes.tree.label')"
+          :aria-activedescendant="activeId"
+          @keydown="onListKey"
+        >
+          <div
+            v-for="section in sections"
+            :key="section.path ?? ''"
+            :role="section.path ? 'treeitem' : 'none'"
+            :aria-level="section.path ? 1 : undefined"
+            :aria-expanded="
+              section.path ? !collapsed.has(section.path) : undefined
+            "
+            :aria-label="section.path ?? undefined"
+            class="mb-1"
+          >
+            <div
+              v-if="section.path"
+              class="text-muted hover:text-default flex w-full cursor-pointer select-none items-center gap-1.5 px-3 py-1.5 font-mono text-[12px]"
+              @click="toggleFolder(section.path)"
+            >
+              <UIcon
+                :name="
+                  collapsed.has(section.path)
+                    ? 'i-ph-caret-right'
+                    : 'i-ph-caret-down'
+                "
+                class="size-3 shrink-0"
+              />
+              <span class="truncate">{{ section.path }}</span>
+              <UIcon
+                v-if="STATE_ICON[section.worst]"
+                :name="STATE_ICON[section.worst]!.name"
+                :class="STATE_ICON[section.worst]!.class"
+                class="size-3 shrink-0"
+                role="img"
+                :aria-label="stateLabel(section.worst)"
+              />
+              <span class="grow" />
+              <span
+                class="text-dimmed tabular-nums"
+                :title="
+                  t('api.routes.tree.folder_routes', section.routes.length)
+                "
+              >
+                {{ section.routes.length }}
+              </span>
+            </div>
+            <div
+              v-if="!section.path || !collapsed.has(section.path)"
+              :role="section.path ? 'group' : 'none'"
+            >
+              <div
+                v-for="route in section.routes"
+                :id="optionId(indexOf.get(route.ref) ?? 0)"
+                :key="route.ref"
+                role="treeitem"
+                :aria-level="section.path ? 2 : 1"
+                :aria-selected="route.ref === active"
+                :data-route="route.ref"
+                class="group mx-1.5 flex cursor-pointer items-center gap-2 rounded-md border px-2 py-1.5 text-[12.5px] transition-colors"
+                :class="
+                  route.ref === active
+                    ? 'border-primary/60 bg-primary/10 text-highlighted'
+                    : 'hover:bg-elevated text-default border-transparent'
+                "
+                @click="choose(route)"
+              >
+                <ApiMethodBadge :method="route.method" size="sm" />
+                <ApiPath
+                  :path="route.path"
+                  :prefix="section.path ?? ''"
+                  class="grow"
+                />
+                <span
+                  class="text-dimmed font-mono text-[11px] tabular-nums"
+                  :title="requestsLabel(route)"
+                >
+                  {{ count(route.requests) }}
+                </span>
+                <UIcon
+                  v-if="STATE_ICON[route.state]"
+                  :name="STATE_ICON[route.state]!.name"
+                  :class="STATE_ICON[route.state]!.class"
+                  class="size-3.5 shrink-0"
+                  role="img"
+                  :aria-label="stateLabel(route.state)"
+                />
+                <span
+                  v-else
+                  class="mx-1 size-1.5 shrink-0 rounded-full"
+                  :class="STATE_DOT[route.state]"
+                  role="img"
+                  :aria-label="stateLabel(route.state)"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div
+        class="border-default text-dimmed flex items-center gap-2 border-t px-3 py-2 font-mono text-[11px]"
+      >
+        <!-- The count wraps rather than being cut: the toggle beside it is an
+             icon, its name in a tooltip, so the line usually holds it all. -->
+        <span class="min-w-0">
+          {{
+            t(
+              flatMode
+                ? 'api.routes.tree.footer_flat'
+                : 'api.routes.tree.footer',
+              {
+                shown: formatCount(visible.length, locale),
+                total: formatCount(routes.length, locale),
+                folders: folders.length,
+              },
+            )
+          }}
+        </span>
+        <span class="grow" />
+        <UTooltip
+          v-if="!flatMode && folders.length > 1"
+          :text="
+            allCollapsed
+              ? t('api.routes.tree.expand_all')
+              : t('api.routes.tree.collapse_all')
+          "
+        >
+          <UButton
+            size="xs"
+            color="neutral"
+            variant="ghost"
+            square
+            class="shrink-0"
+            :icon="allCollapsed ? 'i-ph-caret-up-down' : 'i-ph-caret-line-up'"
+            :aria-label="
+              allCollapsed
+                ? t('api.routes.tree.expand_all')
+                : t('api.routes.tree.collapse_all')
+            "
+            @click="toggleAll"
+          />
+        </UTooltip>
+        <UKbd value="↑" size="sm" class="shrink-0 max-lg:hidden" />
+        <UKbd value="↓" size="sm" class="shrink-0 max-lg:hidden" />
+      </div>
     </div>
   </DmsCard>
 </template>
