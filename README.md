@@ -19,11 +19,10 @@
 - **API settings**: the routes the console watches, retention, captured
   headers and the slow threshold.
 
-It requires `@antelopejs/dms` 0.7.4 or later (`@antelopejs/interface-dms` 0.5.1)
-and `@antelopejs/dms-frontend` `>=0.5.2 <0.6.0`. The request panel and the
-Live mode rewrite the page URL, then navigate from it: dms-frontend 0.5.2
-fixes the navigation after such a rewrite, and is the version the console is
-tested with.
+It requires `@antelopejs/dms` 0.7.8 or later (`@antelopejs/interface-dms` 0.5.4)
+and `@antelopejs/dms-frontend` `>=0.5.2 <0.6.0`. DMS 0.7.8 brings the pieces
+the console is built on: the row side panel, the page's Live / Pause state, the
+period kept in the URL and the column tones.
 
 The Overview, the Request logs and Routes have a **Live / Pause** control.
 Live, the default, the page follows new requests as the DMS realtime channel
