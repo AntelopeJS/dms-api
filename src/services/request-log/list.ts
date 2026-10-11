@@ -223,6 +223,15 @@ export interface RequestLogListOptions {
    * every request of the API.
    */
   requireRoute?: boolean;
+  /**
+   * Find a request named by its id (`requestId=`) or its exact path
+   * (`filter_path`) whatever the scope: the request logs page, which the
+   * request panel links to for a path no route answers. The other tables
+   * keep to the scope.
+   */
+  findOutsideScope?: boolean;
+  /** The Tester's requests only: what the Tester finds its calls among. */
+  testerOnly?: boolean;
 }
 
 /** Whether no request can match: a scope, a route or a missing route. */
@@ -286,11 +295,12 @@ export async function listRequestLogs(
   options: RequestLogListOptions = {},
 ): Promise<RequestLogTablePage> {
   const filters = filtersFromQuery(query);
-  const scope = scopeOf(filters, keys);
+  const scope = scopeOf(filters, keys, options);
   if (matchesNothing(query, scope, options)) {
     return { results: [], total: 0, counts: { ...NO_COUNTS } };
   }
   if (scope) filters.routeKeys = [...scope];
+  if (options.testerOnly) filters.testerOnly = true;
   const page = await model.list(filters, {
     offset: positiveInt(query.offset),
     limit: isTabCount(query)
@@ -310,16 +320,17 @@ export async function listRequestLogs(
 }
 
 /**
- * The scope a listing keeps to. A request named by its id is found whatever
- * the scope, as `/logs/:id` opens it (the Tester tests routes outside the
- * scope too), and so are the requests to one path the panel links to: a
- * path no route answers is in no scope.
+ * The scope a listing keeps to. On the request logs page, a request named by
+ * its id is found whatever the scope, and so are the requests to one path
+ * the panel links to: a path no route answers is in no scope.
  */
 function scopeOf(
   filters: RequestLogFilters,
   keys: Set<string> | null,
+  options: RequestLogListOptions,
 ): Set<string> | null {
-  return filters.requestId || filters.rawPath ? null : keys;
+  const named = filters.requestId || filters.rawPath;
+  return options.findOutsideScope && named ? null : keys;
 }
 
 /** What arrived since a live view's cursor. */
@@ -361,7 +372,7 @@ export async function listRequestLogsSince(
 ): Promise<RequestLogSince> {
   const now = new Date().toISOString();
   const filters = filtersFromQuery(query);
-  const scope = scopeOf(filters, keys);
+  const scope = scopeOf(filters, keys, options);
   if (matchesNothing(query, scope, options)) {
     return {
       results: [],

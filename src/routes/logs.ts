@@ -18,6 +18,7 @@ import { ROUTES_DEFAULT_WINDOW, RoutesPage } from "@/pages/routes";
 import { apiOriginOf } from "@/services/api-origin";
 import { logsLink, routeLink, routeRef } from "@/services/links";
 import { getMaxLogDays } from "@/services/period";
+import { canReadLog, type LogTable } from "@/services/request-log/access";
 import { getRequestLog, getRouteLatency } from "@/services/request-log/read";
 import {
   listRequestLogs,
@@ -28,7 +29,7 @@ import {
 } from "@/services/request-log/list";
 import { getScopedRouteKeys } from "@/services/scope";
 import { getActiveScope } from "@/services/settings";
-import { testerBlock } from "./tester";
+import { testerBlock as tester } from "./tester";
 import { getLiveTraffic } from "@/services/live";
 import { findRoute } from "@/services/route-catalog";
 
@@ -86,6 +87,9 @@ async function sinceOf(
  */
 const ROUTE_TABLE: RequestLogListOptions = { requireRoute: true };
 
+/** The request logs page: a request named by id or path is found out of scope. */
+const LOGS_TABLE: RequestLogListOptions = { findOutsideScope: true };
+
 /** The request tables outside the request logs page, by their permission. */
 const overviewTable = OverviewPage.dashboard.targetChild(
   "recent",
@@ -99,16 +103,22 @@ const routesTable = RoutesPage.explorer.targetChild(
   "requests",
   "table",
 );
-const tester = testerBlock;
 
 /** One request in full, as the side panel shows it. */
-async function logDetail(id: string, context: RequestContext) {
+async function logDetail(id: string, context: RequestContext, table: LogTable) {
   const model = GetModel(RequestLogModel);
   const log = await getRequestLog(model, id);
   assert(log, 404, "Log not found");
   const method = log.routeMethod ?? log.method;
   const ref = routeRef(method, log.uri);
   const route = findRoute(ref);
+  // Not 403: a request out of reach is not told apart from a missing one.
+  const keys = table === "logs" ? null : await scopeKeys();
+  assert(
+    canReadLog(table, log, route !== undefined, keys),
+    404,
+    "Log not found",
+  );
   const slowThresholdMs = getConfig().requestSlownessThreshold;
   return {
     _id: log._id,
@@ -185,7 +195,11 @@ export class LogsController extends Controller("/api/monitoring/logs") {
     @AuthUserWithPermission(LogsPage.requests) _user: User,
     @Context() context: RequestContext,
   ) {
-    return listOf(context, periodQuery(context, LOGS_DEFAULT_WINDOW));
+    return listOf(
+      context,
+      periodQuery(context, LOGS_DEFAULT_WINDOW),
+      LOGS_TABLE,
+    );
   }
 
   /**
@@ -244,15 +258,20 @@ export class LogsController extends Controller("/api/monitoring/logs") {
   }
 
   /**
-   * The Tester's reads: the request it sent, by its `x-request-id`
-   * (`?requestId=`, the "Captured" tab), by the Tester's permission.
+   * The Tester's reads: the call it sent, by its `x-request-id`
+   * (`?requestId=`, the "Captured" tab), by the Tester's permission. Only
+   * the Tester's own calls, to any route, and only by id.
    */
   @Get("tester")
   async listForTester(
     @AuthUserWithPermission(tester) _user: User,
     @Context() context: RequestContext,
   ) {
-    return listOf(context);
+    const { requestId } = sourceQuery(context);
+    assert(requestId?.trim(), 400, "requestId is required");
+    return listRequestLogs(GetModel(RequestLogModel), { requestId }, null, {
+      testerOnly: true,
+    });
   }
 
   /**
@@ -267,7 +286,7 @@ export class LogsController extends Controller("/api/monitoring/logs") {
     @AuthUserWithPermission(LogsPage.requests) _user: User,
     @Context() context: RequestContext,
   ) {
-    return sinceOf(periodQuery(context, LOGS_DEFAULT_WINDOW));
+    return sinceOf(periodQuery(context, LOGS_DEFAULT_WINDOW), LOGS_TABLE);
   }
 
   @Get("live")
@@ -288,7 +307,7 @@ export class LogsController extends Controller("/api/monitoring/logs") {
     @Parameter("id", "param") id: string,
     @Context() context: RequestContext,
   ) {
-    return logDetail(id, context);
+    return logDetail(id, context, "overview");
   }
 
   /** One request for the Tester: the one it captured, or a replay. */
@@ -298,7 +317,7 @@ export class LogsController extends Controller("/api/monitoring/logs") {
     @Parameter("id", "param") id: string,
     @Context() context: RequestContext,
   ) {
-    return logDetail(id, context);
+    return logDetail(id, context, "tester");
   }
 
   /** One request for the panel the Routes page's recent requests open. */
@@ -308,7 +327,7 @@ export class LogsController extends Controller("/api/monitoring/logs") {
     @Parameter("id", "param") id: string,
     @Context() context: RequestContext,
   ) {
-    return logDetail(id, context);
+    return logDetail(id, context, "routes");
   }
 
   @Get(":id")
@@ -317,6 +336,6 @@ export class LogsController extends Controller("/api/monitoring/logs") {
     @Parameter("id", "param") id: string,
     @Context() context: RequestContext,
   ) {
-    return logDetail(id, context);
+    return logDetail(id, context, "logs");
   }
 }

@@ -211,11 +211,34 @@ describe("listRequestLogs", () => {
     );
   });
 
-  it("finds a request by its id outside the scope", async () => {
+  it("finds a request by its id outside the scope on the logs page", async () => {
     const model = fakeModel();
-    await listRequestLogs(model, { requestId: "6f1c" }, new Set());
+    await listRequestLogs(model, { requestId: "6f1c" }, new Set(), {
+      findOutsideScope: true,
+    });
     expect(model.list).toHaveBeenCalledWith(
       { requestId: "6f1c" },
+      expect.anything(),
+    );
+  });
+
+  it("keeps the other tables to the scope, an id or a path named", async () => {
+    const model = fakeModel();
+    const keys = new Set(["GET:/api/orders"]);
+    await listRequestLogs(model, { filter_path: "is:/admin" }, keys);
+    expect(model.list).toHaveBeenCalledWith(
+      { rawPath: "/admin", routeKeys: ["GET:/api/orders"] },
+      expect.anything(),
+    );
+  });
+
+  it("lists the Tester's calls alone when asked", async () => {
+    const model = fakeModel();
+    await listRequestLogs(model, { requestId: "6f1c" }, null, {
+      testerOnly: true,
+    });
+    expect(model.list).toHaveBeenCalledWith(
+      { requestId: "6f1c", testerOnly: true },
       expect.anything(),
     );
   });
@@ -257,12 +280,13 @@ describe("listRequestLogs", () => {
     );
   });
 
-  it("lists the requests to one path outside the scope", async () => {
+  it("lists the requests to one path outside the scope on the logs page", async () => {
     const model = fakeModel();
     await listRequestLogs(
       model,
       { filter_path: "is:/api/nope" },
       new Set(["GET:/api/orders"]),
+      { findOutsideScope: true },
     );
     expect(model.list).toHaveBeenCalledWith(
       { rawPath: "/api/nope" },

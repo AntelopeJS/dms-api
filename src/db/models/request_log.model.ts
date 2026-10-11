@@ -70,6 +70,8 @@ export interface RequestLogFilters {
    * as the statistics and the health do. The request table keeps them.
    */
   apiTrafficOnly?: boolean;
+  /** The Tester's requests only. */
+  testerOnly?: boolean;
   cursor?: string;
   limit?: number;
   /**
@@ -275,8 +277,7 @@ export class RequestLogModel extends BasicDataModel(
           )
         : [],
       this.countByStatus({ ...window, apiTrafficOnly: true }),
-      this.applyFilters(this.table, window)
-        .filter((doc) => doc.key("source").default("").eq(TESTER_SOURCE))
+      this.applyFilters(this.table, { ...window, testerOnly: true })
         .count()
         .run(),
     ]);
@@ -373,6 +374,9 @@ export class RequestLogModel extends BasicDataModel(
     }
     if (filters.apiTrafficOnly) {
       q = q.filter((doc) => doc.key("source").default("").eq(""));
+    }
+    if (filters.testerOnly) {
+      q = q.filter((doc) => doc.key("source").default("").eq(TESTER_SOURCE));
     }
     const routeId = filters.routeId;
     if (routeId) {
