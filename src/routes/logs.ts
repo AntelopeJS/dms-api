@@ -10,7 +10,7 @@ import { GetModel } from "@antelopejs/interface-database-decorators";
 import type { User } from "@antelopejs/interface-dms/auth/db";
 import { AuthUserWithPermission } from "@antelopejs/interface-dms/guards";
 import { getConfig } from "@/config";
-import { RequestLogModel, RouteModel } from "@/db";
+import { RequestLogModel, RouteModel, RouteStatisticsModel } from "@/db";
 import { normalizeRoutePath } from "@/db/tables/routes_statistics.table";
 import { LOGS_DEFAULT_WINDOW, LogsPage } from "@/pages/logs";
 import { OVERVIEW_DEFAULT_WINDOW, OverviewPage } from "@/pages/overview";
@@ -155,7 +155,11 @@ async function logDetail(id: string, context: RequestContext, table: LogTable) {
     slowThresholdMs,
     // What the duration compares to: the route's usual, over its last days.
     routeLatency: route
-      ? await getRouteLatency(model, { method, uri: log.uri }, slowThresholdMs)
+      ? await getRouteLatency(
+          { stats: GetModel(RouteStatisticsModel), logs: model },
+          { method, uri: log.uri },
+          slowThresholdMs,
+        )
       : null,
     // Where the cURL of the panel sends the request: the real API.
     apiOrigin: apiOriginOf(context),

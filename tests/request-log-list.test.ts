@@ -12,7 +12,11 @@ import {
 } from "@/services/request-log/list";
 import { STATUS_CLASS_RANGES } from "@/db/models/request_log.status";
 import { getRouteLatency } from "@/services/request-log/read";
-import { MS_PER_DAY, MS_PER_HOUR } from "@/types";
+import {
+  emptyHistogram,
+  latencyBucketIndex,
+} from "@/services/statistics-utils";
+import { type DayStatistics, MS_PER_DAY, MS_PER_HOUR } from "@/types";
 
 const NOW = new Date("2026-10-07T15:00:00.000Z");
 
@@ -396,35 +400,70 @@ describe("listRequestLogsSince", () => {
   });
 });
 
+/** A day rollup of a route whose calls took `durations`. */
+function rollupDay(day: number, durations: number[]): DayStatistics {
+  const latencyHistogram = emptyHistogram();
+  for (const ms of durations) latencyHistogram[latencyBucketIndex(ms)] += 1;
+  const total = durations.reduce((sum, ms) => sum + ms, 0);
+  return {
+    day,
+    requestsCount: durations.length,
+    timedRequestsCount: durations.length,
+    averageResponseTime: total / durations.length,
+    minResponseTime: Math.min(...durations),
+    maxResponseTime: Math.max(...durations),
+    totalResponseTime: total,
+    clientErrorsCount: 0,
+    serverErrorsCount: 0,
+    latencyHistogram,
+  };
+}
+
 describe("getRouteLatency", () => {
-  it("reads the p50, p95 and slow requests of a route's week", async () => {
-    const samples = vi.fn(() =>
-      Promise.resolve([
-        { statusCode: 200, responseTimeMs: 10 },
-        { statusCode: 200, responseTimeMs: 20 },
-        { statusCode: 200, responseTimeMs: 1200 },
-        { statusCode: 500, responseTimeMs: 3000 },
-        { statusCode: 404, responseTimeMs: null },
-      ] as never),
-    );
+  const today = new Date(NOW).setHours(0, 0, 0, 0);
+
+  it("reads the p50 and p95 of a route's week from its rollups", async () => {
+    const statistics = [
+      rollupDay(today - 9 * MS_PER_DAY, [9000, 9000, 9000]),
+      rollupDay(
+        today - MS_PER_DAY,
+        Array.from({ length: 19 }, () => 20),
+      ),
+      rollupDay(today, [1200]),
+    ];
+    const getByRoute = vi.fn(() => Promise.resolve({ statistics } as never));
+    const list = vi.fn(() => Promise.resolve({ results: [], total: 2 }));
     const latency = await getRouteLatency(
-      { samples },
+      { stats: { getByRoute }, logs: { list } },
       { method: "GET", uri: "/api/latency-a" },
       1000,
       NOW,
     );
-    expect(latency).toEqual({ windowDays: 7, p50: 20, p95: 1200, slow: 2 });
-    expect(samples).toHaveBeenCalledWith({
-      routeMethod: "GET",
-      uri: "/api/latency-a",
-      since: new Date(NOW.getTime() - 7 * MS_PER_DAY),
-      apiTrafficOnly: true,
-    });
+    expect(latency?.windowDays).toBe(7);
+    expect(latency?.slow).toBe(2);
+    // 19 calls of 20 ms and one of 1.2 s: the older day is left out.
+    expect(latency?.p50).toBeGreaterThanOrEqual(20);
+    expect(latency?.p50).toBeLessThan(25);
+    expect(latency?.p95).toBeLessThanOrEqual(25);
+    expect(getByRoute).toHaveBeenCalledWith("GET", "/api/latency-a");
+    expect(list).toHaveBeenCalledWith(
+      {
+        routeMethod: "GET",
+        uri: "/api/latency-a",
+        since: new Date(NOW.getTime() - 7 * MS_PER_DAY),
+        apiTrafficOnly: true,
+        slowThresholdMs: 1000,
+      },
+      { limit: 0 },
+    );
   });
 
-  it("is null without a successful request measured", async () => {
+  it("is null without a call measured", async () => {
     const latency = await getRouteLatency(
-      { samples: () => Promise.resolve([] as never) },
+      {
+        stats: { getByRoute: () => Promise.resolve(undefined) },
+        logs: { list: () => Promise.resolve({ results: [], total: 0 }) },
+      },
       { method: "GET", uri: "/api/latency-b" },
       1000,
       NOW,

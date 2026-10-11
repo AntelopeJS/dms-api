@@ -1,12 +1,12 @@
-import type { RequestLogModel } from "@/db";
+import type { RequestLogModel, RouteStatisticsModel } from "@/db";
 import type {
   RequestLogFilters,
   RequestLogPage,
 } from "@/db/models/request_log.model";
 import type { RequestLog } from "@/db/tables/request_log.table";
-import { MS_PER_DAY } from "@/types";
+import { type DayStatistics, MS_PER_DAY } from "@/types";
 import { createMemo } from "../../memo";
-import { exactQuantile } from "../statistics-utils";
+import { emptyHistogram, histogramQuantile } from "../statistics-utils";
 
 /**
  * How far back a scoped query reaches when its caller names no window. Wide
@@ -83,55 +83,84 @@ export const ROUTE_LATENCY_WINDOW_DAYS = 7;
 /** What a request's duration compares to, in the panel: its route's usual. */
 export interface RouteLatency {
   windowDays: number;
-  /** Medians of the measured successful requests (< 400), in ms. */
+  /** Median and p95 of the route's measured calls, in ms. */
   p50: number;
   p95: number;
   /** Requests of the window at or above the slowness threshold. */
   slow: number;
 }
 
+/** The stores a route's latency is read from. */
+export interface RouteLatencySources {
+  stats: Pick<RouteStatisticsModel, "getByRoute">;
+  logs: Pick<RequestLogModel, "list">;
+}
+
 /**
  * A route's latency is read again at most every minute: every request the
- * panel opens on the same route asks for it, over a week of traffic.
+ * panel opens on the same route asks for it.
  */
 const routeLatencies = createMemo(64, 60_000);
 
+/** The latency histogram and extremes of the days from `firstDay` on. */
+function daysLatency(days: readonly DayStatistics[], firstDay: number) {
+  const histogram = emptyHistogram();
+  let min = Infinity;
+  let max = 0;
+  for (const day of days) {
+    if (day.day < firstDay || day.timedRequestsCount === 0) continue;
+    day.latencyHistogram?.forEach((count, index) => {
+      histogram[index] += count;
+    });
+    min = Math.min(min, day.minResponseTime);
+    max = Math.max(max, day.maxResponseTime);
+  }
+  return { histogram, range: { min, max } };
+}
+
 /**
- * The p50 and p95 of a route over the last days, the Tester's requests left
- * out, as the Documentation reads them; null with no successful request
+ * The p50 and p95 of a route over its last days, read from its day rollups'
+ * latency histograms (the Tester's calls are not in them), and how many of
+ * its requests were slow, counted by the database. Null with no call
  * measured.
  */
 export function getRouteLatency(
-  model: Pick<RequestLogModel, "samples">,
+  sources: RouteLatencySources,
   route: { method: string; uri: string },
   slowThresholdMs: number,
   now: Date = new Date(),
 ): Promise<RouteLatency | null> {
   const key = `${route.method} ${route.uri} ${slowThresholdMs}`;
   return routeLatencies.cached(key, async () => {
-    const samples = await model.samples({
-      routeMethod: route.method,
-      uri: route.uri,
-      since: new Date(now.getTime() - ROUTE_LATENCY_WINDOW_DAYS * MS_PER_DAY),
-      apiTrafficOnly: true,
-    });
-    const measured = samples.filter(
-      (sample): sample is typeof sample & { responseTimeMs: number } =>
-        typeof sample.responseTimeMs === "number",
+    const since = new Date(
+      now.getTime() - ROUTE_LATENCY_WINDOW_DAYS * MS_PER_DAY,
     );
-    const successful = measured
-      .filter((sample) => sample.statusCode < 400)
-      .map((sample) => sample.responseTimeMs);
-    const p50 = exactQuantile(successful, 0.5);
-    const p95 = exactQuantile(successful, 0.95);
+    const firstDay = new Date(since).setHours(0, 0, 0, 0);
+    const [rollup, slow] = await Promise.all([
+      sources.stats.getByRoute(route.method, route.uri),
+      sources.logs.list(
+        {
+          routeMethod: route.method,
+          uri: route.uri,
+          since,
+          apiTrafficOnly: true,
+          slowThresholdMs,
+        },
+        { limit: 0 },
+      ),
+    ]);
+    const { histogram, range } = daysLatency(
+      rollup?.statistics ?? [],
+      firstDay,
+    );
+    const p50 = histogramQuantile(histogram, 0.5, range);
+    const p95 = histogramQuantile(histogram, 0.95, range);
     if (p50 === null || p95 === null) return null;
     return {
       windowDays: ROUTE_LATENCY_WINDOW_DAYS,
       p50,
       p95,
-      slow: measured.filter(
-        (sample) => sample.responseTimeMs >= slowThresholdMs,
-      ).length,
+      slow: slow.total,
     };
   });
 }
