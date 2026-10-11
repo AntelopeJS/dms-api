@@ -690,7 +690,6 @@
     },
     "tester": {
       "send": "Envoyer",
-      "cancel": "Annuler",
       "session": "Envoyer avec ma session",
       "auth": {
         "session": "Votre jeton de session est envoyé",
@@ -728,7 +727,6 @@
         "none": "Aucun"
       },
       "format": "Formater",
-      "body_aria": "Corps de la requête ({mode})",
       "json_warning": "JSON invalide : {message}. Il est envoyé tel quel.",
       "body_redacted": "{count} valeur masquée, {names} : remplacez-la avant l'envoi. | {count} valeurs masquées, {names} : remplacez-les avant l'envoi.",
       "body_hint": {
@@ -754,8 +752,6 @@
         "empty": "corps vide",
         "not-read": "réponse envoyée avant qu’un handler ne le lise"
       },
-      "name": "Nom",
-      "value": "Valeur",
       "remove": "Retirer",
       "add_header": "Ajouter un en-tête",
       "add_query": "Ajouter un paramètre",
@@ -865,7 +861,6 @@
       "clear": "Effacer",
       "history_cleared": "Historique effacé ({count} appel) | Historique effacé ({count} appels)",
       "history_abandoned": "l'API l'a peut-être reçue",
-      "history_migration_dropped": "{count} appel de l'historique gardé par une version précédente n'a pas pu être lu : il a été effacé. | {count} appels de l'historique gardé par une version précédente n'ont pas pu être lus : ils ont été effacés.",
       "undo": "Annuler",
       "secrets_not_kept": "{names} n'a pas été conservé : saisissez-le de nouveau pour envoyer la même requête.",
       "replayed": "Requête capturée chargée",

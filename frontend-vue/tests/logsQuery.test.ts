@@ -7,7 +7,6 @@ import {
   logsArrival,
   logsArrivalMiddleware,
   shownTab,
-  routeLabel,
   withDefaultWindow,
   logsEmptyCause,
   readLogsFilters,
@@ -212,8 +211,7 @@ describe('the default period', () => {
 })
 
 describe('route chips', () => {
-  it('names a route without the trailing slash of an older link', () => {
-    expect(routeLabel('post /webhooks/stripe/')).toBe('POST /webhooks/stripe')
+  it('tells a route reference from anything else', () => {
     expect(isRouteRef('GET /api/orders')).toBe(true)
     expect(isRouteRef('garbage')).toBe(false)
   })

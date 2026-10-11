@@ -9,7 +9,7 @@
 // all keep. `?from=` names the page a link came from, for the band that says
 // so.
 
-import { normalizeRouteRef, parseRouteRef } from './http'
+import { parseRouteRef } from './http'
 
 type Query = Record<string, unknown>
 
@@ -128,11 +128,6 @@ export function hasIncident(filters: LogsFilters): boolean {
  */
 export function hasLinkFilters(filters: LogsFilters): boolean {
   return LINK_FILTER_KEYS.some((key) => !!filters[key]) || hasIncident(filters)
-}
-
-/** `METHOD /path` as the module names it: canonical path, method upper case. */
-export function routeLabel(route: string): string {
-  return normalizeRouteRef(route)
 }
 
 /** Whether a `?route=` can name a route at all (`garbage` cannot). */

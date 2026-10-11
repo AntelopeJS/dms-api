@@ -124,29 +124,6 @@ export function routeRef(method: string, path: string): string {
   return `${method.toUpperCase()} ${path}`
 }
 
-/**
- * A route path as the module names it: without the trailing slash a
- * controller path may carry, except for the root `/` (the backend's
- * `normalizeRoutePath`).
- */
-export function normalizeRoutePath(path: string): string {
-  return path.length > 1 ? path.replace(/\/+$/, '') || '/' : path
-}
-
-/** `METHOD /path` with its path canonical; anything else as it is. */
-export function normalizeRouteRef(ref: string): string {
-  const parsed = parseRouteRef(ref)
-  return parsed ? routeRef(parsed.method, normalizeRoutePath(parsed.path)) : ref
-}
-
-/**
- * Whether two references name the same route, with or without the trailing
- * slash a controller path may carry.
- */
-export function sameRoute(a: string, b: string): boolean {
-  return normalizeRouteRef(a) === normalizeRouteRef(b)
-}
-
 export function parseRouteRef(
   ref: string | null | undefined,
 ): { method: string; path: string } | null {

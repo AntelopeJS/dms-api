@@ -690,7 +690,6 @@
     },
     "tester": {
       "send": "Send",
-      "cancel": "Cancel",
       "session": "Send with my session",
       "auth": {
         "session": "Your session token is sent",
@@ -728,7 +727,6 @@
         "none": "None"
       },
       "format": "Format",
-      "body_aria": "Request body ({mode})",
       "json_warning": "Not valid JSON: {message}. It is sent as typed.",
       "body_redacted": "{count} masked value, {names}: replace it before sending. | {count} masked values, {names}: replace them before sending.",
       "body_hint": {
@@ -754,8 +752,6 @@
         "empty": "empty body",
         "not-read": "answered before a handler read it"
       },
-      "name": "Name",
-      "value": "Value",
       "remove": "Remove",
       "add_header": "Add header",
       "add_query": "Add parameter",
@@ -865,7 +861,6 @@
       "clear": "Clear",
       "history_cleared": "History cleared ({count} call) | History cleared ({count} calls)",
       "history_abandoned": "the API may have received it",
-      "history_migration_dropped": "{count} call of the history kept by an earlier version could not be read: it was cleared. | {count} calls of the history kept by an earlier version could not be read: they were cleared.",
       "undo": "Undo",
       "secrets_not_kept": "{names} was not kept: type it again to send the same request.",
       "replayed": "Captured request loaded",

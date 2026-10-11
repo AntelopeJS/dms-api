@@ -2,7 +2,6 @@
 import {
   computed,
   onBeforeUnmount,
-  onMounted,
   reactive,
   ref,
   useId,
@@ -20,7 +19,6 @@ import {
   isWritingMethod,
   pathSegments,
   routeRef,
-  sameRoute,
   statusText,
 } from '../../utils/http'
 import { fillPath, toCurl } from '../../utils/snippets'
@@ -68,7 +66,6 @@ import {
   loadDraft,
   loadHistory,
   lostSecrets,
-  migrateHistory,
   patchResult,
   rememberConfirmedWrite,
   type ReplayInfo,
@@ -174,8 +171,6 @@ const {
 const apiOrigin = useApiOrigin(() => route.value?.apiOrigin)
 const blockerId = useId()
 const bodyHintId = useId()
-// Before the first route loads its history.
-const migration = migrateHistory()
 
 let nextRowId = 0
 const row = (name = '', value = ''): Row => ({ id: nextRowId++, name, value })
@@ -648,7 +643,7 @@ async function replay(id: string, ref: string) {
     )
     if (activeRef !== ref) return
     const capturedRef = log.route ?? routeRef(log.method, log.uri)
-    if (!sameRoute(capturedRef, ref)) {
+    if (capturedRef !== ref) {
       toast.add({
         title: t('api.tester.replay_other_route', { route: capturedRef }),
         color: 'warning',
@@ -800,7 +795,6 @@ async function send() {
   const started = performance.now()
   const sentSecrets = secretNames(outgoing.headers)
   const common = {
-    sentWithSession: sentAuth === 'session',
     auth: sentAuth,
     ...(sentSecrets.length ? { secrets: sentSecrets } : {}),
     requestId,
@@ -900,7 +894,7 @@ async function findCaptured(
   if (
     !found ||
     Date.parse(found.timestamp) < target.at - CAPTURE_MATCH_MS ||
-    (found.route && activeRef && !sameRoute(found.route, activeRef))
+    (found.route && activeRef && found.route !== activeRef)
   )
     return null
   return $authFetch<CapturedRequest>(
@@ -1060,6 +1054,14 @@ async function copyCurl() {
   }
 }
 
+/** What the user typed in the body editor (not a body loaded into it). */
+function editBody(value: string | null | undefined) {
+  const next = value ?? ''
+  if (next === body.value) return
+  body.value = next
+  origin.value = 'edited'
+}
+
 function formatBody() {
   if (formattedBody.value === null) return
   body.value = formattedBody.value
@@ -1068,27 +1070,18 @@ function formatBody() {
 
 // --- Keyboard ---
 
+/**
+ * Ctrl/Cmd+Enter sends from a field of the tester only, never from the rest
+ * of the page (the route filter, the command palette); `send` still asks
+ * before a write it has not confirmed.
+ */
 function onKey(event: KeyboardEvent) {
-  if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
-    event.preventDefault()
-    void send()
-  }
+  if (event.key !== 'Enter' || !(event.metaKey || event.ctrlKey)) return
+  if (event.isComposing) return
+  event.preventDefault()
+  void send()
 }
-onMounted(() => {
-  window.addEventListener('keydown', onKey)
-  if (migration.dropped)
-    toast.add({
-      title: t(
-        'api.tester.history_migration_dropped',
-        { count: migration.dropped },
-        migration.dropped,
-      ),
-      color: 'warning',
-      icon: 'i-ph-clock-counter-clockwise',
-    })
-})
 onBeforeUnmount(() => {
-  window.removeEventListener('keydown', onKey)
   flushDraft()
   // A call in flight still lands in its route's history and draft.
   unmounted = true
@@ -1165,7 +1158,12 @@ const shortcut = computed(() =>
 <template>
   <div v-if="!selection.ref.value" />
   <USkeleton v-else-if="pending" class="h-72" />
-  <div v-else-if="route" data-dms-api-tester class="flex flex-col gap-4">
+  <div
+    v-else-if="route"
+    data-dms-api-tester
+    class="flex flex-col gap-4"
+    @keydown.capture="onKey"
+  >
     <DmsCard :padded="false">
       <!-- The method and the path keep a line of their own when the card is
            narrow: the buttons go under them, and a long path wraps. -->
@@ -1224,7 +1222,7 @@ const shortcut = computed(() =>
             color="neutral"
             variant="soft"
             icon="i-ph-x"
-            :label="t('api.tester.cancel')"
+            :label="t('dms.confirm.cancel')"
             @click="cancel"
           />
           <UButton
@@ -1372,24 +1370,14 @@ const shortcut = computed(() =>
               (bodyMode === 'json' || bodyMode === 'text')
             "
           >
-            <UTextarea
-              v-model="body"
-              :rows="12"
-              autoresize
-              :maxrows="24"
-              class="w-full font-mono text-[12.5px]"
-              :color="
-                jsonWarning || redactedBodyFields.length ? 'warning' : undefined
-              "
-              :highlight="!!jsonWarning || redactedBodyFields.length > 0"
-              :aria-label="
-                t('api.tester.body_aria', {
-                  mode: t(`api.tester.body_modes.${bodyMode}`),
-                })
-              "
+            <DmsInputCode
+              :key="bodyMode"
+              :model-value="body"
+              :language="bodyMode === 'json' ? 'json' : 'text'"
+              :min-lines="12"
+              :max-lines="24"
               :aria-describedby="bodyHintId"
-              spellcheck="false"
-              @update:model-value="origin = 'edited'"
+              @update:model-value="editBody"
             />
           </template>
 
@@ -1430,15 +1418,15 @@ const shortcut = computed(() =>
                   v-model="entry.name"
                   size="sm"
                   class="@sm:w-2/5 w-full font-mono"
-                  :placeholder="t('api.tester.name')"
-                  :aria-label="t('api.tester.name')"
+                  :placeholder="t('dms.form.key_value.key')"
+                  :aria-label="t('dms.form.key_value.key')"
                 />
                 <UInput
                   v-model="entry.value"
                   size="sm"
                   class="min-w-0 flex-1 font-mono"
-                  :placeholder="t('api.tester.value')"
-                  :aria-label="t('api.tester.value')"
+                  :placeholder="t('dms.form.key_value.value')"
+                  :aria-label="t('dms.form.key_value.value')"
                   :color="hasRedacted(entry.value) ? 'warning' : undefined"
                   :highlight="hasRedacted(entry.value)"
                   :title="

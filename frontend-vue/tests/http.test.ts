@@ -3,11 +3,8 @@ import {
   acceptsRequestBody,
   isWritingMethod,
   methodTone,
-  normalizeRoutePath,
-  normalizeRouteRef,
   parseRouteRef,
   pathSegments,
-  sameRoute,
   startsWithRequestBody,
   statusClassOf,
   statusText,
@@ -62,20 +59,4 @@ describe('http', () => {
     expect(parseRouteRef('nope')).toBeNull()
   })
 
-  it('matches a route with or without its trailing slash', () => {
-    expect(sameRoute('GET /api/orders/', 'GET /api/orders')).toBe(true)
-    expect(sameRoute('get /api/orders', 'GET /api/orders/')).toBe(true)
-    expect(sameRoute('GET /', 'GET /')).toBe(true)
-    expect(sameRoute('POST /api/orders', 'GET /api/orders')).toBe(false)
-  })
-
-  it('names a route by its canonical path, as the module does', () => {
-    expect(normalizeRoutePath('/api/orders/')).toBe('/api/orders')
-    expect(normalizeRoutePath('/api/orders//')).toBe('/api/orders')
-    expect(normalizeRoutePath('/')).toBe('/')
-    expect(normalizeRoutePath('//')).toBe('/')
-    expect(normalizeRouteRef('post /api/orders/')).toBe('POST /api/orders')
-    expect(normalizeRouteRef('GET /api/orders/:id')).toBe('GET /api/orders/:id')
-    expect(normalizeRouteRef('nope')).toBe('nope')
-  })
 })

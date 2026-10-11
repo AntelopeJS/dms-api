@@ -9,7 +9,6 @@ import {
   LINK_FILTER_KEYS,
   LOG_METHODS,
   readLogsFilters,
-  routeLabel,
   routeMethod,
   withLogsFilters,
   type LogsFiltersPatch,
@@ -123,7 +122,7 @@ function linkChip(key: (typeof LINK_FILTER_KEYS)[number], value: string): Chip {
   return {
     key,
     label: t(`api.logs.linked.${key}`, {
-      value: key === 'route' ? routeLabel(value) : value,
+      value: value,
     }),
     remove: { [key]: null } as LogsFiltersPatch,
   }
@@ -203,7 +202,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       :text="
         methodLocked
           ? t('api.logs.filters.method_locked', {
-              route: routeLabel(filters.route ?? ''),
+              route: filters.route ?? '',
             })
           : undefined
       "

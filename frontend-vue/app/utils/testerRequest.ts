@@ -135,7 +135,6 @@ export interface TesterResult {
   bodyTruncated?: boolean
   error?: TesterErrorCode
   message?: string
-  sentWithSession: boolean
   auth: AuthMode
   /** Credential headers it was sent with, by name: their values are never kept. */
   secrets?: string[]

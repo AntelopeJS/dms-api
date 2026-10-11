@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { formatCount } from '../../utils/format'
-import { sameRoute } from '../../utils/http'
 import {
   bySeverity,
   groupRoutes,
@@ -116,11 +115,11 @@ const indexOf = computed(
 )
 const folderOf = computed(() => listedFolders(routes.value))
 
-/** The listed route the URL names, with or without its trailing slash. */
+/** The listed route the URL names. */
 const selected = computed(() => {
   const current = selection.ref.value
   if (!current) return null
-  return routes.value.find((route) => sameRoute(route.ref, current)) ?? null
+  return routes.value.find((route) => route.ref === current) ?? null
 })
 const active = computed(() => cursor.value ?? selected.value?.ref ?? null)
 const activeId = computed(() => {

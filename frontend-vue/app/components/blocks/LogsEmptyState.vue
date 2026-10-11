@@ -16,7 +16,6 @@ import {
   hasLogsFilters,
   logsEmptyCause,
   readLogsFilters,
-  routeLabel,
   shownTab,
   withDefaultWindow,
   withLogsFilters,
@@ -218,7 +217,7 @@ const content = computed(() => {
         icon: 'i-ph-link-simple',
         title: current.route
           ? t('api.logs.empty.route_title', {
-              route: routeLabel(current.route),
+              route: current.route,
             })
           : current.path
             ? t('api.logs.empty.route_title', { route: current.path })
