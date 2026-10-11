@@ -32,7 +32,6 @@ import {
   pruneRequestLogs,
   syncRoutes,
 } from "./services";
-import { stopLiveFeed } from "./services/live-feed";
 import { isSensitiveHeader } from "./services/request-log/redaction";
 import { configErrors } from "./services/settings-form";
 import { SCHEMA_NAME } from "./types/constants";
@@ -80,7 +79,6 @@ export function destroy(): void {}
 
 export async function stop(): Promise<void> {
   unregisterAutomationNodes();
-  stopLiveFeed();
   if (pruneTask) {
     await pruneTask.stop();
     pruneTask = null;

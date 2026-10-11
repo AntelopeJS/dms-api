@@ -105,7 +105,7 @@ export const REQUEST_LOG_LIST_MAX_ROWS = 5000;
 
 /**
  * Realtime topic the live blocks follow (`realtimeTopic`): the capture
- * publishes on it what it logged since its last message (see
+ * publishes on it each request it logged (see
  * `services/live-feed.ts`), and the Overview, Request logs and Routes pages,
  * declared `live`, are bound to it.
  */
@@ -113,10 +113,3 @@ export const LIVE_REQUESTS_TOPIC = "api:monitor:requests";
 
 /** Type of the messages published on {@link LIVE_REQUESTS_TOPIC}. */
 export const LIVE_REQUESTS_EVENT = "requests";
-
-/**
- * Least time between two messages on {@link LIVE_REQUESTS_TOPIC}. The DMS
- * debounces what it receives (180 ms, restarted by each event) and a page
- * refreshes on each message: one per request would never settle.
- */
-export const LIVE_BATCH_MS = 1_500;
