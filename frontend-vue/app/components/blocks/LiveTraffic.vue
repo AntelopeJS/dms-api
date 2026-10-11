@@ -1,38 +1,38 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { formatCount } from '../../utils/format'
+import { computed, ref, watch } from 'vue'
+import { formatClock, formatCount } from '../../utils/format'
+import { bodyLimit } from '../../utils/logsQuery'
+import {
+  axisTicks,
+  liveStatus,
+  minuteBars,
+  peakBar,
+  type MinuteBucket,
+} from '../../utils/minuteHistogram'
 
 // The shape of the last hour above the request table: requests per minute by
-// status class, refreshed while Live is on. A poll that fails says so and
-// retries, instead of a "Live" badge over a dead stream.
+// status class, for all traffic whatever the table's filters. It follows the
+// page's Live / Pause control (`LiveControl`): read again on each live
+// refresh, still while paused, and it says which. A read that fails says so
+// at once, with the time of the data still shown; the next refresh retries.
 defineOptions({ inheritAttrs: false })
 
 const props = defineProps<{
   fetchUrl: string
+  /** The body size limit of the capture, in bytes (0: bodies not kept). */
+  maxBodyBytes?: number
   pageId?: string
   componentId?: string
 }>()
 
-interface LiveBucket {
-  start: number
-  success: number
-  clientErrors: number
-  serverErrors: number
-}
-
 interface LivePayload {
-  buckets: LiveBucket[]
+  buckets: MinuteBucket[]
   total: number
   clientErrors: number
   serverErrors: number
   refreshedAt: string
   retentionDays: number
-  maxBodyKb: number
 }
-
-const POLL_MS = 5_000
-const RETRY_MS = 10_000
-const FAILURES_BEFORE_PAUSE = 3
 
 const { t } = useI18n()
 const locale = useFormatLocale()
@@ -40,147 +40,191 @@ const { data, error, pending, refresh } = useApiResource<LivePayload>(
   () => props.fetchUrl,
 )
 
-const live = ref(true)
+const { live } = useLiveMode()
 const failures = ref(0)
-let timer: ReturnType<typeof setTimeout> | undefined
-
-function schedule() {
-  clearTimeout(timer)
-  if (!live.value) return
-  const paused = failures.value >= FAILURES_BEFORE_PAUSE
-  timer = setTimeout(poll, paused ? RETRY_MS : POLL_MS)
-}
 
 async function poll() {
   await refresh()
   failures.value = error.value ? failures.value + 1 : 0
-  schedule()
 }
 
-function toggleLive() {
-  live.value = !live.value
-}
+useLiveRefresh(() => void poll())
 
-watch(live, (on) => {
-  if (on) {
-    failures.value = 0
-    void poll()
-  } else clearTimeout(timer)
+// A first load that failed counts as a failed poll: the graph says it is
+// reconnecting at once, not after the next poll.
+watch(pending, (loading) => {
+  if (!loading && error.value && failures.value === 0) failures.value = 1
 })
 
-function onKey(event: KeyboardEvent) {
-  const target = event.target as HTMLElement | null
-  if (target?.closest('input, textarea, select, [contenteditable="true"]'))
-    return
-  if (
-    event.key.toLowerCase() === 'l' &&
-    !event.metaKey &&
-    !event.ctrlKey &&
-    !event.altKey
-  ) {
-    toggleLive()
+const status = computed(() => liveStatus(live.value, failures.value))
+
+const count = (value: number) => formatCount(value, locale.value)
+const minute = (start: number) =>
+  new Date(start).toLocaleTimeString(locale.value, {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  })
+
+const kept = computed(() => {
+  if (!data.value) return ''
+  const days = data.value.retentionDays
+  if (props.maxBodyBytes === undefined) return t('api.live.kept_days', { days })
+  const limit = bodyLimit(props.maxBodyBytes)
+  if (limit.unit === 'none') return t('api.live.kept_no_bodies', { days })
+  return t('api.live.kept', {
+    days,
+    size: t(`api.live.size_${limit.unit}`, {
+      amount: new Intl.NumberFormat(locale.value).format(limit.amount),
+    }),
+  })
+})
+
+const lastData = computed(() =>
+  data.value
+    ? t('api.live.last_data', {
+        time: formatClock(data.value.refreshedAt, locale.value),
+      })
+    : t('api.live.no_data_yet'),
+)
+
+const chart = computed(() =>
+  minuteBars(data.value?.buckets ?? [], data.value?.refreshedAt),
+)
+const ticks = computed(() => axisTicks(chart.value.bars))
+
+// The chart's text alternative: the totals and the busiest minute.
+const summary = computed(() => {
+  const payload = data.value
+  if (!payload || payload.total === 0) return t('api.live.summary_empty')
+  const peak = peakBar(chart.value.bars)
+  return t('api.live.summary', {
+    total: count(payload.total),
+    client: count(payload.clientErrors),
+    server: count(payload.serverErrors),
+    peak: count(peak?.total ?? 0),
+    time: peak ? minute(peak.start) : '',
+  })
+})
+
+const hovered = ref<number | null>(null)
+const hoveredBar = computed(() =>
+  hovered.value === null ? undefined : chart.value.bars[hovered.value],
+)
+
+const tooltip = computed(() => {
+  const bar = hoveredBar.value
+  if (!bar) return ''
+  const parts = [minute(bar.start)]
+  if (bar.total === 0) parts.push(t('api.live.tooltip_none'))
+  else {
+    parts.push(t('api.live.total', { count: count(bar.total) }, bar.total))
+    if (bar.clientErrors) parts.push(`4xx ${count(bar.clientErrors)}`)
+    if (bar.serverErrors) parts.push(`5xx ${count(bar.serverErrors)}`)
+  }
+  if (bar.current) parts.push(t('api.live.tooltip_current'))
+  return parts.join(' · ')
+})
+
+// Kept inside the card: anchored left near the start, right near the end.
+const TOOLTIP_EDGE_BARS = 8
+const tooltipStyle = computed(() => {
+  const index = hovered.value ?? 0
+  const length = chart.value.bars.length || 1
+  const left = ((index + 0.5) / length) * 100
+  const shift =
+    index < TOOLTIP_EDGE_BARS
+      ? '0%'
+      : index >= length - TOOLTIP_EDGE_BARS
+        ? '-100%'
+        : '-50%'
+  return { left: `${left}%`, transform: `translateX(${shift})` }
+})
+
+const tickStyle = (index: number) => {
+  const length = chart.value.bars.length || 1
+  if (index === 0) return { left: '0' }
+  if (index === length - 1) return { right: '0' }
+  return {
+    left: `${((index + 0.5) / length) * 100}%`,
+    transform: 'translateX(-50%)',
   }
 }
 
-onMounted(() => {
-  schedule()
-  window.addEventListener('keydown', onKey)
-})
-onBeforeUnmount(() => {
-  clearTimeout(timer)
-  window.removeEventListener('keydown', onKey)
-})
-
-// Filters another page linked here with (`?route=`, `?error=`, `?slow=`):
-// the table applies them without a chip of its own, so they are named here,
-// each with a way out.
-const LINK_FILTERS = ['route', 'error', 'slow'] as const
-const currentRoute = useDmsRoute()
-const router = useDmsRouter()
-const linkFilters = computed(() =>
-  LINK_FILTERS.filter(
-    (key) =>
-      typeof currentRoute.query[key] === 'string' && currentRoute.query[key],
-  ).map((key) => ({ key, value: currentRoute.query[key] as string })),
-)
-
-function clearFilter(key?: string) {
-  const query: Record<string, string> = { ...currentRoute.query }
-  for (const name of key ? [key] : LINK_FILTERS) delete query[name]
-  void router.push({ query })
+// A segment's share of its bar, the bar being its segments' sum.
+const share = (part: number, bar: { heights: Record<string, number> }) => {
+  const sum =
+    bar.heights.success + bar.heights.clientErrors + bar.heights.serverErrors
+  return sum === 0 ? '0%' : `${(part / sum) * 100}%`
 }
-
-const paused = computed(
-  () => live.value && failures.value >= FAILURES_BEFORE_PAUSE,
-)
-
-const series = computed(() => {
-  const buckets = data.value?.buckets ?? []
-  const points = (pick: (bucket: LiveBucket) => number) =>
-    buckets.map((bucket) => ({ x: bucket.start, y: pick(bucket) }))
-  return [
-    { name: '2xx', data: points((bucket) => bucket.success) },
-    { name: '4xx', data: points((bucket) => bucket.clientErrors) },
-    { name: '5xx', data: points((bucket) => bucket.serverErrors) },
-  ]
-})
-
-const count = (value: number) => formatCount(value, locale.value)
 </script>
 
 <template>
   <DmsCard :padded="false" class="overflow-hidden">
     <template #header>
-      <div class="flex w-full flex-wrap items-center gap-3">
+      <div class="flex w-full flex-wrap items-center gap-x-3 gap-y-1.5">
         <DmsEyebrow :label="t('api.live.title')" />
-        <span class="text-dimmed font-mono text-[11px]">
-          {{
-            data
-              ? t('api.live.kept', {
-                  days: data.retentionDays,
-                  kb: count(data.maxBodyKb),
-                })
-              : ''
-          }}
-        </span>
+        <span class="text-dimmed font-mono text-[11px]">{{ kept }}</span>
         <span class="grow" />
-        <span v-if="data" class="text-muted font-mono text-[11px]">
-          {{ t('api.live.total', { count: count(data.total) }, data.total) }}
-          <span v-if="data.clientErrors" class="text-warning">
-            · 4xx {{ count(data.clientErrors) }}
+        <span
+          v-if="data"
+          class="text-muted flex flex-wrap items-center gap-x-2 font-mono text-[11px]"
+        >
+          <span>
+            {{ t('api.live.total', { count: count(data.total) }, data.total) }}
           </span>
-          <span v-if="data.serverErrors" class="text-error">
-            · 5xx {{ count(data.serverErrors) }}
+          <span class="inline-flex items-center gap-1">
+            <span class="bg-(--dms-chart-1) size-2 rounded-[2px]" />
+            {{ t('api.live.legend_success') }}
+          </span>
+          <span class="inline-flex items-center gap-1">
+            <span class="bg-warning size-2 rounded-[2px]" />
+            4xx {{ count(data.clientErrors) }}
+          </span>
+          <span class="inline-flex items-center gap-1">
+            <span class="bg-error size-2 rounded-[2px]" />
+            5xx {{ count(data.serverErrors) }}
           </span>
         </span>
-        <UTooltip :text="t('api.live.shortcut')">
-          <UButton
-            size="xs"
-            :color="live && !paused ? 'success' : 'neutral'"
-            :variant="live ? 'soft' : 'outline'"
-            :icon="
-              live
-                ? paused
-                  ? 'i-ph-pause-circle'
-                  : 'i-ph-broadcast'
-                : 'i-ph-play'
-            "
-            :label="
-              live
-                ? paused
-                  ? t('api.live.paused')
-                  : t('api.live.on')
-                : t('api.live.off')
-            "
-            :aria-pressed="live"
-            @click="toggleLive"
+        <span
+          role="status"
+          class="text-warning flex items-center gap-1.5 font-mono text-[11px]"
+        >
+          <template v-if="status === 'reconnecting'">
+            <UIcon name="i-ph-cloud-warning" class="size-3.5" />
+            {{ t('api.live.reconnecting') }} · {{ lastData }}
+          </template>
+        </span>
+        <UButton
+          v-if="status === 'reconnecting'"
+          size="xs"
+          color="neutral"
+          variant="outline"
+          icon="i-ph-arrow-clockwise"
+          :label="t('api.common.retry')"
+          @click="poll()"
+        />
+        <span
+          v-if="status === 'live'"
+          class="text-success flex items-center gap-1.5 font-mono text-[11px]"
+        >
+          <span
+            class="bg-success size-1.5 rounded-full motion-safe:animate-pulse"
           />
-        </UTooltip>
+          {{ t('api.live.following') }}
+        </span>
+        <span
+          v-else-if="status === 'paused'"
+          class="text-muted flex items-center gap-1.5 font-mono text-[11px]"
+        >
+          <UIcon name="i-ph-pause-fill" class="size-3" />
+          {{ t('api.live.paused') }} · {{ lastData }}
+        </span>
       </div>
     </template>
 
     <div class="px-3 pb-2 pt-1">
-      <div v-if="pending" class="flex h-[96px] items-end gap-[3px] px-2">
+      <div v-if="pending" class="flex h-[112px] items-end gap-[2px] px-2">
         <USkeleton
           v-for="index in 60"
           :key="index"
@@ -188,83 +232,110 @@ const count = (value: number) => formatCount(value, locale.value)
           :style="{ height: `${20 + ((index * 37) % 60)}%` }"
         />
       </div>
-      <DmsChart
-        :page-id="pageId ?? ''"
-        :component-id="`${componentId ?? 'api'}-chart`"
-        v-else-if="data"
-        type="column"
-        height="96px"
-        :static-dataset="series"
-        :color="['--dms-chart-1', 'warning', 'error']"
-        stacked
-        :show-legend="false"
-        :show-grid="false"
-        xaxis-type="datetime"
-        :rounded-corners="false"
-        :column-width="70"
-      />
+      <div v-else-if="data">
+        <div class="text-dimmed mb-1 font-mono text-[10px]">
+          <template v-if="chart.ceiling">
+            {{ t('api.live.scale', { count: count(chart.ceiling) }) }}
+            <template v-if="chart.clipped">
+              · {{ t('api.live.scale_cut') }}
+            </template>
+          </template>
+        </div>
+        <div class="relative" @mouseleave="hovered = null">
+          <div
+            role="img"
+            :aria-label="summary"
+            class="flex h-[112px] items-stretch gap-[2px] transition-opacity"
+            :class="{ 'opacity-50 grayscale': status === 'reconnecting' }"
+          >
+            <div
+              v-for="(bar, index) in chart.bars"
+              :key="bar.start"
+              class="relative flex flex-1 flex-col justify-end"
+              :class="{ 'dms-api-live-current': bar.current }"
+              @mouseenter="hovered = index"
+            >
+              <div
+                v-if="bar.total"
+                class="relative flex flex-col-reverse gap-px overflow-hidden rounded-t-[2px]"
+                :style="{
+                  height: `${
+                    bar.heights.success +
+                    bar.heights.clientErrors +
+                    bar.heights.serverErrors
+                  }%`,
+                }"
+              >
+                <span
+                  v-if="bar.success"
+                  class="bg-(--dms-chart-1) block shrink-0"
+                  :style="{ height: share(bar.heights.success, bar) }"
+                />
+                <span
+                  v-if="bar.clientErrors"
+                  class="bg-warning block shrink-0"
+                  :style="{ height: share(bar.heights.clientErrors, bar) }"
+                />
+                <span
+                  v-if="bar.serverErrors"
+                  class="bg-error block shrink-0"
+                  :style="{ height: share(bar.heights.serverErrors, bar) }"
+                />
+                <span
+                  v-if="bar.current"
+                  class="dms-api-live-hatch absolute inset-0"
+                />
+              </div>
+              <span
+                v-if="bar.clipped"
+                class="bg-inverted absolute inset-x-0 top-0 h-[2px]"
+              />
+            </div>
+          </div>
+          <div
+            v-if="hoveredBar"
+            class="bg-inverted text-inverted pointer-events-none absolute top-0 z-10 -translate-y-[calc(100%+4px)] whitespace-nowrap rounded px-2 py-1 font-mono text-[11px] shadow-sm"
+            :style="tooltipStyle"
+          >
+            {{ tooltip }}
+          </div>
+        </div>
+        <div class="text-dimmed relative mt-1 h-3.5 font-mono text-[10px]">
+          <span
+            v-for="index in ticks"
+            :key="index"
+            class="absolute top-0"
+            :style="tickStyle(index)"
+          >
+            {{ minute(chart.bars[index].start) }}
+          </span>
+        </div>
+      </div>
       <DmsEmptyState
         v-else
         size="sm"
         variant="error"
         :title="t('api.live.error')"
-        :actions="[{ label: t('api.common.retry'), onClick: () => poll() }]"
+        :description="t('api.live.error_description')"
       />
     </div>
-
-    <div
-      v-if="linkFilters.length"
-      class="border-default flex flex-wrap items-center gap-2 border-t px-4 py-2.5 text-[12.5px]"
-    >
-      <span class="text-muted">{{ t('api.live.filtered') }}</span>
-      <UBadge
-        v-for="filter in linkFilters"
-        :key="filter.key"
-        color="primary"
-        variant="soft"
-        class="max-w-[28rem] gap-1.5 font-mono"
-      >
-        <span class="truncate">
-          {{ t(`api.live.filter_${filter.key}`, { value: filter.value }) }}
-        </span>
-        <button
-          type="button"
-          class="hover:text-highlighted"
-          :aria-label="t('api.live.remove_filter')"
-          @click="clearFilter(filter.key)"
-        >
-          <UIcon name="i-ph-x" class="size-3" />
-        </button>
-      </UBadge>
-      <UButton
-        size="xs"
-        color="neutral"
-        variant="link"
-        :label="t('api.live.clear_filters')"
-        @click="clearFilter()"
-      />
-    </div>
-
-    <DmsBanner
-      v-if="paused"
-      tone="warning"
-      size="sm"
-      icon="i-ph-cloud-warning"
-      class="mx-3 mb-3"
-      :title="t('api.live.paused_title')"
-      :description="
-        t('api.live.paused_description', { seconds: RETRY_MS / 1000 })
-      "
-    >
-      <template #actions>
-        <UButton
-          size="xs"
-          color="neutral"
-          variant="outline"
-          :label="t('api.live.resume')"
-          @click="poll()"
-        />
-      </template>
-    </DmsBanner>
   </DmsCard>
 </template>
+
+<style scoped>
+/* The minute still running: a hatched track, and its bar hatched over. */
+.dms-api-live-current {
+  background-image: repeating-linear-gradient(
+    135deg,
+    color-mix(in oklab, var(--ui-border-accented) 60%, transparent) 0 1px,
+    transparent 1px 5px
+  );
+}
+.dms-api-live-hatch {
+  background-image: repeating-linear-gradient(
+    135deg,
+    color-mix(in oklab, var(--ui-bg) 55%, transparent) 0 2px,
+    transparent 2px 5px
+  );
+}
+</style>

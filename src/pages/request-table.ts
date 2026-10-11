@@ -8,7 +8,13 @@ import {
 import type { ComponentBuilder } from "@antelopejs/interface-dms/component";
 import { LOG_WINDOWS } from "@/services/request-log/list";
 import { apiBlock } from "./blocks";
-import { TimeDisplay } from "./displays";
+import {
+  ErrorDisplay,
+  PathDisplay,
+  RequestDurationDisplay,
+  RequestIdDisplay,
+  TimeDisplay,
+} from "./displays";
 
 /** Route answering the request tables, in the `TableView.fromSource` shape. */
 const REQUEST_LOGS_URL = "/api/monitoring/logs";
@@ -42,30 +48,29 @@ function select(values: readonly string[], labelKey?: string) {
   });
 }
 
-/** Every column a request table may show, keyed by row field. */
+/**
+ * Every column a request table may show, keyed by row field. None is
+ * filterable from the table's own Filters panel: the pages filter through
+ * their URL (`QUERY_PARAM_FILTERS`, the logs page's own), which a filter kept
+ * by the table in a cookie would override.
+ *
+ * A size is the least a column gets, its header readable with its sort and
+ * menu buttons; the table spreads the room left in proportion. The columns
+ * of the request logs fit the 865 px a 1 280 px screen leaves them, beside
+ * the row's action, which the DMS keeps pinned to the right. Status and
+ * duration come right after the time: with the request panel docked, the
+ * table shows its first 450 px or so. The path takes the room left; the
+ * request ID, which the panel and the search hold too, is hidden until the
+ * column menu shows it.
+ */
 const REQUEST_COLUMNS: Record<string, TableViewSourceColumn> = {
   timestamp: {
     name: "$api.logs.columns.time",
     type: new DefaultDataTypes.DateType(),
     display: new TimeDisplay({ milliseconds: true }),
     sortable: true,
-    size: 130,
+    size: 140,
     order: 1,
-  },
-  method: {
-    name: "$api.logs.columns.method",
-    type: select(HTTP_METHODS),
-    display: new DefaultDisplays.StatusPillDisplay({ tones: METHOD_TONES }),
-    filterable: true,
-    size: 96,
-    order: 2,
-  },
-  path: {
-    name: "$api.logs.columns.path",
-    type: new DefaultDataTypes.StringType(),
-    display: new DefaultDisplays.MonoDisplay(),
-    size: 240,
-    order: 3,
   },
   status: {
     name: "$api.logs.columns.status",
@@ -73,91 +78,156 @@ const REQUEST_COLUMNS: Record<string, TableViewSourceColumn> = {
     display: new DefaultDisplays.StatusPillDisplay({ toneField: "statusTone" }),
     sortable: true,
     size: 116,
-    order: 4,
+    order: 2,
   },
   responseTimeMs: {
     name: "$api.logs.columns.duration",
     type: new DefaultDataTypes.NumberType(),
-    display: new DefaultDisplays.DurationDisplay(),
+    display: new RequestDurationDisplay(),
     sortable: true,
-    size: 124,
+    size: 132,
+    order: 3,
+  },
+  method: {
+    name: "$api.logs.columns.method",
+    type: select(HTTP_METHODS),
+    display: new DefaultDisplays.StatusPillDisplay({ tones: METHOD_TONES }),
+    filterable: false,
+    size: 104,
+    order: 4,
+  },
+  path: {
+    name: "$api.logs.columns.path",
+    type: new DefaultDataTypes.StringType(),
+    display: new PathDisplay(),
+    filterable: false,
+    size: 160,
     order: 5,
+  },
+  // The message is what a 4xx or a 5xx is about: shown, and searched. Keyed
+  // `message`, not `error`: the table preferences of earlier versions kept
+  // the `error` column hidden, and the DMS keeps a column's visibility once
+  // seen, so the column under a new key shows for everyone. `?error=` needs
+  // no column: the URL filter goes to the route as it is.
+  message: {
+    name: "$api.logs.columns.error",
+    type: new DefaultDataTypes.StringType(),
+    display: new ErrorDisplay(),
+    filterable: false,
+    size: 140,
+    order: 6,
   },
   _id: {
     name: "$api.logs.columns.request_id",
     type: new DefaultDataTypes.StringType(),
-    display: new DefaultDisplays.MonoDisplay({ copy: true }),
-    size: 220,
-    order: 6,
+    display: new RequestIdDisplay(),
+    isVisible: false,
+    size: 128,
+    order: 7,
   },
   statusClass: {
     name: "$api.logs.columns.status_class",
     type: select(STATUS_CLASSES),
     isVisible: false,
-    filterable: true,
-    order: 7,
+    filterable: false,
+    order: 8,
   },
   slow: {
     name: "$api.logs.columns.slow",
     type: new DefaultDataTypes.BooleanType(),
     isVisible: false,
-    filterable: true,
-    order: 8,
+    filterable: false,
+    order: 9,
   },
   window: {
     name: "$api.logs.columns.window",
     type: select(LOG_WINDOWS, "$api.logs.windows"),
     isVisible: false,
-    filterable: true,
-    order: 9,
+    filterable: false,
+    order: 10,
   },
   route: {
     name: "$api.logs.columns.route",
     type: new DefaultDataTypes.StringType(),
     isVisible: false,
-    filterable: true,
-    order: 10,
-  },
-  error: {
-    name: "$api.logs.columns.error",
-    type: new DefaultDataTypes.StringType(),
-    isVisible: false,
-    filterable: true,
+    filterable: false,
     order: 11,
   },
 };
 
-/** The drawer a request opens in, shared by every request table. */
-function requestDrawerAction() {
+/**
+ * Columns a table keeps, hidden, when its page does not show them: the tabs
+ * and the URL filter on them.
+ */
+const FILTER_COLUMNS = new Set([
+  "method",
+  "statusClass",
+  "slow",
+  "window",
+  "route",
+]);
+
+/** The console pages holding a request table. */
+export type RequestTablePage = "logs" | "overview" | "routes";
+
+/**
+ * Query key a row writes the request it opens under: the frontend turns it
+ * into `?record=` over the page's own query, without a visit
+ * (`utils/requestDrawer.ts`), and the page's `RequestDrawerHost` block opens
+ * that request in the side panel on the right.
+ */
+const OPEN_REQUEST_KEY = "open-request";
+
+/**
+ * Icon of a row's action opening its request. The DMS names the button
+ * `row-action-<id>-<icon>`, by which the panel finds the rows: keep it equal
+ * to `REQUEST_ACTION_ICON` in `frontend-vue/app/utils/requestDrawer.ts`.
+ */
+const REQUEST_ACTION_ICON = "i-ph-sidebar-simple";
+
+/** Opens a request of the table: the same page, with the request named. */
+function requestDrawerAction(page: RequestTablePage) {
   return {
     label: "$api.logs.open_request",
-    icon: "i-ph-sidebar-simple",
-    // Drawn inline: the DMS table runs an `isDefault` action on a double
-    // click only, so the row's own button is the one-click way to open it.
+    icon: REQUEST_ACTION_ICON,
+    // Drawn inline: the panel finds the rows by it, and a click on a row
+    // clicks it (the DMS table runs an `isDefault` action on a double click
+    // only).
     isVisible: true,
     isDefault: true,
-    deepLink: true,
     target: {
-      type: "drawer" as const,
-      direction: "right" as const,
-      component: apiBlock("RequestDetail"),
-      title: "$api.logs.drawer_title",
+      type: "page" as const,
+      url: `/modules/api/${page}?${OPEN_REQUEST_KEY}={_id}`,
     },
   };
 }
 
-/** Query parameters another page links to the request table with. */
+/**
+ * The invisible block opening the request a row asks for, from the right.
+ * Every page holding a request table holds one.
+ */
+export function requestDrawerHost(): ComponentBuilder<unknown> {
+  return apiBlock("RequestDrawerHost") as ComponentBuilder<unknown>;
+}
+
+/**
+ * Query parameters another page links to the request table with, and the
+ * page's period (`?window=`). The logs page declares its own set.
+ */
 const QUERY_PARAM_FILTERS = {
   route: { field: "route", mode: "is" },
   error: { field: "error", mode: "is" },
   slow: { field: "slow", mode: "is" },
+  window: { field: "window", mode: "is" },
 };
 
 type RequestTableOptions = Omit<
   TableViewSourceOptions,
   "columns" | "fetchUrl" | "capabilities" | "rowActions"
 > & {
-  /** Visible columns, by row field; every column when left out. */
+  /** The page the table is on: its rows open their request over it. */
+  page: RequestTablePage;
+  /** Visible columns, by row field, in their order; every shown column when left out. */
   columns?: string[];
   /** Column widths in px, for a table narrower than the logs page's. */
   sizes?: Record<string, number>;
@@ -167,24 +237,45 @@ type RequestTableOptions = Omit<
 
 /**
  * A table over the captured requests. The route pages, searches, sorts and
- * filters on the server; a row opens the request drawer. `?route=`,
+ * filters on the server; a row opens the request panel of the page's
+ * `RequestDrawerHost` block, which the page must hold. `?route=`,
  * `?error=` and `?slow=` in the page URL filter it on arrival, so another
  * page can link to "the 5xx of this route".
  */
 export function requestTable(
   options: RequestTableOptions,
 ): ComponentBuilder<unknown> {
-  const { columns, sizes, fetchUrl = REQUEST_LOGS_URL, ...rest } = options;
+  const {
+    page,
+    columns,
+    sizes,
+    fetchUrl = REQUEST_LOGS_URL,
+    ...rest
+  } = options;
   const picked = Object.fromEntries(
     Object.entries(REQUEST_COLUMNS)
       .filter(
-        ([key, column]) =>
-          !columns || columns.includes(key) || column.isVisible === false,
+        ([key]) => !columns || columns.includes(key) || FILTER_COLUMNS.has(key),
       )
-      .map(([key, column]) => [
-        key,
-        sizes?.[key] ? { ...column, size: sizes[key] } : column,
-      ]),
+      .map(([key, column]) => {
+        // A page's columns come in its order (status and duration first on
+        // a narrow card), the ones it hides after them.
+        const index = columns?.indexOf(key) ?? -1;
+        const order = columns
+          ? index >= 0
+            ? index + 1
+            : columns.length + (column.order ?? 0)
+          : column.order;
+        return [
+          key,
+          {
+            ...column,
+            order,
+            ...(columns && index < 0 && { isVisible: false }),
+            ...(sizes?.[key] && { size: sizes[key] }),
+          },
+        ];
+      }),
   );
   return TableView.fromSource({
     ...rest,
@@ -192,7 +283,7 @@ export function requestTable(
     fetchUrl,
     rowIdKey: "_id",
     capabilities: { search: true, sort: true, paginate: true, filter: true },
-    rowActions: { custom: [requestDrawerAction()] },
+    rowActions: { custom: [requestDrawerAction(page)] },
   }).mergeOptions({
     // A source table does not take `queryParamFilters` in its options, but
     // its client honours them like any table: they are how a link narrows it.

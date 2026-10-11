@@ -1,15 +1,50 @@
 import { DefaultLayout } from "@antelopejs/interface-dms/base/layouts";
 import { PageController, RegisterPage } from "@antelopejs/interface-dms/page";
+import { getConfig } from "@/config";
 import { apiBlock } from "./blocks";
 import { monitorCategory } from "./module";
-import { requestTable } from "./request-table";
+import { liveBanner, liveControl, pageToolbar } from "./live";
+import { requestDrawerHost, requestTable } from "./request-table";
+import { scopeChip } from "./scope-chip";
 
 const LOGS_PAGE_SIZE = 50;
 
 /**
- * Request logs: every captured request, newest first. Filter by status class,
- * method, slowness or period, search a path, a request id or an error, then
- * open a request to see its error, timing, headers and bodies.
+ * The period of the request logs when its URL names none and the module has
+ * no period of the session to restore (`LogsPeriod`): the table's route
+ * applies it, so no visit lists every request kept.
+ */
+export const LOGS_DEFAULT_WINDOW = "24h";
+
+/**
+ * The page's filters, read from its URL by the request table: a link sets
+ * them (`?route=`, `?path=`, `?error=`, `?slow=`, `?window=`, and an
+ * incident's `?since=` / `?until=`), the period selector and the filters bar
+ * change them. Unlike the table's own quick filters, kept in a cookie, they
+ * are one state that a reload, Back and a shared link keep, and that the tab
+ * counts follow. A URL filter needs no column: the table sends it to the
+ * route as `filter_<field>`, which reads `filter_from` / `filter_to` as the
+ * `[from, to)` range of the incident.
+ */
+const LOGS_QUERY_FILTERS = {
+  route: { field: "route", mode: "is" },
+  path: { field: "path", mode: "is" },
+  error: { field: "error", mode: "is" },
+  slow: { field: "slow", mode: "is" },
+  window: { field: "window", mode: "is" },
+  method: { field: "method", mode: "is" },
+  since: { field: "from", mode: "is" },
+  until: { field: "to", mode: "is" },
+};
+
+/** Draws every empty state of the request table, naming its cause. */
+const emptyState = apiBlock("LogsEmptyState");
+
+/**
+ * Request logs: every captured request, newest first. Filter by period,
+ * status class, method, slowness, route or error, search a path, a request
+ * id or an error, then open a request to see its error, timing, headers and
+ * bodies.
  */
 @RegisterPage()
 export class LogsPage extends PageController(
@@ -24,12 +59,46 @@ export class LogsPage extends PageController(
   },
   DefaultLayout(),
 ) {
-  static live = apiBlock("LiveTraffic", {
-    fetchUrl: "/api/monitoring/logs/live",
+  // Opens the request a row asks for, from the right; draws nothing.
+  static requestDrawer = requestDrawerHost();
+
+  // The toolbar of every monitoring page (`pageToolbar`): the scope, then
+  // the page's Live / Pause control and the period.
+  static toolbar = pageToolbar({
+    scope: scopeChip(),
+    live: liveControl({
+      page: "logs",
+      sinceUrl: "/api/monitoring/logs/since",
+      defaultWindow: LOGS_DEFAULT_WINDOW,
+    }),
+    period: apiBlock("LogsPeriod"),
+  }).meta({ name: "$api.logs.toolbar", icon: "i-ph-sliders-horizontal" });
+
+  static live = apiBlock<{ fetchUrl: string; maxBodyBytes?: number }>(
+    "LiveTraffic",
+    { fetchUrl: "/api/monitoring/logs/live" },
+  ).onFilter((_permissions, options) => ({
+    ...options,
+    maxBodyBytes: getConfig().requestLogMaxBodySize,
+  }));
+
+  static filters = apiBlock<{ slowThresholdMs?: number }>(
+    "LogsFilters",
+    {},
+  ).onFilter((_permissions, options) => ({
+    ...options,
+    slowThresholdMs: getConfig().requestSlownessThreshold,
+  }));
+
+  // "n new requests" over the table, while it does not take them in.
+  static newRequests = liveBanner({
+    pageSize: LOGS_PAGE_SIZE,
+    followScroll: true,
   });
 
   // Named like `LOGS_TABLE_KEY`: links put the table's tab under this key.
   static requests = requestTable({
+    page: "logs",
     searchPlaceholder: "$api.logs.search",
     pageSize: LOGS_PAGE_SIZE,
     pagination: "loadMore",
@@ -52,19 +121,6 @@ export class LogsPage extends PageController(
         filter: { accessorKey: "statusClass", mode: "is", value: "5xx" },
       },
     ],
-    quickFilters: [
-      {
-        field: "window",
-        label: "$api.logs.filters.period",
-        icon: "i-ph-clock",
-      },
-      {
-        field: "method",
-        label: "$api.logs.filters.method",
-        icon: "i-ph-funnel",
-      },
-      { field: "slow", label: "$api.logs.filters.slow", icon: "i-ph-timer" },
-    ],
     footer: {
       countLabel: "$api.logs.count",
       hint: "$api.logs.keys_hint",
@@ -72,22 +128,21 @@ export class LogsPage extends PageController(
     emptyStates: {
       firstRun: {
         title: "$api.logs.empty.first_run_title",
-        description: "$api.logs.empty.first_run_description",
-        icon: "i-ph-broadcast",
-        actions: [
-          { label: "$api.logs.empty.browse_routes", to: "/modules/api/routes" },
-        ],
+        component: emptyState,
       },
       filtered: {
         title: "$api.logs.empty.filtered_title",
-        description: "$api.logs.empty.filtered_description",
-        icon: "i-ph-magnifying-glass",
+        component: emptyState,
       },
       error: {
         title: "$api.logs.empty.error_title",
-        description: "$api.logs.empty.error_description",
-        icon: "i-ph-warning-circle",
+        component: emptyState,
       },
     },
-  }).meta({ name: "$api.logs.table", icon: "i-ph-list-magnifying-glass" });
+  })
+    .mergeOptions({ queryParamFilters: LOGS_QUERY_FILTERS } as Record<
+      string,
+      unknown
+    >)
+    .meta({ name: "$api.logs.table", icon: "i-ph-list-magnifying-glass" });
 }
