@@ -17,7 +17,6 @@ import {
   forgetRecentScan,
   loadErrorSamples,
   loadTraffic,
-  p95Coverage,
   p95Latency,
   sumBuckets,
   type TrafficModels,
@@ -64,8 +63,14 @@ function rollupsOf(rows: RequestLogSample[]): RouteStatistics[] {
       totalResponseTime: 0,
       clientErrorsCount: 0,
       serverErrorsCount: 0,
+      timedRequestsCount: 0,
+      latencyHistogram: emptyHistogram(),
     };
     stats.requestsCount += 1;
+    if (row.responseTimeMs !== null) {
+      stats.timedRequestsCount += 1;
+      stats.latencyHistogram[latencyBucketIndex(row.responseTimeMs)] += 1;
+    }
     stats.totalResponseTime += row.responseTimeMs ?? 0;
     stats.maxResponseTime = Math.max(
       stats.maxResponseTime,
@@ -281,7 +286,6 @@ describe("one p95 per route and window", () => {
     expect(total.maxLatency).toBe(2313);
     expect(p95Latency(total)).toBe(health?.p95Ms);
     expect(p95Latency(total)).toBeLessThanOrEqual(total.maxLatency);
-    expect(p95Coverage(total)).toBe(1);
   });
 
   it("stays within the measured range when read off a histogram", () => {
@@ -300,8 +304,8 @@ describe("one p95 per route and window", () => {
     );
   });
 
-  it("reads the days that kept a histogram, saying how many calls it covers", () => {
-    const day = (start: number, histogram?: number[]) => {
+  it("reads the p95 of rollup days off their histograms", () => {
+    const day = (start: number, histogram: number[]) => {
       const bucket = emptyBucket(start);
       addDay(bucket, {
         day: start,
@@ -320,12 +324,10 @@ describe("one p95 per route and window", () => {
     const kept = emptyHistogram();
     kept[latencyBucketIndex(60)] = 9;
     kept[latencyBucketIndex(180)] = 1;
-    const total = sumBuckets([day(0), day(MS_PER_DAY, kept)]);
-    expect(p95Coverage(total)).toBe(0.5);
+    const total = sumBuckets([day(0, kept), day(MS_PER_DAY, kept)]);
     const p95 = p95Latency(total);
     expect(p95).not.toBeNull();
     expect(p95).toBeLessThanOrEqual(180);
-    expect(p95Latency(day(0))).toBeNull();
-    expect(p95Coverage(day(0))).toBe(0);
+    expect(p95Latency(emptyBucket(0))).toBeNull();
   });
 });

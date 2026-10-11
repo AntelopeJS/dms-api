@@ -16,7 +16,6 @@ import {
   durationOf,
   emptyBucket,
   p95Latency,
-  timedOf,
   type TrafficBucket,
 } from "./traffic";
 import type { TimeRange } from "./window";
@@ -125,10 +124,8 @@ export function issueOf(
 
 /** Whether a bucket's histogram puts its p95 at or above the threshold. */
 function slowShareOf(traffic: TrafficBucket, slowThresholdMs: number): boolean {
-  if (!traffic.histogram) return false;
   // The calls of the buckets starting at or above the threshold: exact when
-  // the threshold is one of the bounds, an undercount otherwise. Out of the
-  // calls the histogram counts: older days may have kept none.
+  // the threshold is one of the bounds, an undercount otherwise.
   let slowCalls = 0;
   let counted = 0;
   traffic.histogram.forEach((count, index) => {
@@ -211,7 +208,7 @@ function routeStateOf(
   if (verdict === "idle") return "idle";
   if (verdict === "down" || verdict === "degraded") return "failing";
   if (verdict === "recovered") return "recovered";
-  if (isSlowShare(slowCalls, timedOf(traffic))) return "slow";
+  if (isSlowShare(slowCalls, traffic.timed)) return "slow";
   if (
     traffic.requests >= HEALTH_THRESHOLDS.minRequests &&
     percentOf(traffic.clientErrors, traffic.requests) >=

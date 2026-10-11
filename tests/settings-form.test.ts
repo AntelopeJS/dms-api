@@ -213,6 +213,8 @@ describe("retention impact", () => {
     totalResponseTime: 0,
     clientErrorsCount: 0,
     serverErrorsCount: 0,
+    timedRequestsCount: 0,
+    latencyHistogram: [],
   });
 
   it("counts the statistics days older than the new retention", async () => {

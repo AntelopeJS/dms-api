@@ -24,7 +24,6 @@ import {
   emptyBucket,
   errorShare,
   loadSamples,
-  p95Coverage,
   p95Latency,
   RECENT_SPAN_MS,
   type SampleSource,
@@ -548,15 +547,10 @@ export interface SlowRouteItem extends TopListItemPayload {
   averageMs: number;
   /**
    * Exact over a window read from the logs, estimated from the latency
-   * histograms over a longer one, never above `maxMs`; null when no day of
-   * the window kept a histogram.
+   * histograms over a longer one, never above `maxMs`; null without a
+   * measured call.
    */
   p95Ms: number | null;
-  /**
-   * Share (0-1) of the measured calls `p95Ms` reads: below 1 when older days
-   * kept no histogram (the p95 is then that of the later days), 0 when null.
-   */
-  p95Coverage: number;
   maxMs: number;
   requests: number;
 }
@@ -589,7 +583,6 @@ export async function getSlowestRoutes(
         value: average,
         averageMs: average,
         p95Ms: p95 === null ? null : Math.round(p95),
-        p95Coverage: roundTo(p95Coverage(total), TWO_DECIMALS),
         maxMs: Math.round(total.maxLatency),
         requests: total.requests,
         to: routeLink(ref, undefined, window.preset),

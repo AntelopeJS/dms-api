@@ -22,6 +22,8 @@ function bucket(start: number, fields: Partial<TrafficBucket>): TrafficBucket {
     minLatency: 0,
     histogram: emptyHistogram(),
     ...fields,
+    // Every call timed, unless told otherwise.
+    timed: fields.timed ?? fields.requests ?? 0,
   };
 }
 
@@ -93,20 +95,14 @@ describe("route statistics", () => {
     });
   });
 
-  it("says when no duration was measured, or no p95 kept", () => {
-    const days = [
-      bucket(1, { requests: 3, totalLatency: 90, histogram: null }),
-    ];
-    const old = { ...traffic, buckets: days, total: sumBuckets(days) };
-    expect(routeSummary(old, 250).items[1]?.detail).toBe(
-      "$api.routes.statistics.p95_none",
-    );
+  it("says when no duration was measured", () => {
     const untimed = [bucket(1, { requests: 2, timed: 0 })];
     const [, latency, , max] = routeSummary(
       { ...traffic, buckets: untimed, total: sumBuckets(untimed) },
       250,
     ).items;
     expect(latency?.value).toBe("—");
+    expect(latency?.detail).toBe("$api.routes.statistics.p95_none");
     expect(max).toMatchObject({ value: "—", tone: "muted" });
   });
 
@@ -135,26 +131,11 @@ describe("route statistics", () => {
     expect(chart.slowThresholdMs).toBe(1000);
     // Every p95 point within its bucket's max.
     expect(chart.series[2]?.data[0]?.y).toBeLessThanOrEqual(300);
-    expect(chart.p95Coverage).toBe(1);
   });
 
   it("sizes the axis to hold the slow threshold, above or below the points", () => {
     expect(latencyChart(traffic, 1000)).toMatchObject({ yMin: 0, yMax: 1100 });
     expect(latencyChart(traffic, 100).yMax).toBe(400);
-  });
-
-  it("leaves a day without a latency histogram out of the p95", () => {
-    const days = [
-      bucket(1, { requests: 3, totalLatency: 90, histogram: null }),
-    ];
-    const old = { ...traffic, buckets: days, total: sumBuckets(days) };
-    expect(latencyChart(old, 1000).series[2]?.data).toEqual([
-      { x: 1, y: null },
-    ]);
-    expect(latencyChart(old, 1000).p95Coverage).toBe(0);
-    expect(latencyChart(old, 1000).series[2]?.name).toBe(
-      "$api.routes.statistics.series_p95_partial",
-    );
   });
 
   it("says when there is no previous period", () => {

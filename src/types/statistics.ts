@@ -29,14 +29,11 @@ export interface DayStatistics {
   totalResponseTime: number;
   clientErrorsCount: number;
   serverErrorsCount: number;
-  /**
-   * Calls whose duration was measured: the latency figures are over these.
-   * Absent on days written before it existed, where every call was timed.
-   */
-  timedRequestsCount?: number;
+  /** Calls whose duration was measured: the latency figures are over these. */
+  timedRequestsCount: number;
   /**
    * Timed calls per bucket of {@link LATENCY_BUCKETS_MS}, what a p95 is
-   * estimated from. Absent on days written before it existed.
+   * estimated from.
    */
-  latencyHistogram?: number[];
+  latencyHistogram: number[];
 }

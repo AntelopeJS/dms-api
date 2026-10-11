@@ -13,10 +13,8 @@ import {
   emptyBucket,
   errorShare,
   loadErrorSamples,
-  p95Coverage,
   p95Latency,
   sumBuckets,
-  timedOf,
   type TrafficBucket,
   windowTraffic,
 } from "./traffic";
@@ -58,12 +56,6 @@ export interface LatencyChartPayload extends RouteChartPayload {
    */
   yMin: number;
   yMax: number;
-  /**
-   * Share (0-1) of the window's measured calls the p95 series reads: below
-   * 1 when older days kept no latency histogram (their points are gaps), 0
-   * when the series is all gaps.
-   */
-  p95Coverage: number;
 }
 
 /** One row of a DMS `TopListCard`. */
@@ -182,8 +174,7 @@ function errorRateFigures(traffic: RouteTraffic): {
 
 /**
  * The p95 under the average: the minimum it replaces read 0 ms on any route
- * answering a call from its cache. Said partial when older days kept no
- * latency histogram, and absent when none did.
+ * answering a call from its cache. Absent without a measured call.
  */
 function p95Detail(total: TrafficBucket, slowThreshold: number) {
   const p95 = p95Latency(total);
@@ -193,12 +184,9 @@ function p95Detail(total: TrafficBucket, slowThreshold: number) {
       detailTone: "neutral" as const,
     };
   }
-  const partial = p95Coverage(total) < 1;
   return {
     detail: {
-      key: partial
-        ? "api.routes.statistics.p95_partial_detail"
-        : "api.routes.statistics.p95_detail",
+      key: "api.routes.statistics.p95_detail",
       params: { p95: ms(p95) },
     },
     detailTone:
@@ -220,7 +208,7 @@ export function routeSummary(
   const { total } = traffic;
   const delta = change(total.requests, traffic.previous?.requests);
   const rate = errorRateFigures(traffic).value;
-  const timed = timedOf(total) > 0;
+  const timed = total.timed > 0;
   return {
     items: [
       {
@@ -329,9 +317,7 @@ const Y_STEP_MS = 100;
  * Average, max and p95 latency per bucket (in that order), a gap where the
  * route was not called or no duration was measured, and the slow threshold
  * the chart draws its line at, with an axis range holding it. The p95 of an
- * hour is exact; that of a day comes from its latency histogram, absent on
- * days written before it existed (a gap, `p95Coverage` below 1, and a p95
- * series named partial).
+ * hour is exact; that of a day comes from its latency histogram.
  */
 export function latencyChart(
   traffic: RouteTraffic,
@@ -340,11 +326,9 @@ export function latencyChart(
   // A bucket without a measured duration is a gap, not a 0 ms point.
   const points = (pick: (bucket: TrafficBucket) => number | null) =>
     traffic.buckets.map((bucket) => {
-      const value = timedOf(bucket) > 0 ? pick(bucket) : null;
+      const value = bucket.timed > 0 ? pick(bucket) : null;
       return { x: bucket.start, y: value === null ? null : Math.round(value) };
     });
-  const coverage = Math.round(p95Coverage(traffic.total) * PERCENT) / PERCENT;
-  const partial = coverage < 1 && timedOf(traffic.total) > 0;
   const series = [
     {
       name: "$api.routes.statistics.series_average",
@@ -355,9 +339,7 @@ export function latencyChart(
       data: points((bucket) => bucket.maxLatency),
     },
     {
-      name: partial
-        ? "$api.routes.statistics.series_p95_partial"
-        : "$api.routes.statistics.series_p95",
+      name: "$api.routes.statistics.series_p95",
       data: points(p95Latency),
     },
   ];
@@ -372,7 +354,6 @@ export function latencyChart(
     slowThresholdMs,
     yMin: 0,
     yMax: Math.ceil((highest * Y_HEADROOM) / Y_STEP_MS) * Y_STEP_MS,
-    p95Coverage: coverage,
     window: windowOf(traffic),
   };
 }

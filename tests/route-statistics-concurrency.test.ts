@@ -6,7 +6,7 @@ import {
   type RouteStatistics,
 } from "@/db/tables/routes_statistics.table";
 import { pruneAllStatistics } from "@/services/statistics-prune";
-import { getTodayTimestamp } from "@/services/statistics-utils";
+import { emptyHistogram, getTodayTimestamp } from "@/services/statistics-utils";
 import {
   addRequestStatistics,
   MAX_STATISTICS_WRITE_ATTEMPTS,
@@ -83,6 +83,8 @@ function dayStats(day: number, requestsCount: number): DayStatistics {
     totalResponseTime: 10 * requestsCount,
     clientErrorsCount: 0,
     serverErrorsCount: 0,
+    timedRequestsCount: requestsCount,
+    latencyHistogram: emptyHistogram(),
   };
 }
 
@@ -166,25 +168,6 @@ describe("addRequestStatistics", () => {
       averageResponseTime: 620,
     });
     expect(today?.latencyHistogram?.reduce((a, b) => a + b, 0)).toBe(2);
-  });
-
-  it("starts no histogram on a day written before it existed", async () => {
-    const model = new FakeStatisticsModel();
-    model.rows.set(KEY, {
-      _id: KEY,
-      method: "GET",
-      uri: "/api/items/:id",
-      statistics: [dayStats(getTodayTimestamp(), 3)],
-    } as RouteStatistics);
-
-    await addRequestStatistics(model, request(200, 20));
-
-    expect(todayOf(model)).toMatchObject({
-      requestsCount: 4,
-      timedRequestsCount: 4,
-      minResponseTime: 10,
-    });
-    expect(todayOf(model)?.latencyHistogram).toBeUndefined();
   });
 
   it("does not retry when the write outcome is unknown", async () => {

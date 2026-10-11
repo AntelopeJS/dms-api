@@ -102,7 +102,7 @@ export async function getSummaryKpis(
   let errors24h = 0;
   for (const route of all) {
     for (const day of route.statistics) {
-      timedRequests += day.timedRequestsCount ?? day.requestsCount;
+      timedRequests += day.timedRequestsCount;
       totalLatency += day.totalResponseTime;
       if (day.day === today) callsToday += day.requestsCount;
       if (day.day >= last24hCutoff) {

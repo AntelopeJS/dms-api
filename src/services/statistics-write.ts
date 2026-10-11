@@ -48,23 +48,18 @@ function createDayStats(
   return stats;
 }
 
-/**
- * Fold a measured duration into the day's latency figures. A day written
- * before the histogram existed keeps none: half a day of counts would
- * misstate its p95.
- */
+/** Fold a measured duration into the day's latency figures. */
 function addTiming(existing: DayStatistics, ms: number): void {
-  const timed = existing.timedRequestsCount ?? existing.requestsCount;
   existing.minResponseTime =
-    timed === 0 ? ms : Math.min(existing.minResponseTime, ms);
+    existing.timedRequestsCount === 0
+      ? ms
+      : Math.min(existing.minResponseTime, ms);
   existing.maxResponseTime = Math.max(existing.maxResponseTime, ms);
   existing.totalResponseTime += ms;
-  existing.timedRequestsCount = timed + 1;
+  existing.timedRequestsCount += 1;
   existing.averageResponseTime =
     existing.totalResponseTime / existing.timedRequestsCount;
-  if (existing.latencyHistogram) {
-    existing.latencyHistogram[latencyBucketIndex(ms)] += 1;
-  }
+  existing.latencyHistogram[latencyBucketIndex(ms)] += 1;
 }
 
 /**
@@ -77,8 +72,6 @@ function mergeDayStats(
 ): void {
   if (typeof request.responseTime === "number") {
     addTiming(existing, request.responseTime);
-  } else {
-    existing.timedRequestsCount ??= existing.requestsCount;
   }
   existing.requestsCount++;
 

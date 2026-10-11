@@ -1,6 +1,12 @@
 import type { RequestLogModel } from "@/db";
 import { MS_PER_HOUR, MS_PER_MINUTE } from "@/types";
-import { addSample, loadSamples, type ScopeKeys, sumBuckets } from "./traffic";
+import {
+  addSample,
+  emptyBucket,
+  loadSamples,
+  type ScopeKeys,
+  sumBuckets,
+} from "./traffic";
 
 /** One minute of the live histogram. */
 export interface LiveBucket {
@@ -33,15 +39,9 @@ export async function getLiveTraffic(
     { from: new Date(start), to: now },
     keys,
   );
-  const minutes = Array.from({ length: LIVE_MINUTES }, (_, index) => ({
-    start: start + index * MS_PER_MINUTE,
-    requests: 0,
-    clientErrors: 0,
-    serverErrors: 0,
-    totalLatency: 0,
-    maxLatency: 0,
-    minLatency: 0,
-  }));
+  const minutes = Array.from({ length: LIVE_MINUTES }, (_, index) =>
+    emptyBucket(start + index * MS_PER_MINUTE),
+  );
   for (const sample of samples) {
     const index = Math.floor(
       (new Date(sample.timestamp).getTime() - start) / MS_PER_MINUTE,

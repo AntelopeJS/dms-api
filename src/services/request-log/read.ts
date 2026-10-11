@@ -109,7 +109,7 @@ function daysLatency(days: readonly DayStatistics[], firstDay: number) {
   let max = 0;
   for (const day of days) {
     if (day.day < firstDay || day.timedRequestsCount === 0) continue;
-    day.latencyHistogram?.forEach((count, index) => {
+    day.latencyHistogram.forEach((count, index) => {
       histogram[index] += count;
     });
     min = Math.min(min, day.minResponseTime);

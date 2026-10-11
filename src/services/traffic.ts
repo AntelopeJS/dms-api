@@ -56,15 +56,13 @@ export interface TrafficBucket {
   totalLatency: number;
   maxLatency: number;
   minLatency: number;
-  /** Calls whose duration was measured; absent means all of them. */
-  timed?: number;
+  /** Calls whose duration was measured. */
+  timed: number;
   /**
    * Measured durations per bucket of `LATENCY_BUCKETS_MS`, what a p95 is
-   * estimated from when the durations are not kept. It counts the calls of
-   * the parts that kept one: a day written before it existed adds none, so
-   * it may count fewer calls than `timed` (see {@link p95Coverage}).
+   * estimated from when the durations are not kept.
    */
-  histogram?: number[] | null;
+  histogram: number[];
   /**
    * Every measured duration, while every part of the bucket comes from the
    * logs: the p95 is then exact. Null (or absent) once a day rollup is in.
@@ -87,14 +85,9 @@ export function emptyBucket(start: number): TrafficBucket {
   };
 }
 
-/** Calls of `bucket` whose duration was measured. */
-export function timedOf(bucket: TrafficBucket): number {
-  return bucket.timed ?? bucket.requests;
-}
-
 function addLatency(bucket: TrafficBucket, min: number, max: number): void {
   bucket.minLatency =
-    timedOf(bucket) === 0 ? min : Math.min(bucket.minLatency, min);
+    bucket.timed === 0 ? min : Math.min(bucket.minLatency, min);
   bucket.maxLatency = Math.max(bucket.maxLatency, max);
 }
 
@@ -115,28 +108,20 @@ export function addSample(
   if (ms !== null) {
     addLatency(bucket, ms, ms);
     bucket.totalLatency += ms;
-    if (bucket.histogram) bucket.histogram[latencyBucketIndex(ms)] += 1;
+    bucket.histogram[latencyBucketIndex(ms)] += 1;
     bucket.durations?.push(ms);
-    bucket.timed = timedOf(bucket) + 1;
-  } else {
-    bucket.timed = timedOf(bucket);
+    bucket.timed += 1;
   }
   bucket.requests += 1;
   if (sample.statusCode >= 500) bucket.serverErrors += 1;
   else if (sample.statusCode >= 400) bucket.clientErrors += 1;
 }
 
-/** Add the counts of `histogram`, when there is one, to the target's. */
-function addHistogram(
-  target: TrafficBucket,
-  histogram: number[] | null | undefined,
-): void {
-  if (!histogram) return;
-  const sum = target.histogram ?? emptyHistogram();
+/** Add the counts of `histogram` to the target's. */
+function addHistogram(target: TrafficBucket, histogram: number[]): void {
   histogram.forEach((count, index) => {
-    sum[index] = (sum[index] ?? 0) + count;
+    target.histogram[index] += count;
   });
-  target.histogram = sum;
 }
 
 /** Add the durations of a part holding `timed` measured calls. */
@@ -156,10 +141,10 @@ function addDurations(
 /** Fold one day rollup into its bucket. */
 export function addDay(bucket: TrafficBucket, day: DayStatistics): void {
   if (day.requestsCount === 0) return;
-  const timed = day.timedRequestsCount ?? day.requestsCount;
+  const timed = day.timedRequestsCount;
   if (timed > 0) addLatency(bucket, day.minResponseTime, day.maxResponseTime);
   addDurations(bucket, null, timed);
-  bucket.timed = timedOf(bucket) + timed;
+  bucket.timed += timed;
   bucket.requests += day.requestsCount;
   bucket.totalLatency += day.totalResponseTime;
   bucket.clientErrors += day.clientErrorsCount;
@@ -170,11 +155,11 @@ export function addDay(bucket: TrafficBucket, day: DayStatistics): void {
 /** Fold `bucket` into `total`. */
 function addBucket(total: TrafficBucket, bucket: TrafficBucket): void {
   if (bucket.requests === 0) return;
-  if (timedOf(bucket) > 0) {
+  if (bucket.timed > 0) {
     addLatency(total, bucket.minLatency, bucket.maxLatency);
   }
-  addDurations(total, bucket.durations, timedOf(bucket));
-  total.timed = timedOf(total) + timedOf(bucket);
+  addDurations(total, bucket.durations, bucket.timed);
+  total.timed += bucket.timed;
   total.requests += bucket.requests;
   total.totalLatency += bucket.totalLatency;
   total.clientErrors += bucket.clientErrors;
@@ -191,44 +176,26 @@ export function sumBuckets(buckets: TrafficBucket[]): TrafficBucket {
 
 /** Average of the measured durations; 0 without any. */
 export function averageLatency(bucket: TrafficBucket): number {
-  const timed = timedOf(bucket);
+  const timed = bucket.timed;
   return timed > 0 ? bucket.totalLatency / timed : 0;
 }
 
 const P95 = 0.95;
 
-/** Calls the histogram of `bucket` counts. */
-function histogramCalls(bucket: TrafficBucket): number {
-  return bucket.histogram?.reduce((sum, count) => sum + count, 0) ?? 0;
-}
-
 /**
  * The p95 of the measured durations: the one reading every block shares, so
  * a route has one p95 per window wherever it is shown. Exact (nearest rank)
  * while the bucket kept its durations, which every window read from the logs
- * does; estimated from the histogram of the days that kept one otherwise,
- * always within the bucket's min and max. Null when unknown.
+ * does; estimated from the histogram otherwise, always within the bucket's
+ * min and max. Null without a measured call.
  */
 export function p95Latency(bucket: TrafficBucket): number | null {
-  if (timedOf(bucket) === 0) return null;
+  if (bucket.timed === 0) return null;
   if (bucket.durations?.length) return exactQuantile(bucket.durations, P95);
-  if (!bucket.histogram) return null;
   return histogramQuantile(bucket.histogram, P95, {
     min: bucket.minLatency,
     max: bucket.maxLatency,
   });
-}
-
-/**
- * Share (0-1) of the measured calls {@link p95Latency} reads: 1 when it is
- * exact or every day kept its histogram, less when older days kept none, 0
- * when it is unknown.
- */
-export function p95Coverage(bucket: TrafficBucket): number {
-  const timed = timedOf(bucket);
-  if (timed === 0) return 0;
-  if (bucket.durations?.length) return 1;
-  return Math.min(1, histogramCalls(bucket) / timed);
 }
 
 /** Share (0-1) of the calls answered with a 4xx or a 5xx. */
