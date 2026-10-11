@@ -1,6 +1,5 @@
 import { ValueProxy } from "@antelopejs/interface-database";
 import { BasicDataModel } from "@antelopejs/interface-database-decorators";
-import { createMemo } from "../../memo";
 import { REQUEST_LOG_LIST_MAX_ROWS } from "../../types/constants";
 import {
   escapeRegex,
@@ -10,11 +9,8 @@ import {
 } from "./request_log.search";
 
 import {
-  countTabs,
-  type RequestLogCounts,
   type RequestLogStatusClass,
   STATUS_CLASS_RANGES,
-  sumStatuses,
 } from "./request_log.status";
 
 export {
@@ -22,11 +18,7 @@ export {
   requestIdPrefix,
   searchPattern,
 } from "./request_log.search";
-export {
-  countTabs,
-  type RequestLogCounts,
-  type RequestLogStatusClass,
-} from "./request_log.status";
+export { type RequestLogStatusClass } from "./request_log.status";
 import {
   RequestLog,
   REQUEST_LOG_ORDER_INDEX,
@@ -111,11 +103,6 @@ export type RequestLogListItem = Pick<
 export interface RequestLogListPage {
   results: RequestLogListItem[];
   total: number;
-  /**
-   * The matching rows per status tab, the tab filter aside: what each tab of
-   * the table would list with every other filter applied.
-   */
-  counts: RequestLogCounts;
 }
 
 /** The rows that arrived after a live view's cursor, newest first. */
@@ -161,6 +148,7 @@ const DEFAULT_LIMIT = 50;
 /** `source` of a request the console's Tester sent. */
 const TESTER_SOURCE = "tester";
 const CURSOR_SEPARATOR = "|";
+const SERVER_ERROR_MIN = 500;
 
 interface LogCursor {
   timestamp: Date;
@@ -179,13 +167,6 @@ function decodeCursor(raw?: string): LogCursor | undefined {
 
 /** Largest page {@link RequestLogModel.query} will return, scoped or not. */
 export const REQUEST_LOG_MAX_LIMIT = 200;
-
-/**
- * The status counts of the latest filter sets, served again for 5 s: a
- * request table asks for its rows, then for each tab's count with the same
- * filters, and the count is what costs (a scan of the whole period).
- */
-const sharedCounts = createMemo(32, 5_000);
 
 /** The cursor of a log: listings resume past it, newest first. */
 export function logCursor(log: Pick<RequestLog, "_id" | "timestamp">): string {
@@ -221,9 +202,8 @@ export class RequestLogModel extends BasicDataModel(
   }
 
   /**
-   * One page of the rows matching `filters`, by offset, with the total and
-   * the count of every status tab: what a table view over the logs pages
-   * through. The DMS table loads more rows by asking for a larger page from
+   * One page of the rows matching `filters`, by offset, with their total:
+   * what a table view over the logs pages through, and counts its tabs with. The DMS table loads more rows by asking for a larger page from
    * the first row, so the page goes up to `REQUEST_LOG_LIST_MAX_ROWS`.
    */
   async list(
@@ -241,18 +221,13 @@ export class RequestLogModel extends BasicDataModel(
       this.table.orderBy(index, options.sortDirection ?? "desc"),
       filters,
     );
-    const { statusClass, ...others } = filters;
-    const [results, byStatus] = await Promise.all([
-      // A limit of 0 asks for the counts alone: a slice of 0 rows would read
+    const [results, total] = await Promise.all([
+      // A limit of 0 asks for the total alone: a slice of 0 rows would read
       // as "no limit" to the database.
       limit > 0 ? this.listItems(ordered.slice(offset, offset + limit)) : [],
-      sharedCounts.cached(JSON.stringify(others), () =>
-        this.countByStatus(others),
-      ),
+      this.applyFilters(this.table, filters).count().run(),
     ]);
-    const counts = countTabs(byStatus);
-    const total = statusClass ? sumStatuses(byStatus, statusClass) : counts.all;
-    return { results, total, counts };
+    return { results, total };
   }
 
   /**
@@ -281,8 +256,13 @@ export class RequestLogModel extends BasicDataModel(
         .count()
         .run(),
     ]);
-    const counts = countTabs(byStatus);
-    return { results, count: counts.all, serverErrors: counts["5xx"], tester };
+    let count = 0;
+    let serverErrors = 0;
+    for (const [status, rows] of byStatus) {
+      count += rows;
+      if (status >= SERVER_ERROR_MIN) serverErrors += rows;
+    }
+    return { results, count, serverErrors, tester };
   }
 
   /** Every row matching `filters`, reduced to the fields aggregations read. */

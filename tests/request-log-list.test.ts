@@ -193,13 +193,9 @@ describe("toRow, unmeasured and Tester requests", () => {
   });
 });
 
-const COUNTS = { all: 3, "2xx": 2, "4xx": 1, "5xx": 0 };
-
 function fakeModel() {
   return {
-    list: vi.fn(() =>
-      Promise.resolve({ results: [], total: 3, counts: COUNTS }),
-    ),
+    list: vi.fn(() => Promise.resolve({ results: [], total: 3 })),
     since: vi.fn(() =>
       Promise.resolve({ results: [], count: 0, serverErrors: 0, tester: 0 }),
     ),
@@ -207,10 +203,10 @@ function fakeModel() {
 }
 
 describe("listRequestLogs", () => {
-  it("answers the counts of every tab with the page", async () => {
+  it("answers the page with its total", async () => {
     const model = fakeModel();
     const page = await listRequestLogs(model, { limit: "100000" }, null);
-    expect(page).toEqual({ results: [], total: 3, counts: COUNTS });
+    expect(page).toEqual({ results: [], total: 3 });
     expect(model.list).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ limit: 5000 }),
@@ -256,15 +252,11 @@ describe("listRequestLogs", () => {
       { filter_route: "is:garbage" },
       null,
     );
-    expect(page).toEqual({
-      results: [],
-      total: 0,
-      counts: { all: 0, "2xx": 0, "4xx": 0, "5xx": 0 },
-    });
+    expect(page).toEqual({ results: [], total: 0 });
     expect(model.list).not.toHaveBeenCalled();
   });
 
-  it("counts a tab without reading its row", async () => {
+  it("reads the row a one-row page asks for", async () => {
     const model = fakeModel();
     await listRequestLogs(
       model,
@@ -272,16 +264,7 @@ describe("listRequestLogs", () => {
       null,
     );
     expect(model.list).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({ limit: 0 }),
-    );
-    await listRequestLogs(
-      model,
-      { limit: "1", sortKey: "timestamp", sortDirection: "desc" },
-      null,
-    );
-    expect(model.list).toHaveBeenLastCalledWith(
-      expect.anything(),
+      expect.objectContaining({ statusClass: "server-error" }),
       expect.objectContaining({ limit: 1 }),
     );
   });

@@ -2,7 +2,6 @@ import type { Tone } from "@antelopejs/interface-dms/base/types/tone";
 import { getConfig } from "@/config";
 import type { RequestLogModel } from "@/db";
 import type {
-  RequestLogCounts,
   RequestLogFilters,
   RequestLogListItem,
   RequestLogSortKey,
@@ -128,13 +127,6 @@ export function statusClassOf(status: number): string {
   return "2xx";
 }
 
-/**
- * Step a period's start moves by. A table asks for its rows and each tab's
- * count at once: on one start, they share the counts the model keeps a
- * moment (see `RequestLogModel.list`).
- */
-const WINDOW_START_STEP_MS = 5_000;
-
 /** The period a filter names, when it is one the table offers. */
 function readWindow(raw: string | undefined): LogWindow | undefined {
   const window = filterValue(raw);
@@ -143,8 +135,7 @@ function readWindow(raw: string | undefined): LogWindow | undefined {
 
 function windowSince(window: LogWindow, now: Date): Date {
   const ms = Math.min(WINDOW_MS[window], getMaxLogDays() * MS_PER_DAY);
-  const start = now.getTime() - ms;
-  return new Date(start - (start % WINDOW_START_STEP_MS));
+  return new Date(now.getTime() - ms);
 }
 
 function positiveInt(raw: string | undefined): number | undefined {
@@ -270,16 +261,6 @@ function matchesNothing(
   return namesUnknownRoute(query);
 }
 
-/**
- * A tab count of the DMS table: a source has no count route, so the table
- * lists one row with no sort and reads the total (`useTableRows.countBatch`
- * in the DMS). The rows are not read, only the counts: with a search, the
- * row would cost a scan of the period.
- */
-function isTabCount(query: SourceQuery): boolean {
-  return positiveInt(query.limit) === 1 && !query.sortKey;
-}
-
 export function toRow(log: RequestLogListItem): RequestLogRow {
   const duration = log.responseTimeMs ?? null;
   return {
@@ -304,11 +285,7 @@ export function toRow(log: RequestLogListItem): RequestLogRow {
 export interface RequestLogTablePage {
   results: RequestLogRow[];
   total: number;
-  /** The rows each status tab lists under the other filters. */
-  counts: RequestLogCounts;
 }
-
-const NO_COUNTS: RequestLogCounts = { all: 0, "2xx": 0, "4xx": 0, "5xx": 0 };
 
 /** One page of the request table, scoped and filtered. */
 export async function listRequestLogs(
@@ -320,25 +297,22 @@ export async function listRequestLogs(
   const filters = filtersFromQuery(query, new Date(), options.defaultWindow);
   const scope = scopeOf(filters, keys, options);
   if (matchesNothing(query, scope, options)) {
-    return { results: [], total: 0, counts: { ...NO_COUNTS } };
+    return { results: [], total: 0 };
   }
   if (scope) filters.routeKeys = [...scope];
   if (options.testerOnly) filters.testerOnly = true;
   const page = await model.list(filters, {
     offset: positiveInt(query.offset),
-    limit: isTabCount(query)
-      ? 0
-      : Math.min(
-          positiveInt(query.limit) || DEFAULT_PAGE_SIZE,
-          REQUEST_LOG_LIST_MAX_ROWS,
-        ),
+    limit: Math.min(
+      positiveInt(query.limit) || DEFAULT_PAGE_SIZE,
+      REQUEST_LOG_LIST_MAX_ROWS,
+    ),
     sortKey: SORT_KEYS[query.sortKey ?? ""],
     sortDirection: query.sortDirection === "asc" ? "asc" : "desc",
   });
   return {
     results: page.results.map(toRow),
     total: page.total,
-    counts: page.counts,
   };
 }
 

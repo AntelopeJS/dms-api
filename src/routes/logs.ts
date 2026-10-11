@@ -182,9 +182,8 @@ async function logDetail(id: string, context: RequestContext, table: LogTable) {
  * requests), what arrived since a live table's last rows, the live histogram
  * above the logs, and one request in full for the drawer.
  *
- * The list answers `{ results, total, counts }`: `counts` holds the rows of
- * every status tab under all the other filters. `?requestId=<id>` finds the
- * request sent with that `x-request-id` (the Tester's "Captured" tab).
+ * The list answers `{ results, total }`. `?requestId=<id>` finds the request
+ * sent with that `x-request-id` (the Tester's "Captured" tab).
  */
 export class LogsController extends Controller("/api/monitoring/logs") {
   /**

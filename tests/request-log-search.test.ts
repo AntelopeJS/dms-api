@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  countTabs,
   pathEncoded,
   requestIdPrefix,
   searchPattern,
@@ -41,23 +40,6 @@ describe("unicode search", () => {
     const pattern = new RegExp(searchPattern("commande-é").slice(4), "i");
     expect(pattern.test("/api/orders/commande-%C3%A9%F0%9F%98%80")).toBe(true);
     expect(pattern.test("/api/orders/commande-é")).toBe(true);
-  });
-});
-
-describe("countTabs", () => {
-  it("sums the status codes of each tab", () => {
-    expect(
-      countTabs(
-        new Map([
-          [200, 5],
-          [304, 1],
-          [404, 2],
-          [422, 1],
-          [500, 3],
-          [101, 1],
-        ]),
-      ),
-    ).toEqual({ all: 13, "2xx": 6, "4xx": 3, "5xx": 3 });
   });
 });
 
