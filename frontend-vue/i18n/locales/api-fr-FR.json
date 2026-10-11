@@ -927,7 +927,6 @@
         "choice_no_comparison": "Pas de comparaison 30 j avec la période d'avant",
         "choice_comparison": "Garde la comparaison 30 j",
         "choice_default": "Par défaut · garde la comparaison 30 j",
-        "choice_current": "Valeur actuelle, issue de la configuration du module",
         "logs_name": "Journaux des requêtes",
         "statistics_name": "Statistiques",
         "impact_pending": "Calcul de ce que la prochaine purge horaire supprime…",
@@ -949,10 +948,7 @@
         "headers_hint": "Noms d'en-têtes, stockés en minuscules. Les en-têtes qui ressemblent à des secrets (authorization, cookies, clés d'API) ne sont jamais stockés.",
         "headers_placeholder": "Ajouter un nom d'en-tête",
         "invalid_header": "Ce n'est pas un nom d'en-tête : utilisez des lettres, des chiffres et des tirets.",
-        "invalid_headers": "Pas un nom d'en-tête : {value}. Utilisez des lettres, des chiffres et des tirets. | Pas des noms d'en-têtes : {value}. Utilisez des lettres, des chiffres et des tirets.",
         "sensitive_header": "Jamais stocké, pour votre sécurité",
-        "sensitive_headers": "Jamais stocké, pour votre sécurité : {value}. Retirez-le pour enregistrer. | Jamais stockés, pour votre sécurité : {value}. Retirez-les pour enregistrer.",
-        "tag_invalid": "(invalide)",
         "redacted": "Toujours masqué",
         "redacted_description": "Les valeurs sous des clés contenant ces mots sont remplacées avant stockage, dans les corps et les paramètres de requête.",
         "redacted_hint": "Exemple : « portal_token » : « abc » est stocké comme [REDACTED].",
@@ -968,12 +964,6 @@
         "down_rate": "Seuil « En panne »",
         "down_rate_description": "La santé de l'API passe à En panne quand les erreurs serveur (5xx) atteignent cette part des appels des 5 dernières minutes, à partir de 20 appels. Dès 1 % sur les 15 dernières minutes, elle est Dégradée et la route en échec, puis Rétablie pendant 15 minutes après le retour à la normale.",
         "fixed": "Fixe dans cette version"
-      },
-      "number": {
-        "adjusted_max": "{typed} dépasse le maximum : ramené à {value}.",
-        "adjusted_min": "{typed} est sous le minimum : ramené à {value}.",
-        "adjusted_step": "{typed} n'est pas un multiple de {step} : arrondi à {value}.",
-        "required": "Saisissez une valeur."
       }
     }
   }

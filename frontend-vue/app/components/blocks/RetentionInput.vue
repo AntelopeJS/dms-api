@@ -1,30 +1,27 @@
 <script setup lang="ts">
 import {
   computed,
-  h,
   inject,
   onBeforeUnmount,
   onMounted,
   ref,
-  resolveComponent,
   useTemplateRef,
   watch,
 } from 'vue'
-import SettingNumberInput from './SettingNumberInput.vue'
 import {
   createRetentionGuard,
   isLowered,
   type RetentionChange,
   type RetentionGuard,
   type RetentionImpact,
-  retentionChoices,
   retentionGuardOf,
 } from '../../utils/settingsForm'
 
 // A retention of the Settings form, in days: a few choices (statistics) or a
-// number (request logs). Lowering it deletes the data older than the new
-// value at the next hourly prune, so a lowered value says what it deletes,
-// and the save asks to confirm it first (one dialog for both fields).
+// number (request logs), drawn by the DMS inputs. Lowering it deletes the
+// data older than the new value at the next hourly prune, so a lowered value
+// says what it deletes, and the save asks to confirm it first (one dialog for
+// both fields), the DMS form having no confirmation of its own on submit.
 defineOptions({ inheritAttrs: false })
 
 type RetentionKind = 'logs' | 'statistics'
@@ -50,17 +47,14 @@ const PREVIOUS_PERIOD_DAYS = 30
 const { t } = useI18n()
 const locale = useFormatLocale()
 const { confirm } = useConfirm()
+const { $authFetch } = useAuthFetch()
 const root = useTemplateRef<HTMLElement>('root')
-// The app's registered UIcon, for the dialog's render function: importing
-// `@nuxt/ui/components/Icon.vue` would reach its Nuxt build, which the
-// dependency optimizer cannot bundle (`#imports`).
-const UIcon = resolveComponent('UIcon')
 
 const formatNumber = (value: number) =>
   new Intl.NumberFormat(locale.value).format(value)
 
 const items = computed(() =>
-  retentionChoices(props.choices ?? [], props.initialValue).map((days) => ({
+  (props.choices ?? []).map((days) => ({
     value: days,
     label: t('api.settings.retention.days', { count: days }, days),
     description: choiceDescription(days),
@@ -68,8 +62,6 @@ const items = computed(() =>
 )
 
 function choiceDescription(days: number): string {
-  if (!props.choices?.includes(days))
-    return t('api.settings.retention.choice_current')
   if (days === props.defaultChoice)
     return t('api.settings.retention.choice_default')
   return days > PREVIOUS_PERIOD_DAYS
@@ -79,7 +71,15 @@ function choiceDescription(days: number): string {
 
 const lowered = computed(() => isLowered(model.value, props.initialValue))
 
-// The impact follows the value once it settles: not on every keystroke.
+function impactUrlOf(field: string, days: number): string {
+  return `${props.impactUrl}?${new URLSearchParams({
+    field,
+    days: String(days),
+  })}`
+}
+
+// The impact under the field follows the value once it settles: not on
+// every keystroke.
 const impactDays = ref<number | null>(null)
 let impactTimer: ReturnType<typeof setTimeout> | undefined
 watch(
@@ -99,12 +99,9 @@ watch(
 onBeforeUnmount(() => clearTimeout(impactTimer))
 
 const impactResource = useApiResource<RetentionImpact>(() =>
-  impactDays.value == null
+  impactDays.value == null || !props.id
     ? null
-    : `${props.impactUrl}?${new URLSearchParams({
-        field: props.id ?? '',
-        days: String(impactDays.value),
-      })}`,
+    : impactUrlOf(props.id, impactDays.value),
 )
 const impact = computed(() =>
   lowered.value && impactDays.value === model.value
@@ -148,64 +145,51 @@ function pendingChange(): RetentionChange | null {
     ),
     from: props.initialValue as number,
     to: model.value,
-    impact: impact.value ?? null,
   }
 }
 
 /**
- * The lowered retentions as the dialog lists them: the change, then what it
- * deletes on a line of its own. The dialog is narrow (420 px, fixed by the
- * DMS): side by side, both wrapped onto two lines each.
+ * What a change deletes, read when the dialog opens: a save sent right after
+ * the change, before the field's own count came back, still says it.
  */
-function confirmList(changes: RetentionChange[]) {
-  return h(
-    'ul',
-    {
-      class:
-        'border-default divide-default divide-y overflow-hidden rounded-md border bg-(--dms-bg-muted)',
-    },
-    changes.map((change) =>
-      h('li', { key: change.field, class: 'flex gap-2.5 px-3 py-2' }, [
-        h(UIcon, {
-          name: 'i-ph-trash',
-          class: 'text-dimmed mt-0.5 size-4 shrink-0',
-          'aria-hidden': 'true',
-        }),
-        h('div', { class: 'grid min-w-0 gap-0.5' }, [
-          h('span', { class: 'text-default text-[13px]' }, change.label),
-          change.impact
-            ? h(
-                'span',
-                { class: 'text-highlighted font-mono text-xs font-semibold' },
-                t('api.settings.retention.confirm_requests', {
-                  requests: formatNumber(change.impact.requests),
-                }),
-              )
-            : null,
-        ]),
-      ]),
-    ),
-  )
+async function deletedRequests(change: RetentionChange) {
+  try {
+    const read = await $authFetch<RetentionImpact>(
+      impactUrlOf(change.field, change.to),
+    )
+    return t('api.settings.retention.confirm_requests', {
+      requests: formatNumber(read.requests),
+    })
+  } catch {
+    return undefined
+  }
 }
 
-/** One dialog for every lowered retention of the form. */
-function askToConfirm(changes: RetentionChange[]): Promise<boolean> {
+/** One dialog for every lowered retention of the form, with what each deletes. */
+async function askToConfirm(changes: RetentionChange[]): Promise<boolean> {
+  const counts = await Promise.all(changes.map(deletedRequests))
   return confirm({
     title: t('api.settings.retention.confirm_title'),
     description: t('api.settings.retention.confirm_description'),
     color: 'error',
     confirmLabel: t('api.settings.retention.confirm_save'),
     initialFocus: 'cancel',
-    body: () => confirmList(changes),
+    impact: changes.map((change, index) => ({
+      icon: 'i-ph-trash',
+      label: change.label,
+      count: counts[index],
+    })),
   })
 }
 
 let guard: RetentionGuard | undefined
 
-watch([model, impact, () => props.initialValue], () => {
+watch([model, () => props.initialValue], () => {
   if (props.id) guard?.set(props.id, pendingChange())
 })
 
+// The DMS form has no way to submit again from a field: the guard of the
+// form element the field sits in submits it once the dialog is confirmed.
 onMounted(() => {
   const form = root.value?.closest('form')
   if (!form || !props.id) return
@@ -227,17 +211,14 @@ if (registerValidator) {
 
 <template>
   <div ref="root" class="grid gap-2">
-    <URadioGroup
+    <DmsChoiceCards
       v-if="props.choices?.length"
       :id="props.id"
       v-model="model"
       :items="items"
       :disabled="props.disabled"
-      :aria-label="t(`api.settings.retention.${props.kind}`)"
-      variant="card"
-      orientation="horizontal"
     />
-    <SettingNumberInput
+    <DmsInputNumber
       v-else
       :id="props.id"
       v-model="model"

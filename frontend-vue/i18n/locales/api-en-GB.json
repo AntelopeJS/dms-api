@@ -927,7 +927,6 @@
         "choice_no_comparison": "No 30D comparison with the period before",
         "choice_comparison": "Keeps the 30D comparison",
         "choice_default": "Default · keeps the 30D comparison",
-        "choice_current": "Current value, from the module configuration",
         "logs_name": "Request logs",
         "statistics_name": "Statistics",
         "impact_pending": "Counting what the next hourly prune deletes…",
@@ -949,10 +948,7 @@
         "headers_hint": "Header names, stored in lower case. Secret-looking headers (authorization, cookies, API keys) are never stored.",
         "headers_placeholder": "Add a header name",
         "invalid_header": "Not a header name: use letters, digits and dashes.",
-        "invalid_headers": "Not a header name: {value}. Use letters, digits and dashes. | Not header names: {value}. Use letters, digits and dashes.",
         "sensitive_header": "Never stored, for your security",
-        "sensitive_headers": "Never stored, for your security: {value}. Remove it to save. | Never stored, for your security: {value}. Remove them to save.",
-        "tag_invalid": "(invalid)",
         "redacted": "Always redacted",
         "redacted_description": "Values under keys that match these words are replaced before storage, in bodies and query strings.",
         "redacted_hint": "Example: “portal_token”: “abc” is stored as [REDACTED].",
@@ -968,12 +964,6 @@
         "down_rate": "Down threshold",
         "down_rate_description": "API health turns Down when server errors (5xx) reach this share of the calls of the last 5 minutes, counted from 20 calls. From 1% over the last 15 minutes it is Degraded and the route Failing, then Recovered for 15 minutes once it is back.",
         "fixed": "Fixed in this version"
-      },
-      "number": {
-        "adjusted_max": "{typed} is above the maximum: set to {value}.",
-        "adjusted_min": "{typed} is below the minimum: set to {value}.",
-        "adjusted_step": "{typed} is not a step of {step}: rounded to {value}.",
-        "required": "Enter a value."
       }
     }
   }
