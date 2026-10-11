@@ -1,5 +1,28 @@
 # dms-api redesign: grill-me session
 
+> **Out of date since the QA pass of October 10, 2026.** The answers below
+> are the plan as first taken; the QA pass and its fixes changed several of
+> them. In short:
+>
+> - Dependencies: `@antelopejs/dms` 0.7.1 (`interface-dms` 0.5) and
+>   `@antelopejs/dms-frontend` 0.5.2, not dms 0.6 / interface-dms 0.4 /
+>   dms-frontend 0.5.0.
+> - A request opens in the DMS side panel (`registerSidePanel`, dms 0.7),
+>   not in a drawer, from every request table.
+> - The Overview, the Request logs and Routes have a Live / Pause mode, fed by
+>   a realtime topic.
+> - The health is judged by explicit rules (error rates, latency, incidents,
+>   recovery), shown with their thresholds and windows.
+> - Periods are rolling and shared by the pages (24H by default, 1H to 30D);
+>   statistics are kept 30, 60 or 90 days (90 by default); the latency chart
+>   shows the p95 instead of the minimum.
+> - The console no longer captures its own traffic, the DMS's or the
+>   Tester's (the Tester's is logged, not counted); one-off migrations bring
+>   the stored data in line at start.
+>
+> The README and the description of PR #28 are the reference for the current
+> behaviour.
+
 A self-answered grilling of the plan behind the dms-api redesign PR. Each
 question is one branch of the decision tree; the answer is the recommendation
 that was taken. Read it next to the diff: every structural choice in the PR
@@ -84,17 +107,21 @@ keeps custom components for the parts no block expresses.
 | Custom block | Why no DMS block fits |
 | --- | --- |
 | `ScopeChip` | A live "Own routes · 42" link to Settings; no block reads the scope. |
-| ~~`HealthHero`~~ | Gone since DMS 0.7.2: the verdict is a `Banner({ fetchUrl })` (tone, reasons, "View server errors", or the first-run guide) over a `StatGroup` of the four headline figures, both answered by the backend in composed texts. |
+| `HealthHero` | The verdict by explicit rules (Healthy, Degraded, Down, Recovered, No traffic), how long it has held with its start in a tooltip, the 5xx rate and the p95 first with both rules' thresholds, the 4xx rate in grey, the reasons and "View server errors", or the first-run guide. DMS 0.7.2's `Banner` and `StatGroup` draw the verdict and the figures, but not the rest: a change of verdict seen live raises a toast and marks the browser tab, the page's Live control reads the verdict on screen to say it changed while paused, a failed refresh keeps the last figures as stale with a retry, and the eyebrow says Live, Paused or Stale. A fetched block tells the page nothing and has no stale or failed state (DMS-8), and a composed text takes no tooltip. |
 | `LiveTraffic` | Per-minute histogram of the last hour with a Live toggle that shows its own failures; no block polls. |
 | `RequestDetail` | The request drawer (error and stack first, timing, headers, bodies, Replay / cURL / Open route / Same error). |
 | `RouteTree` | A filterable tree whose selection lives in the URL. |
-| `RouteHeader`, `RouteDocumentation`, `RouteTester` | Everything under the selected route reads `?route=` from the URL. They render public DMS components (`DmsCard`, `DmsEmptyState`, `DmsStatusPill`) inside. Since DMS 0.6.1 a block's `fetchUrl` takes `{{query.route}}`, so the Statistics tab is now DMS blocks only (`KpiCard`, `ChartCard`, `TopListCard`, a request table filtered by `?route=`); these three stay custom for what they draw, not for how they read the route. |
+| `RouteHeader`, `RouteDocumentation`, `RouteTester` | Everything under the selected route reads `?route=` from the URL. They render public DMS components (`DmsCard`, `DmsEmptyState`, `DmsStatusPill`) inside. Since DMS 0.6.1 a block's `fetchUrl` takes `{{query.route}}`, so the Statistics tab is now DMS blocks only (a `StatGroup` of the route's figures, `ChartCard`, `TopListCard`, a request table filtered by `?route=`); these three stay custom for what they draw, not for how they read the route. |
 | `SplitLayout` | A list beside its detail. `Grid` shares its columns equally, so a row of two cells cannot give one of them three quarters; `DmsMasterDetail` is a template component, not a block. |
 
-The request tables draw methods, statuses and paths with DMS displays since
-DMS 0.7.2: status pills toned per method, or per row through `toneField` (a
-status by its class), and the mono display. Only the time, to the
-millisecond, keeps a cell display of the module (`api:time`).
+The request tables draw methods and statuses with DMS displays since DMS
+0.7.2: status pills toned per method, or per row through `toneField` (a
+status by its class). The module keeps cell displays (`@RegisterDisplay`) for
+what the DMS does not draw: the time to the millisecond (`api:time`), the path
+decoded as people read it with the Tester's badge on the requests it sent
+(`api:path`; the mono display shows neither), a duration that may never have
+been measured (`api:duration`), the request id (`api:request-id`) and the
+error message (`api:error`).
 
 **Q10. How are custom blocks named for permissions?**
 Every one carries `.meta({ name: "$api.blocks.<id>.name", description,
