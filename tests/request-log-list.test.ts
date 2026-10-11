@@ -103,11 +103,17 @@ describe("filtersFromQuery", () => {
     expect(
       filtersFromQuery({
         filter_statusClass: "is:6xx",
-        filter_window: "is:14d",
         filter_route: "is:nonsense",
         filter_slow: "is:false",
       }),
     ).toEqual({});
+  });
+
+  it("falls back to the default period for one it does not know", () => {
+    for (const filter_window of ["is:14d", "is:garbage", undefined]) {
+      const filters = filtersFromQuery({ filter_window }, NOW, "24h");
+      expect(filters.since).toEqual(new Date(NOW.getTime() - MS_PER_DAY));
+    }
   });
 });
 

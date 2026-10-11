@@ -135,9 +135,13 @@ export function statusClassOf(status: number): string {
  */
 const WINDOW_START_STEP_MS = 5_000;
 
-function windowSince(raw: string | undefined, now: Date): Date | undefined {
-  const window = filterValue(raw) as LogWindow | undefined;
-  if (!window || !(window in WINDOW_MS)) return undefined;
+/** The period a filter names, when it is one the table offers. */
+function readWindow(raw: string | undefined): LogWindow | undefined {
+  const window = filterValue(raw);
+  return LOG_WINDOWS.find((each) => each === window);
+}
+
+function windowSince(window: LogWindow, now: Date): Date {
   const ms = Math.min(WINDOW_MS[window], getMaxLogDays() * MS_PER_DAY);
   const start = now.getTime() - ms;
   return new Date(start - (start % WINDOW_START_STEP_MS));
@@ -148,10 +152,30 @@ function positiveInt(raw: string | undefined): number | undefined {
   return Number.isFinite(value) && value >= 0 ? value : undefined;
 }
 
-/** The log filters a source list query names. */
+/**
+ * Where the rows start: `filter_from`, else the period's start. The range
+ * frames the rows itself: the period, the page's default one included,
+ * would cut an incident older than it.
+ */
+function periodStart(
+  query: SourceQuery,
+  now: Date,
+  defaultWindow: LogWindow | undefined,
+): Date | undefined {
+  const from = filterDate(query.filter_from);
+  if (from) return from;
+  const window = readWindow(query.filter_window) ?? defaultWindow;
+  return window ? windowSince(window, now) : undefined;
+}
+
+/**
+ * The log filters a source list query names. A period it does not name, or
+ * names wrong (`?window=14d`), is `defaultWindow`: never no bound at all.
+ */
 export function filtersFromQuery(
   query: SourceQuery,
   now: Date = new Date(),
+  defaultWindow?: LogWindow,
 ): RequestLogFilters {
   const filters: RequestLogFilters = {};
   const statusClass =
@@ -177,11 +201,8 @@ export function filtersFromQuery(
   const error = query.filter_error?.replace(/^[a-z_]+:/, "");
   if (error) filters.errorMessage = error;
   // `filter_from` / `filter_to` (ISO) narrow to a `[from, to)` range: an
-  // incident an Activity link names, a minute of the histogram. The range
-  // frames the rows itself: the period, the page's default one included,
-  // would cut an incident older than it.
-  const since =
-    filterDate(query.filter_from) ?? windowSince(query.filter_window, now);
+  // incident an Activity link names, a minute of the histogram.
+  const since = periodStart(query, now, defaultWindow);
   if (since) filters.since = since;
   const until = filterDate(query.filter_to);
   if (until) filters.until = until;
@@ -217,6 +238,8 @@ export function namesUnknownRoute(query: SourceQuery): boolean {
 
 /** How a request table reads the list, besides its query. */
 export interface RequestLogListOptions {
+  /** The table's period when the query names none it knows. */
+  defaultWindow?: LogWindow;
   /**
    * List nothing until the query names a route (`filter_route`): the tables
    * of the Routes page show the requests of the route it selects, never
@@ -294,7 +317,7 @@ export async function listRequestLogs(
   keys: Set<string> | null,
   options: RequestLogListOptions = {},
 ): Promise<RequestLogTablePage> {
-  const filters = filtersFromQuery(query);
+  const filters = filtersFromQuery(query, new Date(), options.defaultWindow);
   const scope = scopeOf(filters, keys, options);
   if (matchesNothing(query, scope, options)) {
     return { results: [], total: 0, counts: { ...NO_COUNTS } };
@@ -371,7 +394,7 @@ export async function listRequestLogsSince(
   options: RequestLogListOptions = {},
 ): Promise<RequestLogSince> {
   const now = new Date().toISOString();
-  const filters = filtersFromQuery(query);
+  const filters = filtersFromQuery(query, new Date(), options.defaultWindow);
   const scope = scopeOf(filters, keys, options);
   if (matchesNothing(query, scope, options)) {
     return {

@@ -37,16 +37,6 @@ function sourceQuery(context: RequestContext): SourceQuery {
   return Object.fromEntries(context.url.searchParams.entries());
 }
 
-/**
- * The query of a table over a page's period: the page's default when the URL
- * names none, as its period selector shows it.
- */
-function periodQuery(context: RequestContext, window: string): SourceQuery {
-  const query = sourceQuery(context);
-  query.filter_window ??= `is:${window}`;
-  return query;
-}
-
 async function scopeKeys() {
   return getScopedRouteKeys(GetModel(RouteModel), getActiveScope());
 }
@@ -85,10 +75,21 @@ async function sinceOf(
  * (`?route=`, a filter of the table), and nothing without one rather than
  * every request of the API.
  */
-const ROUTE_TABLE: RequestLogListOptions = { requireRoute: true };
+const ROUTE_TABLE: RequestLogListOptions = {
+  requireRoute: true,
+  defaultWindow: ROUTES_DEFAULT_WINDOW,
+};
 
 /** The request logs page: a request named by id or path is found out of scope. */
-const LOGS_TABLE: RequestLogListOptions = { findOutsideScope: true };
+const LOGS_TABLE: RequestLogListOptions = {
+  findOutsideScope: true,
+  defaultWindow: LOGS_DEFAULT_WINDOW,
+};
+
+/** The Overview's recent requests, over the page's period. */
+const OVERVIEW_TABLE: RequestLogListOptions = {
+  defaultWindow: OVERVIEW_DEFAULT_WINDOW,
+};
 
 /** The request tables outside the request logs page, by their permission. */
 const overviewTable = OverviewPage.dashboard.targetChild(
@@ -195,11 +196,7 @@ export class LogsController extends Controller("/api/monitoring/logs") {
     @AuthUserWithPermission(LogsPage.requests) _user: User,
     @Context() context: RequestContext,
   ) {
-    return listOf(
-      context,
-      periodQuery(context, LOGS_DEFAULT_WINDOW),
-      LOGS_TABLE,
-    );
+    return listOf(context, sourceQuery(context), LOGS_TABLE);
   }
 
   /**
@@ -211,7 +208,7 @@ export class LogsController extends Controller("/api/monitoring/logs") {
     @AuthUserWithPermission(overviewTable) _user: User,
     @Context() context: RequestContext,
   ) {
-    return sinceOf(periodQuery(context, OVERVIEW_DEFAULT_WINDOW));
+    return sinceOf(sourceQuery(context), OVERVIEW_TABLE);
   }
 
   /**
@@ -223,7 +220,7 @@ export class LogsController extends Controller("/api/monitoring/logs") {
     @AuthUserWithPermission(routesTable) _user: User,
     @Context() context: RequestContext,
   ) {
-    return sinceOf(periodQuery(context, ROUTES_DEFAULT_WINDOW), ROUTE_TABLE);
+    return sinceOf(sourceQuery(context), ROUTE_TABLE);
   }
 
   /**
@@ -236,7 +233,7 @@ export class LogsController extends Controller("/api/monitoring/logs") {
     @AuthUserWithPermission(overviewTable) _user: User,
     @Context() context: RequestContext,
   ) {
-    return listOf(context, periodQuery(context, OVERVIEW_DEFAULT_WINDOW));
+    return listOf(context, sourceQuery(context), OVERVIEW_TABLE);
   }
 
   /**
@@ -250,11 +247,7 @@ export class LogsController extends Controller("/api/monitoring/logs") {
     @AuthUserWithPermission(routesTable) _user: User,
     @Context() context: RequestContext,
   ) {
-    return listOf(
-      context,
-      periodQuery(context, ROUTES_DEFAULT_WINDOW),
-      ROUTE_TABLE,
-    );
+    return listOf(context, sourceQuery(context), ROUTE_TABLE);
   }
 
   /**
@@ -286,7 +279,7 @@ export class LogsController extends Controller("/api/monitoring/logs") {
     @AuthUserWithPermission(LogsPage.requests) _user: User,
     @Context() context: RequestContext,
   ) {
-    return sinceOf(periodQuery(context, LOGS_DEFAULT_WINDOW), LOGS_TABLE);
+    return sinceOf(sourceQuery(context), LOGS_TABLE);
   }
 
   @Get("live")
