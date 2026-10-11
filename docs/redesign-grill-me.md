@@ -4,9 +4,9 @@
 > are the plan as first taken; the QA pass and its fixes changed several of
 > them. In short:
 >
-> - Dependencies: `@antelopejs/dms` 0.7.1 (`interface-dms` 0.5) and
->   `@antelopejs/dms-frontend` 0.5.2, not dms 0.6 / interface-dms 0.4 /
->   dms-frontend 0.5.0.
+> - Dependencies: `@antelopejs/dms` 0.7.4 or later (`interface-dms` 0.5.1)
+>   and `@antelopejs/dms-frontend` `>=0.5.2 <0.6.0`, not dms 0.6 /
+>   interface-dms 0.4 / dms-frontend 0.5.0.
 > - A request opens in the DMS side panel (`registerSidePanel`, dms 0.7),
 >   not in a drawer, from every request table.
 > - The Overview, the Request logs and Routes have a Live / Pause mode, fed by
@@ -16,12 +16,11 @@
 > - Periods are rolling and shared by the pages (24H by default, 1H to 30D);
 >   statistics are kept 30, 60 or 90 days (90 by default); the latency chart
 >   shows the p95 instead of the minimum.
-> - The console no longer captures its own traffic, the DMS's or the
->   Tester's (the Tester's is logged, not counted); one-off migrations bring
->   the stored data in line at start.
+> - The console no longer captures its own traffic or the DMS's, and logs the
+>   Tester's calls without counting them. Data stored by an earlier version
+>   is not migrated: the tables are dropped on upgrade (see the README).
 >
-> The README and the description of PR #28 are the reference for the current
-> behaviour.
+> The README is the reference for the current behaviour.
 
 A self-answered grilling of the plan behind the dms-api redesign PR. Each
 question is one branch of the decision tree; the answer is the recommendation

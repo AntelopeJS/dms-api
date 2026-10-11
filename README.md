@@ -20,10 +20,10 @@
   headers and the slow threshold.
 
 It requires `@antelopejs/dms` 0.7.4 or later (`@antelopejs/interface-dms` 0.5.1)
-and `@antelopejs/dms-frontend` 0.5.2 or later. The request panel and the Live
-mode rewrite the page URL, then navigate from it: dms-frontend 0.5.2 fixes the
-navigation after such a rewrite, and is the version the console is tested
-with.
+and `@antelopejs/dms-frontend` `>=0.5.2 <0.6.0`. The request panel and the
+Live mode rewrite the page URL, then navigate from it: dms-frontend 0.5.2
+fixes the navigation after such a rewrite, and is the version the console is
+tested with.
 
 The Overview, the Request logs and Routes have a **Live / Pause** control.
 Live, the default, the page follows new requests as the DMS realtime channel
@@ -67,8 +67,10 @@ its Vue 3 Inertia frontend module automatically through
 statistics and request-log retention, the slow-request threshold, body-size
 limits, and the header capture allowlist. Retention uses milliseconds; body
 limits use bytes. Settings saved through the dashboard override the module
-configuration at runtime; clearing a field, or setting it back to the module
-default, removes the override.
+configuration at runtime. A field set back to its module default ("Use
+default") holds no override; the retentions have no such button, since
+lowering one deletes data. An empty list of captured headers is an override
+of its own: no header is captured.
 
 `publicApiUrl` is the base URL clients reach the API at, such as
 `https://api.example.com`, without a trailing slash. The console writes it
@@ -87,17 +89,34 @@ proxy or when the console and the API have different hosts:
 
 Statistics are kept 90 days by default, and the dashboard offers 30, 60 or
 90 days. The 30D period compares itself with the 30 days before it, so it
-needs 60 days or more: with 30 days, the 30D comparison is unavailable. A
-value outside these choices set in the module configuration is kept. Request
-logs, which hold full requests, are kept 30 days by default, independently of
-the statistics. Lowering a retention from the dashboard shows how much the
+needs 60 days or more: with 30 days, the 30D comparison is unavailable.
+Request logs, which hold full requests, are kept 30 days by default,
+independently of the statistics. Lowering a retention from the dashboard shows how much the
 next hourly prune deletes and asks to confirm it.
+
+The module configuration follows the dashboard's rules: the module does not
+start with a value the Settings page would refuse (statistics kept other than
+30, 60 or 90 days, a slow threshold off its 50 ms step, a body cap or a log
+retention out of bounds, a secret header to capture).
 
 The console only counts your API's traffic. Its own calls (`/api/monitoring`),
 the DMS's (`/dms`, the realtime channel, the page layouts, the session check,
 its Settings pages and their tables) and the DMS console's pages are neither
 logged nor counted. Requests sent from the Tester are logged, marked as such,
-but left out of the statistics, the health and the incidents.
+but left out of the statistics, the health and the incidents. The Tester marks
+its calls with a short-lived token the module signs
+(`x-antelopejs-api-source`), which only a user allowed to use the Tester
+obtains: a client cannot leave the statistics by declaring itself the Tester.
+Behind several instances, give them the same `testerSourceSecret` so each one
+accepts the tokens of the others.
+
+### Upgrading from 0.1
+
+The stored data of earlier versions is not migrated. Drop the
+`request_log`, `routes_statistics` and `migrations` tables of the `dms-api`
+schema when upgrading; the module creates them again. The API settings answer
+the error-rate thresholds as ratios (`0.05`), and the `api.get-api-health`
+automation answers `failingRoutes` instead of `routesWithErrors24h`.
 
 Request logs can contain application data. Review the capture and retention
 settings before collecting real traffic, and use synthetic requests for
