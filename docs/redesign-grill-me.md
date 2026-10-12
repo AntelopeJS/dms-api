@@ -228,7 +228,8 @@ filters.
   `PeriodSelector` (1H / 24H / 7D / 30D, capped by the log retention, and
   "All time" for every request kept, `?api.period=all`), which the table
   follows (`periodScope`).
-- Search: path, request id, error message.
+- Search: path, request id, error message, opened with `/`
+  (`searchShortcut`); its empty state offers "Clear search" (`clearSearch`).
 - From another page, `?route=METHOD%20/path`, `?error=` and `?slow=true` open
   the table pre-filtered, and `?requests.tab=5xx` picks the tab. A source
   table does not take `queryParamFilters` in its builder options, but its
@@ -248,11 +249,13 @@ retrying state when a read fails (F10).
 
 **Q23. The drawer?**
 A side panel: the row action's target is `{ type: "sidePanel", component:
-RequestDetail, positionLabel: "$api.request.position" }`, run on a single
-click (`rowClick: "single"`). The DMS draws the header ("Request 3 of 50
-shown", ∧ ∨, J / K, close), highlights the open row and keeps it in
-`?record=`; a request beyond the listed rows is read through the table's own
-single-log route (`fetchRowUrl`). `RequestDetail` shows the error message and
+RequestDetail, rowTitle: "$api.request.heading", positionLabel:
+"$api.request.position", notFound }`, run on a single click
+(`rowClick: "single"`). The DMS draws the header ("POST /api/orders",
+"Request 3 of 50 shown", ∧ ∨, J / K, close), highlights the open row and
+keeps it in `?record=`; a request beyond the listed rows is read through the
+table's own single-log route (`fetchRowUrl`), and one no longer stored opens
+the DMS not-found state in the console's words. `RequestDetail` shows the error message and
 stack first, timing against the slow threshold, captured
 headers, request and response bodies with a redaction note, and the actions
 Replay in tester, Copy cURL, Open route, Same error (F03). A failed load says

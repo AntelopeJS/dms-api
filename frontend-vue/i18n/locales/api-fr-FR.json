@@ -270,7 +270,7 @@
       "table": "Table des requêtes",
       "search": "Chemin, ID de requête, erreur…",
       "count": "{count} requête | {count} requêtes",
-      "keys_hint": "⇧F rechercher · J / K requête suivante / précédente · Échap fermer le panneau · L direct / pause · ? raccourcis",
+      "keys_hint": "/ rechercher · J / K requête suivante / précédente · Échap fermer le panneau · L direct / pause · ? raccourcis",
       "toolbar": "Barre d'outils des journaux",
       "drawer_title": "Requête",
       "open_request": "Ouvrir la requête",
@@ -428,7 +428,8 @@
       "forbidden_description": "Votre rôle affiche cette liste, mais pas le détail de ses requêtes. Demandez à un administrateur l'accès aux journaux des requêtes.",
       "error_title": "Impossible d'ouvrir cette requête",
       "error_description": "La console n'a pas répondu. Réessayez.",
-      "position": "Requête {index} sur {total} affichées"
+      "position": "Requête {index} sur {total} affichées",
+      "heading": "{method} {path}"
     },
     "routes": {
       "title": "Routes",

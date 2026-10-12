@@ -169,9 +169,10 @@ const DETAIL_URLS: Record<RequestTablePage, string> = {
 
 /**
  * Opens a request of the table in the DMS side panel on the right, on a
- * single click: the DMS draws its header ("Request 3 of 50 shown", ∧ ∨, J / K,
- * close), highlights the open row and keeps it in the URL (`?record=`);
- * `RequestDetail` draws the request.
+ * single click: the DMS draws its header (the row's "POST /api/orders",
+ * "Request 3 of 50 shown", ∧ ∨, J / K, close), highlights the open row and
+ * keeps it in the URL (`?record=`), and says so when a `?record=` names a
+ * request no longer stored; `RequestDetail` draws the request.
  */
 function requestPanelAction(page: RequestTablePage) {
   return {
@@ -183,7 +184,12 @@ function requestPanelAction(page: RequestTablePage) {
       type: "sidePanel" as const,
       component: apiBlock("RequestDetail", { detailUrl: DETAIL_URLS[page] }),
       title: "$api.logs.drawer_title",
+      rowTitle: "$api.request.heading",
       positionLabel: "$api.request.position",
+      notFound: {
+        title: "$api.request.not_found_title",
+        description: "$api.request.not_found_description",
+      },
     },
   };
 }

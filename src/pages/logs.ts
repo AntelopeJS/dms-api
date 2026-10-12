@@ -82,6 +82,8 @@ export class LogsPage extends PageController(
   static requests = requestTable({
     page: "logs",
     searchPlaceholder: "$api.logs.search",
+    // "/" opens the search, in place of the DMS default ⇧F.
+    searchShortcut: "/",
     pageSize: LOGS_PAGE_SIZE,
     pagination: "loadMore",
     density: "compact",

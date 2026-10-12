@@ -1,35 +1,18 @@
 import { describe, expect, it } from 'vitest'
 import {
   bodyOmission,
-  decodePath,
   durationScale,
   isRequestId,
   originalBodySize,
   requestClock,
   requestPivots,
-  requestTitle,
   requestUrl,
   thresholdRatio,
   withParam,
 } from '../app/utils/requestDrawer'
 
 describe('reading a request', () => {
-  it('decodes a path as people read it, and leaves a broken one as is', () => {
-    expect(decodePath('/api/orders/commande-%C3%A9')).toBe(
-      '/api/orders/commande-é',
-    )
-    expect(decodePath('/a%2Fb')).toBe('/a%2Fb')
-    expect(decodePath('/bad-%E0%A4%A')).toBe('/bad-%E0%A4%A')
-  })
-
-  it('names a request and the URL it went to', () => {
-    expect(
-      requestTitle({
-        method: 'post',
-        rawPath: '/webhooks/stripe',
-        statusCode: 500,
-      }),
-    ).toBe('POST /webhooks/stripe · 500')
+  it('names the URL a request went to', () => {
     expect(
       requestUrl('https://api.test', '/orders', { status: ['a', 'b'], q: 'é' }),
     ).toBe('https://api.test/orders?status=a&status=b&q=%C3%A9')

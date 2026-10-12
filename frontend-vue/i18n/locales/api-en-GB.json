@@ -270,7 +270,7 @@
       "table": "Request table",
       "search": "Path, request ID, error…",
       "count": "{count} request | {count} requests",
-      "keys_hint": "⇧F search · J / K next / previous request · Esc close the panel · L live / pause · ? shortcuts",
+      "keys_hint": "/ search · J / K next / previous request · Esc close the panel · L live / pause · ? shortcuts",
       "toolbar": "Request logs toolbar",
       "drawer_title": "Request",
       "open_request": "Open request",
@@ -428,7 +428,8 @@
       "forbidden_description": "Your role shows this list but not the detail of its requests. Ask an administrator for access to Request logs.",
       "error_title": "Could not open this request",
       "error_description": "The console did not answer. Try again.",
-      "position": "Request {index} of {total} shown"
+      "position": "Request {index} of {total} shown",
+      "heading": "{method} {path}"
     },
     "routes": {
       "title": "Routes",

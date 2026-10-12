@@ -15,15 +15,17 @@ import {
 // The request table's empty body, which names what empties it: the search,
 // a link's filters, the period and the other filters of the URL (the DMS
 // table does not count those as filters), else nothing captured yet. Each
-// cause comes with its way out. The table hands it `state`, `search` and
-// `refresh`; its tab and its search field are its own, cleared from its own
-// toolbar.
+// cause comes with its way out. The table hands it `state`, `search`,
+// `refresh` and `clearSearch`, which empties its search and folds its field
+// like its own "Clear search"; its tab is its own.
 defineOptions({ inheritAttrs: false })
 
 const props = defineProps<{
   state?: 'firstRun' | 'filtered' | 'error'
   search?: string
   refresh?: () => void
+  /** Unset while nothing is searched. */
+  clearSearch?: () => void
 }>()
 
 const { t } = useI18n()
@@ -76,6 +78,20 @@ function clearFilters() {
   }
 }
 
+function clearSearchAction() {
+  const clear = props.clearSearch
+  if (!clear) return []
+  return [
+    {
+      label: t('dms.table.clear_search'),
+      icon: 'i-ph-x',
+      color: 'neutral' as const,
+      variant: 'outline' as const,
+      onClick: () => clear(),
+    },
+  ]
+}
+
 // "All time", while a narrower period may hide the requests.
 function widen() {
   const current = filters.value
@@ -123,6 +139,7 @@ const content = computed(() => {
           .filter(Boolean)
           .join(' '),
         actions: [
+          ...clearSearchAction(),
           ...widen(),
           ...(hasLogsFilters(current) ? [clearFilters()] : []),
         ],

@@ -61,8 +61,21 @@ describe("LogsPage", () => {
     expect(action?.target).toMatchObject({
       type: "sidePanel",
       title: "$api.logs.drawer_title",
+      rowTitle: "$api.request.heading",
       positionLabel: "$api.request.position",
+      notFound: {
+        title: "$api.request.not_found_title",
+        description: "$api.request.not_found_description",
+      },
     });
+  });
+
+  it("opens its search on /", () => {
+    const options = LogsPage.requests.serializeSync().options as Record<
+      string,
+      unknown
+    >;
+    expect(options.searchShortcut).toBe("/");
   });
 
   it("shows the error message under a key no old preference hides", () => {

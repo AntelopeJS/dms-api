@@ -40,11 +40,13 @@ while you read further down). The choice is one for the three pages, and
 `?live=0` opens a page paused.
 
 A request opens in a side panel on the right, on a single click on its row,
-from every request table: J / K step through the rows shown, and the URL names
-it (`?record=`), so a link or a reload opens it again. The period of a page is
-its period selector's (1H, 24H, 7D, 30D, and "All time" in the Request logs),
-kept in the URL (`?api.period=last-24h`); without one, the page opens on the
-last period picked on any of the three pages, else the last 24 hours.
+from every request table: the panel is titled with its method and path, J / K
+step through the rows shown, and the URL names it (`?record=`), so a link or a
+reload opens it again. In the Request logs, `/` opens the search. The period
+of a page is its period selector's (1H, 24H, 7D, 30D, and "All time" in the
+Request logs), kept in the URL (`?api.period=last-24h`); without one, the page
+opens on the last period picked on any of the three pages, else the last 24
+hours.
 
 This module is the dashboard for your API, not the HTTP server implementation.
 Your application still needs an API provider such as `@antelopejs/api`, the

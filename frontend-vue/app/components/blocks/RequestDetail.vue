@@ -2,7 +2,6 @@
 import { computed, nextTick, ref, watch } from 'vue'
 import { byteLength, formatMs } from '../../utils/format'
 import {
-  decodePath,
   durationScale,
   fullDateTime,
   isRequestId,
@@ -12,7 +11,6 @@ import {
   relativeTime,
   type RequestPivot,
   requestPivots,
-  requestTitle,
   requestUrl,
   type RouteLatency,
   thresholdRatio,
@@ -22,16 +20,16 @@ import { capturedSnippetRequest, toCurl } from '../../utils/snippets'
 import ApiBody from '../internal/ApiBody.vue'
 import ApiCode from '../internal/ApiCode.vue'
 import ApiKeyValues from '../internal/ApiKeyValues.vue'
-import ApiMethodBadge from '../internal/ApiMethodBadge.vue'
-import ApiPath from '../internal/ApiPath.vue'
 import ApiStatusBadge from '../internal/ApiStatusBadge.vue'
 import ApiTesterBadge from '../internal/ApiTesterBadge.vue'
 
 // One captured request, in the DMS side panel on the right, which a request
 // table's row opens (a `sidePanel` row action, `src/pages/request-table.ts`).
-// The DMS draws the panel's header: its title, "Request 3 of 50 shown", the
-// previous / next buttons, J / K and close. Here, the top stays put: where the
-// request went, how it ended, what to do with it. Below, the summary puts
+// The DMS draws the panel's header: the request's method and path
+// ("POST /api/orders", its `rowTitle`), "Request 3 of 50 shown", the previous
+// / next buttons, J / K and close, and the not-found state of a `?record=`
+// that names no stored request. Here, the top stays put: where the request
+// went, how it ended, what to do with it. Below, the summary puts
 // the error first, then what the request was and how long it took against
 // the slow threshold; then what was sent and what came back. Every action
 // leads somewhere: the tester, the route, the requests alike.
@@ -173,10 +171,6 @@ const failureActions = computed(() =>
 )
 
 // --- the header ---
-const title = computed(() =>
-  log.value ? requestTitle(log.value) : t('api.logs.drawer_title'),
-)
-const path = computed(() => decodePath(log.value?.rawPath ?? ''))
 const url = computed(() =>
   log.value
     ? requestUrl(apiOrigin.value ?? '', log.value.rawPath, log.value.query)
@@ -367,111 +361,93 @@ const count = (value: number) =>
 <template>
   <section class="-m-4 flex min-h-0 flex-col" :aria-busy="pending">
     <header
+      v-if="log"
       class="border-default bg-default sticky top-0 z-10 flex shrink-0 flex-col gap-2.5 border-b px-4 pt-3 sm:px-5"
     >
-      <h3 class="flex min-w-0 items-center gap-2" :aria-label="title">
-        <template v-if="log">
-          <ApiMethodBadge :method="log.method" />
-          <bdi class="min-w-0 truncate">
-            <ApiPath
-              :path="path"
-              class="text-highlighted text-[15px] font-semibold"
-            />
-          </bdi>
-        </template>
-        <USkeleton v-else-if="pending" class="h-6 w-2/3" />
-        <span v-else class="text-highlighted text-[15px] font-semibold">
-          {{ title }}
+      <div class="flex min-w-0 items-center gap-1">
+        <bdi
+          class="text-muted min-w-0 truncate font-mono text-[11.5px]"
+          :title="url"
+        >
+          {{ url }}
+        </bdi>
+        <DmsCopyButton :value="url" :aria-label="t('api.request.copy_url')" />
+      </div>
+
+      <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[12px]">
+        <ApiStatusBadge :status="log.statusCode" text size="sm" />
+        <span
+          v-if="timing"
+          class="font-mono tabular-nums"
+          :class="timing.slow ? 'text-warning font-semibold' : 'text-muted'"
+        >
+          {{ formatMs(log.responseTimeMs ?? 0, locale) }}
         </span>
-      </h3>
-
-      <template v-if="log">
-        <div class="-mt-1 flex min-w-0 items-center gap-1">
-          <bdi
-            class="text-muted min-w-0 truncate font-mono text-[11.5px]"
-            :title="url"
-          >
-            {{ url }}
-          </bdi>
-          <DmsCopyButton :value="url" :aria-label="t('api.request.copy_url')" />
-        </div>
-
-        <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[12px]">
-          <ApiStatusBadge :status="log.statusCode" text size="sm" />
-          <span
-            v-if="timing"
-            class="font-mono tabular-nums"
-            :class="timing.slow ? 'text-warning font-semibold' : 'text-muted'"
-          >
-            {{ formatMs(log.responseTimeMs ?? 0, locale) }}
+        <UTooltip v-else :text="t('api.request.not_measured_hint')">
+          <span class="text-dimmed font-mono" tabindex="0">
+            — {{ t('api.request.not_measured') }}
           </span>
-          <UTooltip v-else :text="t('api.request.not_measured_hint')">
-            <span class="text-dimmed font-mono" tabindex="0">
-              — {{ t('api.request.not_measured') }}
-            </span>
-          </UTooltip>
-          <UBadge
-            v-if="timing?.slow"
-            size="sm"
-            color="warning"
-            variant="subtle"
-            icon="i-ph-timer"
-            :label="t('api.request.slow_ratio', { ratio })"
-          />
-          <ApiTesterBadge v-if="isTester" />
-          <span
-            class="text-dimmed font-mono text-[11.5px]"
-            :title="fullDateTime(log.timestamp, locale)"
-          >
-            {{ relativeTime(log.timestamp, locale) }}
-          </span>
-        </div>
-
-        <div class="flex flex-wrap items-center gap-2">
-          <UButton
-            v-if="testerLink"
-            :to="testerLink"
-            size="sm"
-            icon="i-ph-paper-plane-tilt"
-            :label="t('api.request.replay')"
-          />
-          <UButton
-            size="sm"
-            color="neutral"
-            variant="outline"
-            icon="i-ph-terminal"
-            :label="t('api.request.copy_curl')"
-            @click="copyCurl"
-          />
-          <UButton
-            v-if="sameErrorLink"
-            :to="sameErrorLink"
-            size="sm"
-            color="neutral"
-            variant="outline"
-            icon="i-ph-copy-simple"
-            :label="t('api.request.same_error')"
-          />
-          <UDropdownMenu :items="seeAlso" :content="{ align: 'end' }">
-            <UButton
-              size="sm"
-              color="neutral"
-              variant="ghost"
-              trailing-icon="i-ph-caret-down"
-              :label="t('api.request.see_also')"
-            />
-          </UDropdownMenu>
-        </div>
-
-        <UTabs
-          v-model="tab"
-          :items="tabs"
-          :content="false"
-          variant="link"
+        </UTooltip>
+        <UBadge
+          v-if="timing?.slow"
           size="sm"
+          color="warning"
+          variant="subtle"
+          icon="i-ph-timer"
+          :label="t('api.request.slow_ratio', { ratio })"
         />
-      </template>
-      <div v-else class="pb-3" />
+        <ApiTesterBadge v-if="isTester" />
+        <span
+          class="text-dimmed font-mono text-[11.5px]"
+          :title="fullDateTime(log.timestamp, locale)"
+        >
+          {{ relativeTime(log.timestamp, locale) }}
+        </span>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <UButton
+          v-if="testerLink"
+          :to="testerLink"
+          size="sm"
+          icon="i-ph-paper-plane-tilt"
+          :label="t('api.request.replay')"
+        />
+        <UButton
+          size="sm"
+          color="neutral"
+          variant="outline"
+          icon="i-ph-terminal"
+          :label="t('api.request.copy_curl')"
+          @click="copyCurl"
+        />
+        <UButton
+          v-if="sameErrorLink"
+          :to="sameErrorLink"
+          size="sm"
+          color="neutral"
+          variant="outline"
+          icon="i-ph-copy-simple"
+          :label="t('api.request.same_error')"
+        />
+        <UDropdownMenu :items="seeAlso" :content="{ align: 'end' }">
+          <UButton
+            size="sm"
+            color="neutral"
+            variant="ghost"
+            trailing-icon="i-ph-caret-down"
+            :label="t('api.request.see_also')"
+          />
+        </UDropdownMenu>
+      </div>
+
+      <UTabs
+        v-model="tab"
+        :items="tabs"
+        :content="false"
+        variant="link"
+        size="sm"
+      />
     </header>
 
     <div class="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5">

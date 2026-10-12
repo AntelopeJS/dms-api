@@ -1,15 +1,6 @@
 // Reading a captured request, for the request tables' cells and the side
-// panel a row opens (`RequestDetail`): its path, its time, its duration
+// panel a row opens (`RequestDetail`): its URL, its time, its duration
 // against the slow threshold, its bodies and the lists it leads to.
-
-/** A path as people read it: percent-escapes decoded, when they decode. */
-export function decodePath(path: string): string {
-  try {
-    return decodeURI(path)
-  } catch {
-    return path
-  }
-}
 
 /** The local calendar day of a moment, as `YYYY-MM-DD`. */
 export function localDay(value: string | number | Date): string {
@@ -145,15 +136,6 @@ export function relativeTime(
     RELATIVE_UNITS.find(([, ms]) => Math.abs(elapsed) >= ms) ??
     RELATIVE_UNITS[RELATIVE_UNITS.length - 1]
   return relativeFormat(locale).format(Math.round(elapsed / size), unit)
-}
-
-/** How a request names itself in the panel: "POST /api/orders · 500". */
-export function requestTitle(log: {
-  method: string
-  rawPath: string
-  statusCode: number
-}): string {
-  return `${log.method.toUpperCase()} ${decodePath(log.rawPath)} · ${log.statusCode}`
 }
 
 /** The URL a request was sent to: `origin`, its path and its query. */
