@@ -2,13 +2,13 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { formatThreshold } from '../../utils/format'
 import {
-  hasIncident,
-  isAllTime,
+  incidentRange,
   isRouteRef,
   LINK_FILTER_KEYS,
   LOG_METHODS,
   readLogsFilters,
   routeMethod,
+  windowPreset,
   withLogsFilters,
   type LogsFiltersPatch,
 } from '../../utils/logsQuery'
@@ -17,7 +17,7 @@ import { localDay } from '../../utils/requestDrawer'
 // The filters bar right above the request table: the method, the slow
 // requests, and the filters a link brought (route, path, error, an
 // incident's range), each removable. Every request kept is the toolbar
-// period's "All time".
+// period's "All time", and an incident's range is a range of that period.
 // Everything here reads and writes the URL (`utils/logsQuery.ts`), as the
 // toolbar's period selector does: the table follows the URL, so what the bar
 // shows is what the table lists, and the tab counts with it.
@@ -34,6 +34,7 @@ const route = useDmsRoute()
 const router = useDmsRouter()
 
 const filters = computed(() => readLogsFilters(route.query))
+const period = useApiPeriod()
 
 function apply(patch: LogsFiltersPatch) {
   void router.push({ query: withLogsFilters(route.query, patch) })
@@ -71,8 +72,7 @@ const slowLabel = computed(() =>
 )
 
 /** "18:31", with the day in front once it is not today. */
-function incidentTime(iso: string): string {
-  const date = new Date(iso)
+function incidentTime(date: Date): string {
   const time = date.toLocaleTimeString(locale.value, {
     hour: '2-digit',
     minute: '2-digit',
@@ -118,12 +118,13 @@ const chips = computed<Chip[]>(() => {
   const list = LINK_FILTER_KEYS.filter((key) => !!current[key]).map((key) =>
     linkChip(key, current[key]!),
   )
-  if (hasIncident(current))
+  const incident = incidentRange(period.value)
+  if (incident)
     list.push({
       key: 'incident',
       label: t('api.logs.linked.incident', {
-        since: current.since ? incidentTime(current.since) : '…',
-        until: current.until ? incidentTime(current.until) : '…',
+        since: incidentTime(incident.from),
+        until: incidentTime(incident.to),
       }),
       remove: { incident: null },
     })
@@ -131,15 +132,15 @@ const chips = computed<Chip[]>(() => {
 })
 
 // "Last 24 hours · from Overview": where the link came from, and the period
-// it brought while it is still the page's. An incident's range frames the
-// rows instead of the period: its chip says it.
+// the page shows. An incident's range is no preset: its chip says it.
 const origin = computed(() => {
-  const { from, period } = filters.value
+  const { from } = filters.value
   if (!from) return undefined
   const page = t(`api.logs.linked.pages.${from}`)
-  return period && !isAllTime(filters.value) && !hasIncident(filters.value)
+  const preset = windowPreset(period.value)
+  return preset
     ? t('api.logs.linked.origin_window', {
-        window: t(`api.logs.windows.${period}`),
+        window: t(`api.logs.windows.${preset}`),
         page,
       })
     : t('api.logs.linked.origin', { page })

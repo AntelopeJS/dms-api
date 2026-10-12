@@ -12,9 +12,9 @@ describe("logsLink", () => {
     );
     expect(query(logsLink({ path: "/a/1" })).get("requests.tab")).toBe("all");
     expect(
-      query(logsLink({ since: new Date(0), until: new Date(60_000) })).get(
-        "requests.tab",
-      ),
+      query(
+        logsLink({ range: { from: new Date(0), to: new Date(60_000) } }),
+      ).get("requests.tab"),
     ).toBe("all");
   });
 
@@ -32,5 +32,17 @@ describe("logsLink", () => {
     expect(query(logsLink({ period: "last-7-days" })).get("api.period")).toBe(
       "last-7-days",
     );
+  });
+
+  it("writes a range in the selector's own keys, in place of a preset", () => {
+    const link = query(
+      logsLink({
+        period: "last-24h",
+        range: { from: new Date(0), to: new Date(60_000) },
+      }),
+    );
+    expect(link.get("api.from")).toBe("1970-01-01T00:00:00.000Z");
+    expect(link.get("api.to")).toBe("1970-01-01T00:01:00.000Z");
+    expect(link.has("api.period")).toBe(false);
   });
 });

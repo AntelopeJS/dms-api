@@ -4,7 +4,7 @@ import { usePageRecordLabel } from '#dms-core/app/build/composables/page/usePage
 import { routeSnippetRequest, toCurl } from '../../utils/snippets'
 import { hasRequestBody } from '../../utils/http'
 import { windowParts } from '../../utils/routeExplorer'
-import { PERIOD_QUERY_KEY, readPeriod } from '../../utils/period'
+import { linkedPeriod } from '../../utils/logsQuery'
 import ApiMethodBadge from '../internal/ApiMethodBadge.vue'
 import ApiPath from '../internal/ApiPath.vue'
 
@@ -68,16 +68,18 @@ const {
   error,
 } = useRouteDetail(props.fetchUrl, props.queryKey)
 const apiOrigin = useApiOrigin(() => route.value?.apiOrigin)
+const period = useApiPeriod()
 const auth = computed(() =>
   route.value ? AUTH_DISPLAY[route.value.auth?.status ?? 'unknown'] : null,
 )
 
 const requestsLink = computed(() => {
   if (!route.value) return ''
-  const query = new URLSearchParams({ route: route.value.ref })
   // The page's period, which the request logs' selector reads the same.
-  const period = readPeriod(page.query)
-  if (period) query.set(PERIOD_QUERY_KEY, period)
+  const query = new URLSearchParams({
+    route: route.value.ref,
+    ...linkedPeriod(period.value),
+  })
   return `/modules/api/logs?${query}`
 })
 

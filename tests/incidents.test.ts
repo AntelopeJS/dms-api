@@ -103,15 +103,16 @@ describe("getActivity", () => {
     );
     const link = new URL(closed.to ?? "", "http://console");
     // Whole minutes from the first 5xx to the last, the route's 5xx only.
-    expect(link.searchParams.get("since")).toBe(
+    // The page's period opens on that range, in the selector's own keys.
+    expect(link.searchParams.get("api.from")).toBe(
       new Date(NOW - 131 * MS_PER_MINUTE).toISOString(),
     );
-    expect(link.searchParams.get("until")).toBe(
+    expect(link.searchParams.get("api.to")).toBe(
       new Date(NOW - 129 * MS_PER_MINUTE).toISOString(),
     );
+    expect(link.searchParams.get("api.period")).toBeNull();
     expect(link.searchParams.get("route")).toBe("POST /hook");
     expect(link.searchParams.get("requests.tab")).toBe("5xx");
-    expect(link.searchParams.get("api.period")).toBe("last-24h");
     expect(closed.params).toMatchObject({
       topStatus: "500",
       topMessage: "TypeError",

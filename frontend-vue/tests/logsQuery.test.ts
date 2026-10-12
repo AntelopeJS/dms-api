@@ -3,14 +3,25 @@ import {
   bodyLimit,
   clearedLogsFilters,
   hasLogsFilters,
+  incidentRange,
+  isAllTime,
   isRouteRef,
-  withDefaultPeriod,
+  linkedPeriod,
   logsEmptyCause,
   readLogsFilters,
   routeMethod,
+  windowPreset,
   withLogsFilters,
+  type LogsPeriod,
 } from '../app/utils/logsQuery'
-import { readPeriod } from '../app/utils/period'
+
+const lastDay: LogsPeriod = { preset: 'last-24h', range: null }
+const allTime: LogsPeriod = { preset: 'all', range: null }
+const incident = {
+  from: new Date('2026-10-10T18:31:00.000Z'),
+  to: new Date('2026-10-10T18:46:00.000Z'),
+}
+const incidentPeriod: LogsPeriod = { preset: 'custom', range: incident }
 
 describe('readLogsFilters', () => {
   it('reads the filters a link or the page wrote', () => {
@@ -24,13 +35,11 @@ describe('readLogsFilters', () => {
         from: 'overview',
       }),
     ).toEqual({
-      period: 'last-24h',
       method: 'POST',
       slow: true,
       route: 'POST /webhooks/stripe',
+      path: undefined,
       error: 'boom',
-      since: undefined,
-      until: undefined,
       from: 'overview',
     })
   })
@@ -38,31 +47,41 @@ describe('readLogsFilters', () => {
   it('leaves out what the table would not apply', () => {
     expect(
       readLogsFilters({
-        'api.period': '14d',
         method: 'post',
         slow: '1',
         from: 'x',
       }),
     ).toEqual({
-      period: undefined,
       method: undefined,
       slow: false,
       route: undefined,
+      path: undefined,
       error: undefined,
-      since: undefined,
-      until: undefined,
       from: undefined,
     })
   })
 
   it('takes the first of repeated values', () => {
-    expect(readPeriod({ 'api.period': ['last-7-days', 'last-hour'] })).toBe(
-      'last-7-days',
-    )
+    expect(readLogsFilters({ method: ['GET', 'POST'] }).method).toBe('GET')
+  })
+})
+
+describe('the period', () => {
+  it('tells "All time", an incident\'s range and a preset apart', () => {
+    expect(isAllTime(allTime)).toBe(true)
+    expect(isAllTime(null)).toBe(false)
+    expect(incidentRange(incidentPeriod)).toEqual(incident)
+    expect(incidentRange(lastDay)).toBeNull()
+    expect(windowPreset(lastDay)).toBe('last-24h')
+    expect(windowPreset(allTime)).toBeUndefined()
+    expect(windowPreset(incidentPeriod)).toBeUndefined()
+    expect(windowPreset(null)).toBeUndefined()
   })
 
-  it('reads the DMS "All time" of the request logs', () => {
-    expect(readLogsFilters({ 'api.period': 'all' }).period).toBe('all')
+  it('carries a preset on a link to the request logs, nothing else', () => {
+    expect(linkedPeriod(lastDay)).toEqual({ 'api.period': 'last-24h' })
+    expect(linkedPeriod(incidentPeriod)).toEqual({})
+    expect(linkedPeriod(null)).toEqual({})
   })
 })
 
@@ -134,23 +153,29 @@ describe('logsEmptyCause', () => {
   const none = readLogsFilters({})
 
   it('names the most specific cause', () => {
-    expect(logsEmptyCause('error', 'x', none)).toBe('error')
+    expect(logsEmptyCause('error', 'x', none, lastDay)).toBe('error')
     expect(
-      logsEmptyCause('filtered', 'zzzz', readLogsFilters({ route: 'GET /a' })),
+      logsEmptyCause(
+        'filtered',
+        'zzzz',
+        readLogsFilters({ route: 'GET /a' }),
+        lastDay,
+      ),
     ).toBe('search')
     // The DMS says first run: the URL's filters are not its own.
     expect(
-      logsEmptyCause('firstRun', '', readLogsFilters({ route: 'GET /a' })),
-    ).toBe('link')
-    // A period frames the rows.
-    expect(logsEmptyCause('firstRun', ' ', none)).toBe('filters')
-    expect(
       logsEmptyCause(
         'firstRun',
-        undefined,
-        readLogsFilters({ 'api.period': 'all' }),
+        '',
+        readLogsFilters({ route: 'GET /a' }),
+        allTime,
       ),
-    ).toBe('first-run')
+    ).toBe('link')
+    // A period frames the rows, the one the selector applies included.
+    expect(logsEmptyCause('firstRun', ' ', none, lastDay)).toBe('filters')
+    expect(logsEmptyCause('firstRun', undefined, none, allTime)).toBe(
+      'first-run',
+    )
   })
 })
 
@@ -164,68 +189,54 @@ describe('bodyLimit', () => {
 })
 
 describe('incident range', () => {
-  const incident = {
+  const query = {
     route: 'GET /a',
-    since: '2026-10-10T18:31:00.000Z',
-    until: '2026-10-10T18:46:00.000Z',
-    'api.period': 'last-24h',
+    'api.from': incident.from.toISOString(),
+    'api.to': incident.to.toISOString(),
     from: 'overview',
     'requests.tab': '5xx',
   }
 
-  it('reads the range and drops an unreadable one', () => {
-    expect(readLogsFilters(incident)).toMatchObject({
-      since: incident.since,
-      until: incident.until,
-    })
-    expect(readLogsFilters({ since: 'soon' }).since).toBeUndefined()
-  })
-
-  it('drops the range with all time or on its own', () => {
-    expect(withLogsFilters(incident, { allTime: true })).toEqual({
+  it('replaces the range with all time, asked for or on its own', () => {
+    expect(withLogsFilters(query, { allTime: true })).toEqual({
       route: 'GET /a',
       'api.period': 'all',
       'requests.tab': '5xx',
     })
-    expect(withLogsFilters(incident, { incident: null })).toEqual({
+    expect(withLogsFilters(query, { incident: null })).toEqual({
       route: 'GET /a',
-      'api.period': 'last-24h',
+      'api.period': 'all',
       from: 'overview',
       'requests.tab': '5xx',
     })
   })
 
+  it('leaves a preset alone when there is no range to remove', () => {
+    expect(
+      clearedLogsFilters({ 'api.period': 'last-hour', method: 'GET' }),
+    ).toEqual({ 'api.period': 'last-hour' })
+  })
+
   it('keeps the origin while the range alone is left', () => {
-    expect(withLogsFilters(incident, { route: null })).toMatchObject({
-      since: incident.since,
+    expect(withLogsFilters(query, { route: null })).toMatchObject({
+      'api.from': query['api.from'],
       from: 'overview',
     })
   })
 
   it('counts as a link filter for the empty state', () => {
     expect(
-      logsEmptyCause(
-        'firstRun',
-        '',
-        readLogsFilters({ since: incident.since }),
-      ),
+      logsEmptyCause('firstRun', '', readLogsFilters({}), incidentPeriod),
     ).toBe('link')
+    expect(hasLogsFilters(readLogsFilters({}), incidentPeriod)).toBe(true)
   })
 })
 
-describe('the default period', () => {
-  it('applies the last 24 hours when the URL names none', () => {
-    expect(withDefaultPeriod(readLogsFilters({})).period).toBe('last-24h')
-    expect(
-      withDefaultPeriod(readLogsFilters({ 'api.period': 'last-7-days' }))
-        .period,
-    ).toBe('last-7-days')
-  })
-
-  it('leaves the period out of the filters to clear', () => {
-    expect(hasLogsFilters(withDefaultPeriod(readLogsFilters({})))).toBe(false)
-    expect(hasLogsFilters(readLogsFilters({ 'api.period': 'all' }))).toBe(false)
-    expect(hasLogsFilters(readLogsFilters({ slow: 'true' }))).toBe(true)
+describe('the filters to clear', () => {
+  it('leave the period out', () => {
+    expect(hasLogsFilters(readLogsFilters({}), lastDay)).toBe(false)
+    expect(hasLogsFilters(readLogsFilters({}), allTime)).toBe(false)
+    expect(hasLogsFilters(readLogsFilters({ slow: 'true' }), null)).toBe(true)
   })
 })
 

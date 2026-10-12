@@ -5,7 +5,13 @@
  */
 
 import { normalizeRoutePath } from "@/db/tables/routes_statistics.table";
-import { PERIOD_QUERY_KEY, type WindowPreset } from "./window";
+import {
+  PERIOD_FROM_KEY,
+  PERIOD_QUERY_KEY,
+  PERIOD_TO_KEY,
+  type TimeRange,
+  type WindowPreset,
+} from "./window";
 
 const MODULE_BASE = "/modules/api";
 
@@ -37,12 +43,11 @@ export interface LogsLinkOptions {
    */
   period?: WindowPreset | null;
   /**
-   * Bounds of a span inside the window, `[since, until)`, written as ISO
-   * timestamps (`?since=` / `?until=`, the list's `filter_from` /
-   * `filter_to`): an incident's requests, not the whole window's.
+   * A range the logs open on instead of a preset, `[from, to)`: an
+   * incident's requests, not the whole window's. The page's `PeriodSelector`
+   * reads it from `?api.from=` / `?api.to=` (ISO timestamps).
    */
-  since?: Date;
-  until?: Date;
+  range?: TimeRange;
   /** Where the link leaves from: "Last 24 hours · from Overview". */
   from?: LinkOrigin;
 }
@@ -77,16 +82,13 @@ export function logsLink(options: LogsLinkOptions = {}): string {
   if (options.path) query.path = options.path;
   if (options.error) query.error = options.error;
   if (options.slow) query.slow = "true";
-  if (options.period) query[PERIOD_QUERY_KEY] = options.period;
-  if (options.since) query.since = options.since.toISOString();
-  if (options.until) query.until = options.until.toISOString();
+  if (options.range) {
+    query[PERIOD_FROM_KEY] = options.range.from.toISOString();
+    query[PERIOD_TO_KEY] = options.range.to.toISOString();
+  } else if (options.period) query[PERIOD_QUERY_KEY] = options.period;
   if (options.from) query.from = options.from;
   const narrows =
-    options.route ||
-    options.path ||
-    options.error ||
-    options.since ||
-    options.until;
+    options.route || options.path || options.error || options.range;
   const tab = options.tab ?? (narrows ? ALL_TAB : undefined);
   if (tab) query[`${LOGS_TABLE_KEY}.tab`] = tab;
   return withQuery(`${MODULE_BASE}/logs`, query);

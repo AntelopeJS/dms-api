@@ -36,6 +36,14 @@ export const PERIOD_SCOPE = "api";
 /** The URL key the page's period is kept under. */
 export const PERIOD_QUERY_KEY = `${PERIOD_SCOPE}.period`;
 
+/**
+ * The URL keys of a range the page opens on instead of a preset (an
+ * incident's): ISO bounds the `PeriodSelector` takes even though it offers
+ * no custom range.
+ */
+export const PERIOD_FROM_KEY = `${PERIOD_SCOPE}.from`;
+export const PERIOD_TO_KEY = `${PERIOD_SCOPE}.to`;
+
 const PRESET_SPAN_MS: Record<WindowPreset, number> = {
   "last-hour": MS_PER_HOUR,
   "last-24h": MS_PER_DAY,

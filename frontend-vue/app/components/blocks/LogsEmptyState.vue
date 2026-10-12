@@ -2,12 +2,12 @@
 import { computed } from 'vue'
 import {
   clearedLogsFilters,
-  hasIncident,
   hasLogsFilters,
+  incidentRange,
   isAllTime,
   logsEmptyCause,
   readLogsFilters,
-  withDefaultPeriod,
+  windowPreset,
   withLogsFilters,
   type LogsFilters,
 } from '../../utils/logsQuery'
@@ -32,18 +32,18 @@ const { t } = useI18n()
 const route = useDmsRoute()
 const router = useDmsRouter()
 
-// With the period the selector applies when the URL names none.
-const filters = computed(() => withDefaultPeriod(readLogsFilters(route.query)))
+const filters = computed(() => readLogsFilters(route.query))
+// The period the selector applies, whatever source it took it from.
+const period = useApiPeriod()
 const cause = computed(() =>
-  logsEmptyCause(props.state, props.search, filters.value),
+  logsEmptyCause(props.state, props.search, filters.value, period.value),
 )
 
 /** "Last hour · POST · Slow only": the URL's filters, besides the links. */
 function describeFilters(current: LogsFilters): string[] {
+  const preset = windowPreset(period.value)
   return [
-    current.period && !isAllTime(current) && !hasIncident(current)
-      ? t(`api.logs.windows.${current.period}`)
-      : undefined,
+    preset ? t(`api.logs.windows.${preset}`) : undefined,
     current.method,
     current.slow ? t('api.logs.filters.slow') : undefined,
   ].filter((part): part is string => !!part)
@@ -94,8 +94,7 @@ function clearSearchAction() {
 
 // "All time", while a narrower period may hide the requests.
 function widen() {
-  const current = filters.value
-  if (isAllTime(current) || hasIncident(current)) return []
+  if (isAllTime(period.value) || incidentRange(period.value)) return []
   return [
     {
       label: t('api.logs.empty.widen'),
@@ -141,7 +140,7 @@ const content = computed(() => {
         actions: [
           ...clearSearchAction(),
           ...widen(),
-          ...(hasLogsFilters(current) ? [clearFilters()] : []),
+          ...(hasLogsFilters(current, period.value) ? [clearFilters()] : []),
         ],
       }
     case 'link':
@@ -186,14 +185,14 @@ const content = computed(() => {
         title: t('api.logs.empty.filtered_title'),
         description: [
           narrowedLine,
-          isAllTime(current) ? '' : t('api.logs.empty.period_hint'),
+          isAllTime(period.value) ? '' : t('api.logs.empty.period_hint'),
         ]
           .filter(Boolean)
           .join(' '),
         // The period alone is the selector's, nothing to clear.
         actions: [
           ...widen(),
-          ...(hasLogsFilters(current) ? [clearFilters()] : []),
+          ...(hasLogsFilters(current, period.value) ? [clearFilters()] : []),
         ],
       }
     default:

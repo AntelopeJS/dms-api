@@ -12,14 +12,14 @@ const LOGS_PAGE_SIZE = 50;
 
 /**
  * The page's filters, read from its URL by the request table: a link sets
- * them (`?route=`, `?path=`, `?error=`, `?slow=`, and an incident's
- * `?since=` / `?until=`), the filters bar changes them (`?method=`,
- * `?slow=`). The period is the toolbar's selector's (`periodScope`), its
- * "All time" every request kept. Unlike the table's own quick filters, kept in
- * a cookie, they are one state that a reload, Back and a shared link keep,
- * and that the tab counts follow. A URL filter needs no column: the table sends it to the
- * route as `filter_<field>`, which reads `filter_from` / `filter_to` as the
- * `[from, to)` range of the incident.
+ * them (`?route=`, `?path=`, `?error=`, `?slow=`), the filters bar changes
+ * them (`?method=`, `?slow=`). The period is the toolbar's selector's
+ * (`periodScope`): its "All time" is every request kept, and an incident's
+ * range is a range of the selector's own (`?api.from=` / `?api.to=`).
+ * Unlike the table's own quick filters, kept in a cookie, they are one state
+ * that a reload, Back and a shared link keep, and that the tab counts
+ * follow. A URL filter needs no column: the table sends it to the route as
+ * `filter_<field>`.
  */
 const LOGS_QUERY_FILTERS = {
   route: { field: "route", mode: "is" },
@@ -27,8 +27,6 @@ const LOGS_QUERY_FILTERS = {
   error: { field: "error", mode: "is" },
   slow: { field: "slow", mode: "is" },
   method: { field: "method", mode: "is" },
-  since: { field: "from", mode: "is" },
-  until: { field: "to", mode: "is" },
 };
 
 /** Draws every empty state of the request table, naming its cause. */

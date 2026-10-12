@@ -1,6 +1,6 @@
 import type { RequestLogSample } from "@/db/models/request_log.model";
 import type { Route } from "@/db/tables/routes.table";
-import { MS_PER_DAY, MS_PER_MINUTE } from "@/types";
+import { MS_PER_MINUTE } from "@/types";
 import { HEALTH_THRESHOLDS } from "./health-rules";
 import { logsLink, routeLink, routeRef, routesLink } from "./links";
 import type { FeedItemPayload, OverviewModels } from "./overview";
@@ -129,13 +129,6 @@ export function findIncidents(
   return incidents.sort((a, b) => b.start.getTime() - a.start.getTime());
 }
 
-/** The narrowest preset still holding `since`, for the logs to open on. */
-function windowFor(since: Date, now: number): WindowPreset {
-  const age = now - since.getTime();
-  if (age <= 60 * MS_PER_MINUTE) return "last-hour";
-  return age <= MS_PER_DAY ? "last-24h" : "last-7-days";
-}
-
 /** One journal entry per incident, and its numbers. */
 export interface IncidentItem extends FeedItemPayload {
   incident: {
@@ -164,20 +157,21 @@ function floorMinute(at: number): Date {
 /**
  * The incident's 5xx in the logs: its route, over whole minutes from its
  * first 5xx to its last (the next 5xx of the route is at least
- * {@link INCIDENT_GAP_MS} away), within the narrowest window holding it.
+ * {@link INCIDENT_GAP_MS} away), the period of the page.
  */
-function incidentLink(incident: Incident, now: number): string {
+function incidentLink(incident: Incident): string {
   return logsLink({
     route: incident.route,
     tab: "5xx",
-    period: windowFor(incident.start, now),
-    since: floorMinute(incident.start.getTime()),
-    until: floorMinute(incident.end.getTime() + MS_PER_MINUTE),
+    range: {
+      from: floorMinute(incident.start.getTime()),
+      to: floorMinute(incident.end.getTime() + MS_PER_MINUTE),
+    },
     from: "overview",
   });
 }
 
-function incidentItem(incident: Incident, now: number): IncidentItem {
+function incidentItem(incident: Incident): IncidentItem {
   const durationMs = incident.end.getTime() - incident.start.getTime();
   const endedAt = incident.ongoing
     ? null
@@ -212,7 +206,7 @@ function incidentItem(incident: Incident, now: number): IncidentItem {
       peak: String(incident.peakPerMinute),
     },
     date: incident.start.toISOString(),
-    to: incidentLink(incident, now),
+    to: incidentLink(incident),
     incident: {
       route: incident.route,
       start: incident.start.toISOString(),
@@ -306,9 +300,7 @@ export async function getActivity(
   // Newest first: only the first ones can make the journal, however many
   // incidents a trickle of 5xx made over the week.
   const items = [
-    ...findIncidents(errors, at)
-      .slice(0, ACTIVITY_LIMIT)
-      .map((incident) => incidentItem(incident, at)),
+    ...findIncidents(errors, at).slice(0, ACTIVITY_LIMIT).map(incidentItem),
     ...(await registeredItems(models, keys, range.from)),
   ]
     .sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""))

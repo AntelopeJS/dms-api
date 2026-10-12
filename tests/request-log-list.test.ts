@@ -66,33 +66,10 @@ describe("filtersFromQuery", () => {
     );
   });
 
-  it("reads several methods and a [from, to) range", () => {
-    const filters = filtersFromQuery(
-      {
-        filter_method: "is:GET,POST",
-        preset: "last-24h",
-        filter_from: "is:2026-10-07T14:59:00.000Z",
-        filter_to: "is:2026-10-07T15:00:00.000Z",
-      },
-      NOW,
-    );
+  it("reads several methods", () => {
+    const filters = filtersFromQuery({ filter_method: "is:GET,POST" }, NOW);
     expect(filters.method).toBeUndefined();
     expect(filters.methods).toEqual(["GET", "POST"]);
-    expect(filters.since).toEqual(new Date("2026-10-07T14:59:00.000Z"));
-    expect(filters.until).toEqual(NOW);
-  });
-
-  it("frames an incident older than the period by its own range", () => {
-    const filters = filtersFromQuery(
-      {
-        preset: "last-24h",
-        filter_from: "is:2026-10-03T18:31:00.000Z",
-        filter_to: "is:2026-10-03T18:46:00.000Z",
-      },
-      NOW,
-    );
-    expect(filters.since).toEqual(new Date("2026-10-03T18:31:00.000Z"));
-    expect(filters.until).toEqual(new Date("2026-10-03T18:46:00.000Z"));
   });
 
   it("lists a held table as it stood when it froze", () => {
@@ -100,10 +77,15 @@ describe("filtersFromQuery", () => {
     expect(
       filtersFromQuery({ search: "orders", liveHeldAt: held }, NOW).until,
     ).toEqual(new Date(held));
-    // An incident ending earlier keeps its own end.
+    // A range ending earlier, an incident's, keeps its own end.
     expect(
       filtersFromQuery(
-        { filter_to: "is:2026-10-07T14:00:00.000Z", liveHeldAt: held },
+        {
+          preset: "custom",
+          from: "2026-10-07T13:00:00.000Z",
+          to: "2026-10-07T14:00:00.000Z",
+          liveHeldAt: held,
+        },
         NOW,
       ).until,
     ).toEqual(new Date("2026-10-07T14:00:00.000Z"));

@@ -25,12 +25,12 @@ import {
  * The list query a `TableView.fromSource` table sends its route: `offset` /
  * `limit`, `sortKey` / `sortDirection`, `search` and one
  * `filter_<column>=<mode>:<value>` per filtered column (the page's URL
- * filters `?method=`, `?slow=`, `?route=`, `?path=`, `?error=` and
- * an incident's `?since=` / `?until=` reach it that way, in the list and in
- * the tab counts alike). `filter_from` / `filter_to` (ISO timestamps)
- * narrow to `[from, to)`. The page's period comes as the charts get it, from
- * its `periodScope`: `preset`, `from`, `to`. `requestId=` finds the request a sender knows and `liveHeldAt` (ISO) bounds
- * a held table to the rows it froze.
+ * filters `?method=`, `?slow=`, `?route=`, `?path=` and `?error=` reach it
+ * that way, in the list and in the tab counts alike). The page's period
+ * comes as the charts get it, from its `periodScope`: `preset`, `from`,
+ * `to`, an incident's range included. `requestId=` finds the request a
+ * sender knows and `liveHeldAt` (ISO) bounds a held table to the rows it
+ * froze.
  */
 export type SourceQuery = Record<string, string | undefined>;
 
@@ -98,11 +98,6 @@ function filterValue(raw: string | undefined): string | undefined {
   return filterValues(raw)[0];
 }
 
-/** `is:<ISO timestamp>` as a date, or undefined when unreadable. */
-function filterDate(raw: string | undefined): Date | undefined {
-  return parseDate(raw?.replace(/^[a-z_]+:/, ""));
-}
-
 const STATUS_TONES: Record<string, Tone> = {
   "5xx": "error",
   "4xx": "warning",
@@ -131,7 +126,8 @@ function positiveInt(raw: string | undefined): number | undefined {
 /**
  * The rows the page's period frames, as the charts read it (`preset`, `from`,
  * `to` of its period scope): a rolling preset up to now, the newest rows
- * included, or a custom range; never past the log retention. The DMS "All
+ * included, or a custom range, such as the `[from, to)` of an incident a
+ * link names; never past the log retention. The DMS "All
  * time" (`preset=all`, no `from` / `to`) lists every request kept, and so
  * does a query naming no period (the Tester's reads).
  */
@@ -175,15 +171,7 @@ export function filtersFromQuery(
   if (rawPath) filters.rawPath = rawPath;
   const error = query.filter_error?.replace(/^[a-z_]+:/, "");
   if (error) filters.errorMessage = error;
-  // `filter_from` / `filter_to` (ISO) narrow to a `[from, to)` range: an
-  // incident an Activity link names, a minute of the histogram. The range
-  // frames the rows itself: the period would cut an incident older than it.
-  const incident = {
-    from: filterDate(query.filter_from),
-    to: filterDate(query.filter_to),
-  };
-  const range =
-    incident.from || incident.to ? incident : periodRange(query, now);
+  const range = periodRange(query, now);
   if (range.from) filters.since = range.from;
   const until = earliest(range.to, heldAt(query));
   if (until) filters.until = until;
@@ -196,8 +184,8 @@ export function filtersFromQuery(
 
 /**
  * `liveHeldAt`: the moment a held table froze its rows (its live page paused).
- * Its search, sort and "Load more" list the rows as they stood then, like an
- * incident's `filter_to`, so nothing that arrived since slips in.
+ * Its search, sort and "Load more" list the rows as they stood then, like the
+ * end of a custom range, so nothing that arrived since slips in.
  */
 function heldAt(query: SourceQuery): Date | undefined {
   return parseDate(query.liveHeldAt);
