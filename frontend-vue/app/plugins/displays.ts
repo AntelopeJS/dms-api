@@ -1,4 +1,5 @@
 import { h } from 'vue'
+import ApiTesterBadge from '../components/internal/ApiTesterBadge.vue'
 import { fullDateTime, requestClock } from '../utils/requestDrawer'
 
 interface TimeDisplayOptions {
@@ -7,9 +8,12 @@ interface TimeDisplayOptions {
 
 const EMPTY = '—'
 
-// The one cell display the backend names with `@RegisterDisplay("api:…")`:
-// methods and statuses are the DMS status pills, paths and ids its mono
-// display, durations its duration display.
+/** `source` of a request the console's Tester sent. */
+const TESTER_SOURCE = 'tester'
+
+// The cell displays the backend names with `@RegisterDisplay("api:…")`:
+// methods and statuses are the DMS status pills, ids its mono display,
+// durations its duration display.
 export default defineDmsPlugin(() => {
   const { registerDataType } = useDataTypes()
   // The console's dates, with the user's Language & region preferences.
@@ -39,6 +43,32 @@ export default defineDmsPlugin(() => {
             (options as TimeDisplayOptions | undefined)?.milliseconds ?? false,
           ) || EMPTY,
         ),
+    },
+  })
+
+  // The path in the mono font, as the DMS mono cell draws it, and "Tester"
+  // beside it when the console's Tester sent the request.
+  registerDataType({
+    id: 'api:path',
+    formatter: {
+      default: (value, _locale, _options, row) => {
+        const path = value === null || value === undefined ? '' : String(value)
+        return h(
+          'span',
+          { class: 'flex min-w-0 max-w-full items-center gap-1.5' },
+          [
+            h(
+              'span',
+              {
+                class: 'text-toned truncate font-mono text-[12.5px]',
+                title: path,
+              },
+              path || EMPTY,
+            ),
+            row?.source === TESTER_SOURCE ? h(ApiTesterBadge) : null,
+          ],
+        )
+      },
     },
   })
 })

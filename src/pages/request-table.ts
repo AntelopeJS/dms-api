@@ -10,7 +10,7 @@ import type { ComponentBuilder } from "@antelopejs/interface-dms/component";
 import { LIVE_REQUESTS_TOPIC } from "@/types";
 import { apiBlock } from "./blocks";
 import { PERIOD_SCOPE } from "./period";
-import { TimeDisplay } from "./displays";
+import { PathDisplay, TimeDisplay } from "./displays";
 
 /** Route answering the request tables, in the `TableView.fromSource` shape. */
 const REQUEST_LOGS_URL = "/api/monitoring/logs";
@@ -99,7 +99,8 @@ const REQUEST_COLUMNS: Record<string, TableViewSourceColumn> = {
   path: {
     name: "$api.logs.columns.path",
     type: new DefaultDataTypes.StringType(),
-    display: new DefaultDisplays.MonoDisplay(),
+    // "Tester" beside the path of a request the Tester sent.
+    display: new PathDisplay(),
     filterable: false,
     size: 160,
     order: 5,

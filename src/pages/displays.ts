@@ -4,9 +4,9 @@ import {
 } from "@antelopejs/interface-dms/base/table-view";
 
 /**
- * The one cell display of the request tables the DMS does not draw: methods
- * and statuses use its status pills, paths and ids its mono display,
- * durations its duration display.
+ * The cell displays of the request tables the DMS does not draw: methods and
+ * statuses use its status pills, ids its mono display, durations its
+ * duration display.
  */
 
 /**
@@ -15,3 +15,11 @@ import {
  */
 @RegisterDisplay("api:time")
 export class TimeDisplay extends ColumnDisplay<{ milliseconds?: boolean }> {}
+
+/**
+ * A requested path in the mono font, marked "Tester" when the console's
+ * Tester sent the request (the row's `source`): it is kept in the logs, out
+ * of the statistics and the health.
+ */
+@RegisterDisplay("api:path")
+export class PathDisplay extends ColumnDisplay<Record<string, never>> {}
