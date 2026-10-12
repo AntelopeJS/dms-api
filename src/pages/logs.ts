@@ -86,9 +86,18 @@ export class LogsPage extends PageController(
     pageSize: LOGS_PAGE_SIZE,
     pagination: "loadMore",
     density: "compact",
-    // Held while a request is open or the rows are read further down: new
-    // ones would push them away.
-    liveHold: { whileRowOpen: true, whileScrolled: true },
+    // Held while a request is open, the rows are read further down, a search
+    // narrows them or they are sorted otherwise than newest first: new ones
+    // would push them away or land anywhere. The strip says why ("Table on
+    // hold · search active"), and paused, what came in ("40 new requests ·
+    // 2 in 5xx", the breakdown `useLiveMissedErrors` gives the page).
+    liveHold: {
+      whileRowOpen: true,
+      whileScrolled: true,
+      whileSearching: true,
+      whileSorted: true,
+      missedLabel: "$api.live_mode.new_requests",
+    },
     defaultSort: { field: "timestamp", desc: true },
     tabs: [
       {

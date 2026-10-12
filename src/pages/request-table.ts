@@ -270,11 +270,15 @@ export function requestTable(
     fetchUrl,
     rowIdKey: "_id",
     // Read again on the live feed, and held while the page is paused ("12
-    // new · Show"): the route lists the rows as they stood (`liveHeldAt`).
+    // new requests · Show"): the route lists the rows as they stood
+    // (`liveHeldAt`).
     // A request open in the side panel holds the table alone, the page
     // staying live; the request logs also hold it while scrolled down.
     realtimeTopic: LIVE_REQUESTS_TOPIC,
-    liveHold: liveHold ?? { whileRowOpen: true },
+    liveHold: liveHold ?? {
+      whileRowOpen: true,
+      missedLabel: "$api.live_mode.new_requests",
+    },
     rowClick: "single",
     // A `?record=` beyond the rows listed (a link, an older request).
     fetchRowUrl: `${DETAIL_URLS[page]}/{id}`,

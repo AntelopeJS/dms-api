@@ -34,7 +34,7 @@ describe("LogsPage", () => {
     expect(options.quickFilters).toBeUndefined();
   });
 
-  it("holds its rows while a request is open or the list is scrolled", () => {
+  it("holds its rows while a request is open, scrolled, searched or sorted", () => {
     const options = LogsPage.requests.serializeSync().options as Record<
       string,
       unknown
@@ -42,6 +42,9 @@ describe("LogsPage", () => {
     expect(options.liveHold).toEqual({
       whileRowOpen: true,
       whileScrolled: true,
+      whileSearching: true,
+      whileSorted: true,
+      missedLabel: "$api.live_mode.new_requests",
     });
   });
 
