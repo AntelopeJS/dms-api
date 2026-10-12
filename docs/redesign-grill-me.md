@@ -293,8 +293,10 @@ Documentation.
 
 **Q27. Custom page or DMS `Form`?**
 DMS `Form` with sections: Route visibility, Retention, Capture & privacy,
-Health thresholds (F11). Scope as `SelectType({ display: "cards" })` with the
-number of routes each option covers, served per request (F12). Retentions and
+Health thresholds (F11). Scope as `SelectType({ display: "cards" })`, its
+three options on one row (`columns: 3`), with the number of routes each
+option covers, served per request (F12); the statistics retention's 30, 60
+or 90 days are one row of choice cards too. Retentions and
 body size with `defaultValue` = the module default, so the form shows
 "Module default · Use default" and "Changed · was X" by itself. Captured
 headers become an editable `TagsType` (a new persisted override); the

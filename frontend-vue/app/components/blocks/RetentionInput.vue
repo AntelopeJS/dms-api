@@ -217,6 +217,7 @@ if (registerValidator) {
       :id="props.id"
       v-model="model"
       :items="items"
+      :columns="items.length"
       :disabled="props.disabled"
     />
     <SettingNumberInput

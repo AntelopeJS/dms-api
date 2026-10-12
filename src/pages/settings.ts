@@ -30,6 +30,8 @@ function apiInput<T>(name: string, options: T): ComponentInfoSerialized<T> {
 
 const scopeType = new DefaultDataTypes.SelectType({
   display: "cards",
+  // The three scopes side by side, rather than two and one under them.
+  columns: 3,
   deselectable: false,
   items: [
     {

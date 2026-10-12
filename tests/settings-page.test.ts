@@ -28,6 +28,13 @@ describe("SettingsPage", () => {
     });
   });
 
+  it("lays the three route scopes on one row of cards", () => {
+    expect(inputOf("scope")).toMatchObject({
+      componentName: "dms-choice-cards",
+      options: { columns: 3 },
+    });
+  });
+
   it("keeps the retentions and the headers on the console's inputs", () => {
     expect(inputOf("requestLogRetentionDays")?.componentName).toBe(
       "DmsApiRetentionInput",
