@@ -4,8 +4,8 @@
 > are the plan as first taken; the QA pass and its fixes changed several of
 > them. In short:
 >
-> - Dependencies: `@antelopejs/dms` `>=0.7.12 <0.8.0` (`interface-dms`
->   0.5.7) and `@antelopejs/dms-frontend` `>=0.5.2 <0.6.0`, not dms 0.6 /
+> - Dependencies: `@antelopejs/dms` `>=0.7.13 <0.8.0` (`interface-dms`
+>   0.5.8) and `@antelopejs/dms-frontend` `>=0.5.2 <0.6.0`, not dms 0.6 /
 >   interface-dms 0.4 / dms-frontend 0.5.0.
 > - A request opens in the DMS row side panel (a `sidePanel` row action
 >   target, dms 0.7.8) on a single click, from every request table: the DMS
@@ -404,6 +404,6 @@ over 24 h).
   builder.
 - `pnpm lint`, `pnpm typecheck`, `pnpm knip` (the front end included),
   `pnpm build`, `pnpm test`, and `ajs dms verify-source` for the front end.
-- End to end on the playground (MongoDB, DMS 0.7.12, dms-frontend 0.5): traffic
+- End to end on the playground (MongoDB, DMS 0.7.13, dms-frontend 0.5): traffic
   generated on demo routes (healthy, slow, failing, 4xx), every page checked
   in both themes, every drill-down followed, every bug found fixed in the PR.
