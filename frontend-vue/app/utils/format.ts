@@ -124,23 +124,6 @@ export function formatClock(
   return `${day}, ${time}`
 }
 
-/** A full date and time, for a title or a detail line. */
-export function formatDateTime(
-  value: string | number | Date | undefined,
-  locale?: string,
-): string {
-  if (!value) return ''
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return ''
-  return date.toLocaleString(locale, {
-    ...CLOCK,
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
-
 /** Whole calendar days from `date` to `now`, in the local time zone. */
 function daysBefore(date: Date, now: Date): number {
   const start = new Date(date).setHours(0, 0, 0, 0)

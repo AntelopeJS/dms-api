@@ -18,10 +18,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "json-schema-to-zod": "^2.6.0",
-    "vue": "^3.5.18",
-    "vuedraggable": "^4.1.0",
-    "zod": "^3.24.2"
+    "vue": "^3.5.18"
   },
   "devDependencies": {
     "@nuxt/ui": "4.10.0",

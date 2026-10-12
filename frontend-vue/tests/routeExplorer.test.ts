@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { columnSteps, columnsStylesheet } from '../app/utils/columns'
 import {
   bySeverity,
   type ExplorerRoute,
@@ -185,25 +184,6 @@ describe('periods', () => {
     expect(windowParts(60)).toEqual({ unit: 'h', amount: 1 })
     expect(windowParts(1440)).toEqual({ unit: 'h', amount: 24 })
     expect(windowParts(10080)).toEqual({ unit: 'd', amount: 7 })
-  })
-})
-
-describe('columns', () => {
-  it('halves the columns as the container narrows', () => {
-    expect(columnSteps(4)).toEqual([1, 2, 4])
-    expect(columnSteps(2)).toEqual([1, 2])
-    expect(columnSteps(3)).toEqual([1, 3])
-    expect(columnSteps(1)).toEqual([1])
-    expect(columnSteps(0)).toEqual([1])
-  })
-
-  it('opens each step once the container fits it', () => {
-    const css = columnsStylesheet('cols', 4, '180px', '1rem')
-    expect(css.split('\n')).toEqual([
-      '[data-api-columns="cols"] { grid-template-columns: repeat(1, minmax(0, 1fr)); }',
-      '@container cols (width >= calc(2 * 180px + 1 * 1rem)) { [data-api-columns="cols"] { grid-template-columns: repeat(2, minmax(0, 1fr)); } }',
-      '@container cols (width >= calc(4 * 180px + 3 * 1rem)) { [data-api-columns="cols"] { grid-template-columns: repeat(4, minmax(0, 1fr)); } }',
-    ])
   })
 })
 

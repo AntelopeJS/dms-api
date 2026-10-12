@@ -119,11 +119,6 @@ export function pathParams(path: string): string[] {
     .map((segment) => segment.text.slice(1))
 }
 
-/** A route as the URL names it: `METHOD /path`. */
-export function routeRef(method: string, path: string): string {
-  return `${method.toUpperCase()} ${path}`
-}
-
 export function parseRouteRef(
   ref: string | null | undefined,
 ): { method: string; path: string } | null {
