@@ -4,8 +4,8 @@
 > are the plan as first taken; the QA pass and its fixes changed several of
 > them. In short:
 >
-> - Dependencies: `@antelopejs/dms` 0.7.8 or later (`interface-dms` 0.5.4)
->   and `@antelopejs/dms-frontend` `>=0.5.2 <0.6.0`, not dms 0.6 /
+> - Dependencies: `@antelopejs/dms` `>=0.7.11 <0.8.0` (`interface-dms`
+>   0.5.6) and `@antelopejs/dms-frontend` `>=0.5.2 <0.6.0`, not dms 0.6 /
 >   interface-dms 0.4 / dms-frontend 0.5.0.
 > - A request opens in the DMS row side panel (a `sidePanel` row action
 >   target, dms 0.7.8) on a single click, from every request table: the DMS
@@ -25,9 +25,16 @@
 >   recovery), shown with their thresholds and windows.
 > - Periods are rolling, picked with the DMS `PeriodSelector` (24H by default,
 >   1H to 30D), kept in the URL (`?api.period=last-24h`) and followed by the
->   request tables (`periodScope`);
+>   request tables (`periodScope`); the console's own blocks read the period
+>   the selector applies with `usePeriodScope`, and an incident link opens the
+>   request logs on its range in the selector's own keys
+>   (`?api.from=&api.to=`);
 >   statistics are kept 30, 60 or 90 days (90 by default); the latency chart
 >   shows the p95 instead of the minimum.
+> - The snippets are written against the DMS's public API origin
+>   (`GetApiBaseUrl()`, its `apiBaseUrl`); the module has no URL option of
+>   its own. Dates and times follow the user's Language & region preferences
+>   (the DMS's `regionalDateTimeFormat`).
 > - The console no longer captures its own traffic or the DMS's, and logs the
 >   Tester's calls without counting them. Data stored by an earlier version
 >   is not migrated: the tables are dropped on upgrade (see the README).
@@ -92,7 +99,8 @@ into `src/services/tree.ts`, owned by the module.
   `componentPrefix` and auto-imports nothing without a
   `dms.frontend.build.ts`. The entry declares `componentPrefix: "DmsApi"`,
   registers bare file names, and a `dms.frontend.build.ts` declares
-  `app/composables` and `app/utils`.
+  `app/composables`; the utils are imported by path, so their names never
+  compete with the DMS's own auto-imported helpers.
 - The DMS `build/` components are private: nothing in the module imports or
   names them. Public ones (`DmsCard`, `DmsStatusSummary`, `DmsChart`,
   `DmsKpiCard`, `DmsEmptyState`, `DmsSegmented`, `DmsStatusPill`,
@@ -118,12 +126,17 @@ keeps custom components for the parts no block expresses.
 | Custom block | Why no DMS block fits |
 | --- | --- |
 | `ScopeChip` | A live "Own routes · 42" link to Settings; no block reads the scope. |
+| `BetaBadge` | A "Beta" pill at the head of the toolbar with its meaning in a tooltip; no block draws a pill with a tooltip. |
 | `HealthHero` | The verdict, since when (its start in a tooltip) and why, its four figures, the stale state when a refresh fails, a toast when the verdict changes and "● Degraded" in the browser tab, read from `/overview/health`. A `Banner` and a `StatGroup` give none of these. |
 | `LiveTraffic` | Per-minute histogram of the last hour that follows the page's Direct / Pause (`usePageLive()`) and shows its own failures; no block draws it. |
+| `LogsFilters` | The method and slow filters of the request logs and the filters a link brought (route, path, error, an incident's range), each a removable chip, all kept in the URL (`queryParamFilters`); the DMS table neither shows nor counts the URL's filters. |
+| `LogsEmptyState` | The request table's empty states (`emptyStates.*.component`): it names what empties the table (search, a link's filters, the period, the other filters) with its way out, which the DMS cannot tell for filters it does not count. |
 | `RequestDetail` | The body of the request side panel (error and stack first, timing, headers, bodies, Replay / cURL / Open route / Same error); the DMS draws the panel and its navigation. |
 | `RouteTree` | A filterable tree whose selection lives in the URL. |
 | `RouteHeader`, `RouteDocumentation`, `RouteTester` | Everything under the selected route reads `?route=` from the URL. They render public DMS components (`DmsCard`, `DmsEmptyState`, `DmsStatusPill`) inside. Since DMS 0.6.1 a block's `fetchUrl` takes `{{query.route}}`, so the Statistics tab is now DMS blocks only (a `StatGroup` of the route's figures, `ChartCard`, `TopListCard`, a request table filtered by `?route=`), behind a DMS `Guard` that draws one empty state and a link to the Tester while the route has no call over the period; these three stay custom for what they draw, not for how they read the route. |
 | `SplitLayout` | A list beside its detail. `Grid` shares its columns equally, so a row of two cells cannot give one of them three quarters; `DmsMasterDetail` is a template component, not a block. |
+| `SettingNumberInput`, `SettingTagsInput`, `RetentionInput` | Fields of the Settings `Form`: a number that says how the input adjusted what was typed, a field a link focuses by its own anchor, a retention that says what lowering it deletes and asks to confirm on save. The DMS form has no confirmation on submit, follows the anchor of a section only and its number input does not report an adjusted value. |
+| `ModuleLanding` | `/modules/api` answers 404 in the DMS: a hidden page sends it to the Overview, with its query. |
 
 The request tables draw their cells with DMS displays: status pills toned
 per method, or per row through `toneField` (a status by its class), the
@@ -230,12 +243,15 @@ filters.
   follows (`periodScope`).
 - Search: path, request id, error message, opened with `/`
   (`searchShortcut`); its empty state offers "Clear search" (`clearSearch`).
-- From another page, `?route=METHOD%20/path`, `?error=` and `?slow=true` open
-  the table pre-filtered, and `?requests.tab=5xx` picks the tab. A source
-  table does not take `queryParamFilters` in its builder options, but its
-  client honours them like any table view's, so the builder sets them with
-  `mergeOptions`. Those filters have no chip in the table: `LiveTraffic`
-  names them above it, each with a way to remove it.
+- From another page, `?route=METHOD%20/path`, `?path=`, `?error=` and
+  `?slow=true` open the table pre-filtered, and `?requests.tab=5xx` picks the
+  tab. A source table does not take `queryParamFilters` in its builder
+  options, but its client honours them like any table view's, so the builder
+  sets them with `mergeOptions`. Those filters have no chip in the table:
+  `LogsFilters` names them above it, each with a way to remove it. An
+  incident's range is no filter but a range of the period selector
+  (`?api.from=&api.to=`), which the table follows like any period; removing
+  it opens "All time".
 
 **Q22. Live mode?**
 The DMS page live mode: the page declares `live: { maxRate: 5 }`, its toolbar
@@ -304,17 +320,19 @@ always-redacted keys and the error-rate threshold are read-only fields.
 
 **Q28. The retention impact preview of the mockup ("deletes ~96,400
 entries")?**
-As a hint computed when the page loads (how many logs the current retention
-keeps and from when), not live while typing: the form has no hook to compute
-a hint from an unsaved value.
+Live, by `RetentionInput`: a lowered retention says how many requests it
+deletes (read from the server as the value changes, debounced), and saving
+asks to confirm. The DMS form has no hook to compute a hint from an unsaved
+value nor a confirmation on submit, so the field brings both.
 
 ## 9. Visual language
 
 **Q29. Method and status colours?**
 One token-based set used everywhere (F08): GET info, POST success, PUT /
 PATCH warning, DELETE error, HEAD / OPTIONS neutral; status chips by class.
-In tables they are the module's cell displays (`api:method`, `api:status`), in custom blocks the
-`ApiMethodBadge` / `ApiStatusBadge` components built on `DmsStatusPill`.
+In tables they are the DMS's status pill displays, toned per method or per
+row (`toneField`); in custom blocks the `ApiMethodBadge` / `ApiStatusBadge`
+components built on `DmsStatusPill`.
 
 ## 10. What is left out
 
@@ -346,7 +364,7 @@ Fixed in this PR, all reproduced on the playground first:
   on top of it. The config is now overlaid key by key.
 - The settings route turned every field missing from the body into `null`,
   so saving the scope alone cleared every numeric override. With the partial
-  bodies of DMS 0.6 that would have happened on every save. A missing field
+  bodies the DMS sends since 0.6 that would have happened on every save. A missing field
   now keeps its value, `null` clears it, and a value equal to the module
   default is stored as "no override".
 - When the console runs from a local checkout (its playground), its own
@@ -371,7 +389,8 @@ over 24 h).
   merge, period parsing.
 - Frontend unit tests for the URL / filter helpers and the tester request
   builder.
-- `pnpm lint`, `pnpm typecheck`, `pnpm knip`, `pnpm build`, `pnpm test`.
-- End to end on the playground (MongoDB, DMS 0.6, dms-frontend 0.5): traffic
+- `pnpm lint`, `pnpm typecheck`, `pnpm knip` (the front end included),
+  `pnpm build`, `pnpm test`, and `ajs dms verify-source` for the front end.
+- End to end on the playground (MongoDB, DMS 0.7.11, dms-frontend 0.5): traffic
   generated on demo routes (healthy, slow, failing, 4xx), every page checked
   in both themes, every drill-down followed, every bug found fixed in the PR.
