@@ -26,6 +26,17 @@ describe("LogsPage", () => {
     expect(options.quickFilters).toBeUndefined();
   });
 
+  it("holds its rows while a request is open or the list is scrolled", () => {
+    const options = LogsPage.requests.serializeSync().options as Record<
+      string,
+      unknown
+    >;
+    expect(options.liveHold).toEqual({
+      whileRowOpen: true,
+      whileScrolled: true,
+    });
+  });
+
   it("opens a request in the DMS side panel on a single click", () => {
     const options = LogsPage.requests.serializeSync().options as {
       rowClick?: string;
@@ -92,7 +103,9 @@ describe("LogsPage", () => {
       );
     }
   });
+});
 
+describe("LogsPage toolbar and filters", () => {
   it("holds the toolbar of the monitoring pages: scope, live, period", () => {
     const toolbar = LogsPage.toolbar.serializeSync() as {
       componentName: string;
@@ -110,6 +123,10 @@ describe("LogsPage", () => {
       ["live", "dms-live-toggle-block"],
       ["period", "dms-period-selector"],
     ]);
+    const live = toolbar.children.find((child) => child.id === "live");
+    expect(live?.component).toMatchObject({
+      options: { variant: "pill", missedLabel: "$api.live_mode.new_requests" },
+    });
   });
 
   it("serves the slowness threshold and the body limit in force", async () => {

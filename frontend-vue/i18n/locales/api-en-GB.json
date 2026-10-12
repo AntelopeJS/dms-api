@@ -259,7 +259,10 @@
         "title": "API health: {verdict}",
         "description": "It was {previous}.",
         "tab": "● {verdict} · {page}"
-      }
+      },
+      "new_requests": "{count} new request | {count} new requests",
+      "server_errors": "{count} in 5xx",
+      "typing_in_tester": "typing in the Tester"
     },
     "logs": {
       "title": "Request logs",

@@ -8,6 +8,8 @@ import { computed, onActivated, onBeforeUnmount, onMounted } from 'vue'
 // (changed in another tab), and at most once a minute with the live refresh:
 // a page restored from the history keeps the layout it was first served with.
 // The scope rarely changes, so the chip does not follow every live tick.
+// Present in the toolbar of every live page, it also tells the page's live
+// toggle the server errors missed while paused (`useLiveMissedErrors`).
 defineOptions({ inheritAttrs: false })
 
 type Scope = 'own' | 'modules' | 'all'
@@ -48,6 +50,7 @@ function refreshIfStale() {
 }
 
 usePageBlocksRefresh(refreshIfStale)
+useLiveMissedErrors()
 
 function refreshWhenShown() {
   if (document.visibilityState === 'visible') void summary.refresh()

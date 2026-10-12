@@ -80,7 +80,12 @@ describe("OverviewPage", () => {
     const info = GetMetadata(OverviewPage, PageMetadata).pageInfo as {
       live?: unknown;
     };
-    expect(info.live).toEqual({ maxRate: 10 });
+    // One Direct / Pause choice for the module's pages, slower over a week.
+    expect(info.live).toEqual({
+      maxRate: 10,
+      slowRateAfter: { period: "7d", maxRate: 60 },
+      rememberKey: "api",
+    });
     for (const [row, id] of [
       ["health", "attention"],
       ["recent", "activity"],
@@ -91,7 +96,7 @@ describe("OverviewPage", () => {
     const table = child(child(child(dashboard, "recent"), "requests"), "table");
     expect(table.options).toMatchObject({
       realtimeTopic: "api:monitor:requests",
-      liveHold: true,
+      liveHold: { whileRowOpen: true },
     });
   });
 });

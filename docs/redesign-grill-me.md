@@ -12,9 +12,12 @@
 >   draws its header ("Request 3 of 50 shown", ∧ ∨, J / K, close), highlights
 >   the open row and keeps it in `?record=`.
 > - The Overview, the Request logs and Routes declare the DMS page live mode
->   (`live: { maxRate }`) with its `LiveToggle` (Direct / Pause), over the
->   realtime topic the capture publishes on; the request tables hold their
->   rows while paused (`liveHold`).
+>   (`live: { maxRate, slowRateAfter, rememberKey: "api" }`) with its pill
+>   `LiveToggle` (Live / Pause, "Paused · 40 new requests · 2 in 5xx"), over
+>   the realtime topic the capture publishes on; the request tables hold their
+>   rows while paused, while a row is open in the side panel and, in the
+>   request logs, while scrolled (`liveHold`); the Tester holds the page while
+>   you type in it (`usePageLive().hold()`).
 > - The column tones are the DMS's: a slow duration in orange
 >   (`DurationDisplay({ format: "ms", toneField })`), an error in red
 >   (`TextDisplay({ toneField })`).
@@ -231,7 +234,8 @@ filters.
 **Q22. Live mode?**
 The DMS page live mode: the page declares `live: { maxRate: 5 }`, its toolbar
 holds the DMS `LiveToggle`, and the table follows the capture's realtime
-topic (`realtimeTopic`), held while paused (`liveHold`, "N new · Show"). Its
+topic (`realtimeTopic`), held while paused (`liveHold`, "N new · Show"), while
+a request is open in the side panel and while scrolled down. Its
 route lists a held table as it stood (`liveHeldAt`), through search, sort
 and paging. `LiveTraffic` above the table, the per-minute histogram of the
 last hour, follows the same state (`usePageLive()`), with a visible paused /

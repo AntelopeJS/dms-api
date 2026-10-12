@@ -10,7 +10,7 @@ import { logsLink, serverErrorsLink } from "@/services/links";
 import { LIVE_REQUESTS_TOPIC } from "@/types";
 import { apiBlock } from "./blocks";
 import { PERIOD_SCOPE, periodSelector } from "./period";
-import { pageToolbar } from "./toolbar";
+import { liveMode, pageToolbar } from "./toolbar";
 import { monitorCategory } from "./module";
 import { requestTable } from "./request-table";
 import { scopeChip } from "./scope-chip";
@@ -60,8 +60,9 @@ export class OverviewPage extends PageController(
     module: "api",
     category: monitorCategory,
     order: 0,
-    // Direct / Pause over the live feed, each block read at most every 10 s.
-    live: { maxRate: 10 },
+    // Direct / Pause over the live feed, each block read at most every 10 s,
+    // every minute over a week or a month.
+    live: liveMode(10, 60),
   },
   DefaultLayout(),
 ) {

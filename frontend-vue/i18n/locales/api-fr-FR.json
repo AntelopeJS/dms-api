@@ -259,7 +259,10 @@
         "title": "Santé de l'API : {verdict}",
         "description": "Avant : {previous}.",
         "tab": "● {verdict} · {page}"
-      }
+      },
+      "new_requests": "{count} nouvelle requête | {count} nouvelles requêtes",
+      "server_errors": "{count} en 5xx",
+      "typing_in_tester": "saisie dans le testeur"
     },
     "logs": {
       "title": "Journaux des requêtes",

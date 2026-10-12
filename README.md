@@ -19,18 +19,25 @@
 - **API settings**: the routes the console watches, retention, captured
   headers and the slow threshold.
 
-It requires `@antelopejs/dms` 0.7.8 or later (`@antelopejs/interface-dms` 0.5.4)
-and `@antelopejs/dms-frontend` `>=0.5.2 <0.6.0`. DMS 0.7.8 brings the pieces
-the console is built on: the row side panel, the page's Live / Pause state, the
-period kept in the URL and the column tones.
+It requires `@antelopejs/dms` 0.7.10 or later (`@antelopejs/interface-dms`
+0.5.6) and `@antelopejs/dms-frontend` `>=0.5.2 <0.6.0`. These DMS releases
+bring the pieces the console is built on: the row side panel, the page's
+Live / Pause state and its holds, the period kept in the URL, the column tones
+and the `Guard` block.
 
-The Overview, the Request logs and Routes have the DMS **Direct / Pause**
-toggle (the L key). Direct, the default, the page follows new requests as the
+The Overview, the Request logs and Routes have the DMS **Live / Pause**
+toggle (the L key). Live, the default, the page follows new requests as the
 DMS realtime channel announces them, each block read again at most every 5 s
-(Request logs), 10 s (Overview) or 15 s (Routes). Paused, nothing is read: the
-request tables keep their rows, search, sort and "Load more" included, and
-offer "N new · Show"; resuming reads each block once. The choice is kept per
-page.
+(Request logs), 10 s (Overview) or 15 s (Routes), every minute once the
+Overview or Routes show a week or more, and on that clock while the realtime
+channel is down. Paused, nothing is read: the toggle says what was missed
+("Paused · 40 new requests · 2 in 5xx"), the request tables keep their rows,
+search, sort and "Load more" included, and offer "N new · Show"; resuming
+reads each block once. The page also pauses by itself while its browser tab
+is hidden and while you type in the Tester, and a request table holds its
+rows while one of them is open in the side panel (and, in the Request logs,
+while you read further down). The choice is one for the three pages, and
+`?live=0` opens a page paused.
 
 A request opens in a side panel on the right, on a single click on its row,
 from every request table: J / K step through the rows shown, and the URL names

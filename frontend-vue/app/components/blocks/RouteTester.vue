@@ -86,13 +86,9 @@ import ApiStatusBadge from '../internal/ApiStatusBadge.vue'
 // captured of it (`x-request-id`). `?replay=<request id>` loads a captured
 // request once, then leaves the URL.
 //
-// TODO(dms live hold): while the focus is in one of the Tester's fields, hold
-// the page's live mode, as mwesto's console did ("Paused · typing in the
-// Tester"): once the DMS ships `usePageLive().hold(reason)`, call it on
-// `focusin` of a field (input, textarea, select, contenteditable) of the root
-// below, with the reason "typing in the Tester", and release the hold it
-// returns on `focusout` to outside the Tester and on unmount. Nothing holds
-// the page today: the DMS has no hold yet, only Direct / Pause.
+// Typing in one of its fields holds the page's live mode ("Paused · typing in
+// the Tester"), so the route's figures do not move under the request being
+// written; leaving the Tester releases it.
 defineOptions({ inheritAttrs: false })
 
 const props = withDefaults(
@@ -1111,6 +1107,27 @@ function onKey(event: KeyboardEvent) {
   event.preventDefault()
   void send()
 }
+
+// --- Live hold ---
+
+const FIELD_SELECTOR = 'input, textarea, select, [contenteditable="true"]'
+const live = usePageLive()
+
+function onFocusIn(event: FocusEvent) {
+  const target = event.target as HTMLElement | null
+  if (target?.closest(FIELD_SELECTOR))
+    live.hold('$api.live_mode.typing_in_tester')
+}
+
+// Held while the focus stays in the Tester (a field, Send), released once it
+// leaves; the DMS releases it with the component too.
+function onFocusOut(event: FocusEvent) {
+  const root = event.currentTarget as HTMLElement
+  const next = event.relatedTarget as Node | null
+  if (next && root.contains(next)) return
+  live.release()
+}
+
 onBeforeUnmount(() => {
   flushDraft()
   // A call in flight still lands in its route's history and draft.
@@ -1188,7 +1205,13 @@ const shortcut = computed(() =>
 <template>
   <div v-if="!selection.ref.value" />
   <USkeleton v-else-if="pending" class="h-72" />
-  <div v-else-if="route" class="flex flex-col gap-4" @keydown.capture="onKey">
+  <div
+    v-else-if="route"
+    class="flex flex-col gap-4"
+    @keydown.capture="onKey"
+    @focusin="onFocusIn"
+    @focusout="onFocusOut"
+  >
     <DmsCard :padded="false">
       <!-- The method and the path keep a line of their own when the card is
            narrow: the buttons go under them, and a long path wraps. -->

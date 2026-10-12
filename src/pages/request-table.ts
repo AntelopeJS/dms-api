@@ -227,6 +227,7 @@ export function requestTable(
     columns,
     sizes,
     fetchUrl = REQUEST_LOGS_URL,
+    liveHold,
     ...rest
   } = options;
   const picked = Object.fromEntries(
@@ -261,8 +262,10 @@ export function requestTable(
     rowIdKey: "_id",
     // Read again on the live feed, and held while the page is paused ("12
     // new · Show"): the route lists the rows as they stood (`liveHeldAt`).
+    // A request open in the side panel holds the table alone, the page
+    // staying live; the request logs also hold it while scrolled down.
     realtimeTopic: LIVE_REQUESTS_TOPIC,
-    liveHold: true,
+    liveHold: liveHold ?? { whileRowOpen: true },
     rowClick: "single",
     // A `?record=` beyond the rows listed (a link, an older request).
     fetchRowUrl: `${DETAIL_URLS[page]}/{id}`,

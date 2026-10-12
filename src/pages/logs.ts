@@ -4,7 +4,7 @@ import { getConfig } from "@/config";
 import { apiBlock } from "./blocks";
 import { monitorCategory } from "./module";
 import { periodSelector } from "./period";
-import { pageToolbar } from "./toolbar";
+import { liveMode, pageToolbar } from "./toolbar";
 import { requestTable } from "./request-table";
 import { scopeChip } from "./scope-chip";
 
@@ -52,7 +52,7 @@ export class LogsPage extends PageController(
     category: monitorCategory,
     order: 1,
     // Direct / Pause over the live feed, each block read at most every 5 s.
-    live: { maxRate: 5 },
+    live: liveMode(5),
   },
   DefaultLayout(),
 ) {
@@ -86,6 +86,9 @@ export class LogsPage extends PageController(
     pageSize: LOGS_PAGE_SIZE,
     pagination: "loadMore",
     density: "compact",
+    // Held while a request is open or the rows are read further down: new
+    // ones would push them away.
+    liveHold: { whileRowOpen: true, whileScrolled: true },
     defaultSort: { field: "timestamp", desc: true },
     tabs: [
       {

@@ -14,7 +14,7 @@ import { LIVE_REQUESTS_TOPIC } from "@/types";
 import { apiBlock } from "./blocks";
 import { exploreCategory } from "./module";
 import { PERIOD_SCOPE, periodSelector } from "./period";
-import { pageToolbar } from "./toolbar";
+import { liveMode, pageToolbar } from "./toolbar";
 import { requestTable } from "./request-table";
 import { scopeChip } from "./scope-chip";
 
@@ -300,8 +300,9 @@ export class RoutesPage extends PageController(
     module: "api",
     category: exploreCategory,
     order: 0,
-    // Direct / Pause over the live feed, each block read at most every 15 s.
-    live: { maxRate: 15 },
+    // Direct / Pause over the live feed, each block read at most every 15 s,
+    // every minute over a week or a month.
+    live: liveMode(15, 60),
   },
   DefaultLayout(),
 ) {
