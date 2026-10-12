@@ -307,6 +307,8 @@ export class RoutesPage extends PageController(
         fetchUrl: `${ROUTES_API}/list`,
         queryKey: ROUTE_QUERY_KEY,
         realtimeTopic: LIVE_REQUESTS_TOPIC,
+        // The header below, by its key path: the list scrolls to it on a phone.
+        detailBlock: "explorer.header",
       }),
       { slot: "aside" },
     )

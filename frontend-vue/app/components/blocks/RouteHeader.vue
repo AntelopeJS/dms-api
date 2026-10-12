@@ -2,7 +2,7 @@
 import { computed, watch } from 'vue'
 import { routeSnippetRequest, toCurl } from '../../utils/snippets'
 import { hasRequestBody } from '../../utils/http'
-import { ROUTE_DETAIL_ANCHOR, windowParts } from '../../utils/routeExplorer'
+import { windowParts } from '../../utils/routeExplorer'
 import { linkedPeriod } from '../../utils/logsQuery'
 import ApiMethodBadge from '../internal/ApiMethodBadge.vue'
 import ApiPath from '../internal/ApiPath.vue'
@@ -181,7 +181,7 @@ async function copyCurl() {
 </script>
 
 <template>
-  <div :id="ROUTE_DETAIL_ANCHOR" class="flex scroll-mt-4 flex-col gap-3">
+  <div class="flex scroll-mt-4 flex-col gap-3">
     <DmsCard v-if="!selection.ref.value" :padded="false" class="px-5 py-8">
       <DmsEmptyState
         icon="i-ph-tree-structure"

@@ -10,7 +10,6 @@ import {
   needsAttention,
   optionId,
   rememberRoute,
-  ROUTE_DETAIL_ANCHOR,
   type RouteState,
   stepFrom,
   windowParts,
@@ -30,6 +29,12 @@ const props = withDefaults(
     queryKey?: string
     /** The live feed (`LIVE_REQUESTS_TOPIC`): the list is read again on it. */
     realtimeTopic?: string
+    /**
+     * Anchor of the route's header (`RouteHeader`), its key path on the
+     * page: a route chosen on a phone, where the detail sits below the list,
+     * brings it into view.
+     */
+    detailBlock?: string
   }>(),
   {
     queryKey: 'route',
@@ -283,10 +288,9 @@ async function choose(route: RouteRow) {
   await selection.select(route.ref)
   if (!window.matchMedia(STACKED_QUERY).matches) return
   listOpen.value = false
+  if (!props.detailBlock) return
   await nextTick()
-  document
-    .getElementById(ROUTE_DETAIL_ANCHOR)
-    ?.scrollIntoView({ block: 'start', behavior: 'smooth' })
+  scrollToBlock(props.detailBlock, { block: 'start', behavior: 'smooth' })
 }
 
 /**
