@@ -130,6 +130,7 @@ function chartRow() {
         icon: "i-ph-chart-line",
         fetchUrl: statisticsUrl("status"),
         periodScope: PERIOD_SCOPE,
+        realtimeTopic: LIVE_REQUESTS_TOPIC,
         valueFormat: "percent",
         valuePrecision: 1,
         // A rate's change in points, bad when up: the DMS badge would show it
@@ -156,6 +157,7 @@ function chartRow() {
         icon: "i-ph-timer",
         fetchUrl: statisticsUrl("latency-chart"),
         periodScope: PERIOD_SCOPE,
+        realtimeTopic: LIVE_REQUESTS_TOPIC,
         valueFormat: "number",
         // Whole milliseconds: the axis spreads its ticks evenly between the
         // bounds autoYRange widens to the threshold, fractions otherwise
@@ -181,6 +183,7 @@ function errorRow() {
         description: "$api.routes.statistics.top_errors_description",
         fetchUrl: statisticsUrl("errors"),
         periodScope: PERIOD_SCOPE,
+        realtimeTopic: LIVE_REQUESTS_TOPIC,
         valueFormat: "number",
         showBar: true,
         showRank: false,

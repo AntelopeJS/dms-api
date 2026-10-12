@@ -116,6 +116,7 @@ export class OverviewPage extends PageController(
             description: "$api.overview.slowest.description",
             fetchUrl: `${OVERVIEW_API}/slowest`,
             periodScope: PERIOD_SCOPE,
+            realtimeTopic: LIVE_REQUESTS_TOPIC,
             valueFormat: "number",
             valuePrecision: 0,
             valueSuffix: " ms",
@@ -135,6 +136,7 @@ export class OverviewPage extends PageController(
             icon: "i-ph-warning-diamond",
             fetchUrl: `${OVERVIEW_API}/error-share`,
             periodScope: PERIOD_SCOPE,
+            realtimeTopic: LIVE_REQUESTS_TOPIC,
             valueFormat: "percent",
             valuePrecision: 1,
             // The DMS badge reads a delta as a relative change, good when up:
@@ -165,6 +167,7 @@ export class OverviewPage extends PageController(
             icon: "i-ph-chart-bar",
             fetchUrl: `${OVERVIEW_API}/traffic`,
             periodScope: PERIOD_SCOPE,
+            realtimeTopic: LIVE_REQUESTS_TOPIC,
             valueFormat: "compact",
             showLegend: false,
             // Names the 2xx, 4xx and 5xx parts of each column.
@@ -188,6 +191,7 @@ export class OverviewPage extends PageController(
             description: "$api.overview.classes.description",
             fetchUrl: `${OVERVIEW_API}/classes`,
             periodScope: PERIOD_SCOPE,
+            realtimeTopic: LIVE_REQUESTS_TOPIC,
             valueFormat: "number",
             showBar: true,
             showRank: false,
