@@ -10,6 +10,7 @@ import {
   needsAttention,
   optionId,
   rememberRoute,
+  ROUTE_DETAIL_ANCHOR,
   type RouteState,
   stepFrom,
   windowParts,
@@ -279,7 +280,7 @@ async function choose(route: RouteRow) {
   listOpen.value = false
   await nextTick()
   document
-    .getElementById('api-route-detail')
+    .getElementById(ROUTE_DETAIL_ANCHOR)
     ?.scrollIntoView({ block: 'start', behavior: 'smooth' })
 }
 

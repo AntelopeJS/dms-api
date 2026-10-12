@@ -36,15 +36,18 @@ const label = computed(() =>
   }),
 )
 
-/** The live refresh reads the scope again once a minute at most. */
-const LIVE_REFRESH_INTERVAL_MS = 60_000
+/**
+ * A refresh the user asks for (`refreshPageBlocks()`) reads the scope again,
+ * once a minute at most: it changes on the Settings page, not with traffic.
+ */
+const REFRESH_INTERVAL_MS = 60_000
 
 // When the chip last asked, so that a failing read is not retried each tick.
 let lastAskedAt = Date.now()
 
 function refreshIfStale() {
   const last = Math.max(lastAskedAt, summary.receivedAt.value ?? 0)
-  if (Date.now() - last < LIVE_REFRESH_INTERVAL_MS) return
+  if (Date.now() - last < REFRESH_INTERVAL_MS) return
   lastAskedAt = Date.now()
   void summary.refresh()
 }

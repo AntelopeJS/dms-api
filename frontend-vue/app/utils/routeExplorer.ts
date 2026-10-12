@@ -4,6 +4,13 @@
  * components so it can be tested without a DMS around it.
  */
 
+/**
+ * Id of the route's header (`RouteHeader`), which the list scrolls to once a
+ * route is chosen on a phone, where the detail sits below it: the DMS has
+ * no way for one block to bring another into view.
+ */
+export const ROUTE_DETAIL_ANCHOR = 'api-route-detail'
+
 /** A route's health, in the words of the API verdict (`route-health.ts`). */
 export type RouteState =
   | 'failing'
