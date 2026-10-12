@@ -168,7 +168,7 @@ describe("route statistics", () => {
     const tester = {
       label: "$api.routes.statistics.idle_try",
       icon: "i-ph-paper-plane-tilt",
-      to: "/modules/api/routes?route=GET+%2Fapi%2Forders&tab=2",
+      to: "/modules/api/routes?route=GET+%2Fapi%2Forders&tab=tester",
     };
     expect(routeActivity(empty, "GET /api/orders", null)).toEqual({
       calls: 0,

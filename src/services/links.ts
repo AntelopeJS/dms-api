@@ -111,14 +111,18 @@ export function routeLink(
 }
 
 /**
- * Index of the Tester among the Routes page's tabs: the DMS Tab keeps its
- * open tab in the URL by index (`?tab=2`).
+ * Slots of the Routes page's tabs: the DMS Tab keeps its open tab in the URL
+ * by its slot (`?tab=tester`), the first one by nothing at all.
  */
-export const TESTER_TAB = "2";
+export const ROUTE_TABS = {
+  statistics: "statistics",
+  documentation: "documentation",
+  tester: "tester",
+} as const;
 
 /** The Tester of a route, ready to call it. */
 export function testerLink(route: string): string {
-  return routeLink(route, TESTER_TAB);
+  return routeLink(route, ROUTE_TABS.tester);
 }
 
 export function routesLink(): string {

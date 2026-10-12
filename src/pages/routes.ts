@@ -9,7 +9,7 @@ import { Tab } from "@antelopejs/interface-dms/base/tab";
 import { TopListCard } from "@antelopejs/interface-dms/base/top-list-card";
 import { PageController, RegisterPage } from "@antelopejs/interface-dms/page";
 import { getConfig } from "@/config";
-import { TESTER_TAB } from "@/services/links";
+import { ROUTE_TABS } from "@/services/links";
 import { LIVE_REQUESTS_TOPIC } from "@/types";
 import { apiBlock } from "./blocks";
 import { exploreCategory } from "./module";
@@ -24,11 +24,7 @@ const DETAIL_URL = `${ROUTES_API}/detail`;
 /** Query parameter holding the selected route, as `METHOD /path`. */
 const ROUTE_QUERY_KEY = "route";
 
-/**
- * Query parameter holding the open tab. The DMS Tab writes its index, not
- * its slot (`?tab=2` for the tester), and reads nothing else back: named
- * tabs wait for the DMS (DMS-9, `Tab.vue` and `useTab.ts`).
- */
+/** Query parameter holding the open tab, by its slot (`?tab=tester`). */
 const TAB_QUERY_KEY = "tab";
 
 /** A route statistic of the page's period, read for the route the URL names. */
@@ -319,7 +315,8 @@ export class RoutesPage extends PageController(
         fetchUrl: DETAIL_URL,
         queryKey: ROUTE_QUERY_KEY,
         tabKey: TAB_QUERY_KEY,
-        testerTab: TESTER_TAB,
+        statisticsTab: ROUTE_TABS.statistics,
+        testerTab: ROUTE_TABS.tester,
       }),
     )
     .child(
@@ -328,19 +325,18 @@ export class RoutesPage extends PageController(
         items: [
           {
             label: "$api.routes.tabs.statistics",
-            slot: "statistics",
+            slot: ROUTE_TABS.statistics,
             icon: "i-ph-chart-bar",
           },
           {
-            // A Tab badge is drawn as written, untranslated: the label says
-            // Beta (DMS-9).
-            label: "$api.routes.tabs.documentation_beta",
-            slot: "documentation",
+            label: "$api.routes.tabs.documentation",
+            slot: ROUTE_TABS.documentation,
             icon: "i-ph-book-open-text",
+            badge: "$api.routes.tabs.beta",
           },
           {
             label: "$api.routes.tabs.tester",
-            slot: "tester",
+            slot: ROUTE_TABS.tester,
             icon: "i-ph-paper-plane-tilt",
           },
         ],
@@ -349,14 +345,14 @@ export class RoutesPage extends PageController(
         persistState: true,
         stateKey: TAB_QUERY_KEY,
       })
-        .child("statistics", routeStatistics(), { slot: "statistics" })
+        .child("statistics", routeStatistics(), { slot: ROUTE_TABS.statistics })
         .child(
           "documentation",
           apiBlock("RouteDocumentation", {
             fetchUrl: DETAIL_URL,
             queryKey: ROUTE_QUERY_KEY,
           }),
-          { slot: "documentation" },
+          { slot: ROUTE_TABS.documentation },
         )
         .child(
           "tester",
@@ -364,7 +360,7 @@ export class RoutesPage extends PageController(
             fetchUrl: DETAIL_URL,
             queryKey: ROUTE_QUERY_KEY,
           }),
-          { slot: "tester" },
+          { slot: ROUTE_TABS.tester },
         )
         .meta({ name: "$api.routes.tabs.name", icon: "i-ph-tabs" }),
       // Shown once the URL names a route that exists.

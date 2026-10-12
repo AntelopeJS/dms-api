@@ -433,7 +433,8 @@
       "tabs": {
         "name": "Onglets de la route",
         "statistics": "Statistiques",
-        "documentation_beta": "Documentation · Bêta",
+        "documentation": "Documentation",
+        "beta": "Bêta",
         "tester": "Testeur"
       },
       "state": {

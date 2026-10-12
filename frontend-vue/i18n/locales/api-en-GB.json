@@ -433,7 +433,8 @@
       "tabs": {
         "name": "Route tabs",
         "statistics": "Statistics",
-        "documentation_beta": "Documentation · Beta",
+        "documentation": "Documentation",
+        "beta": "Beta",
         "tester": "Tester"
       },
       "state": {

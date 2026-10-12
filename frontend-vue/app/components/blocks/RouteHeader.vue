@@ -19,15 +19,21 @@ const props = withDefaults(
     fetchUrl: string
     queryKey?: string
     settingsUrl?: string
-    /** Query key of the page's tabs, and the tester's: it has its own cURL. */
+    /**
+     * Query key of the page's tabs, and the slots of the Statistics tab
+     * (the first, which the URL names by its slot or not at all) and of the
+     * tester (it has its own cURL).
+     */
     tabKey?: string
+    statisticsTab?: string
     testerTab?: string
   }>(),
   {
     queryKey: 'route',
     settingsUrl: '/modules/api/settings',
     tabKey: 'tab',
-    testerTab: '2',
+    statisticsTab: 'statistics',
+    testerTab: 'tester',
   },
 )
 
@@ -137,14 +143,11 @@ const firstSeen = computed(() => {
 // of the bare route, would be a different command under the same name.
 const onTester = computed(() => page.query[props.tabKey] === props.testerTab)
 
-/** The Statistics tab: the first, which the URL names by index or not at all. */
-const STATISTICS_TAB = '0'
-
 // Live, the route's state is read again on the Statistics tab only: the
 // documentation and the tester read the same detail, and must not move.
 useLiveRefresh(() => {
   const tab = page.query[props.tabKey]
-  if (!tab || tab === STATISTICS_TAB) void refresh()
+  if (!tab || tab === props.statisticsTab) void refresh()
 })
 
 async function copyCurl() {
