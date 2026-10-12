@@ -55,7 +55,7 @@ const STATE_TONE = {
 } as const
 
 const { t } = useI18n()
-const locale = useFormatLocale()
+const dateFormat = useDateFormat()
 const toast = useToast()
 const page = useDmsRoute()
 const recordLabel = usePageRecordLabel()
@@ -122,14 +122,14 @@ const source = computed(() => {
     : t('api.routes.header.unknown_source')
 })
 
+const FIRST_SEEN: Intl.DateTimeFormatOptions = { dateStyle: 'medium' }
+
 /** The day the route first answered, as far back as the statistics go. */
 const firstSeen = computed(() => {
   const at = route.value?.firstCallAt
   if (!at) return ''
   return t('api.routes.header.first_seen', {
-    date: new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium' }).format(
-      new Date(at),
-    ),
+    date: dateFormat.value(FIRST_SEEN).format(new Date(at)),
   })
 })
 

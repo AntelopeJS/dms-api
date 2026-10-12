@@ -10,6 +10,10 @@ import {
   thresholdRatio,
   withParam,
 } from '../app/utils/requestDrawer'
+import { cachedDateFormat } from '../app/utils/format'
+
+const formatIn = (locale: string) =>
+  cachedDateFormat((options) => new Intl.DateTimeFormat(locale, options))
 
 describe('reading a request', () => {
   it('names the URL a request went to', () => {
@@ -22,16 +26,36 @@ describe('reading a request', () => {
   it('writes the day only once it is not today', () => {
     const now = new Date(2026, 9, 10, 18, 0, 0)
     expect(
-      requestClock(new Date(2026, 9, 10, 17, 2, 28), 'en-GB', false, now),
+      requestClock(
+        new Date(2026, 9, 10, 17, 2, 28),
+        formatIn('en-GB'),
+        false,
+        now,
+      ),
     ).toBe('17:02:28')
     expect(
-      requestClock(new Date(2026, 9, 9, 23, 42, 10), 'en-GB', false, now),
+      requestClock(
+        new Date(2026, 9, 9, 23, 42, 10),
+        formatIn('en-GB'),
+        false,
+        now,
+      ),
     ).toBe('Yesterday, 23:42:10')
     expect(
-      requestClock(new Date(2026, 9, 9, 23, 42, 10), 'fr-FR', false, now),
+      requestClock(
+        new Date(2026, 9, 9, 23, 42, 10),
+        formatIn('fr-FR'),
+        false,
+        now,
+      ),
     ).toBe('Hier, 23:42:10')
     expect(
-      requestClock(new Date(2026, 9, 8, 12, 0, 0), 'en-GB', false, now),
+      requestClock(
+        new Date(2026, 9, 8, 12, 0, 0),
+        formatIn('en-GB'),
+        false,
+        now,
+      ),
     ).toBe('8 Oct, 12:00:00')
   })
 

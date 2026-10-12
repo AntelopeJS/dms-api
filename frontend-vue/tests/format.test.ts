@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
+  cachedDateFormat,
+  type DateFormat,
   durationParts,
   formatDecimal,
   formatClock,
@@ -11,6 +13,14 @@ import {
   formatThreshold,
   spanPart,
 } from '../app/utils/format'
+
+// What the blocks pass, the DMS's regional formatter, without preferences.
+const formatIn = (locale: string, extra: Intl.DateTimeFormatOptions = {}) =>
+  cachedDateFormat(
+    (options) => new Intl.DateTimeFormat(locale, { ...options, ...extra }),
+  )
+const en: DateFormat = formatIn('en-GB')
+const fr: DateFormat = formatIn('fr-FR')
 
 // Intl writes French spaces as narrow no-break ones: compare on plain spaces.
 const plain = (text: string) => text.replace(/[  ]/g, ' ')
@@ -48,42 +58,42 @@ describe('formatRelativeDay', () => {
   const now = new Date(2026, 9, 10, 18, 0)
 
   it('gives the time alone today', () => {
-    expect(formatRelativeDay(new Date(2026, 9, 10, 17, 33), 'en-GB', now)).toBe(
+    expect(formatRelativeDay(new Date(2026, 9, 10, 17, 33), en, now)).toBe(
       '17:33',
     )
   })
 
   it('names yesterday in the interface language', () => {
     const date = new Date(2026, 9, 9, 17, 33)
-    expect(formatRelativeDay(date, 'en-GB', now)).toBe('yesterday 17:33')
-    expect(formatRelativeDay(date, 'fr-FR', now)).toBe('hier 17:33')
+    expect(formatRelativeDay(date, en, now)).toBe('yesterday 17:33')
+    expect(formatRelativeDay(date, fr, now)).toBe('hier 17:33')
   })
 
   it('names the weekday within the week', () => {
     // 10 October 2026 is a Saturday.
-    expect(formatRelativeDay(new Date(2026, 9, 5, 9, 5), 'en-GB', now)).toBe(
+    expect(formatRelativeDay(new Date(2026, 9, 5, 9, 5), en, now)).toBe(
       'Mon 09:05',
     )
   })
 
   it('gives the date before, with the year when it is not this one', () => {
-    expect(formatRelativeDay(new Date(2026, 8, 28, 9, 5), 'en-GB', now)).toBe(
+    expect(formatRelativeDay(new Date(2026, 8, 28, 9, 5), en, now)).toBe(
       '28 Sept, 09:05',
     )
-    expect(formatRelativeDay(new Date(2025, 8, 28, 9, 5), 'en-GB', now)).toBe(
+    expect(formatRelativeDay(new Date(2025, 8, 28, 9, 5), en, now)).toBe(
       '28 Sept 2025, 09:05',
     )
   })
 
   it('is empty without a date', () => {
-    expect(formatRelativeDay(null, 'en-GB', now)).toBe('')
-    expect(formatRelativeDay('not a date', 'en-GB', now)).toBe('')
+    expect(formatRelativeDay(null, en, now)).toBe('')
+    expect(formatRelativeDay('not a date', en, now)).toBe('')
   })
 })
 
 describe('formatFullDateTime', () => {
   it('writes the whole date, for a tooltip', () => {
-    const text = formatFullDateTime(new Date(2026, 9, 9, 17, 33), 'en-GB')
+    const text = formatFullDateTime(new Date(2026, 9, 9, 17, 33), en)
     expect(text).toContain('9 October 2026')
     expect(text).toContain('17:33')
   })
@@ -145,14 +155,33 @@ describe('one clock for the console', () => {
     expect(formatLocale('fr-FR')).toBe('fr-FR')
   })
 
-  it('writes every time on 24 hours', () => {
+  it('writes every time on 24 hours unless the user asks otherwise', () => {
     const evening = new Date(2026, 9, 10, 20, 45, 7)
-    const locale = formatLocale('en')
-    expect(formatFullDateTime(evening, locale)).toContain('20:45')
-    expect(formatFullDateTime(evening, locale)).not.toMatch(/PM/i)
-    expect(formatClock(evening, locale, false, evening)).toBe('20:45:07')
+    const british = formatIn(formatLocale('en'))
+    expect(formatFullDateTime(evening, british)).toContain('20:45')
+    expect(formatFullDateTime(evening, british)).not.toMatch(/PM/i)
+    expect(formatClock(evening, british, false, evening)).toBe('20:45:07')
     expect(
-      formatRelativeDay(new Date(2026, 9, 10, 0, 5), locale, evening),
+      formatRelativeDay(new Date(2026, 9, 10, 0, 5), british, evening),
     ).toBe('00:05')
+    // A 12-hour clock chosen in Language & region.
+    const twelve = formatIn('en-GB', { hourCycle: 'h12' })
+    expect(formatClock(evening, twelve, false, evening)).toMatch(/pm/i)
+  })
+
+  it("names the day in the user's time zone", () => {
+    const utc = formatIn('en-GB', { timeZone: 'UTC' })
+    const tokyo = formatIn('en-GB', { timeZone: 'Asia/Tokyo' })
+    const now = new Date('2026-10-10T12:00:00Z')
+    // 20:00 UTC on the 10th is already the 11th in Tokyo, 05:00.
+    const late = new Date('2026-10-10T20:00:00Z')
+    expect(formatRelativeDay(late, utc, now)).toBe('20:00')
+    expect(
+      formatRelativeDay(late, tokyo, new Date('2026-10-11T03:00:00Z')),
+    ).toBe('05:00')
+    // 20:00 UTC on the 8th: the day before in Tokyo, two days in UTC.
+    const earlier = new Date('2026-10-08T20:00:00Z')
+    expect(formatRelativeDay(earlier, tokyo, now)).toBe('yesterday 05:00')
+    expect(formatRelativeDay(earlier, utc, now)).toBe('Thu 20:00')
   })
 })

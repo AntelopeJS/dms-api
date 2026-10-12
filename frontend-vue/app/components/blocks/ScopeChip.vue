@@ -22,7 +22,7 @@ const props = defineProps<{
 }>()
 
 const { t } = useI18n()
-const locale = useFormatLocale()
+const { formatNumber } = useRegionalFormat()
 const summary = useApiResource<{ scope: Scope; routes: number }>(
   () => props.fetchUrl,
 )
@@ -32,7 +32,7 @@ const routes = computed(() => summary.data.value?.routes ?? props.routes ?? 0)
 
 const label = computed(() =>
   t(`api.scope.${scope.value}`, {
-    count: new Intl.NumberFormat(locale.value).format(routes.value),
+    count: formatNumber(routes.value),
   }),
 )
 

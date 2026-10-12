@@ -12,6 +12,8 @@ const EMPTY = '—'
 // display, durations its duration display.
 export default defineDmsPlugin(() => {
   const { registerDataType } = useDataTypes()
+  // The console's dates, with the user's Language & region preferences.
+  const dateFormat = useDateFormat()
 
   // "Yesterday, 23:42:10.120" rather than a bare time once the day changed;
   // the whole date and its time zone on hover, written when hovered: every
@@ -20,7 +22,7 @@ export default defineDmsPlugin(() => {
   registerDataType({
     id: 'api:time',
     formatter: {
-      default: (value, locale, options) =>
+      default: (value, _locale, options) =>
         h(
           'span',
           {
@@ -28,12 +30,12 @@ export default defineDmsPlugin(() => {
             onMouseenter: (event: MouseEvent) => {
               const cell = event.currentTarget as HTMLElement
               if (!cell.title)
-                cell.title = fullDateTime(value as string, locale)
+                cell.title = fullDateTime(value as string, dateFormat.value)
             },
           },
           requestClock(
             value as string,
-            locale,
+            dateFormat.value,
             (options as TimeDisplayOptions | undefined)?.milliseconds ?? false,
           ) || EMPTY,
         ),

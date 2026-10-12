@@ -153,6 +153,7 @@ const METRIC_TONE: Record<MetricTone, string> = {
 
 const { t } = useI18n()
 const locale = useFormatLocale()
+const dateFormat = useDateFormat()
 const toast = useToast()
 const { isLive } = usePageLive()
 const { data, error, pending, receivedAt, refresh } =
@@ -236,7 +237,7 @@ function heldFor(health: HealthPayload): string {
 // A failed refresh keeps the last figures on screen: they are no longer live.
 const stale = computed(() => !!error.value && !!data.value)
 const staleSince = computed(() =>
-  receivedAt.value ? formatClock(receivedAt.value, locale.value) : '',
+  receivedAt.value ? formatClock(receivedAt.value, dateFormat.value) : '',
 )
 
 const look = computed(() => (data.value ? LOOKS[data.value.verdict] : null))
@@ -269,7 +270,7 @@ function sinceTitle(health: HealthPayload, since: Date | null): string {
   const parts = since
     ? [
         t(`api.health.since_${health.verdict}`, {
-          date: formatFullDateTime(since, locale.value),
+          date: formatFullDateTime(since, dateFormat.value),
         }),
       ]
     : []
@@ -279,7 +280,7 @@ function sinceTitle(health: HealthPayload, since: Date | null): string {
   )
     parts.push(
       t('api.health.incident_started', {
-        date: formatFullDateTime(start, locale.value),
+        date: formatFullDateTime(start, dateFormat.value),
       }),
     )
   return parts.join(' · ')
@@ -318,10 +319,10 @@ const incident = computed(() => {
       return start
         ? {
             text: t('api.health.last_incident', {
-              date: formatRelativeDay(start, locale.value),
+              date: formatRelativeDay(start, dateFormat.value),
             }),
             datetime: start,
-            title: formatFullDateTime(start, locale.value),
+            title: formatFullDateTime(start, dateFormat.value),
           }
         : null
     default:
@@ -333,7 +334,7 @@ const incident = computed(() => {
 const checked = computed(() =>
   data.value && !stale.value
     ? t('api.health.checked', {
-        time: formatClock(data.value.checkedAt, locale.value),
+        time: formatClock(data.value.checkedAt, dateFormat.value),
       })
     : '',
 )

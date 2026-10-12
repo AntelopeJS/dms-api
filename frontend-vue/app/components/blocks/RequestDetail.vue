@@ -8,7 +8,6 @@ import {
   NO_REDACTIONS,
   originalBodySize,
   type Redactions,
-  relativeTime,
   type RequestPivot,
   requestPivots,
   requestUrl,
@@ -208,7 +207,7 @@ const general = computed(() => {
       {
         key: 'date',
         label: t('api.request.fields.date'),
-        value: `${fullDateTime(value.timestamp, locale.value)} · ${relativeTime(value.timestamp, locale.value)}`,
+        value: `${fullDateTime(value.timestamp, dateFormat.value)} · ${formatRelativeTime(value.timestamp)}`,
       },
       {
         key: 'route',
@@ -354,8 +353,8 @@ const responseSize = computed(() =>
   ),
 )
 
-const count = (value: number) =>
-  new Intl.NumberFormat(locale.value).format(value)
+const { formatNumber: count, formatRelativeTime } = useRegionalFormat()
+const dateFormat = useDateFormat()
 </script>
 
 <template>
@@ -399,9 +398,9 @@ const count = (value: number) =>
         <ApiTesterBadge v-if="isTester" />
         <span
           class="text-dimmed font-mono text-[11.5px]"
-          :title="fullDateTime(log.timestamp, locale)"
+          :title="fullDateTime(log.timestamp, dateFormat)"
         >
-          {{ relativeTime(log.timestamp, locale) }}
+          {{ formatRelativeTime(log.timestamp) }}
         </span>
       </div>
 

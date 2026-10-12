@@ -8,7 +8,12 @@ import {
   withQuery,
 } from '../app/utils/snippets'
 import { closestMatch } from '../app/utils/search'
-import { formatClock, formatMs, prettyBody } from '../app/utils/format'
+import {
+  cachedDateFormat,
+  formatClock,
+  formatMs,
+  prettyBody,
+} from '../app/utils/format'
 
 describe('snippets', () => {
   const request = {
@@ -261,9 +266,12 @@ describe('format', () => {
     expect(formatMs(48, 'en')).toBe('48 ms')
     expect(formatMs(12_400, 'en')).toBe('12.4 s')
     const now = new Date('2026-10-07T14:31:58.412')
-    expect(formatClock(now, 'en', true, now)).toBe('14:31:58.412')
-    expect(formatClock(new Date('2026-09-28T14:31:58'), 'en', false, now)).toBe(
-      'Sep 28, 14:31:58',
+    const en = cachedDateFormat(
+      (options) => new Intl.DateTimeFormat('en-GB', options),
+    )
+    expect(formatClock(now, en, true, now)).toBe('14:31:58.412')
+    expect(formatClock(new Date('2026-09-28T14:31:58'), en, false, now)).toBe(
+      '28 Sept, 14:31:58',
     )
   })
 

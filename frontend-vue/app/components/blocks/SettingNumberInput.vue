@@ -29,8 +29,8 @@ const { t } = useI18n()
 const locale = useFormatLocale()
 const root = useTemplateRef<HTMLElement>('root')
 
-const formatNumber = (value: number) =>
-  new Intl.NumberFormat(locale.value).format(value)
+const regional = useRegionalFormat()
+const formatNumber = (value: number) => String(regional.formatNumber(value))
 
 // What was typed since the field last settled, and how the field changed it.
 let typed: string | null = null

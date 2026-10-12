@@ -36,6 +36,8 @@ interface LivePayload {
 
 const { t } = useI18n()
 const locale = useFormatLocale()
+const dateFormat = useDateFormat()
+const { formatNumber } = useRegionalFormat()
 const { data, error, pending, refresh } = useApiResource<LivePayload>(
   () => props.fetchUrl,
 )
@@ -65,12 +67,11 @@ watch(pending, (loading) => {
 const status = computed(() => liveStatus(isLive.value, failures.value))
 
 const count = (value: number) => formatCount(value, locale.value)
-const minute = (start: number) =>
-  new Date(start).toLocaleTimeString(locale.value, {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  })
+const MINUTE: Intl.DateTimeFormatOptions = {
+  hour: '2-digit',
+  minute: '2-digit',
+}
+const minute = (start: number) => dateFormat.value(MINUTE).format(start)
 
 const kept = computed(() => {
   if (!data.value) return ''
@@ -81,7 +82,7 @@ const kept = computed(() => {
   return t('api.live.kept', {
     days,
     size: t(`api.live.size_${limit.unit}`, {
-      amount: new Intl.NumberFormat(locale.value).format(limit.amount),
+      amount: formatNumber(limit.amount),
     }),
   })
 })
@@ -89,7 +90,7 @@ const kept = computed(() => {
 const lastData = computed(() =>
   data.value
     ? t('api.live.last_data', {
-        time: formatClock(data.value.refreshedAt, locale.value),
+        time: formatClock(data.value.refreshedAt, dateFormat.value),
       })
     : t('api.live.no_data_yet'),
 )

@@ -157,6 +157,7 @@ const POINTS_TO_CAPTURED: ReadonlySet<string> = new Set([
 
 const { t } = useI18n()
 const locale = useFormatLocale()
+const dateFormat = useDateFormat()
 const toast = useToast()
 const { confirm } = useConfirm()
 const { loggedIn } = useUserSession()
@@ -704,7 +705,7 @@ const replayTitle = computed(() => {
   return [
     t('api.tester.replay_banner.title', {
       id: shortId(info.id),
-      at: formatClock(info.at, locale.value),
+      at: formatClock(info.at, dateFormat.value),
     }),
     ...(info.skippedHeaders.length
       ? [
@@ -1722,7 +1723,9 @@ const shortcut = computed(() =>
                       })
                     }}
                   </span>
-                  <span>{{ formatClock(capturedLog.timestamp, locale) }}</span>
+                  <span>
+                    {{ formatClock(capturedLog.timestamp, dateFormat) }}
+                  </span>
                   <span>{{ shortId(capturedLog._id) }}</span>
                 </div>
                 <DmsBanner
@@ -1863,7 +1866,7 @@ const shortcut = computed(() =>
               {{ formatMs(entry.result.durationMs, locale) }}
             </span>
             <span class="text-dimmed font-mono text-[11px]">
-              {{ formatClock(entry.at, locale) }}
+              {{ formatClock(entry.at, dateFormat) }}
             </span>
           </button>
         </li>

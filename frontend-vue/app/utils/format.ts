@@ -13,14 +13,101 @@ const DAYS_PER_WEEK = 7
 /**
  * The locale figures, dates and times are written in, from the interface
  * language: a bare `en` is British English, so the console reads in one
- * convention (24-hour clock, day before month) like its `en-GB` texts.
+ * convention (24-hour clock, day before month) like its `en-GB` texts,
+ * unless the user's Language & region preferences say otherwise.
  */
 export function formatLocale(locale: string): string {
   return locale.toLowerCase() === 'en' ? 'en-GB' : locale
 }
 
-/** The clock every time of the console is written on: 24 hours. */
-const CLOCK: Intl.DateTimeFormatOptions = { hourCycle: 'h23' }
+/**
+ * Makes the `Intl.DateTimeFormat` of a set of options. The blocks pass the
+ * DMS's `regionalDateTimeFormat` bound to the console's locale
+ * (`useDateFormat`), so every date and time follows the user's Language &
+ * region preferences: time zone, clock and date format.
+ */
+export type DateFormat = (
+  options: Intl.DateTimeFormatOptions,
+) => Intl.DateTimeFormat
+
+/**
+ * `make`, each format made once per set of options: a table writes the time
+ * of each of its rows (2,000 after a few "Load more"), and making a format
+ * costs far more than using one (about 0.15 ms a row). The options are
+ * constants, so they key the cache as they are.
+ */
+export function cachedDateFormat(make: DateFormat): DateFormat {
+  const formats = new WeakMap<Intl.DateTimeFormatOptions, Intl.DateTimeFormat>()
+  return (options) => {
+    let format = formats.get(options)
+    if (!format) {
+      format = make(options)
+      formats.set(options, format)
+    }
+    return format
+  }
+}
+
+const TIME: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit' }
+const CLOCK_TIME: Intl.DateTimeFormatOptions = { ...TIME, second: '2-digit' }
+const CLOCK_TIME_MS: Intl.DateTimeFormatOptions = {
+  ...CLOCK_TIME,
+  fractionalSecondDigits: 3,
+}
+const SHORT_DAY: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' }
+const SHORT_DAY_YEAR: Intl.DateTimeFormatOptions = {
+  ...SHORT_DAY,
+  year: 'numeric',
+}
+const WEEKDAY: Intl.DateTimeFormatOptions = { weekday: 'short' }
+const FULL_DATE_TIME: Intl.DateTimeFormatOptions = {
+  dateStyle: 'full',
+  timeStyle: 'short',
+}
+
+const dayPartFormats = new Map<string, Intl.DateTimeFormat>()
+
+/**
+ * The calendar day a moment falls on in the time zone `format` writes in
+ * (the user's), as a day count: two moments share a day when their numbers
+ * are equal.
+ */
+function dayNumber(date: Date, format: DateFormat): number {
+  const { timeZone } = format(TIME).resolvedOptions()
+  let parts = dayPartFormats.get(timeZone)
+  if (!parts) {
+    parts = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+    })
+    dayPartFormats.set(timeZone, parts)
+  }
+  const values = parts.formatToParts(date)
+  const read = (type: Intl.DateTimeFormatPartTypes) =>
+    Number(values.find((part) => part.type === type)?.value ?? 0)
+  return Date.UTC(read('year'), read('month') - 1, read('day')) / MS_PER_DAY
+}
+
+/** Whole calendar days from `date` to `now`, in the user's time zone. */
+export function daysBefore(date: Date, now: Date, format: DateFormat): number {
+  return dayNumber(now, format) - dayNumber(date, format)
+}
+
+/** The year a moment falls in, in the user's time zone. */
+function yearOf(date: Date, format: DateFormat): number {
+  return new Date(dayNumber(date, format) * MS_PER_DAY).getUTCFullYear()
+}
+
+/** "yesterday", "hier": the day before, in the language `format` writes. */
+function yesterday(format: DateFormat): string {
+  const { locale } = format(TIME).resolvedOptions()
+  return new Intl.RelativeTimeFormat(locale, { numeric: 'auto' }).format(
+    -1,
+    'day',
+  )
+}
 
 const numberFormats = new Map<string, Intl.NumberFormat>()
 
@@ -93,94 +180,57 @@ export function formatBytes(bytes: number, locale?: string): string {
   return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(bytes / BYTES_PER_KB)} KB`
 }
 
-function isSameDay(a: Date, b: Date): boolean {
-  return a.toDateString() === b.toDateString()
-}
-
 /**
- * The time of a request: "14:31:58.412" today, "Sep 28, 14:31:58" before.
+ * The time of a request: "14:31:58.412" today, "28 Sept, 14:31:58" before.
  */
 export function formatClock(
   value: string | number | Date | undefined,
-  locale?: string,
+  format: DateFormat,
   milliseconds = false,
   now: Date = new Date(),
 ): string {
   if (value === undefined || value === null) return ''
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return ''
-  const time = date.toLocaleTimeString(locale, {
-    ...CLOCK,
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    ...(milliseconds ? { fractionalSecondDigits: 3 } : {}),
-  })
-  if (isSameDay(date, now)) return time
-  const day = date.toLocaleDateString(locale, {
-    month: 'short',
-    day: 'numeric',
-  })
-  return `${day}, ${time}`
-}
-
-/** Whole calendar days from `date` to `now`, in the local time zone. */
-function daysBefore(date: Date, now: Date): number {
-  const start = new Date(date).setHours(0, 0, 0, 0)
-  const end = new Date(now).setHours(0, 0, 0, 0)
-  return Math.round((end - start) / MS_PER_DAY)
+  const time = format(milliseconds ? CLOCK_TIME_MS : CLOCK_TIME).format(date)
+  if (daysBefore(date, now, format) === 0) return time
+  return `${format(SHORT_DAY).format(date)}, ${time}`
 }
 
 /**
  * A moment named from today: "17:33" today, "yesterday 17:33", "Mon 17:33"
- * within the week, "Oct 3, 17:33" before, with the year when it is not this
- * one. A bare "Oct 9, 17:33" beside a time of today reads as if it came after.
+ * within the week, "3 Oct, 17:33" before, with the year when it is not this
+ * one. A bare "9 Oct, 17:33" beside a time of today reads as if it came after.
  */
 export function formatRelativeDay(
   value: string | number | Date | undefined | null,
-  locale?: string,
+  format: DateFormat,
   now: Date = new Date(),
 ): string {
   if (value === undefined || value === null) return ''
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return ''
-  const time = date.toLocaleTimeString(locale, {
-    ...CLOCK,
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-  const days = daysBefore(date, now)
+  const time = format(TIME).format(date)
+  const days = daysBefore(date, now, format)
   if (days === 0) return time
-  if (days === 1) {
-    const yesterday = new Intl.RelativeTimeFormat(locale, {
-      numeric: 'auto',
-    }).format(-1, 'day')
-    return `${yesterday} ${time}`
-  }
+  if (days === 1) return `${yesterday(format)} ${time}`
   if (days > 1 && days < DAYS_PER_WEEK) {
-    return `${date.toLocaleDateString(locale, { weekday: 'short' })} ${time}`
+    return `${format(WEEKDAY).format(date)} ${time}`
   }
-  const day = date.toLocaleDateString(locale, {
-    month: 'short',
-    day: 'numeric',
-    ...(date.getFullYear() === now.getFullYear() ? {} : { year: 'numeric' }),
-  })
+  const sameYear = yearOf(date, format) === yearOf(now, format)
+  const day = format(sameYear ? SHORT_DAY : SHORT_DAY_YEAR).format(date)
   return `${day}, ${time}`
 }
 
 /** The whole date and time, for a tooltip: "Friday 9 October 2026 at 17:33". */
 export function formatFullDateTime(
   value: string | number | Date | undefined | null,
-  locale?: string,
+  format: DateFormat,
 ): string {
   if (value === undefined || value === null) return ''
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return ''
-  return date.toLocaleString(locale, {
-    ...CLOCK,
-    dateStyle: 'full',
-    timeStyle: 'short',
-  })
+  return format(FULL_DATE_TIME).format(date)
 }
 
 export type DurationUnit = 's' | 'min' | 'h' | 'd'

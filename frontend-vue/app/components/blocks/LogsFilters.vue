@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { formatThreshold } from '../../utils/format'
+import { formatRelativeDay, formatThreshold } from '../../utils/format'
 import {
   incidentRange,
   isRouteRef,
@@ -12,7 +12,6 @@ import {
   withLogsFilters,
   type LogsFiltersPatch,
 } from '../../utils/logsQuery'
-import { localDay } from '../../utils/requestDrawer'
 
 // The filters bar right above the request table: the method, the slow
 // requests, and the filters a link brought (route, path, error, an
@@ -30,6 +29,7 @@ const props = defineProps<{
 
 const { t } = useI18n()
 const locale = useFormatLocale()
+const dateFormat = useDateFormat()
 const route = useDmsRoute()
 const router = useDmsRouter()
 
@@ -71,21 +71,6 @@ const slowLabel = computed(() =>
       }),
 )
 
-/** "18:31", with the day in front once it is not today. */
-function incidentTime(date: Date): string {
-  const time = date.toLocaleTimeString(locale.value, {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  })
-  if (localDay(date) === localDay(new Date())) return time
-  const day = date.toLocaleDateString(locale.value, {
-    month: 'short',
-    day: 'numeric',
-  })
-  return `${day}, ${time}`
-}
-
 interface Chip {
   key: string
   label: string
@@ -123,8 +108,8 @@ const chips = computed<Chip[]>(() => {
     list.push({
       key: 'incident',
       label: t('api.logs.linked.incident', {
-        since: incidentTime(incident.from),
-        until: incidentTime(incident.to),
+        since: formatRelativeDay(incident.from, dateFormat.value),
+        until: formatRelativeDay(incident.to, dateFormat.value),
       }),
       remove: { incident: null },
     })

@@ -2,57 +2,12 @@
 // panel a row opens (`RequestDetail`): its URL, its time, its duration
 // against the slow threshold, its bodies and the lists it leads to.
 
-/** The local calendar day of a moment, as `YYYY-MM-DD`. */
-export function localDay(value: string | number | Date): string {
-  const date = new Date(value)
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${date.getFullYear()}-${month}-${day}`
-}
-
-// Formats made once per locale and options: a table writes the time of
-// each of its rows (2,000 after a few "Load more"), and making a format
-// costs far more than using one (about 0.15 ms a row). The options are the
-// constants below, so they key the cache as they are.
-const dateFormats = new WeakMap<
-  Intl.DateTimeFormatOptions,
-  Map<string, Intl.DateTimeFormat>
->()
-const relativeFormats = new Map<string, Intl.RelativeTimeFormat>()
-
-function dateFormat(
-  locale: string | undefined,
-  options: Intl.DateTimeFormatOptions,
-): Intl.DateTimeFormat {
-  let byLocale = dateFormats.get(options)
-  if (!byLocale) {
-    byLocale = new Map()
-    dateFormats.set(options, byLocale)
-  }
-  const key = locale ?? ''
-  let format = byLocale.get(key)
-  if (!format) {
-    format = new Intl.DateTimeFormat(locale, options)
-    byLocale.set(key, format)
-  }
-  return format
-}
-
-function relativeFormat(locale: string | undefined): Intl.RelativeTimeFormat {
-  const key = locale ?? ''
-  let format = relativeFormats.get(key)
-  if (!format) {
-    format = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' })
-    relativeFormats.set(key, format)
-  }
-  return format
-}
+import { daysBefore, type DateFormat } from './format'
 
 const CLOCK_TIME: Intl.DateTimeFormatOptions = {
   hour: '2-digit',
   minute: '2-digit',
   second: '2-digit',
-  hour12: false,
 }
 
 const CLOCK_TIME_MS: Intl.DateTimeFormatOptions = {
@@ -71,71 +26,55 @@ const FULL_DATE_TIME: Intl.DateTimeFormatOptions = {
   minute: '2-digit',
   second: '2-digit',
   fractionalSecondDigits: 3,
-  hour12: false,
   timeZoneName: 'short',
 }
 
-function relativeDay(date: Date, now: Date, locale?: string): string | null {
-  const days = Math.round(
-    (new Date(now).setHours(0, 0, 0, 0) - new Date(date).setHours(0, 0, 0, 0)) /
-      86_400_000,
-  )
+const relativeFormats = new Map<string, Intl.RelativeTimeFormat>()
+
+function relativeFormat(locale: string): Intl.RelativeTimeFormat {
+  let format = relativeFormats.get(locale)
+  if (!format) {
+    format = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' })
+    relativeFormats.set(locale, format)
+  }
+  return format
+}
+
+/** "Today", "Yesterday" in the language `format` writes, else null. */
+function relativeDay(date: Date, now: Date, format: DateFormat): string | null {
+  const days = daysBefore(date, now, format)
   if (days !== 0 && days !== 1) return null
+  const { locale } = format(CLOCK_TIME).resolvedOptions()
   const text = relativeFormat(locale).format(-days, 'day')
   return text.charAt(0).toLocaleUpperCase(locale) + text.slice(1)
 }
 
 /**
  * The time of a request in a table: "17:02:28.412" today, "Yesterday,
- * 23:42:10.120" the day before, "Oct 8, 12:00:00.000" earlier.
+ * 23:42:10.120" the day before, "8 Oct, 12:00:00.000" earlier.
  */
 export function requestClock(
   value: string | number | Date,
-  locale?: string,
+  format: DateFormat,
   milliseconds = false,
   now: Date = new Date(),
 ): string {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return ''
-  const time = dateFormat(
-    locale,
-    milliseconds ? CLOCK_TIME_MS : CLOCK_TIME,
-  ).format(date)
-  if (localDay(date) === localDay(now)) return time
-  const day =
-    relativeDay(date, now, locale) ?? dateFormat(locale, SHORT_DAY).format(date)
+  const time = format(milliseconds ? CLOCK_TIME_MS : CLOCK_TIME).format(date)
+  if (daysBefore(date, now, format) === 0) return time
+  const day = relativeDay(date, now, format) ?? format(SHORT_DAY).format(date)
   return `${day}, ${time}`
 }
 
-/** A moment in full, with its time zone: "Fri, Oct 10, 2026, 17:02:28.412 CEST". */
+/** A moment in full, with its time zone: "Fri, 10 Oct 2026, 17:02:28.412 CEST". */
 export function fullDateTime(
   value: string | number | Date,
-  locale?: string,
+  format: DateFormat,
 ): string {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return ''
-  return dateFormat(locale, FULL_DATE_TIME).format(date)
-}
-
-const RELATIVE_UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
-  ['day', 86_400_000],
-  ['hour', 3_600_000],
-  ['minute', 60_000],
-  ['second', 1000],
-]
-
-/** How long ago a moment was, in words: "3 minutes ago", "il y a 2 jours". */
-export function relativeTime(
-  value: string | number | Date,
-  locale?: string,
-  now: number = Date.now(),
-): string {
-  const elapsed = new Date(value).getTime() - now
-  if (Number.isNaN(elapsed)) return ''
-  const [unit, size] =
-    RELATIVE_UNITS.find(([, ms]) => Math.abs(elapsed) >= ms) ??
-    RELATIVE_UNITS[RELATIVE_UNITS.length - 1]
-  return relativeFormat(locale).format(Math.round(elapsed / size), unit)
+  return format(FULL_DATE_TIME).format(date)
 }
 
 /** The URL a request was sent to: `origin`, its path and its query. */

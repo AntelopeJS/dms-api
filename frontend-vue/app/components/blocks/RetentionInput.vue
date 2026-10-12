@@ -46,13 +46,12 @@ const IMPACT_DEBOUNCE_MS = 300
 const PREVIOUS_PERIOD_DAYS = 30
 
 const { t } = useI18n()
-const locale = useFormatLocale()
 const { confirm } = useConfirm()
 const { $authFetch } = useAuthFetch()
 const root = useTemplateRef<HTMLElement>('root')
 
-const formatNumber = (value: number) =>
-  new Intl.NumberFormat(locale.value).format(value)
+const regional = useRegionalFormat()
+const formatNumber = (value: number) => String(regional.formatNumber(value))
 
 const items = computed(() =>
   (props.choices ?? []).map((days) => ({

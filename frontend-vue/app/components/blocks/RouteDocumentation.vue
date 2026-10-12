@@ -38,6 +38,7 @@ const LISTED_MESSAGES = 5
 
 const { t } = useI18n()
 const locale = useFormatLocale()
+const dateFormat = useDateFormat()
 const currentRoute = useDmsRoute()
 const router = useDmsRouter()
 const {
@@ -118,7 +119,7 @@ const responses = computed<ResponseRow[]>(() => {
       observed.count,
     )
     const last = t('api.routes.docs.last_seen', {
-      time: formatRelativeDay(observed.lastSeen, locale.value),
+      time: formatRelativeDay(observed.lastSeen, dateFormat.value),
     })
     const { messages, more } = listedMessages(observed, LISTED_MESSAGES)
     rows.set(observed.status, {

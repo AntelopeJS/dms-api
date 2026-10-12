@@ -401,11 +401,9 @@ onMounted(() => {
   void nextTick(() => revealActive(true))
 })
 
+const { formatNumber } = useRegionalFormat()
 const count = (value: number) =>
-  new Intl.NumberFormat(locale.value, {
-    notation: 'compact',
-    maximumFractionDigits: 1,
-  }).format(value)
+  formatNumber(value, { notation: 'compact', maximumFractionDigits: 1 })
 </script>
 
 <template>
