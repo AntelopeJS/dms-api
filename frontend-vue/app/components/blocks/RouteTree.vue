@@ -72,13 +72,9 @@ const STATE_DOT: Record<RouteState, string> = {
   healthy: 'bg-success',
   idle: 'bg-(--ui-border-accented)',
 }
-/** Below `lg` the list sits above the detail instead of beside it. */
-const STACKED_QUERY = '(max-width: 1023.98px)'
 /** Rest after the last ↑ / ↓ before the page loads the route reached. */
 const KEYBOARD_SETTLE_MS = 150
 const REVEAL_MARGIN_PX = 8
-/** Room under the card, and above it once the aside sticks (`lg:top-4`). */
-const VIEWPORT_MARGIN_PX = 16
 
 const { t } = useI18n()
 const { formatLocale: locale, formatNumber } = useRegionalFormat({
@@ -111,10 +107,8 @@ let settle: ReturnType<typeof setTimeout> | null = null
 const searchInput = ref<{ inputRef?: HTMLInputElement } | null>(null)
 const scroller = ref<HTMLElement | null>(null)
 const tree = ref<HTMLElement | null>(null)
-const card = ref<{ $el?: HTMLElement } | null>(null)
-/** Where the card starts on screen, which its height ends at the fold from. */
-const cardTop = ref<number | null>(null)
-let measureFrame = 0
+/** The fold toggle, shown only while the list sits above the detail. */
+const foldToggle = ref<HTMLButtonElement | null>(null)
 
 const routes = computed(() => data.value?.routes ?? [])
 const attentionCount = computed(
@@ -263,32 +257,13 @@ function revealActive(center = false) {
   }
 }
 
-/**
- * The card ends at the fold wherever it starts: under the page's header on
- * arrival, at the top once the aside sticks. A height taken from the viewport
- * alone left its footer, and the route revealed, below the fold until the
- * page was scrolled.
- */
-function measureTop() {
-  measureFrame = 0
-  const element = card.value?.$el
-  if (!(element instanceof HTMLElement)) return
-  cardTop.value = Math.max(
-    VIEWPORT_MARGIN_PX,
-    Math.round(element.getBoundingClientRect().top),
-  )
-}
-
-function scheduleMeasure() {
-  if (!measureFrame) measureFrame = requestAnimationFrame(measureTop)
-}
-
 /** A route clicked: a history entry, and on a phone the detail comes up. */
 async function choose(route: RouteRow) {
   stopSettling()
   cursor.value = null
   await selection.select(route.ref)
-  if (!window.matchMedia(STACKED_QUERY).matches) return
+  // Beside the detail the list stays; stacked above it, it folds away.
+  if (!foldToggle.value?.checkVisibility()) return
   listOpen.value = false
   if (!props.detailBlock) return
   await nextTick()
@@ -355,21 +330,7 @@ function onSearchKey(event: KeyboardEvent) {
   }
 }
 
-onMounted(() => {
-  // Whichever element scrolls the page: scroll events do not bubble.
-  window.addEventListener('scroll', scheduleMeasure, {
-    capture: true,
-    passive: true,
-  })
-  window.addEventListener('resize', scheduleMeasure)
-  measureTop()
-})
-onBeforeUnmount(() => {
-  window.removeEventListener('scroll', scheduleMeasure, { capture: true })
-  window.removeEventListener('resize', scheduleMeasure)
-  cancelAnimationFrame(measureFrame)
-  stopSettling()
-})
+onBeforeUnmount(stopSettling)
 
 // A page opened without a route shows the last one looked at in this tab,
 // else the one needing a look first, without a history entry of its own,
@@ -405,7 +366,7 @@ watch(
 )
 onMounted(() => {
   if (selection.ref.value) rememberRoute(selection.ref.value)
-  // Once the card's height follows where it starts.
+  // Once the list is laid out.
   void nextTick(() => revealActive(true))
 })
 
@@ -415,15 +376,14 @@ const count = (value: number) =>
 
 <template>
   <DmsCard
-    ref="card"
     :padded="false"
-    class="flex flex-col overflow-hidden lg:max-h-[calc(100dvh-var(--api-tree-top,6rem)-1rem)] lg:min-h-[24rem]"
-    :style="cardTop === null ? undefined : { '--api-tree-top': `${cardTop}px` }"
+    class="flex flex-col overflow-hidden @5xl:max-h-[calc(100dvh-2rem)] @5xl:min-h-[24rem]"
   >
     <!-- Stacked above the detail, the list folds to the route it shows. -->
     <button
+      ref="foldToggle"
       type="button"
-      class="hover:bg-elevated flex items-center gap-2 px-3 py-2.5 text-left text-[13px] lg:hidden"
+      class="hover:bg-elevated flex items-center gap-2 px-3 py-2.5 text-left text-[13px] @5xl:hidden"
       :aria-expanded="listOpen"
       aria-controls="api-route-list"
       @click="listOpen = !listOpen"
@@ -447,8 +407,8 @@ const count = (value: number) =>
 
     <div
       id="api-route-list"
-      class="border-default flex min-h-0 flex-1 flex-col max-lg:border-t"
-      :class="!listOpen && 'max-lg:hidden'"
+      class="border-default flex min-h-0 flex-1 flex-col @max-5xl:border-t"
+      :class="!listOpen && '@max-5xl:hidden'"
     >
       <div class="border-default flex flex-col gap-2.5 border-b p-3">
         <UInput
@@ -501,7 +461,7 @@ const count = (value: number) =>
 
       <div
         ref="scroller"
-        class="relative min-h-0 flex-1 overflow-y-auto py-1.5 max-lg:max-h-[50vh]"
+        class="relative min-h-0 flex-1 overflow-y-auto py-1.5 @max-5xl:max-h-[50vh]"
       >
         <p
           v-if="healthWindow && routes.length"
@@ -708,8 +668,8 @@ const count = (value: number) =>
             @click="toggleAll"
           />
         </UTooltip>
-        <UKbd value="↑" size="sm" class="shrink-0 max-lg:hidden" />
-        <UKbd value="↓" size="sm" class="shrink-0 max-lg:hidden" />
+        <UKbd value="↑" size="sm" class="shrink-0 @max-5xl:hidden" />
+        <UKbd value="↓" size="sm" class="shrink-0 @max-5xl:hidden" />
       </div>
     </div>
   </DmsCard>
