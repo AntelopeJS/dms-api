@@ -21,8 +21,11 @@ const RECENT_REQUESTS = 6;
 
 const ACTIVITY_ROWS = 8;
 
-/** Rows "Needs attention" shows: the route's own cap (`ATTENTION_LIMIT`). */
+/** Rows "Needs attention" lists: the route's own cap (`ATTENTION_LIMIT`). */
 const ATTENTION_ROWS = 8;
+
+/** Rows "Needs attention" shows before its "Show N more". */
+const ATTENTION_VISIBLE_ROWS = 5;
 
 /** Rows of the slowest routes: the route's own cap. */
 const SLOWEST_ROWS = 5;
@@ -75,7 +78,9 @@ export class OverviewPage extends PageController(
           "attention",
           // Its head counts every route to check (the route's `count`, more
           // than the rows shown when capped) and says the window it covers;
-          // each row's top error is its third line.
+          // each row's top error is its third line. Every row is read whole
+          // (`wrap`), so the card grows with them rather than filling its
+          // cell, and folds past the first five.
           ActivityFeed({
             title: "$api.overview.attention.title",
             badge: "$api.overview.attention.badge",
@@ -84,7 +89,8 @@ export class OverviewPage extends PageController(
             mono: true,
             realtimeTopic: LIVE_REQUESTS_TOPIC,
             maxItems: ATTENTION_ROWS,
-            fillHeight: true,
+            visibleItems: ATTENTION_VISIBLE_ROWS,
+            wrap: true,
             skeletonCount: 3,
             actions: [
               {
