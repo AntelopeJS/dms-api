@@ -307,8 +307,3 @@ export function bucketStarts(
   }
   return starts;
 }
-
-/** Whether `timestamp` falls in the half-open `range`. */
-export function inRange(timestamp: number, range: TimeRange): boolean {
-  return timestamp >= range.from.getTime() && timestamp < range.to.getTime();
-}

@@ -1,5 +1,5 @@
 export * from "./introspection";
-export * from "./request-log";
+export { pruneRequestLogs } from "./request-log/prune";
 export * from "./routes-sync";
 export * from "./scope";
 export * from "./settings";

@@ -3,7 +3,7 @@
 // oxlint-disable-next-line import/no-duplicates
 import "./db";
 import "./routes";
-import "./middlewares";
+import "./services/request-log/capture";
 import "./pages";
 
 import path from "node:path";

@@ -29,11 +29,9 @@ import {
 
 export {
   forgetRecentScan,
-  inScope,
   loadErrorSamples,
   loadSamples,
   RECENT_SPAN_MS,
-  samplesIn,
   type SampleSource,
   type ScopeKeys,
 } from "./traffic-samples";
@@ -249,19 +247,6 @@ export function bucketSamplesByRoute(
     addSample(buckets[position], sample);
   }
   return routes;
-}
-
-/** Per-bucket traffic of `samples` over `range`. */
-export function bucketSamples(
-  samples: RequestLogSample[],
-  range: TimeRange,
-  granularity: WindowGranularity,
-): TrafficBucket[] {
-  const starts = bucketStarts(range, granularity);
-  return scopeTraffic(
-    { starts, routes: bucketSamplesByRoute(samples, starts, granularity) },
-    null,
-  );
 }
 
 /** One minute of one route on a past day: what a partial day is summed from. */

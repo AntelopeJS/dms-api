@@ -369,9 +369,3 @@ export function getRouteInspection(id: string): RouteInspection | undefined {
   if (!registered) return undefined;
   return inspectHandler(registered.id, registered.handler);
 }
-
-export function listRouteInspections(): RouteInspection[] {
-  return getRegisteredRouteHandlers()
-    .filter(({ handler }) => handler.mode === "handler")
-    .map(({ id, handler }) => inspectHandler(id, handler));
-}

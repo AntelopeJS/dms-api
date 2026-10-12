@@ -20,7 +20,7 @@ export type SampleSource = Pick<RequestLogModel, "samples">;
 /** Route scope: `METHOD:uri` keys, or null for every route. */
 export type ScopeKeys = Set<string> | null;
 
-export function inScope(keys: ScopeKeys, method: string, uri: string): boolean {
+function inScope(keys: ScopeKeys, method: string, uri: string): boolean {
   return !keys || keys.has(scopeRouteKey(method, uri));
 }
 
