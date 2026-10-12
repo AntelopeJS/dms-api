@@ -282,9 +282,7 @@
         "method_locked": "The route filter {route} sets the method",
         "slow": "Slow only",
         "slow_threshold": "Slow (≥ {threshold})",
-        "slow_hint": "Only the requests at or above the slowness threshold set in Settings",
-        "all_periods": "Every period",
-        "all_periods_hint": "Every request kept, past the 30 days of the toolbar's periods"
+        "slow_hint": "Only the requests at or above the slowness threshold set in Settings"
       },
       "windows": {
         "last-hour": "Last hour",
@@ -337,7 +335,7 @@
         "filtered_title": "No requests match these filters",
         "narrowed": "Narrowed by: {filters}.",
         "period_hint": "The requests may be outside this period.",
-        "widen": "Show every period",
+        "widen": "Show all time",
         "search_title": "No request matches “{search}”",
         "search_description": "The search looks in paths, request IDs and error messages.",
         "route_title": "No request for {route}",

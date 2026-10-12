@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { formatThreshold } from '../../utils/format'
 import {
   hasIncident,
+  isAllTime,
   isRouteRef,
   LINK_FILTER_KEYS,
   LOG_METHODS,
@@ -14,8 +15,9 @@ import {
 import { localDay } from '../../utils/requestDrawer'
 
 // The filters bar right above the request table: the method, the slow
-// requests, every period kept, and the filters a link brought (route, path,
-// error, an incident's range), each removable.
+// requests, and the filters a link brought (route, path, error, an
+// incident's range), each removable. Every request kept is the toolbar
+// period's "All time".
 // Everything here reads and writes the URL (`utils/logsQuery.ts`), as the
 // toolbar's period selector does: the table follows the URL, so what the bar
 // shows is what the table lists, and the tab counts with it.
@@ -67,13 +69,6 @@ const slowLabel = computed(() =>
         threshold: formatThreshold(props.slowThresholdMs, locale.value),
       }),
 )
-
-// Every request kept, whatever its age: past the toolbar's presets. Off
-// again, the toolbar's period frames the rows.
-const allPeriods = computed(() => filters.value.all)
-function toggleAllPeriods() {
-  apply({ all: !allPeriods.value })
-}
 
 /** "18:31", with the day in front once it is not today. */
 function incidentTime(iso: string): string {
@@ -139,10 +134,10 @@ const chips = computed<Chip[]>(() => {
 // it brought while it is still the page's. An incident's range frames the
 // rows instead of the period: its chip says it.
 const origin = computed(() => {
-  const { from, period, all } = filters.value
+  const { from, period } = filters.value
   if (!from) return undefined
   const page = t(`api.logs.linked.pages.${from}`)
-  return period && !all && !hasIncident(filters.value)
+  return period && !isAllTime(filters.value) && !hasIncident(filters.value)
     ? t('api.logs.linked.origin_window', {
         window: t(`api.logs.windows.${period}`),
         page,
@@ -229,18 +224,6 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         :label="slowLabel"
         :aria-pressed="filters.slow"
         @click="apply({ slow: !filters.slow })"
-      />
-    </UTooltip>
-
-    <UTooltip :text="t('api.logs.filters.all_periods_hint')">
-      <UButton
-        size="sm"
-        icon="i-ph-clock-counter-clockwise"
-        :color="allPeriods ? 'primary' : 'neutral'"
-        :variant="allPeriods ? 'soft' : 'outline'"
-        :label="t('api.logs.filters.all_periods')"
-        :aria-pressed="allPeriods"
-        @click="toggleAllPeriods"
       />
     </UTooltip>
 

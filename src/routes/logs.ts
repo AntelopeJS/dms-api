@@ -167,7 +167,7 @@ async function logDetail(id: string, context: RequestContext, table: LogTable) {
 export class LogsController extends Controller("/api/monitoring/logs") {
   /**
    * The request logs page's rows, over the period its selector sends
-   * (`periodScope`), every period with `?all=true`.
+   * (`periodScope`), every request kept for its "All time".
    */
   @Get("")
   async listLogs(

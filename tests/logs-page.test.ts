@@ -5,13 +5,12 @@ import { LogsPage } from "@/pages/logs";
 const context = { tenantId: "t1", user: undefined };
 
 describe("LogsPage", () => {
-  it("filters its table from the URL, every period and method included", () => {
+  it("filters its table from the URL, the method included", () => {
     const options = LogsPage.requests.serializeSync().options as Record<
       string,
       unknown
     >;
     expect(Object.keys(options.queryParamFilters as object).sort()).toEqual([
-      "all",
       "error",
       "method",
       "path",
@@ -20,8 +19,19 @@ describe("LogsPage", () => {
       "slow",
       "until",
     ]);
-    // The period is the toolbar selector's, which the table follows.
+    // The period is the toolbar selector's, which the table follows: every
+    // request kept is its "All time".
     expect(JSON.stringify(options)).toContain('"periodScope":"api"');
+    const period = LogsPage.toolbar
+      .serializeSync()
+      .children?.find(({ id }) => id === "period");
+    expect(period?.component.options).toMatchObject({
+      id: "api",
+      rememberKey: "api",
+      rangeLabel: "relative",
+      comparisonControl: "hidden",
+      presets: ["last-hour", "last-24h", "last-7-days", "last-30-days", "all"],
+    });
     // The URL is the one filter state: no quick filter kept in a cookie.
     expect(options.quickFilters).toBeUndefined();
   });

@@ -282,9 +282,7 @@
         "method_locked": "Le filtre de route {route} fixe la méthode",
         "slow": "Lentes uniquement",
         "slow_threshold": "Lentes (≥ {threshold})",
-        "slow_hint": "Seulement les requêtes qui atteignent le seuil de lenteur réglé dans les paramètres",
-        "all_periods": "Toutes les périodes",
-        "all_periods_hint": "Toutes les requêtes conservées, au-delà des 30 jours des périodes de la barre d'outils"
+        "slow_hint": "Seulement les requêtes qui atteignent le seuil de lenteur réglé dans les paramètres"
       },
       "windows": {
         "last-hour": "Dernière heure",
@@ -337,7 +335,7 @@
         "filtered_title": "Aucune requête ne correspond à ces filtres",
         "narrowed": "Filtré par : {filters}.",
         "period_hint": "Les requêtes sont peut-être hors de cette période.",
-        "widen": "Toutes les périodes",
+        "widen": "Afficher toute la période",
         "search_title": "Aucune requête ne contient « {search} »",
         "search_description": "La recherche porte sur les chemins, les ID de requête et les messages d'erreur.",
         "route_title": "Aucune requête pour {route}",

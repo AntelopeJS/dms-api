@@ -14,8 +14,8 @@ const LOGS_PAGE_SIZE = 50;
  * The page's filters, read from its URL by the request table: a link sets
  * them (`?route=`, `?path=`, `?error=`, `?slow=`, and an incident's
  * `?since=` / `?until=`), the filters bar changes them (`?method=`,
- * `?slow=`, `?all=true` for every period kept). The period is the toolbar's
- * selector's (`periodScope`). Unlike the table's own quick filters, kept in
+ * `?slow=`). The period is the toolbar's selector's (`periodScope`), its
+ * "All time" every request kept. Unlike the table's own quick filters, kept in
  * a cookie, they are one state that a reload, Back and a shared link keep,
  * and that the tab counts follow. A URL filter needs no column: the table sends it to the
  * route as `filter_<field>`, which reads `filter_from` / `filter_to` as the
@@ -26,7 +26,6 @@ const LOGS_QUERY_FILTERS = {
   path: { field: "path", mode: "is" },
   error: { field: "error", mode: "is" },
   slow: { field: "slow", mode: "is" },
-  all: { field: "all", mode: "is" },
   method: { field: "method", mode: "is" },
   since: { field: "from", mode: "is" },
   until: { field: "to", mode: "is" },
@@ -60,7 +59,7 @@ export class LogsPage extends PageController(
   // the DMS Direct / Pause toggle and the period.
   static toolbar = pageToolbar({
     scope: scopeChip(),
-    period: periodSelector(),
+    period: periodSelector({ allTime: true }),
   }).meta({ name: "$api.logs.toolbar", icon: "i-ph-sliders-horizontal" });
 
   static live = apiBlock<{ fetchUrl: string; maxBodyBytes?: number }>(

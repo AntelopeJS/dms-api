@@ -206,7 +206,11 @@ complete (Routes, Request logs).
 The two charts, the two top lists and the recent requests
 (`periodScope: "api"`). The health hero and "Needs attention" are about now
 (24 h) and say so. The selector is the DMS's, id `api`: it keeps the period
-in the URL (`?api.period=last-24h`), and a link carrying it opens on it.
+in the URL (`?api.period=last-24h`), and a link carrying it opens on it; the
+last one picked on any page of the console is the default of the others
+(`rememberKey`). It writes the start of the window from now ("since
+yesterday 17:05") and draws no comparison control: the cards always compare
+with the period before.
 
 ## 6. Request logs
 
@@ -220,9 +224,10 @@ filters.
 **Q21. Filters?**
 - Tabs All / 2xx / 4xx / 5xx on the status class, with counters (F09, F10).
 - Quick filters: Method, Slow only (a separate toggle, so "slow 5xx" is a
-  question you can ask, F09), Every period (`?all=true`). The period is the
-  toolbar's DMS `PeriodSelector` (1H / 24H / 7D / 30D, capped by the log
-  retention), which the table follows (`periodScope`).
+  question you can ask, F09). The period is the toolbar's DMS
+  `PeriodSelector` (1H / 24H / 7D / 30D, capped by the log retention, and
+  "All time" for every request kept, `?api.period=all`), which the table
+  follows (`periodScope`).
 - Search: path, request id, error message.
 - From another page, `?route=METHOD%20/path`, `?error=` and `?slow=true` open
   the table pre-filtered, and `?requests.tab=5xx` picks the tab. A source

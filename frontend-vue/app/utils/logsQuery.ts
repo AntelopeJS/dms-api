@@ -1,16 +1,22 @@
 // The request logs page keeps its filters in its URL.
 //
-// `?method=`, `?slow=`, `?all=`, `?route=`, `?path=`, `?error=`, `?since=`
-// and `?until=` are the request table's arrival filters (`queryParamFilters`,
+// `?method=`, `?slow=`, `?route=`, `?path=`, `?error=`, `?since=` and
+// `?until=` are the request table's arrival filters (`queryParamFilters`,
 // `src/pages/logs.ts`): the table reads them from the URL whatever wrote them
 // (a link of another page, the filters bar), counts its tabs with them, and
 // follows them as they change. So the page has one filter state, which a
 // reload, Back and a shared link all keep. The period is the toolbar's DMS
-// selector's (`?api.period=`), which the table follows through its period
-// scope. `?from=` names the page a link came from, for the band that says so.
+// selector's (`?api.period=`, `all` for every request kept), which the table
+// follows through its period scope. `?from=` names the page a link came from, for the band that says so.
 
 import { parseRouteRef } from './http'
-import { DEFAULT_PERIOD, readPeriod, type PeriodPresetName } from './period'
+import {
+  ALL_TIME,
+  DEFAULT_PERIOD,
+  PERIOD_QUERY_KEY,
+  readPeriod,
+  type PeriodPresetName,
+} from './period'
 
 type Query = Record<string, unknown>
 
@@ -37,8 +43,6 @@ export type LinkOrigin = (typeof LINK_ORIGINS)[number]
 export interface LogsFilters {
   /** The toolbar's period (`?api.period=`). */
   period?: PeriodPresetName
-  /** Every request kept, whatever the period (`?all=true`). */
-  all: boolean
   method?: string
   slow: boolean
   route?: string
@@ -53,7 +57,8 @@ export interface LogsFilters {
 
 /** A change to the filters: `null` or `false` removes one. */
 export interface LogsFiltersPatch {
-  all?: boolean
+  /** Every request kept: the period's "All time". */
+  allTime?: true
   method?: string | null
   slow?: boolean
   route?: null
@@ -83,7 +88,6 @@ function oneOf<T extends string>(
 export function readLogsFilters(query: Query): LogsFilters {
   return {
     period: readPeriod(query),
-    all: single(query.all) === 'true',
     method: oneOf(LOG_METHODS, single(query.method)),
     // The table sends the value as it is, and the server reads "true" only.
     slow: single(query.slow) === 'true',
@@ -99,6 +103,11 @@ export function readLogsFilters(query: Query): LogsFilters {
 /** The filters with the period the selector applies: the default when none. */
 export function withDefaultPeriod(filters: LogsFilters): LogsFilters {
   return { ...filters, period: filters.period ?? DEFAULT_PERIOD }
+}
+
+/** Whether the period is every request kept. */
+export function isAllTime(filters: LogsFilters): boolean {
+  return filters.period === ALL_TIME
 }
 
 /** Whether the filters hold an incident's range. */
@@ -127,10 +136,10 @@ export function routeMethod(route: string | undefined): string | undefined {
 
 /**
  * `query` with `patch` applied, every other key kept (the table's tab, the
- * open request, the period). Every period on or off drops an incident's
- * range, which it would no longer frame. That, or removing the last linked
- * filter, forgets the page the link came from: the band would name an origin
- * the filters no longer come from.
+ * open request, the period). "All time" drops an incident's range, which
+ * would no longer frame the rows. That, or removing the last linked filter,
+ * forgets the page the link came from: the band would name an origin the
+ * filters no longer come from.
  */
 export function withLogsFilters(
   query: Query,
@@ -145,28 +154,27 @@ export function withLogsFilters(
     if (value) next[key] = value
     else delete next[key]
   }
-  if ('all' in patch) set('all', patch.all ? 'true' : null)
+  if (patch.allTime) set(PERIOD_QUERY_KEY, ALL_TIME)
   if ('method' in patch) set('method', patch.method)
   if ('slow' in patch) set('slow', patch.slow ? 'true' : null)
   if ('route' in patch) set('route', null)
   if ('path' in patch) set('path', null)
   if ('error' in patch) set('error', null)
-  if ('incident' in patch || 'all' in patch) {
+  if ('incident' in patch || patch.allTime) {
     set('since', null)
     set('until', null)
   }
   const linked = hasLinkFilters(readLogsFilters(next))
-  if ('all' in patch || !linked) delete next.from
+  if (patch.allTime || !linked) delete next.from
   return next
 }
 
 /**
- * The filters' part of the URL, cleared: every period, method, slowness and
- * links. The period stays the selector's.
+ * The filters' part of the URL, cleared: method, slowness and links. The
+ * period stays the selector's.
  */
 export function clearedLogsFilters(query: Query): Record<string, string> {
   return withLogsFilters(query, {
-    all: false,
     method: null,
     slow: false,
     route: null,
@@ -206,8 +214,8 @@ export function logsEmptyCause(
   if (state === 'error') return 'error'
   if (search?.trim()) return 'search'
   if (hasLinkFilters(filters)) return 'link'
-  // A period frames the rows unless every period is asked for.
-  if (hasLogsFilters(filters) || !filters.all) return 'filters'
+  // A period frames the rows unless it is "All time".
+  if (hasLogsFilters(filters) || !isAllTime(filters)) return 'filters'
   return 'first-run'
 }
 

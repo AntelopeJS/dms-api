@@ -25,7 +25,7 @@ import {
  * The list query a `TableView.fromSource` table sends its route: `offset` /
  * `limit`, `sortKey` / `sortDirection`, `search` and one
  * `filter_<column>=<mode>:<value>` per filtered column (the page's URL
- * filters `?method=`, `?slow=`, `?all=`, `?route=`, `?path=`, `?error=` and
+ * filters `?method=`, `?slow=`, `?route=`, `?path=`, `?error=` and
  * an incident's `?since=` / `?until=` reach it that way, in the list and in
  * the tab counts alike). `filter_from` / `filter_to` (ISO timestamps)
  * narrow to `[from, to)`. The page's period comes as the charts get it, from
@@ -131,12 +131,11 @@ function positiveInt(raw: string | undefined): number | undefined {
 /**
  * The rows the page's period frames, as the charts read it (`preset`, `from`,
  * `to` of its period scope): a rolling preset up to now, the newest rows
- * included, or a custom range; never past the log retention. `?all=true`
- * (`filter_all`) lists every request kept, and a query naming no period (the
- * Tester's reads) has no bound.
+ * included, or a custom range; never past the log retention. The DMS "All
+ * time" (`preset=all`, no `from` / `to`) lists every request kept, and so
+ * does a query naming no period (the Tester's reads).
  */
 function periodRange(query: SourceQuery, now: Date): Partial<TimeRange> {
-  if (filterValue(query.filter_all) === "true") return {};
   const window = windowQueryFrom(query);
   const preset = isWindowPreset(window.preset) ? window.preset : null;
   if (!preset && !window.from && !window.to) return {};

@@ -4,12 +4,19 @@
 
 type Query = Record<string, unknown>
 
-/** The presets every console page offers, by their DMS names. */
+/** The DMS "All time": every request kept, which the request logs offer. */
+export const ALL_TIME = 'all'
+
+/**
+ * The presets the console pages offer, by their DMS names: every page the
+ * first four, the request logs "All time" too.
+ */
 export const PERIOD_PRESETS = [
   'last-hour',
   'last-24h',
   'last-7-days',
   'last-30-days',
+  ALL_TIME,
 ] as const
 export type PeriodPresetName = (typeof PERIOD_PRESETS)[number]
 

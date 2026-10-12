@@ -25,7 +25,6 @@ describe('readLogsFilters', () => {
       }),
     ).toEqual({
       period: 'last-24h',
-      all: false,
       method: 'POST',
       slow: true,
       route: 'POST /webhooks/stripe',
@@ -40,14 +39,12 @@ describe('readLogsFilters', () => {
     expect(
       readLogsFilters({
         'api.period': '14d',
-        all: 'yes',
         method: 'post',
         slow: '1',
         from: 'x',
       }),
     ).toEqual({
       period: undefined,
-      all: false,
       method: undefined,
       slow: false,
       route: undefined,
@@ -63,6 +60,10 @@ describe('readLogsFilters', () => {
       'last-7-days',
     )
   })
+
+  it('reads the DMS "All time" of the request logs', () => {
+    expect(readLogsFilters({ 'api.period': 'all' }).period).toBe('all')
+  })
 })
 
 describe('withLogsFilters', () => {
@@ -75,24 +76,23 @@ describe('withLogsFilters', () => {
           'api.period': 'last-hour',
           method: 'GET',
         },
-        { all: true, method: null, slow: true },
+        { allTime: true, method: null, slow: true },
       ),
     ).toEqual({
       'requests.tab': '5xx',
       record: 'r1',
-      'api.period': 'last-hour',
-      all: 'true',
+      'api.period': 'all',
       slow: 'true',
     })
   })
 
-  it('forgets the origin once every period is asked for', () => {
+  it('forgets the origin once all time is asked for', () => {
     expect(
       withLogsFilters(
         { route: 'GET /a', 'api.period': 'last-24h', from: 'overview' },
-        { all: true },
+        { allTime: true },
       ),
-    ).toEqual({ route: 'GET /a', 'api.period': 'last-24h', all: 'true' })
+    ).toEqual({ route: 'GET /a', 'api.period': 'all' })
   })
 
   it('forgets the origin with the last linked filter', () => {
@@ -111,7 +111,6 @@ describe('withLogsFilters', () => {
     expect(
       clearedLogsFilters({
         'api.period': 'last-24h',
-        all: 'true',
         method: 'GET',
         slow: 'true',
         route: 'GET /a',
@@ -146,7 +145,11 @@ describe('logsEmptyCause', () => {
     // A period frames the rows.
     expect(logsEmptyCause('firstRun', ' ', none)).toBe('filters')
     expect(
-      logsEmptyCause('firstRun', undefined, readLogsFilters({ all: 'true' })),
+      logsEmptyCause(
+        'firstRun',
+        undefined,
+        readLogsFilters({ 'api.period': 'all' }),
+      ),
     ).toBe('first-run')
   })
 })
@@ -178,11 +181,10 @@ describe('incident range', () => {
     expect(readLogsFilters({ since: 'soon' }).since).toBeUndefined()
   })
 
-  it('drops the range with every period or on its own', () => {
-    expect(withLogsFilters(incident, { all: true })).toEqual({
+  it('drops the range with all time or on its own', () => {
+    expect(withLogsFilters(incident, { allTime: true })).toEqual({
       route: 'GET /a',
-      'api.period': 'last-24h',
-      all: 'true',
+      'api.period': 'all',
       'requests.tab': '5xx',
     })
     expect(withLogsFilters(incident, { incident: null })).toEqual({
@@ -222,7 +224,7 @@ describe('the default period', () => {
 
   it('leaves the period out of the filters to clear', () => {
     expect(hasLogsFilters(withDefaultPeriod(readLogsFilters({})))).toBe(false)
-    expect(hasLogsFilters(readLogsFilters({ all: 'true' }))).toBe(false)
+    expect(hasLogsFilters(readLogsFilters({ 'api.period': 'all' }))).toBe(false)
     expect(hasLogsFilters(readLogsFilters({ slow: 'true' }))).toBe(true)
   })
 })

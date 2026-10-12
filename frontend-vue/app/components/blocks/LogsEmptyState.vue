@@ -4,6 +4,7 @@ import {
   clearedLogsFilters,
   hasIncident,
   hasLogsFilters,
+  isAllTime,
   logsEmptyCause,
   readLogsFilters,
   withDefaultPeriod,
@@ -38,7 +39,7 @@ const cause = computed(() =>
 /** "Last hour · POST · Slow only": the URL's filters, besides the links. */
 function describeFilters(current: LogsFilters): string[] {
   return [
-    current.period && !current.all && !hasIncident(current)
+    current.period && !isAllTime(current) && !hasIncident(current)
       ? t(`api.logs.windows.${current.period}`)
       : undefined,
     current.method,
@@ -75,17 +76,17 @@ function clearFilters() {
   }
 }
 
-// Every period, while a narrower one may hide the requests.
+// "All time", while a narrower period may hide the requests.
 function widen() {
   const current = filters.value
-  if (current.all || hasIncident(current)) return []
+  if (isAllTime(current) || hasIncident(current)) return []
   return [
     {
       label: t('api.logs.empty.widen'),
       icon: 'i-ph-arrows-out-line-horizontal',
       color: 'neutral' as const,
       variant: 'outline' as const,
-      onClick: () => go(withLogsFilters(route.query, { all: true })),
+      onClick: () => go(withLogsFilters(route.query, { allTime: true })),
     },
   ]
 }
@@ -168,7 +169,7 @@ const content = computed(() => {
         title: t('api.logs.empty.filtered_title'),
         description: [
           narrowedLine,
-          current.all ? '' : t('api.logs.empty.period_hint'),
+          isAllTime(current) ? '' : t('api.logs.empty.period_hint'),
         ]
           .filter(Boolean)
           .join(' '),

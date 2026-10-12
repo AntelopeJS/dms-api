@@ -160,11 +160,10 @@ describe("filtersFromQuery, the period", () => {
     );
   });
 
-  it("lists every period with `all`, and no bound without a period", () => {
-    expect(
-      filtersFromQuery({ preset: "last-hour", filter_all: "is:true" }, NOW)
-        .since,
-    ).toBeUndefined();
+  it("lists every request kept for the DMS All time, and without a period", () => {
+    const all = filtersFromQuery({ preset: "all" }, NOW);
+    expect(all.since).toBeUndefined();
+    expect(all.until).toBeUndefined();
     expect(filtersFromQuery({ requestId: "6f1c" }, NOW).since).toBeUndefined();
   });
 });
