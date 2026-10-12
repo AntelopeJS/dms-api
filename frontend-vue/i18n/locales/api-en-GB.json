@@ -527,7 +527,9 @@
         "summary": "Route figures",
         "p95_detail": "p95 {p95}",
         "p95_none": "No p95 kept over the period",
-        "idle_description": "Call it from the Tester tab to see its figures."
+        "idle_description": "It was called before this period: pick a longer one, or call it now to see its figures.",
+        "idle_never": "No call to it is stored: call it now to see its figures.",
+        "idle_try": "Test this route"
       },
       "docs": {
         "beta_title": "Beta · inferred from traffic",

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   errorRateChart,
   latencyChart,
+  routeActivity,
   routeSummary,
   type RouteTraffic,
 } from "@/services/route-statistics";
@@ -156,5 +157,38 @@ describe("route statistics", () => {
     // No series: the charts show their empty state, not 0 %.
     expect(errorRateChart(empty)).toEqual({ series: [] });
     expect(latencyChart(empty, 1000)).toEqual({ series: [] });
+  });
+
+  it("leads an idle route to its Tester, saying when none of its calls is kept", () => {
+    const empty: RouteTraffic = {
+      buckets: [],
+      total: sumBuckets([]),
+      previous: null,
+    };
+    const tester = {
+      label: "$api.routes.statistics.idle_try",
+      icon: "i-ph-paper-plane-tilt",
+      to: "/modules/api/routes?route=GET+%2Fapi%2Forders&tab=2",
+    };
+    expect(routeActivity(empty, "GET /api/orders", null)).toEqual({
+      calls: 0,
+      emptyState: {
+        description: "$api.routes.statistics.idle_never",
+        actions: [tester],
+      },
+    });
+    expect(
+      routeActivity(empty, "GET /api/orders", "2026-10-01T10:00:00.000Z"),
+    ).toEqual({ calls: 0, emptyState: { actions: [tester] } });
+  });
+
+  it("counts the calls of a busy route, with no empty state", () => {
+    expect(
+      routeActivity(
+        { ...traffic, previous: null },
+        "GET /api/orders",
+        "2026-10-01T10:00:00.000Z",
+      ),
+    ).toEqual({ calls: traffic.total.requests });
   });
 });

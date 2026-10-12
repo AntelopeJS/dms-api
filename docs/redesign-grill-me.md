@@ -119,7 +119,7 @@ keeps custom components for the parts no block expresses.
 | `LiveTraffic` | Per-minute histogram of the last hour that follows the page's Direct / Pause (`usePageLive()`) and shows its own failures; no block draws it. |
 | `RequestDetail` | The body of the request side panel (error and stack first, timing, headers, bodies, Replay / cURL / Open route / Same error); the DMS draws the panel and its navigation. |
 | `RouteTree` | A filterable tree whose selection lives in the URL. |
-| `RouteHeader`, `RouteDocumentation`, `RouteTester` | Everything under the selected route reads `?route=` from the URL. They render public DMS components (`DmsCard`, `DmsEmptyState`, `DmsStatusPill`) inside. Since DMS 0.6.1 a block's `fetchUrl` takes `{{query.route}}`, so the Statistics tab is now DMS blocks only (a `StatGroup` of the route's figures, `ChartCard`, `TopListCard`, a request table filtered by `?route=`); these three stay custom for what they draw, not for how they read the route. |
+| `RouteHeader`, `RouteDocumentation`, `RouteTester` | Everything under the selected route reads `?route=` from the URL. They render public DMS components (`DmsCard`, `DmsEmptyState`, `DmsStatusPill`) inside. Since DMS 0.6.1 a block's `fetchUrl` takes `{{query.route}}`, so the Statistics tab is now DMS blocks only (a `StatGroup` of the route's figures, `ChartCard`, `TopListCard`, a request table filtered by `?route=`), behind a DMS `Guard` that draws one empty state and a link to the Tester while the route has no call over the period; these three stay custom for what they draw, not for how they read the route. |
 | `SplitLayout` | A list beside its detail. `Grid` shares its columns equally, so a row of two cells cannot give one of them three quarters; `DmsMasterDetail` is a template component, not a block. |
 
 The request tables draw their cells with DMS displays: status pills toned
@@ -266,8 +266,8 @@ endpoints.
 **Q26. Tabs?**
 Three instead of four (F06): *Statistics* (KPIs, requests by status, response
 time with the slow threshold drawn, Top errors grouped by status and message,
-recent requests of the route, F13; a route without traffic points to the
-tester), *Documentation* (example request as cURL / fetch, auth, body
+recent requests of the route, F13; a route without a call over the
+period shows one empty state instead, its `Guard`, with "Test this route"), *Documentation* (example request as cURL / fetch, auth, body
 fields, headers, responses with the source line of each error, the request
 pipeline in order, internals collapsed), *Tester* (Body / Headers / Query /
 Path, body prefilled from the inferred fields, ⌘↵ to send, a warning when the

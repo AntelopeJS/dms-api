@@ -108,6 +108,17 @@ export function routeLink(
   return withQuery(`${MODULE_BASE}/routes`, query);
 }
 
+/**
+ * Index of the Tester among the Routes page's tabs: the DMS Tab keeps its
+ * open tab in the URL by index (`?tab=2`).
+ */
+export const TESTER_TAB = "2";
+
+/** The Tester of a route, ready to call it. */
+export function testerLink(route: string): string {
+  return routeLink(route, TESTER_TAB);
+}
+
 export function routesLink(): string {
   return `${MODULE_BASE}/routes`;
 }

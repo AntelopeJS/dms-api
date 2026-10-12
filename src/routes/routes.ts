@@ -14,6 +14,7 @@ import { RequestLogModel, RouteModel, RouteStatisticsModel } from "@/db";
 import { normalizeRoutePath } from "@/db/tables/routes_statistics.table";
 import { RoutesPage } from "@/pages/routes";
 import { apiOriginOf } from "@/services/api-origin";
+import { routeRef } from "@/services/links";
 import { isInternalTraffic } from "@/services/request-log/capture";
 import { loadRouteHealth } from "@/services/overview";
 import {
@@ -29,6 +30,8 @@ import {
   type LatencyChartPayload,
   latencyChart,
   loadRouteTraffic,
+  routeActivity,
+  type RouteActivityPayload,
   routeSummary,
   type RouteChartPayload,
   type RouteSummaryPayload,
@@ -56,7 +59,9 @@ function models(): CatalogModels {
 }
 
 const explorer = RoutesPage.explorer;
-const statistics = ["tabs", "statistics"] as const;
+/** The Statistics tab: a DMS `Guard`, its blocks on the grid it guards. */
+const statisticsTab = ["tabs", "statistics"] as const;
+const statistics = [...statisticsTab, "grid"] as const;
 
 function windowOf(context: RequestContext): TimeWindow {
   return resolveWindow(
@@ -209,6 +214,26 @@ export class RoutesController extends Controller("/api/monitoring/routes") {
       healthWindow: health.healthWindow,
       thresholds: HEALTH_THRESHOLDS,
     };
+  }
+
+  /**
+   * Whether the route was called over the period: the Statistics tab's
+   * guard shows its blocks, or one empty state leading to the Tester.
+   */
+  @Get("statistics/activity")
+  async getActivity(
+    @AuthUserWithPermission(explorer.targetChild(...statisticsTab))
+    _user: User,
+    @Context() context: RequestContext,
+  ): Promise<RouteActivityPayload> {
+    const route = routeOf(context);
+    const traffic = await loadRouteTraffic(models(), route, windowOf(context));
+    const idle = route && traffic.total.requests === 0;
+    return routeActivity(
+      traffic,
+      route && routeRef(route.method, route.path),
+      idle ? await lastCallBefore(route.method, route.path) : null,
+    );
   }
 
   @Get("statistics/summary")

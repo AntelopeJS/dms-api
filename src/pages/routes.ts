@@ -2,12 +2,14 @@ import { Card } from "@antelopejs/interface-dms/base/card";
 import { ChartLine } from "@antelopejs/interface-dms/base/chart";
 import { ChartCard } from "@antelopejs/interface-dms/base/chart-card";
 import { Grid, GridRow } from "@antelopejs/interface-dms/base/grid";
+import { Guard } from "@antelopejs/interface-dms/base/guard";
 import { DefaultLayout } from "@antelopejs/interface-dms/base/layouts";
 import { StatGroup } from "@antelopejs/interface-dms/base/stat-group";
 import { Tab } from "@antelopejs/interface-dms/base/tab";
 import { TopListCard } from "@antelopejs/interface-dms/base/top-list-card";
 import { PageController, RegisterPage } from "@antelopejs/interface-dms/page";
 import { getConfig } from "@/config";
+import { TESTER_TAB } from "@/services/links";
 import { LIVE_REQUESTS_TOPIC } from "@/types";
 import { apiBlock } from "./blocks";
 import { exploreCategory } from "./module";
@@ -28,7 +30,6 @@ const ROUTE_QUERY_KEY = "route";
  * tabs wait for the DMS (DMS-9, `Tab.vue` and `useTab.ts`).
  */
 const TAB_QUERY_KEY = "tab";
-const TESTER_TAB = "2";
 
 /** A route statistic of the page's period, read for the route the URL names. */
 function statisticsUrl(name: string): string {
@@ -64,7 +65,7 @@ const FULL_WIDTH = { colSpan: 2 };
 /**
  * Calls, latency with its p95, error rate and slowest call of the route over
  * the page's period, as one DMS StatGroup strip. A route without a call over
- * the period answers no figure: the strip says so, and where to call it.
+ * the period never shows it: the tab's guard stands in for it.
  */
 function summaryRow() {
   return GridRow()
@@ -78,10 +79,6 @@ function summaryRow() {
         columns: 4,
         skeletonCount: 4,
         label: "$api.routes.statistics.title",
-        empty: {
-          title: "$api.routes.statistics.idle_title",
-          description: "$api.routes.statistics.idle_description",
-        },
       }).meta({ name: "$api.routes.statistics.summary", icon: "i-ph-gauge" }),
       FULL_WIDTH,
     )
@@ -256,14 +253,33 @@ function recentRow() {
 /**
  * The Statistics tab: DMS blocks reading the route of the URL through
  * `{{query.route}}`, over the page's period, on a two-column grid: the
- * charts side by side, the rest across.
+ * charts side by side, the rest across. A DMS `Guard` stands in for them
+ * while the route has no call over the period: one empty state rather than
+ * a tab of empty blocks, whose answer (`/statistics/activity`) says whether
+ * the route was ever called and leads to its Tester.
  */
 function routeStatistics() {
-  return Grid({ gap: "1rem", minColumnWidth: CHART_MIN_WIDTH })
-    .child("summary", summaryRow())
-    .child("charts", chartRow())
-    .child("detail", errorRow())
-    .child("recent", recentRow())
+  return Guard({
+    fetchUrl: statisticsUrl("activity"),
+    periodScope: PERIOD_SCOPE,
+    realtimeTopic: LIVE_REQUESTS_TOPIC,
+    when: "empty",
+    field: "calls",
+    fallback: {
+      icon: "i-ph-moon-stars",
+      title: "$api.routes.statistics.idle_title",
+      description: "$api.routes.statistics.idle_description",
+    },
+  })
+    .child(
+      "grid",
+      Grid({ gap: "1rem", minColumnWidth: CHART_MIN_WIDTH })
+        .child("summary", summaryRow())
+        .child("charts", chartRow())
+        .child("detail", errorRow())
+        .child("recent", recentRow())
+        .meta({ name: "$api.routes.statistics.title", icon: "i-ph-chart-bar" }),
+    )
     .meta({ name: "$api.routes.statistics.title", icon: "i-ph-chart-bar" });
 }
 

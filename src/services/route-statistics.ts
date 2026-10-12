@@ -1,10 +1,11 @@
+import type { GuardFallback } from "@antelopejs/interface-dms/base/guard";
 import type { StatGroupItem } from "@antelopejs/interface-dms/base/stat-group";
 import type {
   BlockText,
   ComposedText,
 } from "@antelopejs/interface-dms/base/types/composed-text";
 import { getConfig } from "@/config";
-import { logsLink } from "./links";
+import { logsLink, testerLink } from "./links";
 import type { CatalogModels } from "./route-catalog";
 import { computeRouteHealth } from "./route-health";
 import { scopeRouteKey } from "./scope";
@@ -274,6 +275,42 @@ export function routeSummary(
       },
     ],
     window: windowOf(traffic),
+  };
+}
+
+/**
+ * What the Statistics tab's DMS `Guard` reads: the route's calls over the
+ * period. Without one, the guard draws a single empty state in place of the
+ * tab's blocks, which this answer completes with what only the route knows:
+ * whether it was ever called, and the Tester of this very route.
+ */
+export interface RouteActivityPayload {
+  calls: number;
+  emptyState?: GuardFallback;
+}
+
+export function routeActivity(
+  traffic: RouteTraffic,
+  route: string | undefined,
+  /** When it was last called (ISO), null when never. */
+  lastCallAt: string | null,
+): RouteActivityPayload {
+  const calls = traffic.total.requests;
+  if (calls > 0 || !route) return { calls };
+  return {
+    calls,
+    emptyState: {
+      ...(!lastCallAt && {
+        description: "$api.routes.statistics.idle_never",
+      }),
+      actions: [
+        {
+          label: "$api.routes.statistics.idle_try",
+          icon: "i-ph-paper-plane-tilt",
+          to: testerLink(route),
+        },
+      ],
+    },
   };
 }
 

@@ -16,7 +16,7 @@ import { LogsPage } from "@/pages/logs";
 import { OverviewPage } from "@/pages/overview";
 import { RoutesPage } from "@/pages/routes";
 import { apiOriginOf } from "@/services/api-origin";
-import { logsLink, routeLink, routeRef } from "@/services/links";
+import { logsLink, routeLink, routeRef, testerLink } from "@/services/links";
 import { getMaxLogDays } from "@/services/period";
 import { canReadLog, type LogTable } from "@/services/request-log/access";
 import { getRequestLog, getRouteLatency } from "@/services/request-log/read";
@@ -140,7 +140,7 @@ async function logDetail(id: string, context: RequestContext, table: LogTable) {
     apiOrigin: apiOriginOf(context),
     links: {
       route: route ? routeLink(ref) : null,
-      tester: route ? routeLink(ref, "2") : null,
+      tester: route ? testerLink(ref) : null,
       sameError: log.error?.message
         ? logsLink({ route: ref, error: log.error.message })
         : null,

@@ -31,10 +31,28 @@ describe("RoutesPage", () => {
     ]);
   });
 
+  it("guards the Statistics tab with one empty state while the route has no call", () => {
+    const guard = blockAt(RoutesPage.explorer.serializeSync(), [
+      "tabs",
+      "statistics",
+    ]);
+    expect(guard.componentName).toBe("dms-guard");
+    expect(guard.options).toMatchObject({
+      fetchUrl:
+        "/api/monitoring/routes/statistics/activity?route={{query.route}}",
+      periodScope: "api",
+      when: "empty",
+      field: "calls",
+      fallback: { title: "$api.routes.statistics.idle_title" },
+    });
+    expect(guard.children?.map(({ id }) => id)).toEqual(["grid"]);
+  });
+
   it("keeps the slow threshold within the response time axis, p95 apart", () => {
     const { options } = blockAt(RoutesPage.explorer.serializeSync(), [
       "tabs",
       "statistics",
+      "grid",
       "charts",
       "latency",
       "chart",
@@ -50,6 +68,7 @@ describe("RoutesPage", () => {
     const { options } = blockAt(RoutesPage.explorer.serializeSync(), [
       "tabs",
       "statistics",
+      "grid",
       "charts",
       "latency",
     ]);

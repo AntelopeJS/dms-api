@@ -527,7 +527,9 @@
         "summary": "Indicateurs de la route",
         "p95_detail": "p95 {p95}",
         "p95_none": "Aucune p95 conservée sur la période",
-        "idle_description": "Appelez-la depuis l'onglet Testeur pour voir ses chiffres."
+        "idle_description": "Elle a été appelée avant cette période : choisissez-en une plus longue, ou appelez-la maintenant pour voir ses chiffres.",
+        "idle_never": "Aucun appel conservé pour elle : appelez-la maintenant pour voir ses chiffres.",
+        "idle_try": "Tester cette route"
       },
       "docs": {
         "beta_title": "Bêta · déduit du trafic",
