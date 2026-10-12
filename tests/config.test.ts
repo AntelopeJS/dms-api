@@ -44,14 +44,6 @@ describe("config", () => {
     expect(getConfig().requestLogRetention).toBe(30 * MS_PER_DAY);
   });
 
-  it("leaves the public API URL unset unless the module config sets it", () => {
-    setConfig();
-    expect(getConfig().publicApiUrl).toBeUndefined();
-    setConfig({ publicApiUrl: "https://api.example.com" });
-    expect(getConfig().publicApiUrl).toBe("https://api.example.com");
-    setConfig();
-  });
-
   it("does not tie the log retention to the statistics one", () => {
     setConfig({ statisticsLifetime: 60 * MS_PER_DAY });
     expect(getConfig().requestLogRetention).toBe(30 * MS_PER_DAY);

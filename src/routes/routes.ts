@@ -13,7 +13,7 @@ import { getConfig } from "@/config";
 import { RequestLogModel, RouteModel, RouteStatisticsModel } from "@/db";
 import { normalizeRoutePath } from "@/db/tables/routes_statistics.table";
 import { RoutesPage } from "@/pages/routes";
-import { apiOriginOf } from "@/services/api-origin";
+import { apiOrigin } from "@/services/api-origin";
 import { routeRef } from "@/services/links";
 import { isInternalTraffic } from "@/services/request-log/capture";
 import { loadRouteHealth } from "@/services/overview";
@@ -191,11 +191,12 @@ export class RoutesController extends Controller("/api/monitoring/routes") {
   async getDetail(
     @AuthUserWithPermission(explorer)
     _user: User,
-    @Context() context: RequestContext,
     @Parameter("route", "query") route?: string,
   ) {
     const [detail, health, keys] = await Promise.all([
-      route ? getRouteDetail(models(), route, apiOriginOf(context)) : undefined,
+      route
+        ? apiOrigin().then((origin) => getRouteDetail(models(), route, origin))
+        : undefined,
       routeHealth(),
       getScopedRouteKeys(GetModel(RouteModel), getActiveScope()),
     ]);

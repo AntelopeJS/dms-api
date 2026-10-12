@@ -1,15 +1,13 @@
-import type { RequestContext } from "@antelopejs/interface-api";
-import { getConfig } from "@/config";
+import { GetApiBaseUrl } from "@antelopejs/interface-dms/api-base-url";
 
 /**
  * Where clients reach the API, for the cURL and fetch snippets the console
- * hands out: the module's `publicApiUrl` when it is set (wire it to the api
- * module's `${@api.API_PUBLIC_BASE_URL}`), else the origin this request
- * reached the API server on. Through the DMS frontend that is the API server
- * its proxy calls, never the frontend's own address, whose proxy refuses the
- * writes a copied command sends.
+ * hands out: the DMS's public API origin (its `apiBaseUrl`), which the
+ * monitored routes share since the DMS serves through the same API server.
+ * Never the request's own origin, which a reverse proxy hides. Null when the
+ * DMS configuration clears it: the snippets then write `$API_URL`.
  */
-export function apiOriginOf(context: Pick<RequestContext, "url">): string {
-  const configured = getConfig().publicApiUrl?.trim();
-  return (configured || context.url.origin).replace(/\/+$/, "");
+export async function apiOrigin(): Promise<string | null> {
+  const base = (await GetApiBaseUrl())?.trim();
+  return base ? base.replace(/\/+$/, "") : null;
 }

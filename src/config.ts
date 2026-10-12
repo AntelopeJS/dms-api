@@ -38,11 +38,6 @@ export interface DmsApiConfig {
   /** Exact middleware callbackName values to flag as auth handlers, alongside the patterns. */
   authMiddlewareCallbacks: string[];
   /**
-   * Base URL clients reach the API at, for the snippets the console hands
-   * out (`https://api.example.com`). Unset, the origin of the request.
-   */
-  publicApiUrl?: string;
-  /**
    * Key the Tester's tokens are signed with (see `services/tester-source.ts`).
    * Set the same value on every instance behind one console; unset, each
    * instance draws its own at start.

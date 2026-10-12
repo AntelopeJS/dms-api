@@ -532,7 +532,7 @@
         "beta_title": "Bêta · déduit du trafic",
         "beta_description": "Lu dans les requêtes capturées sur les {days} derniers jours (hors testeur) et dans le code du handler. Ce qui n'a jamais été appelé n'apparaît pas.",
         "example": "Exemple de requête",
-        "origin_unknown": "La console ne connaît pas l'URL publique de l'API : l'exemple utilise API_URL. Renseignez publicApiUrl dans la config du module dms-api.",
+        "origin_unknown": "La console ne connaît pas l'URL publique de l'API : l'exemple utilise API_URL. Renseignez apiBaseUrl dans la config du module DMS.",
         "try": "Essayer",
         "auth_title": "Nécessite un utilisateur connecté",
         "auth_description": "Garde trouvée dans le code : {guards}. Les appels sans jeton valide sont refusés en 401.",

@@ -254,8 +254,8 @@ export interface RouteDetail {
   inspection: RouteInspection;
   contract: ObservedContract;
   /**
-   * Where clients reach the API, for the snippets (see `apiOriginOf`); null
-   * when the caller could not tell.
+   * Where clients reach the API, for the snippets (see `apiOrigin`); null
+   * when the DMS configuration clears it.
    */
   apiOrigin: string | null;
 }

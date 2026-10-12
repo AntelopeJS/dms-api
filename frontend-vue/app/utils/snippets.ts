@@ -292,7 +292,7 @@ function prepare(request: SnippetRequest): Prepared {
   if (!request.origin) {
     reserved.push({
       name: API_URL,
-      note: 'the public URL of the API (the console could not tell it: set publicApiUrl in the dms-api module config)',
+      note: 'the public URL of the API (the console could not tell it: set apiBaseUrl in the DMS module config)',
     })
   }
   if (request.session) {

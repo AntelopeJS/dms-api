@@ -15,7 +15,7 @@ import { normalizeRoutePath } from "@/db/tables/routes_statistics.table";
 import { LogsPage } from "@/pages/logs";
 import { OverviewPage } from "@/pages/overview";
 import { RoutesPage } from "@/pages/routes";
-import { apiOriginOf } from "@/services/api-origin";
+import { apiOrigin } from "@/services/api-origin";
 import { logsLink, routeLink, routeRef, testerLink } from "@/services/links";
 import { getMaxLogDays } from "@/services/period";
 import { canReadLog, type LogTable } from "@/services/request-log/access";
@@ -81,7 +81,7 @@ const routesTable = RoutesPage.explorer.targetChild(
 );
 
 /** One request in full, as the side panel shows it. */
-async function logDetail(id: string, context: RequestContext, table: LogTable) {
+async function logDetail(id: string, table: LogTable) {
   const model = GetModel(RequestLogModel);
   const log = await getRequestLog(model, id);
   assert(log, 404, "Log not found");
@@ -137,7 +137,7 @@ async function logDetail(id: string, context: RequestContext, table: LogTable) {
         )
       : null,
     // Where the cURL of the panel sends the request: the real API.
-    apiOrigin: apiOriginOf(context),
+    apiOrigin: await apiOrigin(),
     links: {
       route: route ? routeLink(ref) : null,
       tester: route ? testerLink(ref) : null,
@@ -236,9 +236,8 @@ export class LogsController extends Controller("/api/monitoring/logs") {
   async getRecentLog(
     @AuthUserWithPermission(overviewTable) _user: User,
     @Parameter("id", "param") id: string,
-    @Context() context: RequestContext,
   ) {
-    return logDetail(id, context, "overview");
+    return logDetail(id, "overview");
   }
 
   /** One request for the Tester: the one it captured, or a replay. */
@@ -246,9 +245,8 @@ export class LogsController extends Controller("/api/monitoring/logs") {
   async getTesterLog(
     @AuthUserWithPermission(tester) _user: User,
     @Parameter("id", "param") id: string,
-    @Context() context: RequestContext,
   ) {
-    return logDetail(id, context, "tester");
+    return logDetail(id, "tester");
   }
 
   /** One request for the panel the Routes page's recent requests open. */
@@ -256,17 +254,15 @@ export class LogsController extends Controller("/api/monitoring/logs") {
   async getRoutesLog(
     @AuthUserWithPermission(routesTable) _user: User,
     @Parameter("id", "param") id: string,
-    @Context() context: RequestContext,
   ) {
-    return logDetail(id, context, "routes");
+    return logDetail(id, "routes");
   }
 
   @Get(":id")
   async getLog(
     @AuthUserWithPermission(LogsPage.requests) _user: User,
     @Parameter("id", "param") id: string,
-    @Context() context: RequestContext,
   ) {
-    return logDetail(id, context, "logs");
+    return logDetail(id, "logs");
   }
 }

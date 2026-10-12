@@ -5,7 +5,7 @@ import type {
 import { describe, expect, it, vi } from "vitest";
 import type { RequestLogSample } from "@/db/models/request_log.model";
 import type { RequestLog } from "@/db/tables/request_log.table";
-import { apiOriginOf } from "@/services/api-origin";
+import { apiOrigin } from "@/services/api-origin";
 import { handlerMethod, type RouteInspection } from "@/services/introspection";
 import { parseControllerDecorators } from "@/services/introspection/decorators";
 import { probeHandlerErrors } from "@/services/introspection/errors";
@@ -27,6 +27,12 @@ import {
 
 const registered = vi.hoisted(() => ({
   handlers: [] as Array<{ id: string; handler: Record<string, unknown> }>,
+}));
+
+const apiBase = vi.hoisted(() => ({ url: undefined as string | undefined }));
+
+vi.mock("@antelopejs/interface-dms/api-base-url", () => ({
+  GetApiBaseUrl: () => Promise.resolve(apiBase.url),
 }));
 
 vi.mock("@antelopejs/interface-api", async (importOriginal) => ({
@@ -491,10 +497,14 @@ describe("documentParameters", () => {
   });
 });
 
-describe("apiOriginOf", () => {
-  it("falls back to the origin the API server was reached on", () => {
-    expect(
-      apiOriginOf({ url: new URL("http://127.0.0.1:5011/api/monitoring/x") }),
-    ).toBe("http://127.0.0.1:5011");
+describe("apiOrigin", () => {
+  it("is the DMS API origin, without a trailing slash", async () => {
+    apiBase.url = "https://api.example.com/";
+    expect(await apiOrigin()).toBe("https://api.example.com");
+  });
+
+  it("is null when the DMS configuration clears it", async () => {
+    apiBase.url = undefined;
+    expect(await apiOrigin()).toBeNull();
   });
 });

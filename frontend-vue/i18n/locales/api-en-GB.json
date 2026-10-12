@@ -532,7 +532,7 @@
         "beta_title": "Beta · inferred from traffic",
         "beta_description": "Read from the requests captured over the last {days} days (the tester's left out) and from the handler's code. What was never called does not show.",
         "example": "Example request",
-        "origin_unknown": "The console could not tell the public URL of the API: the snippet uses API_URL. Set publicApiUrl in the dms-api module config.",
+        "origin_unknown": "The console could not tell the public URL of the API: the snippet uses API_URL. Set apiBaseUrl in the DMS module config.",
         "try": "Try it",
         "auth_title": "Requires a signed-in user",
         "auth_description": "Guard found in the code: {guards}. Calls without a valid token are refused with 401.",

@@ -88,20 +88,10 @@ default") holds no override; the retentions have no such button, since
 lowering one deletes data. An empty list of captured headers is an override
 of its own: no header is captured.
 
-`publicApiUrl` is the base URL clients reach the API at, such as
-`https://api.example.com`, without a trailing slash. The console writes it
-into the cURL and fetch snippets of a route and a request. Unset, they use the
-origin of the request the console was loaded with, which is wrong behind a
-proxy or when the console and the API have different hosts:
-
-```ts
-"dms-api": {
-  source: { /* … */ },
-  config: {
-    publicApiUrl: "https://api.example.com",
-  },
-},
-```
+The cURL and fetch snippets of a route and a request are written against the
+DMS's public API origin, its `apiBaseUrl` (read through `GetApiBaseUrl()`):
+set it to the URL clients reach the API at, such as `https://api.example.com`.
+Under `ajs dms dev` it follows the dev server.
 
 Statistics are kept 90 days by default, and the dashboard offers 30, 60 or
 90 days. The 30D period compares itself with the 30 days before it, so it
