@@ -3,7 +3,7 @@
 // oxlint-disable-next-line import/no-duplicates
 import "./db";
 import "./routes";
-import "./middlewares";
+import "./services/request-log/capture";
 import "./pages";
 
 import path from "node:path";
@@ -18,25 +18,33 @@ import {
   registerAutomationNodes,
   unregisterAutomationNodes,
 } from "./automation";
-import { type DmsApiConfig, setConfig } from "./config";
+import { type DmsApiConfig, getBaseConfig, setConfig } from "./config";
 import {
   ApiSettingsModel,
   RequestLogModel,
   RouteModel,
   RouteStatisticsModel,
 } from "./db";
+import { registerLiveTopics } from "./realtime";
 import {
   loadSettings,
   pruneAllStatistics,
   pruneRequestLogs,
   syncRoutes,
 } from "./services";
+import { isSensitiveHeader } from "./services/request-log/redaction";
+import { configErrors } from "./services/settings-form";
 import { SCHEMA_NAME } from "./types/constants";
 
 let pruneTask: ScheduledTask | null = null;
 
 export async function construct(config?: Partial<DmsApiConfig>): Promise<void> {
   setConfig(config);
+  // The Settings form could not save such a value back: refuse it at start.
+  const errors = configErrors(getBaseConfig(), isSensitiveHeader);
+  if (errors.length) {
+    throw new Error(`[dms-api] invalid configuration: ${errors.join("; ")}`);
+  }
 
   await AddFrontendModule({
     name: "@antelopejs/dms-api-frontend-vue",
@@ -63,6 +71,8 @@ export async function start(): Promise<void> {
   });
 
   registerAutomationNodes();
+  // The live mode of the monitoring pages hears of new requests.
+  registerLiveTopics();
 }
 
 export function destroy(): void {}

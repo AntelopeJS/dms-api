@@ -6,7 +6,6 @@ import {
   Table,
   UpdateTime,
 } from "@antelopejs/interface-database-decorators";
-import type { HttpMethod } from "@/types";
 import { SCHEMA_NAME } from "../../types/constants";
 
 export const routesTableName = "routes";
@@ -17,7 +16,7 @@ export class Route extends Table {
   declare uri: string;
 
   @Field("string")
-  declare method: HttpMethod;
+  declare method: string;
 
   /** Antelope module that registered the route; null when unresolvable. */
   @Field("string")

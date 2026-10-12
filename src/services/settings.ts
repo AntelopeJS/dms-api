@@ -21,6 +21,7 @@ export interface ApiSettingsPayload {
   requestLogRetention: number;
   requestSlownessThreshold: number;
   requestLogMaxBodySize: number;
+  requestLogCaptureHeaders: string[];
 }
 
 export interface ApiSettingsUpdate {
@@ -29,6 +30,7 @@ export interface ApiSettingsUpdate {
   requestLogRetention?: number | null;
   requestSlownessThreshold?: number | null;
   requestLogMaxBodySize?: number | null;
+  requestLogCaptureHeaders?: string[] | null;
 }
 
 const DEFAULT_SCOPE: RouteScope = "own";
@@ -54,6 +56,9 @@ function overridesFrom(doc: SettingsDocument): Partial<DmsApiConfig> {
   if (doc.requestLogMaxBodySize != null) {
     overrides.requestLogMaxBodySize = doc.requestLogMaxBodySize;
   }
+  if (doc.requestLogCaptureHeaders != null) {
+    overrides.requestLogCaptureHeaders = doc.requestLogCaptureHeaders;
+  }
   return overrides;
 }
 
@@ -64,6 +69,7 @@ type SettingsDocument = Pick<
   | "requestLogRetention"
   | "requestSlownessThreshold"
   | "requestLogMaxBodySize"
+  | "requestLogCaptureHeaders"
 >;
 
 function applyDocument(doc: SettingsDocument | undefined): void {
@@ -85,6 +91,7 @@ export function getEffectiveSettings(): ApiSettingsPayload {
     requestLogRetention: config.requestLogRetention,
     requestSlownessThreshold: config.requestSlownessThreshold,
     requestLogMaxBodySize: config.requestLogMaxBodySize,
+    requestLogCaptureHeaders: config.requestLogCaptureHeaders,
   };
 }
 
@@ -131,6 +138,10 @@ function buildNextSettings(
       update.requestLogMaxBodySize,
       existing?.requestLogMaxBodySize,
     ),
+    requestLogCaptureHeaders: resolveOverride(
+      update.requestLogCaptureHeaders,
+      existing?.requestLogCaptureHeaders,
+    ),
   };
 }
 
@@ -155,11 +166,11 @@ async function persistSettings(
   }
 }
 
-/** `undefined` keeps the stored value, `null` clears it, a number sets it. */
-function resolveOverride(
-  incoming: number | null | undefined,
-  stored: number | null | undefined,
-): number | null {
+/** `undefined` keeps the stored value, `null` clears it, a value sets it. */
+function resolveOverride<T>(
+  incoming: T | null | undefined,
+  stored: T | null | undefined,
+): T | null {
   if (incoming === undefined) return stored ?? null;
   return incoming;
 }

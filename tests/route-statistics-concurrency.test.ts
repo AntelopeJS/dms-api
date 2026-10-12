@@ -6,7 +6,7 @@ import {
   type RouteStatistics,
 } from "@/db/tables/routes_statistics.table";
 import { pruneAllStatistics } from "@/services/statistics-prune";
-import { getTodayTimestamp } from "@/services/statistics-utils";
+import { emptyHistogram, getTodayTimestamp } from "@/services/statistics-utils";
 import {
   addRequestStatistics,
   MAX_STATISTICS_WRITE_ATTEMPTS,
@@ -83,6 +83,8 @@ function dayStats(day: number, requestsCount: number): DayStatistics {
     totalResponseTime: 10 * requestsCount,
     clientErrorsCount: 0,
     serverErrorsCount: 0,
+    timedRequestsCount: requestsCount,
+    latencyHistogram: emptyHistogram(),
   };
 }
 
@@ -114,6 +116,28 @@ describe("addRequestStatistics", () => {
     });
   });
 
+  it("folds the requests arriving during a write into the next one", async () => {
+    const model = new FakeStatisticsModel();
+    await addRequestStatistics(model, request());
+    const writes: Promise<void>[] = [];
+    // Three waves, each landing while the previous one is being written.
+    for (let wave = 0; wave < 3; wave++) {
+      for (let i = 0; i < 10; i++) {
+        writes.push(addRequestStatistics(model, request(500, 9)));
+      }
+      await tick();
+    }
+
+    await Promise.all(writes);
+
+    expect(todayOf(model)).toMatchObject({
+      requestsCount: 31,
+      serverErrorsCount: 30,
+    });
+    // One write per wave at most, never one per request.
+    expect(model.replaceCalls).toBeLessThanOrEqual(3);
+  });
+
   it("updates a row written before the revision field existed", async () => {
     const model = new FakeStatisticsModel();
     model.rows.set(KEY, {
@@ -127,6 +151,23 @@ describe("addRequestStatistics", () => {
 
     expect(todayOf(model)?.requestsCount).toBe(4);
     expect(model.rows.get(KEY)?.revision).toEqual(expect.any(String));
+  });
+
+  it("keeps a latency histogram and leaves unmeasured calls out of it", async () => {
+    const model = new FakeStatisticsModel();
+    await addRequestStatistics(model, request(200, 40));
+    await addRequestStatistics(model, request(500, 1200));
+    await addRequestStatistics(model, { ...request(500), responseTime: null });
+
+    const today = todayOf(model);
+    expect(today).toMatchObject({
+      requestsCount: 3,
+      timedRequestsCount: 2,
+      minResponseTime: 40,
+      maxResponseTime: 1200,
+      averageResponseTime: 620,
+    });
+    expect(today?.latencyHistogram?.reduce((a, b) => a + b, 0)).toBe(2);
   });
 
   it("does not retry when the write outcome is unknown", async () => {

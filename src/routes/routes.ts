@@ -1,149 +1,292 @@
-import { Controller, Get, Parameter } from "@antelopejs/interface-api";
+import {
+  Context,
+  Controller,
+  Get,
+  Parameter,
+  type RequestContext,
+} from "@antelopejs/interface-api";
 import { assert } from "@antelopejs/interface-api-util";
 import { GetModel } from "@antelopejs/interface-database-decorators";
-import { AuthOwnerOnly, AuthRawUser } from "@antelopejs/interface-dms/auth";
 import type { User } from "@antelopejs/interface-dms/auth/db";
+import { AuthUserWithPermission } from "@antelopejs/interface-dms/guards";
+import { getConfig } from "@/config";
 import { RequestLogModel, RouteModel, RouteStatisticsModel } from "@/db";
+import { normalizeRoutePath } from "@/db/tables/routes_statistics.table";
+import { RoutesPage } from "@/pages/routes";
+import { apiOrigin } from "@/services/api-origin";
+import { routeRef } from "@/services/links";
+import { isInternalTraffic } from "@/services/request-log/capture";
+import { loadRouteHealth } from "@/services/overview";
 import {
-  getFolderInspection,
-  getRouteInspection,
-} from "@/services/introspection";
-import { parsePeriodDays, resolvePeriodDays } from "@/services/period";
-import { getRecentLogsForRoute } from "@/services/request-log/read";
-import { getScopedRouteKeys } from "@/services/scope";
+  type CatalogModels,
+  findRoute,
+  getRouteDetail,
+  listRoutes,
+} from "@/services/route-catalog";
+import { HEALTH_THRESHOLDS } from "@/services/health-rules";
+import {
+  errorRateChart,
+  type EmptyChartPayload,
+  type LatencyChartPayload,
+  latencyChart,
+  loadRouteTraffic,
+  routeActivity,
+  type RouteActivityPayload,
+  routeSummary,
+  type RouteChartPayload,
+  type RouteSummaryPayload,
+  type RouteTraffic,
+  routeTopErrors,
+} from "@/services/route-statistics";
+import { getScopedRouteKeys, scopeRouteKey } from "@/services/scope";
 import { getActiveScope } from "@/services/settings";
+import { loadRollups } from "@/services/traffic";
 import {
-  getFolderAggregate,
-  getRouteAggregate,
-} from "@/services/statistics-aggregate";
-import {
-  getResponseTimesStatistics,
-  getRouteStatistics,
-} from "@/services/statistics-read";
-import { buildRoutesTreeNodes } from "@/services/tree";
+  DEFAULT_WINDOW,
+  resolveWindow,
+  type TimeWindow,
+  windowQueryFrom,
+} from "@/services/window";
 
-const DEFAULT_STATS_DAYS = 7;
-const RECENT_LOGS_DEFAULT = 20;
+const ROUTE_NOT_FOUND = "Route not found";
 
-/**
- * Controller for the Routes page: the route tree on the left, plus
- * per-route and per-folder payloads driving the Documentation,
- * Configuration and Statistics tabs on the right.
- */
-@AuthOwnerOnly()
-export class RoutesController extends Controller("/api/monitoring/routes") {
-  @Get("tree")
-  async getTree(
-    @AuthRawUser() _user: User,
-    @Parameter("period", "query") period?: string,
-  ) {
-    const [stats, keys] = await Promise.all([
-      GetModel(RouteStatisticsModel).getAll(),
-      getScopedRouteKeys(GetModel(RouteModel), getActiveScope()),
-    ]);
-    return buildRoutesTreeNodes(stats, keys, parsePeriodDays(period));
-  }
-
-  @Get("route/:id/doc")
-  async getRouteDoc(
-    @AuthRawUser() _user: User,
-    @Parameter("id", "param") id: string,
-  ) {
-    const inspection = getRouteInspection(id);
-    assert(inspection, 404, "Route not found");
-    const route = await GetModel(RouteModel).getByRoute(
-      inspection.method,
-      inspection.location,
-    );
-    return {
-      ...inspection,
-      registeredAt: route?.createdAt ?? null,
-      updatedAt: route?.updatedAt ?? null,
-    };
-  }
-
-  @Get("route/:id/config")
-  async getRouteConfig(
-    @AuthRawUser() _user: User,
-    @Parameter("id", "param") id: string,
-  ) {
-    const inspection = getRouteInspection(id);
-    assert(inspection, 404, "Route not found");
-    return inspection;
-  }
-
-  @Get("route/:id/stats")
-  async getRouteStats(
-    @AuthRawUser() _user: User,
-    @Parameter("id", "param") id: string,
-    @Parameter("period", "query") period?: string,
-  ) {
-    const inspection = getRouteInspection(id);
-    assert(inspection, 404, "Route not found");
-    const days = resolvePeriodDays(period, DEFAULT_STATS_DAYS);
-    const stats = GetModel(RouteStatisticsModel);
-    const log = GetModel(RequestLogModel);
-
-    const [counts, latency, aggregate, recent] = await Promise.all([
-      getRouteStatistics(stats, inspection.method, inspection.location, days),
-      getResponseTimesStatistics(
-        stats,
-        inspection.method,
-        inspection.location,
-        days,
-      ),
-      getRouteAggregate(stats, inspection.method, inspection.location, days),
-      getRecentLogsForRoute(
-        log,
-        inspection.method,
-        inspection.location,
-        RECENT_LOGS_DEFAULT,
-      ),
-    ]);
-
-    return {
-      route: {
-        id,
-        location: inspection.location,
-        method: inspection.method,
-      },
-      aggregate,
-      charts: { counts, latency },
-      recent,
-    };
-  }
-
-  @Get("folder/:encodedPath/doc")
-  async getFolderDoc(
-    @AuthRawUser() _user: User,
-    @Parameter("encodedPath", "param") encodedPath: string,
-  ) {
-    return getFolderInspection(decodePath(encodedPath));
-  }
-
-  @Get("folder/:encodedPath/config")
-  async getFolderConfig(
-    @AuthRawUser() _user: User,
-    @Parameter("encodedPath", "param") encodedPath: string,
-  ) {
-    return getFolderInspection(decodePath(encodedPath));
-  }
-
-  @Get("folder/:encodedPath/stats")
-  async getFolderStats(
-    @AuthRawUser() _user: User,
-    @Parameter("encodedPath", "param") encodedPath: string,
-    @Parameter("period", "query") period?: string,
-  ) {
-    const days = resolvePeriodDays(period, DEFAULT_STATS_DAYS);
-    return getFolderAggregate(
-      GetModel(RouteStatisticsModel),
-      decodePath(encodedPath),
-      days,
-    );
-  }
+function models(): CatalogModels {
+  return {
+    logs: GetModel(RequestLogModel),
+    stats: GetModel(RouteStatisticsModel),
+    routes: GetModel(RouteModel),
+  };
 }
 
-function decodePath(encoded: string): string {
-  return `/${decodeURIComponent(encoded).split("/").filter(Boolean).join("/")}`;
+const explorer = RoutesPage.explorer;
+/** The Statistics tab: a DMS `Guard`, its blocks on the grid it guards. */
+const statisticsTab = ["tabs", "statistics"] as const;
+const statistics = [...statisticsTab, "grid"] as const;
+
+function windowOf(context: RequestContext): TimeWindow {
+  return resolveWindow(
+    windowQueryFrom(context.url.searchParams),
+    DEFAULT_WINDOW,
+  );
+}
+
+/** The route `?route=` names, if the runtime still registers it. */
+function routeOf(context: RequestContext) {
+  const inspection = findRoute(
+    context.url.searchParams.get("route") ?? undefined,
+  );
+  return inspection
+    ? { method: inspection.method.toUpperCase(), path: inspection.location }
+    : undefined;
+}
+
+function trafficOf(context: RequestContext): Promise<RouteTraffic> {
+  return loadRouteTraffic(models(), routeOf(context), windowOf(context));
+}
+
+/**
+ * The first day each route was called, from the day rollups: the oldest
+ * kept, so never further back than the statistics retention.
+ */
+async function firstCalls(): Promise<Map<string, string>> {
+  const first = new Map<string, string>();
+  for (const route of await loadRollups(GetModel(RouteStatisticsModel))) {
+    const days = route.statistics
+      .filter((day) => day.requestsCount > 0)
+      .map((day) => day.day);
+    if (days.length > 0) {
+      first.set(
+        scopeRouteKey(route.method, route.uri),
+        new Date(Math.min(...days)).toISOString(),
+      );
+    }
+  }
+  return first;
+}
+
+/**
+ * Every route's health by the rules the Overview applies, over the same last
+ * 24 h, with the first day it was called: what the tree and the header show
+ * next to a route.
+ */
+async function routeHealth() {
+  const [{ lookback, routes }, first] = await Promise.all([
+    loadRouteHealth(models()),
+    firstCalls(),
+  ]);
+  const healthWindow = {
+    from: lookback.from.toISOString(),
+    to: lookback.to.toISOString(),
+    minutes: HEALTH_THRESHOLDS.lookbackMinutes,
+  };
+  const of = (method: string, path: string) => {
+    const key = scopeRouteKey(method, path);
+    const health = routes.get(key);
+    return {
+      requests: health?.traffic.requests ?? 0,
+      state: health?.state ?? ("idle" as const),
+      verdict: health?.verdict ?? ("idle" as const),
+      incident: health?.incident
+        ? {
+            start: health.incident.start?.toISOString() ?? null,
+            end: health.incident.end?.toISOString() ?? null,
+          }
+        : null,
+      p95Ms: health?.p95Ms ?? null,
+      firstCallAt: first.get(key) ?? null,
+      lastCallAt: health?.lastCall.toISOString() ?? null,
+    };
+  };
+  return { healthWindow, of };
+}
+
+/**
+ * The latest call of a route older than the health lookback, the Tester's
+ * aside. By the route's method: a HEAD its GET handler served counts.
+ */
+async function lastCallBefore(method: string, path: string) {
+  const { results } = await GetModel(RequestLogModel).query({
+    routeMethod: method,
+    uri: normalizeRoutePath(path),
+    apiTrafficOnly: true,
+    limit: 1,
+  });
+  return results[0]?.timestamp.toISOString() ?? null;
+}
+
+/**
+ * The Routes page's blocks: the tree, then everything about the route the
+ * URL names (`?route=METHOD%20/path`). A route is named by its method and
+ * path, never by the runtime's route id, which changes on every start. The
+ * Statistics blocks follow the page's window; a route's state, in the tree
+ * as in the header, is the one the Overview gives it over the last 24 h.
+ */
+export class RoutesController extends Controller("/api/monitoring/routes") {
+  @Get("list")
+  async listRoutes(
+    @AuthUserWithPermission(explorer.targetChild("tree")) _user: User,
+  ) {
+    const keys = await getScopedRouteKeys(
+      GetModel(RouteModel),
+      getActiveScope(),
+    );
+    const health = await routeHealth();
+    return {
+      routes: listRoutes(keys).map((row) => ({
+        ...row,
+        ...health.of(row.method, row.path),
+      })),
+      healthWindowMinutes: HEALTH_THRESHOLDS.lookbackMinutes,
+      requestsWindowMinutes: HEALTH_THRESHOLDS.lookbackMinutes,
+      healthWindow: health.healthWindow,
+      thresholds: HEALTH_THRESHOLDS,
+    };
+  }
+
+  /**
+   * Read by every block of the explorer around the selected route (the
+   * header, the tabs, the layout): guarded by the explorer itself.
+   */
+  @Get("detail")
+  async getDetail(
+    @AuthUserWithPermission(explorer)
+    _user: User,
+    @Parameter("route", "query") route?: string,
+  ) {
+    const [detail, health, keys] = await Promise.all([
+      route
+        ? apiOrigin().then((origin) => getRouteDetail(models(), route, origin))
+        : undefined,
+      routeHealth(),
+      getScopedRouteKeys(GetModel(RouteModel), getActiveScope()),
+    ]);
+    assert(detail, 404, ROUTE_NOT_FOUND);
+    const { requests, ...state } = health.of(detail.method, detail.path);
+    return {
+      ...detail,
+      ...state,
+      lastCallAt:
+        state.lastCallAt ?? (await lastCallBefore(detail.method, detail.path)),
+      inScope: !keys || keys.has(scopeRouteKey(detail.method, detail.path)),
+      // The console's own routes are never logged: no Captured tab for them.
+      captured: !isInternalTraffic(detail.path),
+      requests24h: requests,
+      healthWindowMinutes: HEALTH_THRESHOLDS.lookbackMinutes,
+      healthWindow: health.healthWindow,
+      thresholds: HEALTH_THRESHOLDS,
+    };
+  }
+
+  /**
+   * Whether the route was called over the period: the Statistics tab's
+   * guard shows its blocks, or one empty state leading to the Tester.
+   */
+  @Get("statistics/activity")
+  async getActivity(
+    @AuthUserWithPermission(explorer.targetChild(...statisticsTab))
+    _user: User,
+    @Context() context: RequestContext,
+  ): Promise<RouteActivityPayload> {
+    const route = routeOf(context);
+    const traffic = await loadRouteTraffic(models(), route, windowOf(context));
+    const idle = route && traffic.total.requests === 0;
+    return routeActivity(
+      traffic,
+      route && routeRef(route.method, route.path),
+      idle ? await lastCallBefore(route.method, route.path) : null,
+    );
+  }
+
+  @Get("statistics/summary")
+  async getSummary(
+    @AuthUserWithPermission(
+      explorer.targetChild(...statistics, "summary", "summary"),
+    )
+    _user: User,
+    @Context() context: RequestContext,
+  ): Promise<RouteSummaryPayload> {
+    return routeSummary(
+      await trafficOf(context),
+      getConfig().requestSlownessThreshold,
+    );
+  }
+
+  /** The 4xx and 5xx rates per bucket, in percent. */
+  @Get("statistics/status")
+  async getStatusChart(
+    @AuthUserWithPermission(
+      explorer.targetChild(...statistics, "charts", "status"),
+    )
+    _user: User,
+    @Context() context: RequestContext,
+  ): Promise<RouteChartPayload | EmptyChartPayload> {
+    return errorRateChart(await trafficOf(context));
+  }
+
+  @Get("statistics/latency-chart")
+  async getLatencyChart(
+    @AuthUserWithPermission(
+      explorer.targetChild(...statistics, "charts", "latency"),
+    )
+    _user: User,
+    @Context() context: RequestContext,
+  ): Promise<LatencyChartPayload | EmptyChartPayload> {
+    return latencyChart(await trafficOf(context));
+  }
+
+  @Get("statistics/errors")
+  async getErrors(
+    @AuthUserWithPermission(
+      explorer.targetChild(...statistics, "detail", "errors"),
+    )
+    _user: User,
+    @Context() context: RequestContext,
+  ) {
+    return routeTopErrors(
+      models(),
+      routeOf(context),
+      windowOf(context),
+      context.url.searchParams.get("route") ?? "",
+    );
+  }
 }

@@ -1,7 +1,7 @@
 import { Logging } from "@antelopejs/interface-core/logging";
 import { GetModel } from "@antelopejs/interface-database-decorators";
 import type { TriggerType } from "@antelopejs/interface-dms-automation";
-import { RouteStatisticsModel } from "@/db";
+import { RequestLogModel } from "@/db";
 import {
   getWatchList,
   type WatchListItem,
@@ -35,7 +35,7 @@ export const routeUnhealthyTrigger: TriggerType<
   id: "api.route-unhealthy",
   name: "Route unhealthy",
   description:
-    "Fires when a route on the API watch list enters a monitored bad state (broken, slow or warn)",
+    "Fires when a route enters a monitored bad state by the API health rules: broken (failing on its 5xx rate), slow (p95 at or above the slow threshold) or warn (many 4xx)",
   icon: "i-ph-warning",
   cluster: "singleton",
   configSchema: {
@@ -94,7 +94,7 @@ export const routeUnhealthyTrigger: TriggerType<
         const keys = await activeScopeKeys();
         // Infinity: transitions are tracked here, never a truncated top-N.
         const items = await getWatchList(
-          GetModel(RouteStatisticsModel),
+          GetModel(RequestLogModel),
           Number.POSITIVE_INFINITY,
           keys,
         );

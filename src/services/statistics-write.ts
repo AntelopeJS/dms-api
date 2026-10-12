@@ -5,7 +5,11 @@ import {
   type RouteStatistics,
 } from "@/db/tables/routes_statistics.table";
 import type { DayStatistics, RequestStatistics } from "@/types";
-import { getTodayTimestamp } from "./statistics-utils";
+import {
+  emptyHistogram,
+  getTodayTimestamp,
+  latencyBucketIndex,
+} from "./statistics-utils";
 
 /**
  * Check if request is a client error (4xx)
@@ -28,37 +32,48 @@ function createDayStats(
   request: RequestStatistics,
   today: number,
 ): DayStatistics {
-  return {
+  const stats: DayStatistics = {
     day: today,
-    requestsCount: 1,
-    averageResponseTime: request.responseTime,
-    minResponseTime: request.responseTime,
-    maxResponseTime: request.responseTime,
-    totalResponseTime: request.responseTime,
-    clientErrorsCount: isClientError(request.statusCode) ? 1 : 0,
-    serverErrorsCount: isServerError(request.statusCode) ? 1 : 0,
+    requestsCount: 0,
+    averageResponseTime: 0,
+    minResponseTime: 0,
+    maxResponseTime: 0,
+    totalResponseTime: 0,
+    clientErrorsCount: 0,
+    serverErrorsCount: 0,
+    timedRequestsCount: 0,
+    latencyHistogram: emptyHistogram(),
   };
+  mergeDayStats(stats, request);
+  return stats;
+}
+
+/** Fold a measured duration into the day's latency figures. */
+function addTiming(existing: DayStatistics, ms: number): void {
+  existing.minResponseTime =
+    existing.timedRequestsCount === 0
+      ? ms
+      : Math.min(existing.minResponseTime, ms);
+  existing.maxResponseTime = Math.max(existing.maxResponseTime, ms);
+  existing.totalResponseTime += ms;
+  existing.timedRequestsCount += 1;
+  existing.averageResponseTime =
+    existing.totalResponseTime / existing.timedRequestsCount;
+  existing.latencyHistogram[latencyBucketIndex(ms)] += 1;
 }
 
 /**
- * Update existing day statistics with a new request
+ * Update existing day statistics with a new request. A call whose duration
+ * was not measured counts as a call, never as a 0 ms one.
  */
 function mergeDayStats(
   existing: DayStatistics,
   request: RequestStatistics,
 ): void {
+  if (typeof request.responseTime === "number") {
+    addTiming(existing, request.responseTime);
+  }
   existing.requestsCount++;
-  existing.totalResponseTime += request.responseTime;
-  existing.averageResponseTime =
-    existing.totalResponseTime / existing.requestsCount;
-  existing.minResponseTime = Math.min(
-    existing.minResponseTime,
-    request.responseTime,
-  );
-  existing.maxResponseTime = Math.max(
-    existing.maxResponseTime,
-    request.responseTime,
-  );
 
   if (isClientError(request.statusCode)) {
     existing.clientErrorsCount++;
@@ -129,15 +144,18 @@ export function statisticsRetryDelay(attempt: number): Promise<void> {
 async function insertRouteStats(
   model: RouteStatisticsStore,
   id: string,
-  request: RequestStatistics,
+  requests: RequestStatistics[],
   today: number,
 ): Promise<boolean> {
+  const [first, ...rest] = requests;
+  const day = createDayStats(first, today);
+  for (const request of rest) mergeDayStats(day, request);
   try {
     await model.insert({
       _id: id,
-      method: request.method.toUpperCase(),
-      uri: request.uri,
-      statistics: [createDayStats(request, today)],
+      method: first.method.toUpperCase(),
+      uri: first.uri,
+      statistics: [day],
       revision: randomUUID(),
     } as RouteStatistics);
     return true;
@@ -149,34 +167,81 @@ async function insertRouteStats(
 }
 
 /**
- * Add statistics for a request
- * Uses composite key for O(1) lookup
- *
- * The day rollup is a read-modify-write of the whole `statistics` array, so
- * the write is guarded by the row revision and retried from a fresh read when
- * another request got there first. An "unknown" outcome (the write may or may
- * not have landed) ends the attempt: undercounting one request beats counting
- * it twice.
+ * Fold `requests` into the route's rollup: a read-modify-write of the whole
+ * `statistics` array, guarded by the row revision and retried from a fresh
+ * read when another writer (another instance, the prune) got there first. An
+ * "unknown" outcome (the write may or may not have landed) ends the attempt:
+ * undercounting beats counting twice.
  */
-export async function addRequestStatistics(
+async function writeRequestStatistics(
   model: RouteStatisticsStore,
-  request: RequestStatistics,
+  id: string,
+  requests: RequestStatistics[],
 ): Promise<void> {
-  const id = getRouteStatsKey(request.method, request.uri);
   const today = getTodayTimestamp();
-
   for (let attempt = 0; attempt < MAX_STATISTICS_WRITE_ATTEMPTS; attempt++) {
     if (attempt > 0) await statisticsRetryDelay(attempt);
     const existing = await model.get(id);
     if (!existing) {
-      if (await insertRouteStats(model, id, request, today)) return;
+      if (await insertRouteStats(model, id, requests, today)) return;
       continue;
     }
-    updateRouteStats(existing, request, today);
+    for (const request of requests) updateRouteStats(existing, request, today);
     const outcome = await model.replaceStatistics(existing);
     if (outcome !== "not-applied") return;
   }
   throw new Error(
-    `Route statistics for ${id} kept changing concurrently; request not recorded`,
+    `Route statistics for ${id} kept changing concurrently; ${requests.length} request(s) not recorded`,
   );
+}
+
+/** Requests of a route waiting for the write after the one in flight. */
+interface PendingBatch {
+  requests: RequestStatistics[];
+  written: Promise<void>;
+}
+
+/** Per route key: the batch still open to new requests. */
+const openBatches = new Map<string, PendingBatch>();
+/** Per route key: the last write queued, settled or not. */
+const lastWrites = new Map<string, Promise<void>>();
+
+/**
+ * Add statistics for a request
+ * Uses composite key for O(1) lookup
+ *
+ * The writes of one route never race each other in this process: a request
+ * arriving while its route's rollup is being written joins the next write,
+ * which folds every request gathered meanwhile in one read-modify-write. A
+ * burst on a hot route costs a few writes instead of one conflicting attempt
+ * per request, which could exhaust their retries and drop requests. The
+ * revision guard still settles the races with other instances and the prune.
+ */
+export function addRequestStatistics(
+  model: RouteStatisticsStore,
+  request: RequestStatistics,
+): Promise<void> {
+  const id = getRouteStatsKey(request.method, request.uri);
+  const open = openBatches.get(id);
+  if (open) {
+    open.requests.push(request);
+    return open.written;
+  }
+  const requests = [request];
+  const previous = lastWrites.get(id) ?? Promise.resolve();
+  const written = previous.then(() => {
+    // Closed as its write starts: later requests open the next batch.
+    openBatches.delete(id);
+    return writeRequestStatistics(model, id, requests);
+  });
+  openBatches.set(id, { requests, written });
+  const settled = written.then(
+    () => undefined,
+    () => undefined,
+  );
+  lastWrites.set(id, settled);
+  void settled.then(() => {
+    if (lastWrites.get(id) === settled) lastWrites.delete(id);
+  });
+  return written;
 }

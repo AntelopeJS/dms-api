@@ -1,4 +1,5 @@
 import "./home";
+import "./shop";
 // Evaluated here on purpose, ahead of the named import below.
 // oxlint-disable-next-line import/no-duplicates
 import "./notes";

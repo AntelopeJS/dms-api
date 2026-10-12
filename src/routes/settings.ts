@@ -1,81 +1,127 @@
-import { Controller, Get, JSONBody, Post } from "@antelopejs/interface-api";
-import { assertValidation } from "@antelopejs/interface-api-util";
+import {
+  Controller,
+  Get,
+  HTTPResult,
+  JSONBody,
+  Parameter,
+  Post,
+} from "@antelopejs/interface-api";
+import { assert } from "@antelopejs/interface-api-util";
 import { GetModel } from "@antelopejs/interface-database-decorators";
-import { AuthOwnerOnly, AuthRawUser } from "@antelopejs/interface-dms/auth";
+import { AuthOwnerOnly } from "@antelopejs/interface-dms/auth";
 import type { User } from "@antelopejs/interface-dms/auth/db";
-import { ApiSettingsModel } from "@/db";
-import { apiSettingsFormSchema } from "@/pages/settings/form";
-import { getMaxLogDays, getMaxStatsDays } from "@/services/period";
-import type { RouteScope } from "@/services/scope";
+import { AuthUserWithPermission } from "@antelopejs/interface-dms/guards";
+import {
+  ApiSettingsModel,
+  RequestLogModel,
+  RouteModel,
+  RouteStatisticsModel,
+} from "@/db";
+import { SettingsPage } from "@/pages/settings";
+import {
+  isSensitiveHeader,
+  REDACTED_KEY_WORDS,
+} from "@/services/request-log/redaction";
+import { countRoutes } from "@/services/route-catalog";
+import { getScopedRouteKeys } from "@/services/scope";
 import { getEffectiveSettings, updateSettings } from "@/services/settings";
-import { MS_PER_DAY } from "@/types";
+import {
+  editableValues,
+  logRetentionImpact,
+  RETENTION_FIELDS,
+  type RetentionField,
+  SETTINGS_BOUNDS,
+  SETTINGS_FIELDS,
+  settingsSummary,
+  statisticsRetentionImpact,
+  toSettingsUpdate,
+  validateSettings,
+} from "@/services/settings-form";
+import { CRITICAL_ERROR_RATE, ELEVATED_ERROR_RATE } from "@/types";
 
-const BYTES_PER_KB = 1024;
+const HTTP_BAD_REQUEST = 400;
 
 /**
- * Fetch/submit endpoints for the declarative Settings form (see
- * `src/pages/settings/form.ts`). The wire format is the form's field ids in
- * UI units (days / ms / KB); conversion to the canonical config units
- * (ms / bytes) happens here. A null/absent numeric field clears the override
- * back to the module config default.
+ * The form's values: what is in force, in the units the form shows, and the
+ * read-only lines beside them. The rates are ratios, worded by the form in
+ * the reader's locale ("5%", "5 %").
  */
-@AuthOwnerOnly()
-export class SettingsController extends Controller("/api/monitoring/settings") {
-  @Get("")
-  async getSettings(@AuthRawUser() _user: User) {
-    return formValues();
-  }
-
-  /**
-   * The retentions alone, for the period selectors on the monitoring pages:
-   * they can only offer windows the data reaches back to. Kept apart from the
-   * form payload above so those pages don't couple to the form's field ids,
-   * and served by the same functions that clamp the windows those selectors go
-   * on to request.
-   *
-   * Two of them, because the pages read two different stores: the Overview and
-   * Routes charts come from the day rollups (`statisticsLifetime`), the Logs
-   * page from the raw request logs (`requestLogRetention`).
-   */
-  @Get("retention")
-  async getRetention(@AuthRawUser() _user: User) {
-    return {
-      statisticsLifetimeDays: getMaxStatsDays(),
-      requestLogRetentionDays: getMaxLogDays(),
-    };
-  }
-
-  @Post("")
-  async submitSettings(@AuthRawUser() _user: User, @JSONBody() body: unknown) {
-    const data = assertValidation(body, (v) => apiSettingsFormSchema.parse(v));
-    await updateSettings(GetModel(ApiSettingsModel), {
-      scope: data.scope as RouteScope,
-      requestLogRetention: fromUi(data.requestLogRetentionDays, MS_PER_DAY),
-      statisticsLifetime: fromUi(data.statisticsLifetimeDays, MS_PER_DAY),
-      requestSlownessThreshold: fromUi(data.requestSlownessThresholdMs, 1),
-      requestLogMaxBodySize: fromUi(data.requestLogMaxBodyKb, BYTES_PER_KB),
-    });
-    return formValues();
-  }
-}
-
-function formValues() {
-  const s = getEffectiveSettings();
+function settingsValues() {
   return {
-    scope: s.scope,
-    requestLogRetentionDays: msToDays(s.requestLogRetention),
-    statisticsLifetimeDays: msToDays(s.statisticsLifetime),
-    requestSlownessThresholdMs: s.requestSlownessThreshold,
-    requestLogMaxBodyKb: Math.round(s.requestLogMaxBodySize / BYTES_PER_KB),
+    ...editableValues(getEffectiveSettings()),
+    [SETTINGS_FIELDS.redacted]: [...REDACTED_KEY_WORDS],
+    [SETTINGS_FIELDS.errorRate]: ELEVATED_ERROR_RATE,
+    [SETTINGS_FIELDS.downRate]: CRITICAL_ERROR_RATE,
   };
 }
 
-function msToDays(ms: number): number {
-  return Math.max(1, Math.round(ms / MS_PER_DAY));
+function isRetentionField(value: unknown): value is RetentionField {
+  return RETENTION_FIELDS.includes(value as RetentionField);
 }
 
-/** Empty form field (null/undefined) clears the override; a number sets it. */
-function fromUi(value: unknown, unit: number): number | null {
-  if (typeof value !== "number" || Number.isNaN(value)) return null;
-  return Math.round(value * unit);
+/**
+ * The Settings form's route. The form loads the values in force and sends
+ * them all back on save, each validated and written; a value equal to the
+ * module default ("Use default") is stored as no override. The answer is the
+ * values as stored (header names in lower case, without repeats), which the
+ * form shows once saved.
+ */
+export class SettingsController extends Controller("/api/monitoring/settings") {
+  @Get("")
+  getSettings(@AuthUserWithPermission(SettingsPage.form) _user: User) {
+    return settingsValues();
+  }
+
+  @Post("")
+  async submitSettings(
+    @AuthUserWithPermission(SettingsPage.form) _user: User,
+    @JSONBody() body: unknown,
+  ) {
+    const result = validateSettings(body, isSensitiveHeader);
+    if (!result.ok) throw new HTTPResult(HTTP_BAD_REQUEST, result.error);
+    await updateSettings(
+      GetModel(ApiSettingsModel),
+      toSettingsUpdate(result.data),
+    );
+    return settingsValues();
+  }
+
+  /**
+   * What the next hourly prune deletes once a retention field is set to
+   * `days`: the days of data older than that, and the requests they hold.
+   * The retention fields show it under a lowered value, and in the
+   * confirmation asked before saving it.
+   */
+  @Get("retention-impact")
+  async getRetentionImpact(
+    @AuthUserWithPermission(SettingsPage.form) _user: User,
+    @Parameter("field", "query") field: string,
+    @Parameter("days", "query") rawDays: string,
+  ) {
+    const days = Number(rawDays);
+    assert(isRetentionField(field), HTTP_BAD_REQUEST, "Unknown field");
+    assert(
+      Number.isInteger(days) &&
+        days >= SETTINGS_BOUNDS.logRetentionDays.min &&
+        days <= SETTINGS_BOUNDS.logRetentionDays.max,
+      HTTP_BAD_REQUEST,
+      "Invalid days",
+    );
+    return field === SETTINGS_FIELDS.statsRetention
+      ? statisticsRetentionImpact(GetModel(RouteStatisticsModel), days)
+      : logRetentionImpact(GetModel(RequestLogModel), days);
+  }
+
+  /**
+   * The settings every page of the console shows where they act: the scope
+   * (and the routes it holds) for the scope chip, the slow threshold beside
+   * the "Slow" filters, the retentions and the body cap. Open to whoever
+   * opens the console (module pages are owner-only), unlike the form.
+   */
+  @Get("summary")
+  async getSummary(@AuthOwnerOnly() _user: User) {
+    const settings = getEffectiveSettings();
+    const keys = await getScopedRouteKeys(GetModel(RouteModel), settings.scope);
+    return settingsSummary(settings, countRoutes(keys));
+  }
 }

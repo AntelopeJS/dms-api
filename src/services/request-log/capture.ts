@@ -1,3 +1,4 @@
+import type { IncomingHttpHeaders } from "node:http";
 import {
   Context,
   Controller,
@@ -11,9 +12,21 @@ import { Logging } from "@antelopejs/interface-core/logging";
 import { GetModel } from "@antelopejs/interface-database-decorators";
 import { type DmsApiConfig, getConfig } from "@/config";
 import { RequestLogModel, RouteStatisticsModel } from "@/db";
+import type {
+  RequestLog,
+  RequestLogSource,
+} from "@/db/tables/request_log.table";
+import { normalizeRoutePath } from "@/db/tables/routes_statistics.table";
+import { recordLiveRequest } from "@/services/live-feed";
+import { requestSource } from "@/services/tester-source";
 import { addRequestStatistics } from "@/services/statistics-write";
-import type { HttpMethod } from "@/types";
-import { NS_TO_MS } from "@/types";
+import {
+  INTERNAL_PATH_PREFIXES,
+  INTERNAL_ROUTE_SUFFIX,
+  NS_TO_MS,
+  REQUEST_ID_HEADER,
+  REQUEST_ID_MAX_LENGTH,
+} from "@/types";
 import {
   type CapturedBody,
   captureBody,
@@ -21,6 +34,7 @@ import {
   extractContentType,
   extractHeaders,
   extractStatusCode,
+  omittedBody,
   pickHeaders,
   queryToRecord,
 } from "./util";
@@ -30,10 +44,18 @@ interface CaptureContext extends RequestContext {
 }
 
 /**
+ * Runs ahead of every other prefix, `HIGHEST` included: a prefix that answers
+ * (an auth guard's 401) stops the ones after it, which used to leave such
+ * requests with no start and a duration of 0 ms. The router sorts prefixes by
+ * this number, lowest first.
+ */
+const CAPTURE_START_PRIORITY = (HandlerPriority.HIGHEST - 1) as HandlerPriority;
+
+/**
  * Per-request capture middleware.
  *
- * `@Prefix` HIGHEST stamps the start time before any other middleware can
- * mutate the context. `@Monitor` LOWEST runs after the full request
+ * The `@Prefix` stamps the start time before any other middleware runs.
+ * `@Monitor` LOWEST runs after the full request
  * lifecycle with access to the final response, body, status, headers and
  * any error — crucially, it fires even when a handler throws, which
  * `@Postfix` does not. That's why aggregated `RouteStatistics` writes
@@ -42,7 +64,7 @@ interface CaptureContext extends RequestContext {
  * Monitoring page's error lists permanently empty.
  */
 export class RequestLogCapture extends Controller("/") {
-  @Prefix("any", "/", HandlerPriority.HIGHEST)
+  @Prefix("any", "/", CAPTURE_START_PRIORITY)
   start(@Context() context: CaptureContext) {
     context.__dmsApiCaptureStart = process.hrtime.bigint();
   }
@@ -55,8 +77,167 @@ export class RequestLogCapture extends Controller("/") {
   }
 }
 
-function elapsedMs(start?: bigint): number {
-  return start ? Number(process.hrtime.bigint() - start) / NS_TO_MS : 0;
+/**
+ * Null when the request has no start: the router runs prefixes only for a
+ * path some handler answers, so an unknown path (404) is never timed. Better
+ * no figure than a 0 ms that reads as an instant answer.
+ */
+function elapsedMs(start?: bigint): number | null {
+  return start ? Number(process.hrtime.bigint() - start) / NS_TO_MS : null;
+}
+
+/**
+ * Traffic the console leaves out entirely, neither logged nor counted: its
+ * own endpoints, the DMS's, and the page layouts the DMS frontend loads (see
+ * `INTERNAL_PATH_PREFIXES`).
+ */
+export function isInternalTraffic(rawPath: string, location?: string): boolean {
+  return (
+    INTERNAL_PATH_PREFIXES.some(
+      (prefix) => rawPath === prefix || rawPath.startsWith(`${prefix}/`),
+    ) || isPageLayoutPath(location ?? rawPath)
+  );
+}
+
+/**
+ * Whether a route path is the layout the DMS registers for a page
+ * (`<page>/pagelayout`, see `INTERNAL_ROUTE_SUFFIX`): plumbing of the
+ * console, neither captured nor listed with the API's routes.
+ */
+export function isPageLayoutPath(path: string): boolean {
+  return normalizeRoutePath(path).endsWith(INTERNAL_ROUTE_SUFFIX);
+}
+
+/**
+ * Calls the DMS console makes by itself, on every page or on a timer: the
+ * session check and its refresh, the onboarding and system state, the
+ * notification badge. The console's plumbing, not the API's traffic, like
+ * `/api/monitoring`. Exact paths, and only on the DMS's own handler: an
+ * application route on the same path stays captured.
+ */
+export const DMS_CONSOLE_PATHS: readonly string[] = [
+  "/api/auth/me",
+  "/api/auth/refresh",
+  "/api/onboarding/informations",
+  "/api/system-state",
+  "/settings/user/notifications/counts",
+];
+
+/**
+ * Where the DMS's own console endpoints live: its Settings pages (profile,
+ * security, notifications, members, roles…) and the tables they list
+ * (members, roles, invites). Left out only on the DMS's own handlers: an
+ * application route under the same prefix, a table of its own included,
+ * stays captured.
+ */
+export const DMS_CONSOLE_PATH_PREFIXES: readonly string[] = [
+  "/settings",
+  "/api/tables",
+];
+
+function underDmsConsolePrefix(path: string): boolean {
+  return DMS_CONSOLE_PATH_PREFIXES.some(
+    (prefix) => path === prefix || path.startsWith(`${prefix}/`),
+  );
+}
+
+/**
+ * Where the DMS console's pages live. A client other than a browser (a
+ * script, a link preview) loading one gets it through the DMS frontend,
+ * which asks the backend first for anything but an HTML visit, then renders
+ * the page itself: no handler answers these requests, and they are the
+ * console's, not the API's. `/` is the console's home, exactly.
+ */
+export const DMS_CONSOLE_PAGE_PREFIXES: readonly string[] = [
+  "/auth",
+  "/home",
+  "/modules",
+  "/onboarding",
+  "/settings",
+];
+
+/** The methods a page is loaded with. */
+const PAGE_METHODS = new Set(["GET", "HEAD"]);
+
+/**
+ * Whether an unanswered request loads a DMS console page (see
+ * `DMS_CONSOLE_PAGE_PREFIXES`). Only ever asked for a request no handler
+ * matched: an application route on the same path stays captured.
+ */
+export function isDmsConsolePage(method: string, rawPath: string): boolean {
+  if (!PAGE_METHODS.has(method.toUpperCase())) return false;
+  const path = normalizeRoutePath(rawPath);
+  return (
+    path === "/" ||
+    DMS_CONSOLE_PAGE_PREFIXES.some(
+      (prefix) => path === prefix || path.startsWith(`${prefix}/`),
+    )
+  );
+}
+
+/** Prefix of the DMS's own endpoints: the module behind them is the DMS. */
+const DMS_ENDPOINT_PREFIX = "/dms/";
+
+/** A registered handler, as far as telling its module goes. */
+export interface HandlerOwner {
+  location: string;
+  /** Module that registered it, when interface-api could tell. */
+  module?: string;
+}
+
+/** The module the DMS runs as, read from the handlers of its `/dms/*` endpoints. */
+export function dmsModuleOf(
+  handlers: readonly HandlerOwner[],
+): string | undefined {
+  return handlers.find(
+    (handler) =>
+      handler.module && handler.location.startsWith(DMS_ENDPOINT_PREFIX),
+  )?.module;
+}
+
+/**
+ * Whether a handler answers one of the DMS console's own calls: a path of
+ * `DMS_CONSOLE_PATHS`, or any path under `DMS_CONSOLE_PATH_PREFIXES`. Its
+ * module must be the DMS's. For an exact path, when the modules cannot be
+ * told apart (none recorded), the path decides; under a prefix, which an
+ * application may use too, the module must be known to be the DMS's.
+ * `handlers` is only read for a path of the list or under a prefix.
+ */
+export function isDmsConsoleCall(
+  handler: HandlerOwner,
+  handlers: () => readonly HandlerOwner[] = registeredHandlers,
+): boolean {
+  const path = normalizeRoutePath(handler.location);
+  if (DMS_CONSOLE_PATHS.includes(path)) {
+    const dms = dmsModuleOf(handlers());
+    return !handler.module || !dms || handler.module === dms;
+  }
+  if (!underDmsConsolePrefix(path) || !handler.module) return false;
+  return handler.module === dmsModuleOf(handlers());
+}
+
+/** Every registered handler answering requests, with its module. */
+function registeredHandlers(): HandlerOwner[] {
+  return getRegisteredRouteHandlers()
+    .filter(({ handler }) => handler.mode === "handler")
+    .map(({ handler }) => ({
+      location: handler.location,
+      module: handler.module,
+    }));
+}
+
+function headerValue(
+  headers: IncomingHttpHeaders,
+  name: string,
+): string | undefined {
+  const value = headers[name];
+  return (Array.isArray(value) ? value[0] : value)?.trim() || undefined;
+}
+
+/** The request's `x-request-id`, when it is short enough to be an id. */
+export function requestIdOf(headers: IncomingHttpHeaders): string | undefined {
+  const id = headerValue(headers, REQUEST_ID_HEADER);
+  return id && id.length <= REQUEST_ID_MAX_LENGTH ? id : undefined;
 }
 
 /**
@@ -66,7 +247,7 @@ function elapsedMs(start?: bigint): number {
  * row per typo.
  */
 function recordRouteStatistics(
-  method: HttpMethod,
+  method: string,
   uri: string,
   statusCode: number,
   responseTimeMs: number,
@@ -86,13 +267,26 @@ interface BodyCapture {
   body: CapturedBody;
 }
 
+const PAYLOAD_TOO_LARGE = 413;
+
+/** Whether the request announced a body, read or not. */
+function announcesBody(headers: IncomingHttpHeaders): boolean {
+  return (
+    Number(headers["content-length"]) > 0 ||
+    headers["transfer-encoding"] !== undefined
+  );
+}
+
 async function captureRequest(
   context: CaptureContext,
   config: DmsApiConfig,
+  droppedHeaders: string[],
 ): Promise<BodyCapture> {
+  const rawHeaders = context.rawRequest.headers;
   const headers = pickHeaders(
-    context.rawRequest.headers,
+    rawHeaders,
     config.requestLogCaptureHeaders,
+    droppedHeaders,
   );
   // interface-api's ReadBody caches a pending Promise<Buffer> on
   // `context.body` (it never swaps in the resolved buffer), so await it —
@@ -105,112 +299,215 @@ async function captureRequest(
     // pending Promise<Buffer> on `context.body`, which its own `unknown` does
     // not say, and the await is what resolves it.
     raw = await (context.body as Promise<unknown> | undefined);
-  } catch {
-    raw = undefined;
+  } catch (err) {
+    // ReadBody refuses a body over its limit with a 413 HTTPResult.
+    const tooLarge = extractStatusCode(err) === PAYLOAD_TOO_LARGE;
+    return { headers, body: omittedBody(tooLarge ? "too-large" : "not-read") };
+  }
+  if (raw === undefined && announcesBody(rawHeaders)) {
+    const disabled = config.requestLogMaxBodySize <= 0;
+    return { headers, body: omittedBody(disabled ? "disabled" : "not-read") };
   }
   return {
     headers,
     body: captureBody(
       raw,
+      headerValue(rawHeaders, "content-type"),
+      config.requestLogMaxBodySize,
+    ),
+  };
+}
+
+/**
+ * The response's headers as it will send them: the ones set on it, plus the
+ * content type and length the server adds when writing it.
+ */
+function sentHeaders(
+  response: unknown,
+  contentType: string | undefined,
+  body: unknown,
+): Record<string, string> {
+  const headers: Record<string, string> = {};
+  for (const [name, value] of Object.entries(extractHeaders(response))) {
+    headers[name.toLowerCase()] = value;
+  }
+  if (contentType) headers["content-type"] ??= contentType;
+  if (typeof body === "string" || Buffer.isBuffer(body)) {
+    headers["content-length"] ??= String(Buffer.byteLength(body));
+  }
+  return headers;
+}
+
+function captureResponse(
+  response: unknown,
+  config: DmsApiConfig,
+  droppedHeaders: string[],
+): BodyCapture {
+  const body = extractBody(response);
+  const headers = sentHeaders(response, extractContentType(response), body);
+  return {
+    headers: pickHeaders(
+      headers,
+      config.requestLogCaptureHeaders,
+      droppedHeaders,
+    ),
+    body: captureBody(
+      body,
       headers["content-type"],
       config.requestLogMaxBodySize,
     ),
   };
 }
 
-function captureResponse(response: unknown, config: DmsApiConfig): BodyCapture {
-  const rawHeaders = extractHeaders(response);
-  const contentType =
-    extractContentType(response) ?? rawHeaders["content-type"];
-  return {
-    headers: pickHeaders(rawHeaders, config.requestLogCaptureHeaders),
-    body: captureBody(
-      extractBody(response),
-      contentType,
-      config.requestLogMaxBodySize,
-    ),
-  };
+/** The route a request reached, as the log and the statistics key it. */
+export interface RequestRoute {
+  matched: MatchedRoute | undefined;
+  method: string;
+  /** Method of the matched route, when it differs from the request's. */
+  routeMethod: string | undefined;
+  /** Canonical pattern of the matched route, or the raw path. */
+  uri: string;
+  rawPath: string;
 }
 
 interface LogInputs {
   context: CaptureContext;
-  matched: MatchedRoute | undefined;
-  method: HttpMethod;
-  uri: string;
-  rawPath: string;
+  route: RequestRoute;
   statusCode: number;
-  responseTimeMs: number;
+  responseTimeMs: number | null;
+  source: RequestLogSource | undefined;
   request: BodyCapture;
   response: BodyCapture;
+  query: ReturnType<typeof queryToRecord>;
+  droppedHeaders: string[];
 }
 
+/**
+ * The stored record. Small fields first: a search reads the path and the
+ * error message of every row, and the database walks a document's fields in
+ * order to reach them, so they come before the headers and bodies.
+ */
 function assembleLogRecord(input: LogInputs) {
-  const { context, matched, request, response } = input;
-  const log = {
+  const { context, route, request, response } = input;
+  const headers = context.rawRequest.headers;
+  return {
     timestamp: new Date(),
-    method: input.method,
-    uri: input.uri,
-    rawPath: input.rawPath,
-    routeId: matched?.id,
-    pathParams: matched?.params ?? {},
-    query: queryToRecord(context.url),
+    method: route.method,
+    uri: route.uri,
+    rawPath: route.rawPath,
+    statusCode: input.statusCode,
+    responseTimeMs: input.responseTimeMs,
+    error:
+      formatError(context.error) ??
+      responseError(input.statusCode, context.response),
+    routeId: route.matched?.id,
+    routeMethod: route.routeMethod,
+    source: input.source,
+    requestId: requestIdOf(headers),
+    ip: clientIp(context),
+    userAgent: headerValue(headers, "user-agent"),
+    pathParams: route.matched?.params ?? {},
+    query: input.query.query,
     requestHeaders: request.headers,
     requestBody: request.body.body,
     requestBodyTruncated: request.body.truncated,
-    statusCode: input.statusCode,
-    responseTimeMs: input.responseTimeMs,
+    requestBodyOmitted: request.body.omitted,
+    requestBodySize: request.body.size,
     responseHeaders: response.headers,
     responseBody: response.body.body,
     responseBodyTruncated: response.body.truncated,
-    error: formatError(context.error),
-    ip: clientIp(context),
-    userAgent: (
-      context.rawRequest.headers["user-agent"] as string | undefined
-    )?.toString(),
+    responseBodyOmitted: response.body.omitted,
+    responseBodySize: response.body.size,
+    redactions: {
+      query: input.query.redacted,
+      requestBody: request.body.redacted,
+      responseBody: response.body.redacted,
+      headers: [...new Set(input.droppedHeaders)],
+    },
   };
-  return log;
+}
+
+/**
+ * Which route a request reached. @Monitor doesn't expose
+ * `context.routeParameters`, so the raw path is matched against registered
+ * handler patterns to recover the route id and canonical URI. Falls back to
+ * the raw path when nothing matches — those entries show up in Logs but are
+ * excluded from per-route aggregates. A HEAD with no handler of its own is
+ * answered by the GET handler, as the router does it, so it belongs to the
+ * GET route.
+ */
+export function resolveRequestRoute(
+  method: string,
+  rawPath: string,
+): RequestRoute {
+  const matched =
+    matchRoute(method, rawPath) ??
+    (method === "HEAD" ? matchRoute("GET", rawPath) : undefined);
+  const handlerMethod = matched?.method.toUpperCase();
+  return {
+    matched,
+    method,
+    routeMethod:
+      handlerMethod && handlerMethod !== method ? handlerMethod : undefined,
+    uri: normalizeRoutePath(matched?.location ?? rawPath),
+    rawPath,
+  };
 }
 
 async function persistLog(context: CaptureContext): Promise<void> {
   const config = getConfig();
   const responseTimeMs = elapsedMs(context.__dmsApiCaptureStart);
-  const method = (
-    context.rawRequest.method || "GET"
-  ).toUpperCase() as HttpMethod;
-  const rawPath = context.url.pathname;
+  const method = (context.rawRequest.method || "GET").toUpperCase();
+  const route = resolveRequestRoute(method, context.url.pathname);
+  if (isInternalTraffic(route.rawPath, route.matched?.location)) return;
+  if (route.matched && isDmsConsoleCall(route.matched)) return;
+  if (!route.matched && isDmsConsolePage(method, route.rawPath)) return;
 
-  // @Monitor doesn't expose `context.routeParameters`, so match the raw path
-  // against registered handler patterns to recover the route id and canonical
-  // URI. Falls back to the raw path when nothing matches — those entries show
-  // up in Logs but are excluded from per-route aggregates.
-  const matched = matchRoute(method, rawPath);
-  const uri = matched?.location ?? rawPath;
   const statusCode = extractStatusCode(context.response);
+  const source = requestSource(context.rawRequest.headers);
 
-  if (matched?.id) {
-    recordRouteStatistics(method, uri, statusCode, responseTimeMs);
+  // A matched request always has a start: the capture prefix runs first on
+  // every path a handler answers. The Tester's requests are logged but not
+  // counted, or each test would weigh in the health and the incidents.
+  if (route.matched && responseTimeMs !== null && !source) {
+    recordRouteStatistics(
+      route.routeMethod ?? method,
+      route.uri,
+      statusCode,
+      responseTimeMs,
+    );
   }
 
-  const request = await captureRequest(context, config);
-  const response = captureResponse(context.response, config);
+  const droppedHeaders: string[] = [];
+  const request = await captureRequest(context, config, droppedHeaders);
+  const response = captureResponse(context.response, config, droppedHeaders);
   const log = assembleLogRecord({
     context,
-    matched,
-    method,
-    uri,
-    rawPath,
+    route,
     statusCode,
     responseTimeMs,
+    source,
     request,
     response,
+    query: queryToRecord(context.url),
+    droppedHeaders,
   });
-  await GetModel(RequestLogModel).insert(log);
+  await GetModel(RequestLogModel).insert(log as RequestLog);
+  // Once stored: a page told about it reads it back.
+  recordLiveRequest({
+    timestamp: log.timestamp,
+    statusCode,
+    tester: source === "tester",
+  });
 }
 
 interface MatchedRoute {
   id: string;
+  method: string;
   location: string;
   params: Record<string, string>;
+  /** Module that registered the handler, when known. */
+  module?: string;
 }
 
 /**
@@ -231,7 +528,13 @@ function matchRoute(method: string, rawPath: string): MatchedRoute | undefined {
     }
     const params = matchSegments(handler.location, pathSegs);
     if (params) {
-      return { id, location: handler.location, params };
+      return {
+        id,
+        method: handler.method,
+        location: handler.location,
+        params,
+        module: handler.module,
+      };
     }
   }
   return undefined;
@@ -255,12 +558,54 @@ function matchSegments(
   return params;
 }
 
+const ERROR_STATUS_MIN = 400;
+const BODY_MESSAGE_KEYS = ["error", "message"] as const;
+
+/**
+ * The message an error response carries: `{ error }` or `{ message }`, the
+ * shape `HTTPResult` bodies and `assert` use. Read from the body object, or
+ * from its JSON text.
+ */
+export function bodyErrorMessage(body: unknown): string | undefined {
+  let value = body;
+  if (Buffer.isBuffer(value)) value = value.toString("utf8");
+  if (typeof value === "string") {
+    try {
+      value = JSON.parse(value);
+    } catch {
+      return undefined;
+    }
+  }
+  if (!value || typeof value !== "object") return undefined;
+  for (const key of BODY_MESSAGE_KEYS) {
+    const message = (value as Record<string, unknown>)[key];
+    if (typeof message === "string" && message.trim()) return message.trim();
+  }
+  return undefined;
+}
+
+function responseError(
+  statusCode: number,
+  response: unknown,
+): { message: string } | undefined {
+  if (statusCode < ERROR_STATUS_MIN) return undefined;
+  const message = bodyErrorMessage(extractBody(response));
+  return message ? { message } : undefined;
+}
+
 function formatError(
   err: unknown,
 ): { message: string; stack?: string } | undefined {
   if (!err) return undefined;
   if (err instanceof Error) {
     return { message: err.message, stack: err.stack };
+  }
+  // A thrown HTTPResult: its body says what went wrong, its status otherwise.
+  if (typeof (err as { getStatus?: unknown }).getStatus === "function") {
+    return {
+      message:
+        bodyErrorMessage(extractBody(err)) ?? `HTTP ${extractStatusCode(err)}`,
+    };
   }
   // `String(err)`, not its JSON form. A thrown HTTPResult is not an Error, so
   // JSON would serialise its whole own-property graph -- body and headers
