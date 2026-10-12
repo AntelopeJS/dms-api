@@ -5,10 +5,12 @@ export default {
     ".": antelopeKnipConfig({}),
     // The front end ships as source and is built by the DMS loader, which
     // supplies its `#dms*` aliases and Vite. The blocks are loaded through a
-    // glob and the composables are auto-imported, so both are entries.
+    // glob, the composables are auto-imported and the shortcuts registry is
+    // found by convention, so all are entries.
     "frontend-vue": {
       entry: [
         "dms.frontend.build.ts",
+        "app/config/shortcuts-registry.ts",
         "app/components/blocks/*.vue",
         "app/composables/*.ts",
       ],

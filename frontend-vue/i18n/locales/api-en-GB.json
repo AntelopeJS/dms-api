@@ -307,7 +307,8 @@
         "steps": "Next / previous request in the panel",
         "close": "Close the panel",
         "live": "Live or Pause for the whole page",
-        "help": "Show these shortcuts"
+        "help": "Show these shortcuts",
+        "group": "Request logs"
       },
       "columns": {
         "time": "Time",
@@ -578,6 +579,10 @@
         "internal_type": "Type",
         "internal_modifiers": "Modifiers",
         "class_member": "class member"
+      },
+      "shortcuts": {
+        "group": "Routes",
+        "filter": "Filter the routes"
       }
     },
     "tester": {

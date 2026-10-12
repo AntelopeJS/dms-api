@@ -307,7 +307,8 @@
         "steps": "Requête suivante / précédente dans le panneau",
         "close": "Fermer le panneau",
         "live": "En direct ou Pause pour toute la page",
-        "help": "Afficher ces raccourcis"
+        "help": "Afficher ces raccourcis",
+        "group": "Journaux des requêtes"
       },
       "columns": {
         "time": "Heure",
@@ -578,6 +579,10 @@
         "internal_type": "Type",
         "internal_modifiers": "Modificateurs",
         "class_member": "membre de classe"
+      },
+      "shortcuts": {
+        "group": "Routes",
+        "filter": "Filtrer les routes"
       }
     },
     "tester": {

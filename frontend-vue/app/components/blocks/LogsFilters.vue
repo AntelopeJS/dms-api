@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, ref } from 'vue'
 import { formatRelativeDay, formatThreshold } from '../../utils/format'
 import {
   incidentRange,
@@ -144,19 +144,12 @@ const SHORTCUTS = [
   { keys: ['?'], label: 'api.logs.shortcuts.help' },
 ]
 
-function onKey(event: KeyboardEvent) {
-  const target = event.target as HTMLElement | null
-  if (target?.closest('input, textarea, select, [contenteditable="true"]'))
-    return
-  if (event.metaKey || event.ctrlKey || event.altKey) return
-  if (event.key === '?') {
-    event.preventDefault()
+// Listed on the DMS Shortcuts page (`app/config/shortcuts-registry.ts`).
+defineShortcuts({
+  '?': () => {
     shortcutsOpen.value = true
-  }
-}
-
-onMounted(() => window.addEventListener('keydown', onKey))
-onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
+  },
+})
 </script>
 
 <template>

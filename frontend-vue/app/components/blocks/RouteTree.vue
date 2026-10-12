@@ -308,17 +308,15 @@ function clearFilters() {
   hideIdle.value = false
 }
 
-function onKey(event: KeyboardEvent) {
-  const target = event.target as HTMLElement | null
-  const typing = !!target?.closest(
-    'input, textarea, select, [contenteditable="true"]',
-  )
-  if (event.key === '/' && !typing) {
-    event.preventDefault()
+// "/" opens the filter, as the request logs open their search; listed on
+// the DMS Shortcuts page (`app/config/shortcuts-registry.ts`). Like every
+// `defineShortcuts` key, it does not fire while the user types in a field.
+defineShortcuts({
+  '/': () => {
     listOpen.value = true
     void nextTick(() => searchInput.value?.inputRef?.focus())
-  }
-}
+  },
+})
 
 function onListKey(event: KeyboardEvent) {
   const length = flat.value.length
@@ -347,7 +345,6 @@ function onSearchKey(event: KeyboardEvent) {
 }
 
 onMounted(() => {
-  window.addEventListener('keydown', onKey)
   // Whichever element scrolls the page: scroll events do not bubble.
   window.addEventListener('scroll', scheduleMeasure, {
     capture: true,
@@ -357,7 +354,6 @@ onMounted(() => {
   measureTop()
 })
 onBeforeUnmount(() => {
-  window.removeEventListener('keydown', onKey)
   window.removeEventListener('scroll', scheduleMeasure, { capture: true })
   window.removeEventListener('resize', scheduleMeasure)
   cancelAnimationFrame(measureFrame)
