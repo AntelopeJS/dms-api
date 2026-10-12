@@ -60,8 +60,22 @@ describe("RoutesPage", () => {
     expect(options).toMatchObject({
       autoYRange: {},
       color: ["info", "neutral", "secondary"],
-      rawOptions: [{ key: "legend" }, { key: "markers" }],
+      legendPosition: "top",
+      rawOptions: [{ key: "markers" }],
     });
+  });
+
+  it("names the series of its charts with the DMS series legend", () => {
+    for (const chart of ["status", "latency"]) {
+      const { options } = blockAt(RoutesPage.explorer.serializeSync(), [
+        "tabs",
+        "statistics",
+        "grid",
+        "charts",
+        chart,
+      ]);
+      expect(options).toMatchObject({ showSeriesLegend: true });
+    }
   });
 
   it("labels the response time axis in whole milliseconds", () => {

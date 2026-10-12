@@ -28,23 +28,6 @@ const ATTENTION_ROWS = 8;
 const SLOWEST_ROWS = 5;
 
 /**
- * The DMS hides the legend of a chart nested in a `ChartCard` (it draws only
- * its "Period / Comparison" key), so a chart of several series names them
- * through its raw ApexCharts options, which replace that setting.
- */
-const SERIES_LEGEND = {
-  key: "legend",
-  value: JSON.stringify({
-    show: true,
-    position: "top",
-    horizontalAlign: "left",
-    fontSize: "12px",
-    markers: { size: 5, shape: "square", strokeWidth: 0 },
-    itemMargin: { horizontal: 8 },
-  }),
-};
-
-/**
  * Overview: is the API healthy, and where to look when it is not. The verdict
  * leads with its figures, what needs a look comes right under it, then the
  * trends; every row drills down to a route or to its requests. The blocks
@@ -152,12 +135,14 @@ export class OverviewPage extends PageController(
             // "vs" figure stays (DMS-12).
             showDelta: false,
             showLegend: false,
+            // Names the 4xx and the 5xx columns.
+            showSeriesLegend: true,
             chart: ChartColumn({
               height: "220px",
               xaxisType: "datetime",
               stacked: true,
               color: ["warning", "error"],
-              rawOptions: [SERIES_LEGEND],
+              legendPosition: "top",
             }),
           }),
         ),
@@ -175,6 +160,8 @@ export class OverviewPage extends PageController(
             periodScope: PERIOD_SCOPE,
             valueFormat: "compact",
             showLegend: false,
+            // Names the 2xx, 4xx and 5xx parts of each column.
+            showSeriesLegend: true,
             // 2xx, 4xx and 5xx stacked on one axis: the height of a column
             // is the traffic, its red part the server errors.
             chart: ChartColumn({
@@ -182,7 +169,7 @@ export class OverviewPage extends PageController(
               xaxisType: "datetime",
               stacked: true,
               color: ["success", "warning", "error"],
-              rawOptions: [SERIES_LEGEND],
+              legendPosition: "top",
             }),
           }),
           { colSpan: 2 },

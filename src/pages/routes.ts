@@ -42,23 +42,6 @@ const MS_PER_SECOND = 1000;
 /** Narrowest a chart stays readable at beside the other one. */
 const CHART_MIN_WIDTH = "340px";
 
-/**
- * The legend ApexCharts draws itself, which a DMS ChartCard turns off in the
- * chart it wraps: without it, nothing says which line is which.
- */
-const CHART_LEGEND = {
-  key: "legend",
-  value: JSON.stringify({
-    show: true,
-    position: "top",
-    horizontalAlign: "right",
-    fontSize: "12px",
-    labels: { colors: "var(--ui-text-muted)" },
-    markers: { size: 5, shape: "square", strokeWidth: 0 },
-    itemMargin: { horizontal: 8 },
-  }),
-};
-
 /** A row of the Statistics tab's grid holding one block, as wide as the tab. */
 const FULL_WIDTH = { colSpan: 2 };
 
@@ -124,7 +107,8 @@ function latencyChart() {
     // Average, Max, p95: three hues apart (info and primary are both cyan).
     color: ["info", "neutral", "secondary"],
     autoYRange: {},
-    rawOptions: [CHART_LEGEND, LATENCY_MARKERS],
+    legendPosition: "top",
+    rawOptions: [LATENCY_MARKERS],
   }).onFilter((_permissions, options) => {
     const slowMs = getConfig().requestSlownessThreshold;
     return {
@@ -156,6 +140,8 @@ function chartRow() {
         // as a relative change, green. The "vs" figure stays (DMS-12).
         showDelta: false,
         showLegend: true,
+        // Names the 4xx and the 5xx lines, which the period legend does not.
+        showSeriesLegend: true,
         // 4xx and 5xx as a share of each bucket's calls: an incident reads
         // whatever the volume around it.
         chart: ChartLine({
@@ -163,7 +149,7 @@ function chartRow() {
           xaxisType: "datetime",
           curve: "straight",
           color: ["warning", "error"],
-          rawOptions: [CHART_LEGEND],
+          legendPosition: "top",
         }),
       }),
     )
@@ -182,6 +168,8 @@ function chartRow() {
         valuePrecision: 0,
         showDelta: false,
         showLegend: true,
+        // Names the Average, Max and p95 lines.
+        showSeriesLegend: true,
         chart: latencyChart(),
       }),
     )
