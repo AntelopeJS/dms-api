@@ -3,7 +3,6 @@ import { computed } from 'vue'
 import {
   clearedLogsFilters,
   hasLogsFilters,
-  incidentRange,
   isAllTime,
   logsEmptyCause,
   readLogsFilters,
@@ -94,7 +93,7 @@ function clearSearchAction() {
 
 // "All time", while a narrower period may hide the requests.
 function widen() {
-  if (isAllTime(period.value) || incidentRange(period.value)) return []
+  if (isAllTime(period.value)) return []
   return [
     {
       label: t('api.logs.empty.widen'),
@@ -140,7 +139,7 @@ const content = computed(() => {
         actions: [
           ...clearSearchAction(),
           ...widen(),
-          ...(hasLogsFilters(current, period.value) ? [clearFilters()] : []),
+          ...(hasLogsFilters(current) ? [clearFilters()] : []),
         ],
       }
     case 'link':
@@ -192,7 +191,7 @@ const content = computed(() => {
         // The period alone is the selector's, nothing to clear.
         actions: [
           ...widen(),
-          ...(hasLogsFilters(current, period.value) ? [clearFilters()] : []),
+          ...(hasLogsFilters(current) ? [clearFilters()] : []),
         ],
       }
     default:

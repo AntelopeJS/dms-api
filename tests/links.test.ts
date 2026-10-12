@@ -34,15 +34,15 @@ describe("logsLink", () => {
     );
   });
 
-  it("writes a range in the selector's own keys, in place of a preset", () => {
+  it("writes a range as a linked filter, the period kept", () => {
     const link = query(
       logsLink({
         period: "last-24h",
         range: { from: new Date(0), to: new Date(60_000) },
       }),
     );
-    expect(link.get("api.from")).toBe("1970-01-01T00:00:00.000Z");
-    expect(link.get("api.to")).toBe("1970-01-01T00:01:00.000Z");
-    expect(link.has("api.period")).toBe(false);
+    expect(link.get("since")).toBe("1970-01-01T00:00:00.000Z");
+    expect(link.get("until")).toBe("1970-01-01T00:01:00.000Z");
+    expect(link.get("api.period")).toBe("last-24h");
   });
 });

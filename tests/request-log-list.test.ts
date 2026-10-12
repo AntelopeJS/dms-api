@@ -142,6 +142,30 @@ describe("filtersFromQuery, the period", () => {
     );
   });
 
+  it("narrows the period to an incident's linked range, never widens it", () => {
+    const incident = {
+      filter_since: "is:2026-10-07T13:15:00.000Z",
+      filter_until: "is:2026-10-07T13:27:00.000Z",
+    };
+    const within = filtersFromQuery({ preset: "last-24h", ...incident }, NOW);
+    expect(within.since).toEqual(new Date("2026-10-07T13:15:00.000Z"));
+    expect(within.until).toEqual(new Date("2026-10-07T13:27:00.000Z"));
+    const narrower = filtersFromQuery(
+      {
+        preset: "custom",
+        from: "2026-10-07T13:20:00.000Z",
+        to: "2026-10-07T13:25:00.000Z",
+        ...incident,
+      },
+      NOW,
+    );
+    expect(narrower.since).toEqual(new Date("2026-10-07T13:20:00.000Z"));
+    expect(narrower.until).toEqual(new Date("2026-10-07T13:25:00.000Z"));
+    expect(
+      filtersFromQuery({ filter_since: "is:soon" }, NOW).since,
+    ).toBeUndefined();
+  });
+
   it("lists every request kept for the DMS All time, and without a period", () => {
     const all = filtersFromQuery({ preset: "all" }, NOW);
     expect(all.since).toBeUndefined();

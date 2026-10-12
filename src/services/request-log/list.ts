@@ -25,10 +25,10 @@ import {
  * The list query a `TableView.fromSource` table sends its route: `offset` /
  * `limit`, `sortKey` / `sortDirection`, `search` and one
  * `filter_<column>=<mode>:<value>` per filtered column (the page's URL
- * filters `?method=`, `?slow=`, `?route=`, `?path=` and `?error=` reach it
- * that way, in the list and in the tab counts alike). The page's period
- * comes as the charts get it, from its `periodScope`: `preset`, `from`,
- * `to`, an incident's range included. `requestId=` finds the request a
+ * filters `?method=`, `?slow=`, `?route=`, `?path=`, `?error=` and an
+ * incident's `?since=` / `?until=` reach it that way, in the list and in the
+ * tab counts alike). The page's period comes as the charts get it, from its
+ * `periodScope`: `preset`, `from`, `to`. `requestId=` finds the request a
  * sender knows and `liveHeldAt` (ISO) bounds a held table to the rows it
  * froze.
  */
@@ -126,8 +126,7 @@ function positiveInt(raw: string | undefined): number | undefined {
 /**
  * The rows the page's period frames, as the charts read it (`preset`, `from`,
  * `to` of its period scope): a rolling preset up to now, the newest rows
- * included, or a custom range, such as the `[from, to)` of an incident a
- * link names; never past the log retention. The DMS "All
+ * included, or a custom range; never past the log retention. The DMS "All
  * time" (`preset=all`, no `from` / `to`) lists every request kept, and so
  * does a query naming no period (the Tester's reads).
  */
@@ -171,9 +170,15 @@ export function filtersFromQuery(
   if (rawPath) filters.rawPath = rawPath;
   const error = query.filter_error?.replace(/^[a-z_]+:/, "");
   if (error) filters.errorMessage = error;
+  // An incident's range narrows the period, never widens it.
   const range = periodRange(query, now);
-  if (range.from) filters.since = range.from;
-  const until = earliest(range.to, heldAt(query));
+  const since = latest(range.from, linkedDate(query.filter_since));
+  if (since) filters.since = since;
+  const until = earliest(
+    range.to,
+    heldAt(query),
+    linkedDate(query.filter_until),
+  );
   if (until) filters.until = until;
   const search = query.search?.trim();
   if (search) filters.search = search;
@@ -191,11 +196,25 @@ function heldAt(query: SourceQuery): Date | undefined {
   return parseDate(query.liveHeldAt);
 }
 
+/** `is:2026-10-10T13:15:00.000Z` → that date: a linked bound, mode aside. */
+function linkedDate(raw: string | undefined): Date | undefined {
+  return parseDate(raw?.replace(/^[a-z_]+:/, ""));
+}
+
+function known(dates: (Date | undefined)[]): number[] {
+  return dates
+    .filter((date): date is Date => date !== undefined)
+    .map((date) => date.getTime());
+}
+
 function earliest(...dates: (Date | undefined)[]): Date | undefined {
-  const known = dates.filter((date): date is Date => date !== undefined);
-  return known.length
-    ? new Date(Math.min(...known.map((date) => date.getTime())))
-    : undefined;
+  const times = known(dates);
+  return times.length ? new Date(Math.min(...times)) : undefined;
+}
+
+function latest(...dates: (Date | undefined)[]): Date | undefined {
+  const times = known(dates);
+  return times.length ? new Date(Math.max(...times)) : undefined;
 }
 
 /**

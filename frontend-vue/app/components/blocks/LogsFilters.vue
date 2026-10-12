@@ -2,7 +2,6 @@
 import { computed, ref } from 'vue'
 import { formatRelativeDay, formatThreshold } from '../../utils/format'
 import {
-  incidentRange,
   isRouteRef,
   LINK_FILTER_KEYS,
   LOG_METHODS,
@@ -16,7 +15,8 @@ import {
 // The filters bar right above the request table: the method, the slow
 // requests, and the filters a link brought (route, path, error, an
 // incident's range), each removable. Every request kept is the toolbar
-// period's "All time", and an incident's range is a range of that period.
+// period's "All time"; an incident's range narrows that period, which stays
+// the one the user chose.
 // Everything here reads and writes the URL (`utils/logsQuery.ts`), as the
 // toolbar's period selector does: the table follows the URL, so what the bar
 // shows is what the table lists, and the tab counts with it.
@@ -103,7 +103,7 @@ const chips = computed<Chip[]>(() => {
   const list = LINK_FILTER_KEYS.filter((key) => !!current[key]).map((key) =>
     linkChip(key, current[key]!),
   )
-  const incident = incidentRange(period.value)
+  const incident = current.incident
   if (incident)
     list.push({
       key: 'incident',
@@ -117,7 +117,7 @@ const chips = computed<Chip[]>(() => {
 })
 
 // "Last 24 hours · from Overview": where the link came from, and the period
-// the page shows. An incident's range is no preset: its chip says it.
+// the page shows.
 const origin = computed(() => {
   const { from } = filters.value
   if (!from) return undefined

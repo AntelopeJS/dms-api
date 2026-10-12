@@ -15,7 +15,9 @@ describe("LogsPage", () => {
       "method",
       "path",
       "route",
+      "since",
       "slow",
+      "until",
     ]);
     // The period is the toolbar selector's, which the table follows: every
     // request kept is its "All time".

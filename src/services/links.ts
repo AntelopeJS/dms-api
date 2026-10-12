@@ -5,13 +5,7 @@
  */
 
 import { normalizeRoutePath } from "@/db/tables/routes_statistics.table";
-import {
-  PERIOD_FROM_KEY,
-  PERIOD_QUERY_KEY,
-  PERIOD_TO_KEY,
-  type TimeRange,
-  type WindowPreset,
-} from "./window";
+import { PERIOD_QUERY_KEY, type TimeRange, type WindowPreset } from "./window";
 
 const MODULE_BASE = "/modules/api";
 
@@ -43,9 +37,10 @@ export interface LogsLinkOptions {
    */
   period?: WindowPreset | null;
   /**
-   * A range the logs open on instead of a preset, `[from, to)`: an
-   * incident's requests, not the whole window's. The page's `PeriodSelector`
-   * reads it from `?api.from=` / `?api.to=` (ISO timestamps).
+   * A range the requests must fall in, `[from, to)`: an incident's requests,
+   * not the whole window's. A linked filter (`?since=` / `?until=`, ISO
+   * timestamps) within the page's period, which stays the one the user
+   * chose: the link names none of its own.
    */
   range?: TimeRange;
   /** Where the link leaves from: "Last 24 hours · from Overview". */
@@ -83,9 +78,10 @@ export function logsLink(options: LogsLinkOptions = {}): string {
   if (options.error) query.error = options.error;
   if (options.slow) query.slow = "true";
   if (options.range) {
-    query[PERIOD_FROM_KEY] = options.range.from.toISOString();
-    query[PERIOD_TO_KEY] = options.range.to.toISOString();
-  } else if (options.period) query[PERIOD_QUERY_KEY] = options.period;
+    query.since = options.range.from.toISOString();
+    query.until = options.range.to.toISOString();
+  }
+  if (options.period) query[PERIOD_QUERY_KEY] = options.period;
   if (options.from) query.from = options.from;
   const narrows =
     options.route || options.path || options.error || options.range;

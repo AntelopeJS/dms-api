@@ -3,7 +3,6 @@ import {
   bodyLimit,
   clearedLogsFilters,
   hasLogsFilters,
-  incidentRange,
   isAllTime,
   isRouteRef,
   linkedPeriod,
@@ -21,7 +20,7 @@ const incident = {
   from: new Date('2026-10-10T18:31:00.000Z'),
   to: new Date('2026-10-10T18:46:00.000Z'),
 }
-const incidentPeriod: LogsPeriod = { preset: 'custom', range: incident }
+const customPeriod: LogsPeriod = { preset: 'custom', range: incident }
 
 describe('readLogsFilters', () => {
   it('reads the filters a link or the page wrote', () => {
@@ -67,20 +66,18 @@ describe('readLogsFilters', () => {
 })
 
 describe('the period', () => {
-  it('tells "All time", an incident\'s range and a preset apart', () => {
+  it('tells "All time", a custom range and a preset apart', () => {
     expect(isAllTime(allTime)).toBe(true)
     expect(isAllTime(null)).toBe(false)
-    expect(incidentRange(incidentPeriod)).toEqual(incident)
-    expect(incidentRange(lastDay)).toBeNull()
     expect(windowPreset(lastDay)).toBe('last-24h')
     expect(windowPreset(allTime)).toBeUndefined()
-    expect(windowPreset(incidentPeriod)).toBeUndefined()
+    expect(windowPreset(customPeriod)).toBeUndefined()
     expect(windowPreset(null)).toBeUndefined()
   })
 
   it('carries a preset on a link to the request logs, nothing else', () => {
     expect(linkedPeriod(lastDay)).toEqual({ 'api.period': 'last-24h' })
-    expect(linkedPeriod(incidentPeriod)).toEqual({})
+    expect(linkedPeriod(customPeriod)).toEqual({})
     expect(linkedPeriod(null)).toEqual({})
   })
 })
@@ -191,52 +188,62 @@ describe('bodyLimit', () => {
 describe('incident range', () => {
   const query = {
     route: 'GET /a',
-    'api.from': incident.from.toISOString(),
-    'api.to': incident.to.toISOString(),
+    since: incident.from.toISOString(),
+    until: incident.to.toISOString(),
+    'api.period': 'last-7-days',
     from: 'overview',
     'requests.tab': '5xx',
   }
 
-  it('replaces the range with all time, asked for or on its own', () => {
-    expect(withLogsFilters(query, { allTime: true })).toEqual({
-      route: 'GET /a',
-      'api.period': 'all',
-      'requests.tab': '5xx',
-    })
+  it('reads a range from both bounds, as a linked filter', () => {
+    expect(readLogsFilters(query).incident).toEqual(incident)
+    expect(readLogsFilters({ since: query.since }).incident).toBeUndefined()
+    expect(
+      readLogsFilters({ since: 'soon', until: query.until }).incident,
+    ).toBeUndefined()
+  })
+
+  it('removes the range alone, the period kept', () => {
     expect(withLogsFilters(query, { incident: null })).toEqual({
       route: 'GET /a',
-      'api.period': 'all',
+      'api.period': 'last-7-days',
       from: 'overview',
+      'requests.tab': '5xx',
+    })
+    expect(withLogsFilters(query, { allTime: true })).toEqual({
+      route: 'GET /a',
+      since: query.since,
+      until: query.until,
+      'api.period': 'all',
       'requests.tab': '5xx',
     })
   })
 
-  it('leaves a preset alone when there is no range to remove', () => {
-    expect(
-      clearedLogsFilters({ 'api.period': 'last-hour', method: 'GET' }),
-    ).toEqual({ 'api.period': 'last-hour' })
+  it('clears with the other filters', () => {
+    expect(clearedLogsFilters(query)).toEqual({
+      'api.period': 'last-7-days',
+      'requests.tab': '5xx',
+    })
   })
 
   it('keeps the origin while the range alone is left', () => {
     expect(withLogsFilters(query, { route: null })).toMatchObject({
-      'api.from': query['api.from'],
+      since: query.since,
       from: 'overview',
     })
   })
 
   it('counts as a link filter for the empty state', () => {
-    expect(
-      logsEmptyCause('firstRun', '', readLogsFilters({}), incidentPeriod),
-    ).toBe('link')
-    expect(hasLogsFilters(readLogsFilters({}), incidentPeriod)).toBe(true)
+    const filters = readLogsFilters(query)
+    expect(logsEmptyCause('firstRun', '', filters, lastDay)).toBe('link')
+    expect(hasLogsFilters(readLogsFilters({ ...query, route: '' }))).toBe(true)
   })
 })
 
 describe('the filters to clear', () => {
   it('leave the period out', () => {
-    expect(hasLogsFilters(readLogsFilters({}), lastDay)).toBe(false)
-    expect(hasLogsFilters(readLogsFilters({}), allTime)).toBe(false)
-    expect(hasLogsFilters(readLogsFilters({ slow: 'true' }), null)).toBe(true)
+    expect(hasLogsFilters(readLogsFilters({ 'api.period': 'all' }))).toBe(false)
+    expect(hasLogsFilters(readLogsFilters({ slow: 'true' }))).toBe(true)
   })
 })
 
