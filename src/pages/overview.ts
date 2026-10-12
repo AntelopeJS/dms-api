@@ -66,6 +66,7 @@ export class OverviewPage extends PageController(
   // of verdict, say the figures are stale, nor mark the browser tab.
   static health = apiBlock("HealthHero", {
     fetchUrl: `${OVERVIEW_API}/health`,
+    realtimeTopic: LIVE_REQUESTS_TOPIC,
   });
 
   // The rows keep their ids whatever their order: the endpoints check their

@@ -306,6 +306,7 @@ export class RoutesPage extends PageController(
       apiBlock("RouteTree", {
         fetchUrl: `${ROUTES_API}/list`,
         queryKey: ROUTE_QUERY_KEY,
+        realtimeTopic: LIVE_REQUESTS_TOPIC,
       }),
       { slot: "aside" },
     )
@@ -317,6 +318,7 @@ export class RoutesPage extends PageController(
         tabKey: TAB_QUERY_KEY,
         statisticsTab: ROUTE_TABS.statistics,
         testerTab: ROUTE_TABS.tester,
+        realtimeTopic: LIVE_REQUESTS_TOPIC,
       }),
     )
     .child(

@@ -25,7 +25,11 @@ import {
 // the browser tab.
 defineOptions({ inheritAttrs: false })
 
-const props = defineProps<{ fetchUrl: string }>()
+const props = defineProps<{
+  fetchUrl: string
+  /** The live feed (`LIVE_REQUESTS_TOPIC`): the verdict is read again on it. */
+  realtimeTopic?: string
+}>()
 
 type Verdict = 'down' | 'degraded' | 'recovered' | 'operational' | 'idle'
 
@@ -159,9 +163,12 @@ const { isLive } = usePageLive()
 const { data, error, pending, receivedAt, refresh } =
   useApiResource<HealthPayload>(() => props.fetchUrl)
 
-// Read again on the live feed, and after a quiet minute: the verdict judges
-// time too. Never while paused.
-useLiveRefresh(() => void refresh(), { idleMs: 60_000 })
+// Read again on the live feed at the page's pace, and after a quiet minute:
+// the verdict judges time too. Never while paused.
+usePageLiveRefresh(() => void refresh(), {
+  realtimeTopic: props.realtimeTopic,
+  idleRefresh: 60,
+})
 
 /** Refresh reads the whole page again, not this block alone. */
 function refreshPage() {

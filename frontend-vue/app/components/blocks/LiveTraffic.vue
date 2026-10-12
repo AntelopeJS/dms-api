@@ -19,6 +19,8 @@ defineOptions({ inheritAttrs: false })
 
 const props = defineProps<{
   fetchUrl: string
+  /** The live feed (`LIVE_REQUESTS_TOPIC`): the graph is read again on it. */
+  realtimeTopic?: string
   /** The body size limit of the capture, in bytes (0: bodies not kept). */
   maxBodyBytes?: number
   pageId?: string
@@ -56,7 +58,12 @@ async function poll() {
   failures.value = error.value ? failures.value + 1 : 0
 }
 
-useLiveRefresh(() => void poll(), { idleMs: 60_000 })
+// The current minute moves without traffic too: read again after a quiet
+// minute.
+usePageLiveRefresh(() => void poll(), {
+  realtimeTopic: props.realtimeTopic,
+  idleRefresh: 60,
+})
 
 // A first load that failed counts as a failed poll: the graph says it is
 // reconnecting at once, not after the next poll.

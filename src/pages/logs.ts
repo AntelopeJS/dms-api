@@ -2,6 +2,7 @@ import { DefaultLayout } from "@antelopejs/interface-dms/base/layouts";
 import type { QueryParamFilters } from "@antelopejs/interface-dms/base/table-view";
 import { PageController, RegisterPage } from "@antelopejs/interface-dms/page";
 import { getConfig } from "@/config";
+import { LIVE_REQUESTS_TOPIC } from "@/types";
 import { apiBlock } from "./blocks";
 import { monitorCategory } from "./module";
 import { periodSelector } from "./period";
@@ -61,10 +62,14 @@ export class LogsPage extends PageController(
     period: periodSelector({ allTime: true }),
   }).meta({ name: "$api.logs.toolbar", icon: "i-ph-sliders-horizontal" });
 
-  static live = apiBlock<{ fetchUrl: string; maxBodyBytes?: number }>(
-    "LiveTraffic",
-    { fetchUrl: "/api/monitoring/logs/live" },
-  ).onFilter((_permissions, options) => ({
+  static live = apiBlock<{
+    fetchUrl: string;
+    realtimeTopic: string;
+    maxBodyBytes?: number;
+  }>("LiveTraffic", {
+    fetchUrl: "/api/monitoring/logs/live",
+    realtimeTopic: LIVE_REQUESTS_TOPIC,
+  }).onFilter((_permissions, options) => ({
     ...options,
     maxBodyBytes: getConfig().requestLogMaxBodySize,
   }));

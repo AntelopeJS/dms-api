@@ -27,6 +27,8 @@ const props = withDefaults(
     tabKey?: string
     statisticsTab?: string
     testerTab?: string
+    /** The live feed (`LIVE_REQUESTS_TOPIC`): the state is read again on it. */
+    realtimeTopic?: string
   }>(),
   {
     queryKey: 'route',
@@ -145,10 +147,13 @@ const onTester = computed(() => page.query[props.tabKey] === props.testerTab)
 
 // Live, the route's state is read again on the Statistics tab only: the
 // documentation and the tester read the same detail, and must not move.
-useLiveRefresh(() => {
-  const tab = page.query[props.tabKey]
-  if (!tab || tab === props.statisticsTab) void refresh()
-})
+usePageLiveRefresh(
+  () => {
+    const tab = page.query[props.tabKey]
+    if (!tab || tab === props.statisticsTab) void refresh()
+  },
+  { realtimeTopic: props.realtimeTopic },
+)
 
 async function copyCurl() {
   if (!route.value) return

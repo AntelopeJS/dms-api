@@ -25,7 +25,12 @@ import ApiPath from '../internal/ApiPath.vue'
 defineOptions({ inheritAttrs: false })
 
 const props = withDefaults(
-  defineProps<{ fetchUrl: string; queryKey?: string }>(),
+  defineProps<{
+    fetchUrl: string
+    queryKey?: string
+    /** The live feed (`LIVE_REQUESTS_TOPIC`): the list is read again on it. */
+    realtimeTopic?: string
+  }>(),
   {
     queryKey: 'route',
   },
@@ -81,9 +86,9 @@ const { data, error, pending, refresh } = useApiResource<{
   requestsWindowMinutes?: number
 }>(() => props.fetchUrl)
 
-// Live, the states and counts are read again in place: the list keeps its
-// order, its scroll and the focus.
-useLiveRefresh(() => void refresh())
+// Live, the states and counts are read again in place, at the page's pace:
+// the list keeps its order, its scroll and the focus.
+usePageLiveRefresh(() => void refresh(), { realtimeTopic: props.realtimeTopic })
 
 const search = ref('')
 const method = ref('all')
