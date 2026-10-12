@@ -18,7 +18,6 @@
     },
     "common": {
       "retry": "Réessayer",
-      "percent": "{value} %",
       "ms": "{value} ms",
       "refresh": "Actualiser"
     },

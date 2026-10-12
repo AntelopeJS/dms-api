@@ -91,10 +91,7 @@ describe("getAttention", () => {
       key: "api.overview.attention.window_detail",
       params: {
         calls: { type: "count", value: 60 },
-        rate: {
-          key: "api.common.percent",
-          params: { value: { type: "number", value: 5 } },
-        },
+        rate: { type: "number", value: 0.05, format: "percent" },
         minutes: { type: "number", value: 15 },
         serverErrors: { type: "number", value: 3 },
       },
