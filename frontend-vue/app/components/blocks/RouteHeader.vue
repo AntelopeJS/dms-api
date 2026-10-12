@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue'
-import { usePageRecordLabel } from '#dms-core/app/build/composables/page/usePageRecordLabel'
 import { routeSnippetRequest, toCurl } from '../../utils/snippets'
 import { hasRequestBody } from '../../utils/http'
 import { ROUTE_DETAIL_ANCHOR, windowParts } from '../../utils/routeExplorer'
