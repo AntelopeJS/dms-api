@@ -35,16 +35,21 @@ describe("SettingsPage", () => {
     });
   });
 
-  it("keeps the retentions and the headers on the console's inputs", () => {
+  it("keeps the retentions on the console's inputs", () => {
     expect(inputOf("requestLogRetentionDays")?.componentName).toBe(
       "DmsApiRetentionInput",
     );
     expect(inputOf("statisticsLifetimeDays")?.options).toMatchObject({
       choices: [30, 60, 90],
     });
-    expect(inputOf("requestLogCaptureHeaders")).toMatchObject({
-      componentName: "DmsApiSettingTagsInput",
-      options: { max: 50 },
+  });
+
+  it("draws the headers with the DMS tags input", () => {
+    expect(inputOf("requestLogCaptureHeaders")?.componentName).not.toMatch(
+      /^DmsApi/,
+    );
+    expect(inputOf("requestLogCaptureHeaders")?.options).toMatchObject({
+      max: 50,
     });
   });
 });

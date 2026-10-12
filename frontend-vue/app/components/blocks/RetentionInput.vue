@@ -1,20 +1,11 @@
 <script setup lang="ts">
-import {
-  computed,
-  inject,
-  onBeforeUnmount,
-  onMounted,
-  ref,
-  useTemplateRef,
-  watch,
-} from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import {
   createRetentionGuard,
   isLowered,
   type RetentionChange,
-  type RetentionGuard,
   type RetentionImpact,
-  retentionGuardOf,
+  shareRetentionGuard,
 } from '../../utils/settingsForm'
 import SettingNumberInput from './SettingNumberInput.vue'
 
@@ -22,7 +13,8 @@ import SettingNumberInput from './SettingNumberInput.vue'
 // number (request logs, `SettingNumberInput`), drawn by the DMS inputs. Lowering it deletes the
 // data older than the new value at the next hourly prune, so a lowered value
 // says what it deletes, and the save asks to confirm it first (one dialog for
-// both fields), the DMS form having no confirmation of its own on submit.
+// both fields): a validator of the enclosing DMS form, which submits it again
+// once confirmed.
 defineOptions({ inheritAttrs: false })
 
 type RetentionKind = 'logs' | 'statistics'
@@ -48,10 +40,8 @@ const PREVIOUS_PERIOD_DAYS = 30
 const { t } = useI18n()
 const { confirm } = useConfirm()
 const { $authFetch } = useAuthFetch()
-const root = useTemplateRef<HTMLElement>('root')
-
-const regional = useRegionalFormat()
-const formatNumber = (value: number) => String(regional.formatNumber(value))
+const form = useEnclosingForm()
+const { formatNumber } = useRegionalFormat({ locale: 'format' })
 
 const items = computed(() =>
   (props.choices ?? []).map((days) => ({
@@ -182,35 +172,32 @@ async function askToConfirm(changes: RetentionChange[]): Promise<boolean> {
   })
 }
 
-let guard: RetentionGuard | undefined
-
-watch([model, () => props.initialValue], () => {
-  if (props.id) guard?.set(props.id, pendingChange())
-})
-
-// The DMS form has no way to submit again from a field: the guard of the
-// form element the field sits in submits it once the dialog is confirmed.
+// The form's two retention fields share one guard, so one dialog lists both
+// (browser only: a server render never saves).
+let release: (() => void) | undefined
 onMounted(() => {
-  const form = root.value?.closest('form')
-  if (!form || !props.id) return
-  guard = retentionGuardOf(form, () =>
-    createRetentionGuard(askToConfirm, () => form.requestSubmit()),
+  const field = props.id
+  if (!form || !field) return
+  const shared = shareRetentionGuard(() =>
+    createRetentionGuard(askToConfirm, () => void form.submit()),
   )
-  guard.set(props.id, pendingChange())
+  shared.guard.set(field, pendingChange())
+  const stopWatching = watch([model, () => props.initialValue], () =>
+    shared.guard.set(field, pendingChange()),
+  )
+  const removeValidator = form.addValidator(() => shared.guard.allowSubmit())
+  release = () => {
+    stopWatching()
+    removeValidator()
+    shared.guard.set(field, null)
+    shared.release()
+  }
 })
-onBeforeUnmount(() => {
-  if (props.id) guard?.set(props.id, null)
-})
-
-const registerValidator = inject(FORM_VALIDATOR_KEY, null)
-if (registerValidator) {
-  const unregister = registerValidator(() => guard?.allowSubmit() ?? true)
-  onBeforeUnmount(unregister)
-}
+onBeforeUnmount(() => release?.())
 </script>
 
 <template>
-  <div ref="root" class="grid gap-2">
+  <div class="grid gap-2">
     <DmsChoiceCards
       v-if="props.choices?.length"
       :id="props.id"

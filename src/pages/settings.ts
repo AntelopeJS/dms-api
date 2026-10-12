@@ -61,8 +61,8 @@ const { logRetentionDays, maxBodyKb, slowThresholdMs, capturedHeaders } =
 /**
  * The numbers of the form are drawn by `SettingNumberInput`, the DMS number
  * input at the width of a number, which says how it corrected a typed value
- * ("1020 → 1,000") and takes the focus from a link to its field. The headers
- * are drawn by `SettingTagsInput`, the DMS tags input that does the latter.
+ * ("1020 → 1,000"). The DMS form brings a field into view and focuses it from
+ * a link to its anchor (`…/settings#requestLogCaptureHeaders`).
  */
 const maxBodyInput = { min: maxBodyKb.min, max: maxBodyKb.max, step: 1 };
 
@@ -162,7 +162,6 @@ const settingsForm = Form({
           // capture never stores, comes back as a field error naming it,
           // which the DMS input shows red.
           type: new TagsType(headersInput),
-          inputComponent: apiInput("SettingTagsInput", headersInput),
         },
         {
           id: SETTINGS_FIELDS.redacted,

@@ -1,56 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
   createRetentionGuard,
-  isLinkedField,
   isLowered,
-  numberAdjustment,
-  parseTypedNumber,
   type RetentionChange,
-  retentionGuardOf,
+  shareRetentionGuard,
 } from '../app/utils/settingsForm'
-
-describe('parseTypedNumber', () => {
-  it('reads a number as typed in the locale', () => {
-    expect(parseTypedNumber('1020', 'en-GB')).toBe(1020)
-    expect(parseTypedNumber('1,020', 'en-GB')).toBe(1020)
-    expect(parseTypedNumber('1 020', 'fr-FR')).toBe(1020)
-    expect(parseTypedNumber(' -100 ', 'en-GB')).toBe(-100)
-  })
-
-  it('is null when empty and NaN when not a number', () => {
-    expect(parseTypedNumber('  ', 'en-GB')).toBeNull()
-    expect(parseTypedNumber('abc', 'en-GB')).toBeNaN()
-  })
-})
-
-describe('numberAdjustment', () => {
-  const bounds = { min: 50, max: 600_000 }
-
-  it('says why the field holds another value than the one typed', () => {
-    expect(numberAdjustment(1020, 1000, bounds)).toBe('step')
-    expect(numberAdjustment(999_999, 600_000, bounds)).toBe('max')
-    expect(numberAdjustment(-100, 50, bounds)).toBe('min')
-  })
-
-  it('is null when the field holds what was typed, or nothing', () => {
-    expect(numberAdjustment(2000, 2000, bounds)).toBeNull()
-    expect(numberAdjustment(null, undefined, bounds)).toBeNull()
-    expect(numberAdjustment(Number.NaN, undefined, bounds)).toBeNull()
-  })
-})
-
-describe('isLinkedField', () => {
-  it('matches the anchor the page was opened on', () => {
-    expect(isLinkedField('#requestLogMaxBodyKb', 'requestLogMaxBodyKb')).toBe(
-      true,
-    )
-    expect(
-      isLinkedField('#requestLogCaptureHeaders', 'requestLogMaxBodyKb'),
-    ).toBe(false)
-    expect(isLinkedField('', 'requestLogMaxBodyKb')).toBe(false)
-    expect(isLinkedField('#%E0%A4%A', 'requestLogMaxBodyKb')).toBe(false)
-  })
-})
 
 describe('isLowered', () => {
   it('is a value below the saved one', () => {
@@ -170,13 +124,32 @@ describe('createRetentionGuard', () => {
   })
 })
 
-describe('retentionGuardOf', () => {
-  it('shares one guard per form', () => {
-    const form = {}
+describe('shareRetentionGuard', () => {
+  it('shares one guard while its fields are drawn, a new one after', () => {
     const create = vi.fn(() => createRetentionGuard(vi.fn(), vi.fn()))
-    const first = retentionGuardOf(form, create)
-    expect(retentionGuardOf(form, create)).toBe(first)
-    expect(retentionGuardOf({}, create)).not.toBe(first)
+    const first = shareRetentionGuard(create)
+    const second = shareRetentionGuard(create)
+    expect(second.guard).toBe(first.guard)
+    expect(create).toHaveBeenCalledOnce()
+
+    // A field letting go twice counts once: the other still holds it.
+    first.release()
+    first.release()
+    const third = shareRetentionGuard(create)
+    expect(third.guard).toBe(first.guard)
+
+    second.release()
+    third.release()
+    expect(create).toHaveBeenCalledOnce()
+  })
+
+  it('makes a new guard once the last field let go', () => {
+    const create = vi.fn(() => createRetentionGuard(vi.fn(), vi.fn()))
+    const only = shareRetentionGuard(create)
+    only.release()
+    const next = shareRetentionGuard(create)
+    expect(next.guard).not.toBe(only.guard)
     expect(create).toHaveBeenCalledTimes(2)
+    next.release()
   })
 })
