@@ -22,21 +22,25 @@
 It requires `@antelopejs/dms` `>=0.7.12 <0.8.0` (`@antelopejs/interface-dms`
 0.5.7) and `@antelopejs/dms-frontend` `>=0.5.2 <0.6.0`. These DMS releases
 bring the pieces the console is built on: the row side panel, the page's
-Live / Pause state and its holds, the period kept in the URL, the column tones
-and the `Guard` block.
+Live / Pause state and its holds, the refresh the console's own blocks share
+with the DMS blocks, the period kept in the URL, the column tones, the
+`Guard` block, the form API its settings fields use and the redirect of
+`/modules/api` to the Overview.
 
 The Overview, the Request logs and Routes have the DMS **Live / Pause**
 toggle (the L key). Live, the default, the page follows new requests as the
-DMS realtime channel announces them, each block read again at most every 5 s
-(Request logs), 10 s (Overview) or 15 s (Routes), every minute once the
-Overview or Routes show a week or more, and on that clock while the realtime
-channel is down. Paused, nothing is read: the toggle says what was missed
-("Paused · 40 new requests · 2 in 5xx"), the request tables keep their rows,
-search, sort and "Load more" included, and offer "N new · Show"; resuming
-reads each block once. The page also pauses by itself while its browser tab
-is hidden and while you type in the Tester, and a request table holds its
-rows while one of them is open in the side panel (and, in the Request logs,
-while you read further down). The choice is one for the three pages, and
+DMS realtime channel announces them, each block, the console's own included,
+read again at most every 5 s (Request logs), 10 s (Overview) or 15 s
+(Routes), every minute once the Overview or Routes show a week or more, and
+on that clock while the realtime channel is down. Paused, nothing is read:
+the toggle says what was missed ("Paused · 40 new requests · 2 in 5xx"), the
+request tables keep their rows, search, sort and "Load more" included, and
+offer "40 new requests · 2 in 5xx · Show"; resuming reads each block once.
+The page also pauses by itself while its browser tab is hidden and while you
+type in the Tester, and a request table holds its rows while one of them is
+open in the side panel (and, in the Request logs, while you read further
+down, search or sort otherwise than newest first), saying why ("Table on
+hold · search active"). The choice is one for the three pages, and
 `?live=0` opens a page paused.
 
 A request opens in a side panel on the right, on a single click on its row,
@@ -48,7 +52,9 @@ page lists them. The period of a page is its period selector's (1H, 24H, 7D,
 30D, and "All time" in the Request logs), kept in the URL
 (`?api.period=last-24h`); without one, the page opens on the last period
 picked on any of the three pages, else the last 24 hours. An incident of the
-Overview opens the Request logs on its own range (`?api.from=&api.to=`).
+Overview opens the Request logs narrowed to its own range
+(`?since=&until=`), a linked filter within the page's period. The tabs of a
+route are named in the URL by their slot (`?tab=tester`).
 Dates and times follow the user's Language & region preferences (time zone,
 clock, date format), on a 24-hour clock by default.
 

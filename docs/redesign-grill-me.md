@@ -4,8 +4,8 @@
 > are the plan as first taken; the QA pass and its fixes changed several of
 > them. In short:
 >
-> - Dependencies: `@antelopejs/dms` `>=0.7.11 <0.8.0` (`interface-dms`
->   0.5.6) and `@antelopejs/dms-frontend` `>=0.5.2 <0.6.0`, not dms 0.6 /
+> - Dependencies: `@antelopejs/dms` `>=0.7.12 <0.8.0` (`interface-dms`
+>   0.5.7) and `@antelopejs/dms-frontend` `>=0.5.2 <0.6.0`, not dms 0.6 /
 >   interface-dms 0.4 / dms-frontend 0.5.0.
 > - A request opens in the DMS row side panel (a `sidePanel` row action
 >   target, dms 0.7.8) on a single click, from every request table: the DMS
@@ -16,8 +16,11 @@
 >   `LiveToggle` (Live / Pause, "Paused · 40 new requests · 2 in 5xx"), over
 >   the realtime topic the capture publishes on; the request tables hold their
 >   rows while paused, while a row is open in the side panel and, in the
->   request logs, while scrolled (`liveHold`); the Tester holds the page while
->   you type in it (`usePageLive().hold()`).
+>   request logs, while scrolled, searched or sorted otherwise than newest
+>   first (`liveHold`), their strip saying why and what came in ("40 new
+>   requests · 2 in 5xx"); the Tester holds the page while you type in it
+>   (`usePageLive().hold()`). The console's own blocks read again through the
+>   same gate as the DMS blocks (`usePageLiveRefresh`), at the page's pace.
 > - The column tones are the DMS's: a slow duration in orange
 >   (`DurationDisplay({ format: "ms", toneField })`), an error in red
 >   (`TextDisplay({ toneField })`).
@@ -26,15 +29,16 @@
 > - Periods are rolling, picked with the DMS `PeriodSelector` (24H by default,
 >   1H to 30D), kept in the URL (`?api.period=last-24h`) and followed by the
 >   request tables (`periodScope`); the console's own blocks read the period
->   the selector applies with `usePeriodScope`, and an incident link opens the
->   request logs on its range in the selector's own keys
->   (`?api.from=&api.to=`);
+>   the selector applies with `usePeriodScope`, and an incident link narrows
+>   the request logs to its range with a linked filter (`?since=&until=`),
+>   the page's period kept;
 >   statistics are kept 30, 60 or 90 days (90 by default); the latency chart
 >   shows the p95 instead of the minimum.
 > - The snippets are written against the DMS's public API origin
 >   (`GetApiBaseUrl()`, its `apiBaseUrl`); the module has no URL option of
->   its own. Dates and times follow the user's Language & region preferences
->   (the DMS's `regionalDateTimeFormat`).
+>   its own. Figures, dates and times are written in the DMS's
+>   `formatLocale` (`useRegionalFormat({ locale: "format" })`, `en-GB` for
+>   `en`) with the user's Language & region preferences.
 > - The console no longer captures its own traffic or the DMS's, and logs the
 >   Tester's calls without counting them. Data stored by an earlier version
 >   is not migrated: the tables are dropped on upgrade (see the README).
@@ -127,24 +131,25 @@ keeps custom components for the parts no block expresses.
 | --- | --- |
 | `ScopeChip` | A live "Own routes · 42" link to Settings; no block reads the scope. |
 | `BetaBadge` | A "Beta" pill at the head of the toolbar with its meaning in a tooltip; no block draws a pill with a tooltip. |
-| `HealthHero` | The verdict, since when (its start in a tooltip) and why, its four figures, the stale state when a refresh fails, a toast when the verdict changes and "● Degraded" in the browser tab, read from `/overview/health`. A `Banner` and a `StatGroup` give none of these. |
-| `LiveTraffic` | Per-minute histogram of the last hour that follows the page's Direct / Pause (`usePageLive()`) and shows its own failures; no block draws it. |
-| `LogsFilters` | The method and slow filters of the request logs and the filters a link brought (route, path, error, an incident's range), each a removable chip, all kept in the URL (`queryParamFilters`); the DMS table neither shows nor counts the URL's filters. |
+| `HealthHero` | The verdict, since when (its start in a tooltip) and why, its four figures, the stale state when a refresh fails, a toast when the verdict changes and "● Degraded" in the browser tab, read from `/overview/health`. A `Banner` and a `StatGroup` give none of these. It reads again through `usePageLiveRefresh`, with an idle read each quiet minute. |
+| `LiveTraffic` | Per-minute histogram of the last hour, its current minute hatched, that follows the page's Direct / Pause (`usePageLiveRefresh`) and shows its own failures ("reconnecting"); a `ChartCard` has neither. |
+| `LogsFilters` | The method and slow filters of the request logs and the filters a link brought (route, path, error, an incident's range), each a removable chip, all kept in the URL (`queryParamFilters`); the DMS table neither shows the URL's filters nor lets a user remove one. |
 | `LogsEmptyState` | The request table's empty states (`emptyStates.*.component`): it names what empties the table (search, a link's filters, the period, the other filters) with its way out, which the DMS cannot tell for filters it does not count. |
-| `RequestDetail` | The body of the request side panel (error and stack first, timing, headers, bodies, Replay / cURL / Open route / Same error); the DMS draws the panel and its navigation. |
+| `RequestDetail` | The body of the request side panel (error and stack first, timing, headers, bodies, Replay / cURL / Open route / Same error); the DMS draws the panel and its navigation, and the stack is a `DmsCodeSnippet`. |
 | `RouteTree` | A filterable tree whose selection lives in the URL. |
 | `RouteHeader`, `RouteDocumentation`, `RouteTester` | Everything under the selected route reads `?route=` from the URL. They render public DMS components (`DmsCard`, `DmsEmptyState`, `DmsStatusPill`) inside. Since DMS 0.6.1 a block's `fetchUrl` takes `{{query.route}}`, so the Statistics tab is now DMS blocks only (a `StatGroup` of the route's figures, `ChartCard`, `TopListCard`, a request table filtered by `?route=`), behind a DMS `Guard` that draws one empty state and a link to the Tester while the route has no call over the period; these three stay custom for what they draw, not for how they read the route. |
 | `SplitLayout` | A list beside its detail. `Grid` shares its columns equally, so a row of two cells cannot give one of them three quarters; `DmsMasterDetail` is a template component, not a block. |
-| `SettingNumberInput`, `SettingTagsInput`, `RetentionInput` | Fields of the Settings `Form`: a number that says how the input adjusted what was typed, a field a link focuses by its own anchor, a retention that says what lowering it deletes and asks to confirm on save. The DMS form has no confirmation on submit, follows the anchor of a section only and its number input does not report an adjusted value. |
-| `ModuleLanding` | `/modules/api` answers 404 in the DMS: a hidden page sends it to the Overview, with its query. |
+| `SettingNumberInput`, `RetentionInput` | Fields of the Settings `Form`. `SettingNumberInput` draws `DmsInputNumber` at the width of a number and writes its `adjust` event as a note ("1020 is not a step of 50: rounded to 1,000"); `RetentionInput` says what a lowered retention deletes, read from the server as the value changes, and asks to confirm on save, one dialog for both retentions, from a validator of the enclosing form (`useEnclosingForm`) that submits it again once confirmed. The DMS form has no confirmation on submit nor a field note computed from an unsaved value. The form itself follows a field's anchor (`#requestLogCaptureHeaders`), so the headers use its tags input. |
 
 The request tables draw their cells with DMS displays: status pills toned
 per method, or per row through `toneField` (a status by its class), the
 duration in milliseconds toned `warning` when slow
 (`DurationDisplay({ format: "ms", toneField: "durationTone" })`) and the error
 message toned `error` (`TextDisplay({ toneField: "errorTone" })`), the tones
-set by the server on each row. The module keeps one cell display
-(`@RegisterDisplay`): the time to the millisecond (`api:time`).
+set by the server on each row. The module keeps two cell displays
+(`@RegisterDisplay`): the time to the millisecond (`api:time`), and the path
+in the mono font with a "Tester" badge on a request the Tester sent
+(`api:path`), which the DMS mono display cannot add.
 
 **Q10. How are custom blocks named for permissions?**
 Every one carries `.meta({ name: "$api.blocks.<id>.name", description,
@@ -175,9 +180,9 @@ Request logs), *Explore* (Routes), *Configure* (Settings). The module keeps
 
 **Q14. Page ids and URLs change (`summary` → `overview`)?**
 Yes: `/modules/api/overview`, `/modules/api/logs`, `/modules/api/routes`,
-`/modules/api/settings`. The module's landing page makes `/modules/api` land
-on the Overview, so the only broken links are bookmarks of
-`/modules/api/summary`.
+`/modules/api/settings`. The DMS redirects `/modules/api` to the module's
+landing page, the Overview, query and hash kept, so the only broken links
+are bookmarks of `/modules/api/summary`.
 
 **Q15. Live nav badges (14 server errors, 42 routes)?**
 No. A `MenuOptions.badge` is a static string and a dynamic menu provider
@@ -207,7 +212,9 @@ themselves (health hero, tab counters, tree footer).
 Each row is an issue with a tone, an icon, a title (the route, in mono) and
 meta lines (what is wrong in plain words, the number that triggered it) and
 the top error on a third, mono line (`detail`), linking to the next step:
-exactly the feed item shape.
+exactly the feed item shape. Each row is read whole (`wrap`), the card
+growing with them, and folds past the fifth ("Show 3 more",
+`visibleItems`).
 Rows are ordered failing → slow → 4xx rate (F02). A `TopListCard` would force
 one number format on rows that measure different things.
 
@@ -245,23 +252,25 @@ filters.
   (`searchShortcut`); its empty state offers "Clear search" (`clearSearch`).
 - From another page, `?route=METHOD%20/path`, `?path=`, `?error=` and
   `?slow=true` open the table pre-filtered, and `?requests.tab=5xx` picks the
-  tab. A source table does not take `queryParamFilters` in its builder
-  options, but its client honours them like any table view's, so the builder
-  sets them with `mergeOptions`. Those filters have no chip in the table:
-  `LogsFilters` names them above it, each with a way to remove it. An
-  incident's range is no filter but a range of the period selector
-  (`?api.from=&api.to=`), which the table follows like any period; removing
-  it opens "All time".
+  tab: the source table's `queryParamFilters`. Those filters have no chip in
+  the table: `LogsFilters` names them above it, each with a way to remove
+  it. An incident's range is a linked filter of its own
+  (`?since=&until=`), which the route intersects with the page's period: the
+  period selector stays on the period the user chose, and removing the
+  range leaves it there.
 
 **Q22. Live mode?**
 The DMS page live mode: the page declares `live: { maxRate: 5 }`, its toolbar
 holds the DMS `LiveToggle`, and the table follows the capture's realtime
-topic (`realtimeTopic`), held while paused (`liveHold`, "N new · Show"), while
-a request is open in the side panel and while scrolled down. Its
-route lists a held table as it stood (`liveHeldAt`), through search, sort
-and paging. `LiveTraffic` above the table, the per-minute histogram of the
-last hour, follows the same state (`usePageLive()`), with a visible paused /
-retrying state when a read fails (F10).
+topic (`realtimeTopic`), held while paused (`liveHold`, "40 new requests ·
+2 in 5xx · Show", the breakdown `useLiveMissedErrors` gives the page), while
+a request is open in the side panel, while scrolled down, while searched and
+while sorted otherwise than newest first, the strip naming the reason
+("Table on hold · search active"). Its route lists a held table as it stood
+(`liveHeldAt`), through search, sort and paging. `LiveTraffic` above the
+table, the per-minute histogram of the last hour, follows the same state
+(`usePageLiveRefresh`), with a visible paused / retrying state when a read
+fails (F10).
 
 **Q23. The drawer?**
 A side panel: the row action's target is `{ type: "sidePanel", component:
@@ -283,8 +292,10 @@ why in the panel instead of `console.error`.
 `SplitLayout`: `RouteTree` in its aside, then `RouteHeader` and a `Tab`
 (`persistState`) holding Statistics, Documentation and Tester. A first try
 with a `Grid` row put the detail under the tree: the grid sizes its columns on
-the number of cells in a row, so a `colSpan: 3` cell in a two-cell row wraps. The route is `?route=<id>` and the tab `?tab=`, so both are links
-and the tab stays when you switch routes (F04).
+the number of cells in a row, so a `colSpan: 3` cell in a two-cell row wraps. The route is `?route=<id>` and the tab `?tab=<slot>`
+(`?tab=tester`), so both are links and the tab stays when you switch routes
+(F04). On a phone, a route chosen in the tree brings the header into view by
+its block key (`scrollToBlock("explorer.header")`).
 
 **Q25. Tree?**
 Full paths with the folder prefix dimmed and `:params` highlighted, 24 h
@@ -297,7 +308,7 @@ endpoints.
 Three instead of four (F06): *Statistics* (KPIs, requests by status, response
 time with the slow threshold drawn, Top errors grouped by status and message,
 recent requests of the route, F13; a route without a call over the
-period shows one empty state instead, its `Guard`, with "Test this route"), *Documentation* (example request as cURL / fetch, auth, body
+period shows one empty state instead, its `Guard`, with "Test this route"; its charts name their series with the DMS series legend, `showSeriesLegend`), *Documentation* (badged "Beta", example request as cURL / fetch, auth, body
 fields, headers, responses with the source line of each error, the request
 pipeline in order, internals collapsed), *Tester* (Body / Headers / Query /
 Path, body prefilled from the inferred fields, ⌘↵ to send, a warning when the
@@ -323,7 +334,9 @@ entries")?**
 Live, by `RetentionInput`: a lowered retention says how many requests it
 deletes (read from the server as the value changes, debounced), and saving
 asks to confirm. The DMS form has no hook to compute a hint from an unsaved
-value nor a confirmation on submit, so the field brings both.
+value nor a confirmation on submit, so the field brings both: the
+confirmation is a validator of the enclosing form (`useEnclosingForm`),
+which submits the form again once confirmed.
 
 ## 9. Visual language
 
@@ -391,6 +404,6 @@ over 24 h).
   builder.
 - `pnpm lint`, `pnpm typecheck`, `pnpm knip` (the front end included),
   `pnpm build`, `pnpm test`, and `ajs dms verify-source` for the front end.
-- End to end on the playground (MongoDB, DMS 0.7.11, dms-frontend 0.5): traffic
+- End to end on the playground (MongoDB, DMS 0.7.12, dms-frontend 0.5): traffic
   generated on demo routes (healthy, slow, failing, 4xx), every page checked
   in both themes, every drill-down followed, every bug found fixed in the PR.
