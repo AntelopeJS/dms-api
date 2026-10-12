@@ -11,7 +11,6 @@ export type ApiBlock =
   | "ScopeChip"
   | "HealthHero"
   | "BetaBadge"
-  | "ModuleLanding"
   | "LiveTraffic"
   | "RequestDetail"
   | "RouteTree"
@@ -26,7 +25,6 @@ const BLOCK_ICONS: Record<ApiBlock, string> = {
   ScopeChip: "i-ph-funnel",
   HealthHero: "i-ph-heartbeat",
   BetaBadge: "i-ph-flask",
-  ModuleLanding: "i-ph-arrow-bend-down-right",
   LiveTraffic: "i-ph-broadcast",
   RequestDetail: "i-ph-sidebar-simple",
   RouteTree: "i-ph-tree-structure",

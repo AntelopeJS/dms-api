@@ -1,29 +1,27 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { GetModel } from "@antelopejs/interface-database-decorators";
-import { DefaultLayout } from "@antelopejs/interface-dms/base/layouts";
 import {
   Category,
   type ModuleCatalogContext,
   type ModuleReadoutLine,
   type ModuleStatus,
-  MODULE_URL_PREFIX,
-  PageController,
   RegisterModule,
-  RegisterPage,
 } from "@antelopejs/interface-dms/page";
 import { RequestLogModel, RouteModel, RouteStatisticsModel } from "@/db";
 import { getHealth } from "@/services/overview";
 import { countRoutes } from "@/services/route-catalog";
 import { getScopedRouteKeys } from "@/services/scope";
 import { getActiveScope } from "@/services/settings";
-import { apiBlock } from "./blocks";
 
 const MODULE_ID = "api";
 
-/** The page the module opens on: the Overview, under the Monitor heading. */
+/**
+ * The page the module opens on: the Overview, under the Monitor heading. The
+ * DMS answers `/modules/api` (a typed URL, a sign-in coming back, the "API"
+ * crumb) with a redirect to it, query and hash kept.
+ */
 const LANDING_PAGE = "overview";
-const LANDING_URL = `${MODULE_URL_PREFIX}/${MODULE_ID}/${LANDING_PAGE}`;
 
 function packageVersion(): string | undefined {
   try {
@@ -144,25 +142,3 @@ export const configureCategory = Category("configure", {
   urlSlug: "/",
   order: 2,
 });
-
-/**
- * `/modules/api`, the module's own address: a typed URL, a sign-in coming
- * back to it, and the "API" crumb of the breadcrumb (a crumb links only to a
- * page). The DMS has no page there and answered a 404; this hidden one draws
- * nothing and sends to the landing page, in the server render too.
- */
-@RegisterPage()
-export class ModuleLandingPage extends PageController(
-  "landing",
-  {
-    displayName: "$api.module.title",
-    module: MODULE_ID,
-    category: monitorCategory,
-    urlSlug: "/",
-    hidden: true,
-    noComponentPermissions: true,
-  },
-  DefaultLayout(),
-) {
-  static redirect = apiBlock("ModuleLanding", { to: LANDING_URL });
-}

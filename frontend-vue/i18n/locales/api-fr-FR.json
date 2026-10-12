@@ -32,10 +32,6 @@
         "name": "Périmètre des routes",
         "description": "Le périmètre actif et son nombre de routes, avec un lien vers les réglages API."
       },
-      "module_landing": {
-        "name": "Adresse du module",
-        "description": "Envoie /modules/api vers la page d'accueil du module. N'affiche rien."
-      },
       "live_traffic": {
         "name": "Trafic en direct",
         "description": "Requêtes par minute sur la dernière heure, au rythme du contrôle En direct / Pause de la page."

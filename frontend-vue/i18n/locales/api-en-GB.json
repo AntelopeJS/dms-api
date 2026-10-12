@@ -32,10 +32,6 @@
         "name": "Route scope",
         "description": "The active route scope and how many routes it holds, linking to API settings."
       },
-      "module_landing": {
-        "name": "Module address",
-        "description": "Sends /modules/api to the module's landing page. Draws nothing."
-      },
       "live_traffic": {
         "name": "Live traffic",
         "description": "Requests per minute over the last hour, following the page's Live / Pause control."
