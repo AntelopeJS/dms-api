@@ -1,4 +1,5 @@
 import { DefaultLayout } from "@antelopejs/interface-dms/base/layouts";
+import type { QueryParamFilters } from "@antelopejs/interface-dms/base/table-view";
 import { PageController, RegisterPage } from "@antelopejs/interface-dms/page";
 import { getConfig } from "@/config";
 import { apiBlock } from "./blocks";
@@ -21,7 +22,7 @@ const LOGS_PAGE_SIZE = 50;
  * follow. A URL filter needs no column: the table sends it to the route as
  * `filter_<field>`.
  */
-const LOGS_QUERY_FILTERS = {
+const LOGS_QUERY_FILTERS: QueryParamFilters = {
   route: { field: "route", mode: "is" },
   path: { field: "path", mode: "is" },
   error: { field: "error", mode: "is" },
@@ -124,10 +125,6 @@ export class LogsPage extends PageController(
         component: emptyState,
       },
     },
-  })
-    .mergeOptions({ queryParamFilters: LOGS_QUERY_FILTERS } as Record<
-      string,
-      unknown
-    >)
-    .meta({ name: "$api.logs.table", icon: "i-ph-list-magnifying-glass" });
+    queryParamFilters: LOGS_QUERY_FILTERS,
+  }).meta({ name: "$api.logs.table", icon: "i-ph-list-magnifying-glass" });
 }

@@ -1,6 +1,7 @@
 import { DefaultDataTypes } from "@antelopejs/interface-dms/base/data-types/default-types";
 import {
   DefaultDisplays,
+  type QueryParamFilters,
   TableView,
   type TableViewSourceColumn,
   type TableViewSourceOptions,
@@ -195,10 +196,11 @@ function requestPanelAction(page: RequestTablePage) {
 }
 
 /**
- * Query parameters another page links to the request table with. The logs
- * page declares its own set.
+ * Query parameters another page links to the request table with, sent to
+ * the route as hidden `filter_<field>` filters. The logs page declares its
+ * own set.
  */
-const QUERY_PARAM_FILTERS = {
+const QUERY_PARAM_FILTERS: QueryParamFilters = {
   route: { field: "route", mode: "is" },
   error: { field: "error", mode: "is" },
   slow: { field: "slow", mode: "is" },
@@ -234,6 +236,7 @@ export function requestTable(
     sizes,
     fetchUrl = REQUEST_LOGS_URL,
     liveHold,
+    queryParamFilters = QUERY_PARAM_FILTERS,
     ...rest
   } = options;
   const picked = Object.fromEntries(
@@ -279,9 +282,7 @@ export function requestTable(
     // The page's period, as its charts read it (`preset`, `from`, `to`).
     periodScope: PERIOD_SCOPE,
     rowActions: { custom: [requestPanelAction(page)] },
-  }).mergeOptions({
-    // A source table does not take `queryParamFilters` in its options, but
-    // its client honours them like any table: they are how a link narrows it.
-    queryParamFilters: QUERY_PARAM_FILTERS,
-  } as Record<string, unknown>) as ComponentBuilder<unknown>;
+    // How a link narrows the table: `?route=` sends `filter_route=is:…`.
+    queryParamFilters,
+  });
 }
