@@ -1,5 +1,25 @@
 # Changelog
 
+## v0.2.0
+
+[compare changes](https://github.com/AntelopeJS/dms-api/compare/v0.1.7...v0.2.0)
+
+### 🚀 Enhancements
+
+- ⚠️  Redesign the API console on DMS 0.7 as backend block pages ([#28](https://github.com/AntelopeJS/dms-api/pull/28))
+
+### 🏡 Chore
+
+- **playground:** Open module source ranges ([#26](https://github.com/AntelopeJS/dms-api/pull/26))
+
+#### ⚠️ Breaking Changes
+
+- ⚠️  Redesign the API console on DMS 0.7 as backend block pages ([#28](https://github.com/AntelopeJS/dms-api/pull/28))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <rizzitelli.antony@pm.me>
+
 ## v0.1.7
 
 [compare changes](https://github.com/AntelopeJS/dms-api/compare/v0.1.6...v0.1.7)
