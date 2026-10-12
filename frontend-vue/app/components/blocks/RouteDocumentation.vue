@@ -4,7 +4,6 @@ import { formatCount, formatMs, formatRelativeDay } from '../../utils/format'
 import { hasRequestBody, statusText } from '../../utils/http'
 import { listedMessages } from '../../utils/routeExplorer'
 import { routeSnippetRequest, toCurl, toFetch } from '../../utils/snippets'
-import ApiCode from '../internal/ApiCode.vue'
 import ApiStatusBadge from '../internal/ApiStatusBadge.vue'
 
 // The contract of a route, read first: how to call it, who may, what it
@@ -216,7 +215,7 @@ function exampleOf(value: string | number | boolean | null | undefined) {
               @click="openTester"
             />
           </template>
-          <ApiCode :code="snippet" max-height="20rem" />
+          <DmsCodeSnippet :code="snippet" max-height="20rem" wrap="anywhere" />
           <p v-if="!apiOrigin" class="text-warning mt-2 text-xs">
             {{ t('api.routes.docs.origin_unknown') }}
           </p>
@@ -457,15 +456,16 @@ function exampleOf(value: string | number | boolean | null | undefined) {
               </span>
             </li>
           </ul>
-          <ApiCode
+          <DmsCodeSnippet
             v-if="exampleResponse"
             :code="exampleResponse.body"
-            :label="
+            :title="
               t('api.routes.docs.example_response', {
                 status: exampleResponse.status,
               })
             "
             max-height="16rem"
+            wrap="anywhere"
           />
           <p v-if="exampleResponse?.truncated" class="text-dimmed mt-2 text-xs">
             {{ t('api.routes.docs.response_truncated') }}

@@ -72,7 +72,6 @@ import {
   secretNames,
   type TesterDraft,
 } from '../../utils/testerHistory'
-import ApiCode from '../internal/ApiCode.vue'
 import ApiKeyValues from '../internal/ApiKeyValues.vue'
 import ApiMethodBadge from '../internal/ApiMethodBadge.vue'
 import ApiStatusBadge from '../internal/ApiStatusBadge.vue'
@@ -1735,11 +1734,12 @@ const shortcut = computed(() =>
                   icon="i-ph-bug"
                   :title="capturedLog.error.message"
                 />
-                <ApiCode
+                <DmsCodeSnippet
                   v-if="capturedLog.error?.stack"
                   :code="capturedLog.error.stack"
-                  :label="t('api.tester.captured.stack')"
+                  :title="t('api.tester.captured.stack')"
                   max-height="12rem"
+                  wrap="anywhere"
                 />
                 <div class="flex flex-col gap-1.5">
                   <p class="text-default text-xs font-medium">
@@ -1750,11 +1750,12 @@ const shortcut = computed(() =>
                     :empty="t('api.request.no_headers')"
                   />
                 </div>
-                <ApiCode
+                <DmsCodeSnippet
                   v-if="capturedLog.requestBody"
                   :code="prettyBody(capturedLog.requestBody).text"
-                  :label="t('api.tester.captured.body')"
+                  :title="t('api.tester.captured.body')"
                   max-height="16rem"
+                  wrap="anywhere"
                 />
                 <p
                   v-else-if="capturedLog.requestBodyOmitted"
@@ -1772,10 +1773,11 @@ const shortcut = computed(() =>
             </template>
             <template v-else-if="!result.error">
               <template v-if="responseTab === 'body'">
-                <ApiCode
+                <DmsCodeSnippet
                   v-if="responseBody.text"
                   :code="responseBody.text"
                   max-height="24rem"
+                  wrap="anywhere"
                 />
                 <p v-else class="text-dimmed text-sm">
                   {{ t('api.request.no_body') }}

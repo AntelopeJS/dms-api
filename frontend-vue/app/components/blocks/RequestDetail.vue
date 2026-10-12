@@ -17,7 +17,6 @@ import {
 } from '../../utils/requestDrawer'
 import { capturedSnippetRequest, toCurl } from '../../utils/snippets'
 import ApiBody from '../internal/ApiBody.vue'
-import ApiCode from '../internal/ApiCode.vue'
 import ApiKeyValues from '../internal/ApiKeyValues.vue'
 import ApiStatusBadge from '../internal/ApiStatusBadge.vue'
 import ApiTesterBadge from '../internal/ApiTesterBadge.vue'
@@ -499,10 +498,11 @@ const dateFormat = useDateFormat()
               @click="messageOpen = !messageOpen"
             />
           </div>
-          <ApiCode
+          <DmsCodeSnippet
             v-if="log.error.stack"
             :code="log.error.stack"
             max-height="18rem"
+            wrap="anywhere"
           />
         </section>
 
