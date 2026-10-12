@@ -37,9 +37,10 @@ interface LivePayload {
 }
 
 const { t } = useI18n()
-const locale = useFormatLocale()
+const { formatLocale: locale, formatNumber } = useRegionalFormat({
+  locale: 'format',
+})
 const dateFormat = useDateFormat()
-const { formatNumber } = useRegionalFormat()
 const { data, error, pending, refresh } = useApiResource<LivePayload>(
   () => props.fetchUrl,
 )

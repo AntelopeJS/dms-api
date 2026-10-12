@@ -11,18 +11,8 @@ const HOURS_PER_DAY = 24
 const DAYS_PER_WEEK = 7
 
 /**
- * The locale figures, dates and times are written in, from the interface
- * language: a bare `en` is British English, so the console reads in one
- * convention (24-hour clock, day before month) like its `en-GB` texts,
- * unless the user's Language & region preferences say otherwise.
- */
-export function formatLocale(locale: string): string {
-  return locale.toLowerCase() === 'en' ? 'en-GB' : locale
-}
-
-/**
  * Makes the `Intl.DateTimeFormat` of a set of options. The blocks pass the
- * DMS's `regionalDateTimeFormat` bound to the console's locale
+ * DMS's `useRegionalFormat({ locale: "format" }).dateTimeFormat`
  * (`useDateFormat`), so every date and time follows the user's Language &
  * region preferences: time zone, clock and date format.
  */

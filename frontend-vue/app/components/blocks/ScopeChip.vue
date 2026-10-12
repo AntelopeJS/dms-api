@@ -24,7 +24,7 @@ const props = defineProps<{
 }>()
 
 const { t } = useI18n()
-const { formatNumber } = useRegionalFormat()
+const { formatNumber } = useRegionalFormat({ locale: 'format' })
 const summary = useApiResource<{ scope: Scope; routes: number }>(
   () => props.fetchUrl,
 )

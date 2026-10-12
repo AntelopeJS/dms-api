@@ -37,7 +37,7 @@ interface ResponseRow {
 const LISTED_MESSAGES = 5
 
 const { t } = useI18n()
-const locale = useFormatLocale()
+const { formatLocale: locale } = useRegionalFormat({ locale: 'format' })
 const dateFormat = useDateFormat()
 const currentRoute = useDmsRoute()
 const router = useDmsRouter()

@@ -34,7 +34,7 @@ const BODILESS_METHODS = ['GET', 'HEAD']
 const BODY_SETTINGS_LINK = '/modules/api/settings#requestLogMaxBodyKb'
 
 const { t } = useI18n()
-const locale = useFormatLocale()
+const { formatLocale: locale } = useRegionalFormat({ locale: 'format' })
 
 const parsed = computed<{ value: unknown } | undefined>(() => {
   if (!props.body) return undefined

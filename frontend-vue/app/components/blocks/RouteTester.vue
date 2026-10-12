@@ -156,7 +156,7 @@ const POINTS_TO_CAPTURED: ReadonlySet<string> = new Set([
 ])
 
 const { t } = useI18n()
-const locale = useFormatLocale()
+const { formatLocale: locale } = useRegionalFormat({ locale: 'format' })
 const dateFormat = useDateFormat()
 const toast = useToast()
 const { confirm } = useConfirm()

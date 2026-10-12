@@ -81,7 +81,9 @@ const REVEAL_MARGIN_PX = 8
 const VIEWPORT_MARGIN_PX = 16
 
 const { t } = useI18n()
-const locale = useFormatLocale()
+const { formatLocale: locale, formatNumber } = useRegionalFormat({
+  locale: 'format',
+})
 const selection = useRouteSelection(props.queryKey)
 const { data, error, pending, refresh } = useApiResource<{
   routes: RouteRow[]
@@ -407,7 +409,6 @@ onMounted(() => {
   void nextTick(() => revealActive(true))
 })
 
-const { formatNumber } = useRegionalFormat()
 const count = (value: number) =>
   formatNumber(value, { notation: 'compact', maximumFractionDigits: 1 })
 </script>

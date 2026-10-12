@@ -108,7 +108,11 @@ const props = defineProps<{
 }>()
 
 const { t } = useI18n()
-const locale = useFormatLocale()
+const {
+  formatLocale: locale,
+  formatNumber: count,
+  formatRelativeTime,
+} = useRegionalFormat({ locale: 'format' })
 const toast = useToast()
 // Read through the router, not `useDmsRoute()`: each call of it reassigns
 // the route's query, which the request tables watch for their filters.
@@ -353,7 +357,6 @@ const responseSize = computed(() =>
   ),
 )
 
-const { formatNumber: count, formatRelativeTime } = useRegionalFormat()
 const dateFormat = useDateFormat()
 </script>
 

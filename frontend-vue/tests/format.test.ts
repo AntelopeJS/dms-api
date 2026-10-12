@@ -6,7 +6,6 @@ import {
   formatDecimal,
   formatClock,
   formatFullDateTime,
-  formatLocale,
   formatMs,
   formatPercent,
   formatRelativeDay,
@@ -149,15 +148,9 @@ describe('formatThreshold', () => {
 })
 
 describe('one clock for the console', () => {
-  it('reads a bare English as British English', () => {
-    expect(formatLocale('en')).toBe('en-GB')
-    expect(formatLocale('en-GB')).toBe('en-GB')
-    expect(formatLocale('fr-FR')).toBe('fr-FR')
-  })
-
   it('writes every time on 24 hours unless the user asks otherwise', () => {
     const evening = new Date(2026, 9, 10, 20, 45, 7)
-    const british = formatIn(formatLocale('en'))
+    const british = formatIn('en-GB')
     expect(formatFullDateTime(evening, british)).toContain('20:45')
     expect(formatFullDateTime(evening, british)).not.toMatch(/PM/i)
     expect(formatClock(evening, british, false, evening)).toBe('20:45:07')
