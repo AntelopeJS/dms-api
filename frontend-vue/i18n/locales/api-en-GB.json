@@ -199,11 +199,12 @@
         "client_errors_detail": "{rate} client errors · {clientErrors} of {calls} call | {rate} client errors · {clientErrors} of {calls} calls",
         "top_error": "{status} “{message}” × {count}",
         "top_status": "{status} × {count}",
-        "stray": "No route answers this path"
+        "stray": "No route answers this path",
+        "badge": "Last 24 h"
       },
       "slowest": {
         "title": "Slowest routes",
-        "description": "Average latency per route, in ms",
+        "description": "Average latency per route",
         "empty": "No calls in this period",
         "detail": "p95 {p95} · max {max} · {calls} call | p95 {p95} · max {max} · {calls} calls",
         "detail_no_p95": "max {max} · {calls} call | max {max} · {calls} calls"

@@ -89,8 +89,12 @@ export class OverviewPage extends PageController(
       GridRow()
         .child(
           "attention",
+          // Its head counts every route to check (the route's `count`, more
+          // than the rows shown when capped) and says the window it covers;
+          // each row's top error is its third line.
           ActivityFeed({
             title: "$api.overview.attention.title",
+            badge: "$api.overview.attention.badge",
             fetchUrl: `${OVERVIEW_API}/attention`,
             groupByDay: false,
             mono: true,
@@ -115,9 +119,7 @@ export class OverviewPage extends PageController(
         )
         .child(
           "slowest",
-          // TODO(dms TopListCard valueSuffix): write the average "1,931 ms"
-          // as mwesto did, with `valueSuffix: " ms"`, once the DMS ships it,
-          // and drop "in ms" from the description.
+          // The average with its unit: "1,931 ms".
           TopListCard({
             title: "$api.overview.slowest.title",
             description: "$api.overview.slowest.description",
@@ -125,6 +127,7 @@ export class OverviewPage extends PageController(
             periodScope: PERIOD_SCOPE,
             valueFormat: "number",
             valuePrecision: 0,
+            valueSuffix: " ms",
             showBar: true,
             showRank: false,
             showDelta: false,

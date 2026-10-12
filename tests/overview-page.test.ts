@@ -65,6 +65,17 @@ describe("OverviewPage", () => {
     );
   });
 
+  it("writes the slowest routes in ms and dates the routes to check", () => {
+    const row = child(dashboard, "health");
+    expect(child(row, "slowest").options).toMatchObject({
+      valueFormat: "number",
+      valueSuffix: " ms",
+    });
+    expect(child(row, "attention").options).toMatchObject({
+      badge: "$api.overview.attention.badge",
+    });
+  });
+
   it("follows the live feed, which the page's Direct / Pause holds", () => {
     const info = GetMetadata(OverviewPage, PageMetadata).pageInfo as {
       live?: unknown;

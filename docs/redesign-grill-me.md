@@ -182,14 +182,16 @@ themselves (health hero, tab counters, tree footer).
    *Responses by class* (2xx / 4xx / 5xx with share and bars).
 4. `ChartCard` *Error share per day* (`ChartColumn`, 4xx and 5xx stacked, 2xx
    left out so small changes show, F07), `ActivityFeed` *Needs attention*
-   and `TopListCard` *Slowest routes*.
+   (the count of routes to check and "Last 24 h" in its head) and
+   `TopListCard` *Slowest routes* (the average in ms, `valueSuffix`).
 5. `Card` *Recent requests* around a compact `TableView.fromSource` (each row
    opens the request side panel), and `ActivityFeed` *Activity*.
 
 **Q17. Why `ActivityFeed` for "Needs attention"?**
 Each row is an issue with a tone, an icon, a title (the route, in mono) and
-meta lines (what is wrong in plain words, the number that triggered it, the
-top error message) linking to the next step: exactly the feed item shape.
+meta lines (what is wrong in plain words, the number that triggered it) and
+the top error on a third, mono line (`detail`), linking to the next step:
+exactly the feed item shape.
 Rows are ordered failing → slow → 4xx rate (F02). A `TopListCard` would force
 one number format on rows that measure different things.
 

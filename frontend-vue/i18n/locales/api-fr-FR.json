@@ -199,11 +199,12 @@
         "client_errors_detail": "{rate} d'erreurs client · {clientErrors} sur {calls} appel | {rate} d'erreurs client · {clientErrors} sur {calls} appels",
         "top_error": "{status} « {message} » × {count}",
         "top_status": "{status} × {count}",
-        "stray": "Aucune route ne répond à ce chemin"
+        "stray": "Aucune route ne répond à ce chemin",
+        "badge": "Dernières 24 h"
       },
       "slowest": {
         "title": "Routes les plus lentes",
-        "description": "Latence moyenne par route, en ms",
+        "description": "Latence moyenne par route",
         "empty": "Aucun appel sur la période",
         "detail": "p95 {p95} · max {max} · {calls} appel | p95 {p95} · max {max} · {calls} appels",
         "detail_no_p95": "max {max} · {calls} appel | max {max} · {calls} appels"

@@ -99,6 +99,12 @@ describe("getAttention", () => {
         serverErrors: { type: "number", value: 3 },
       },
     });
+    // Its top error on the feed's third line, not among the details.
+    expect(route?.detail).toEqual({
+      key: "api.overview.attention.top_status",
+      params: { status: "500", count: { type: "number", value: 3 } },
+    });
+    expect(route?.meta).not.toContainEqual(route?.detail);
   });
 
   it("gives a recovered route its last 5xx, the burst left behind", async () => {
@@ -134,8 +140,8 @@ describe("getAttention", () => {
       ),
       ...Array.from({ length: 30 }, (_, index) => call(index * 0.3, 404)),
     ];
-    const { items, total } = await getAttention(modelsOf(rows), null, 1, NOW);
-    expect(total).toBe(2);
+    const { items, count } = await getAttention(modelsOf(rows), null, 1, NOW);
+    expect(count).toBe(2);
     expect(items.map(({ route, known }) => ({ route, known }))).toEqual([
       { route: "POST /orders", known: true },
     ]);

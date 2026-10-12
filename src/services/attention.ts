@@ -1,3 +1,4 @@
+import type { ActivityFeedResponse } from "@antelopejs/interface-dms/base/activity-feed";
 import type {
   BlockText,
   ComposedText,
@@ -87,10 +88,13 @@ export interface AttentionItem extends FeedItemPayload {
   lastServerError: string | null;
 }
 
-export interface AttentionPayload {
+export interface AttentionPayload extends ActivityFeedResponse {
   items: AttentionItem[];
-  /** Every route needing attention: more than `items` when capped. */
-  total: number;
+  /**
+   * Every route needing attention, more than `items` when capped: the count
+   * the feed shows beside its title.
+   */
+  count: number;
   limit: number;
   healthWindow: RangeInfo & { minutes: number };
   thresholds: typeof HEALTH_THRESHOLDS;
@@ -258,7 +262,6 @@ function attentionItem(route: RouteHealthState, known: boolean): AttentionItem {
   ];
   // A path no route answers (a scanner's `GET /.env`) says so first.
   if (!known) meta.unshift("$api.overview.attention.stray");
-  if (top) meta.push(topErrorText(top));
   const date =
     state === "recovered" ? route.incident?.end : route.incident?.start;
   return {
@@ -266,6 +269,8 @@ function attentionItem(route: RouteHealthState, known: boolean): AttentionItem {
     ...ATTENTION_FEED[state],
     title: routeRef(route.method, route.uri),
     meta,
+    // The evidence, on a third line: `500 "Cart is empty" × 16`.
+    ...(top && { detail: topErrorText(top) }),
     date: date?.toISOString(),
     to: attentionLink(route),
     route: routeRef(route.method, route.uri),
@@ -317,7 +322,7 @@ export async function getAttention(
     items: routes
       .slice(0, limit)
       .map(({ route, known }) => attentionItem(route, known)),
-    total: routes.length,
+    count: routes.length,
     limit,
     healthWindow: {
       ...rangeInfo(lookback),
