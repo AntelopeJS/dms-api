@@ -19,8 +19,8 @@
 - **API settings**: the routes the console watches, retention, captured
   headers and the slow threshold.
 
-It requires `@antelopejs/dms` `>=0.7.11 <0.8.0` (`@antelopejs/interface-dms`
-0.5.6) and `@antelopejs/dms-frontend` `>=0.5.2 <0.6.0`. These DMS releases
+It requires `@antelopejs/dms` `>=0.7.12 <0.8.0` (`@antelopejs/interface-dms`
+0.5.7) and `@antelopejs/dms-frontend` `>=0.5.2 <0.6.0`. These DMS releases
 bring the pieces the console is built on: the row side panel, the page's
 Live / Pause state and its holds, the period kept in the URL, the column tones
 and the `Guard` block.
