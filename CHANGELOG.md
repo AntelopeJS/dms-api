@@ -1,5 +1,25 @@
 # Changelog
 
+## v0.3.0
+
+[compare changes](https://github.com/AntelopeJS/dms-api/compare/v0.2.0...v0.3.0)
+
+### 🏡 Chore
+
+- **deps:** ⚠️  Require @antelopejs/dms 0.8 and interface-dms 0.6 ([#31](https://github.com/AntelopeJS/dms-api/pull/31))
+
+### 🤖 CI
+
+- Speed up pipeline ([#30](https://github.com/AntelopeJS/dms-api/pull/30))
+
+#### ⚠️ Breaking Changes
+
+- **deps:** ⚠️  Require @antelopejs/dms 0.8 and interface-dms 0.6 ([#31](https://github.com/AntelopeJS/dms-api/pull/31))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <rizzitelli.antony@pm.me>
+
 ## v0.2.0
 
 [compare changes](https://github.com/AntelopeJS/dms-api/compare/v0.1.7...v0.2.0)
