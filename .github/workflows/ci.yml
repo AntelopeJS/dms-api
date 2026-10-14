@@ -34,10 +34,21 @@ jobs:
       # packageManager. Pinned so a corepack release cannot break every
       # build at once.
       - run: npm i -g --force corepack@0.34.0 && corepack enable
+      # setup-node's own `cache: pnpm` needs pnpm before setup-node runs, and
+      # pnpm only exists once corepack is enabled above. One store serves
+      # both lockfiles.
+      - id: pnpm-store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml', 'frontend-vue/pnpm-lock.yaml') }}
+          restore-keys: pnpm-store-${{ runner.os }}-
       - run: pnpm install --frozen-lockfile && pnpm --dir frontend-vue install --frozen-lockfile
       - run: pnpm lint
       # oxlint's type-aware pass degrades to `any` on a broken tsconfig
-      # without failing, so the typecheck is what catches it.
+      # without failing, so the typecheck is what catches it. It checks
+      # tests/ and src/ in one pass: tests/tsconfig.json includes src/.
       - run: pnpm typecheck
       # Unused dependencies only. `pnpm knip:all` also reports dead files and
       # exports, which need a human to confirm, so they stay out of the gate.
