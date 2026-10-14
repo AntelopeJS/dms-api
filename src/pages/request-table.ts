@@ -282,7 +282,7 @@ export function requestTable(
     },
     rowClick: "single",
     // A `?record=` beyond the rows listed (a link, an older request).
-    fetchRowUrl: `${DETAIL_URLS[page]}/{id}`,
+    fetchRowUrl: `${DETAIL_URLS[page]}/{{row.id}}`,
     capabilities: { search: true, sort: true, paginate: true, filter: true },
     // The page's period, as its charts read it (`preset`, `from`, `to`).
     periodScope: PERIOD_SCOPE,
