@@ -57,7 +57,7 @@ describe("LogsPage", () => {
     };
     expect(options.rowClick).toBe("single");
     expect(JSON.stringify(options)).toContain(
-      '"fetchRowUrl":"/api/monitoring/logs/{id}"',
+      '"fetchRowUrl":"/api/monitoring/logs/{{row.id}}"',
     );
     const [action] = options.rowActions.custom;
     expect(action?.isDefault).toBe(true);
