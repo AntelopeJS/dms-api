@@ -53,7 +53,7 @@ describe('sending through the proxy', () => {
     )
     expect(result).toEqual(reply)
     const [url, init] = fetch.mock.calls[0]
-    expect(url).toBe('/api/_dms/tester')
+    expect(url).toBe('/api/_dms-api/tester')
     expect(init).toMatchObject({
       method: 'POST',
       headers: { 'content-type': 'application/json' },
