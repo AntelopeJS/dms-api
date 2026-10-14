@@ -8,7 +8,8 @@
   },
   "files": [
     "dist",
-    "frontend-vue"
+    "frontend-vue",
+    "skills"
   ],
   "main": "dist/index.js",
   "publishConfig": {
@@ -65,6 +66,9 @@
       "@/*": [
         "*"
       ]
-    }
+    },
+    "skills": [
+      "./skills"
+    ]
   }
 }
