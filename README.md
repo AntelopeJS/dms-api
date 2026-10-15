@@ -19,7 +19,7 @@
 - **API settings**: the routes the console watches, retention, captured
   headers and the slow threshold.
 
-It requires `@antelopejs/dms` `>=0.9.0 <0.10.0` (`@antelopejs/interface-dms`
+It requires `@antelopejs/dms` `>=0.9.0 <1.0.0` (`@antelopejs/interface-dms`
 0.7.0) and `@antelopejs/dms-frontend` `>=0.6.0 <0.7.0`. The frontend server
 serves no tester route of its own: this module's `dms.server.ts` serves
 `POST /api/_dms-api/tester`. These DMS releases
