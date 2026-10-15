@@ -144,10 +144,14 @@ export interface RouteDetail {
  */
 export function useRouteDetail(fetchUrl: string, queryKey = 'route') {
   const selection = useRouteSelection(queryKey)
-  const detail = useApiResource<RouteDetail>(() =>
-    selection.ref.value
-      ? `${fetchUrl}?${new URLSearchParams({ route: selection.ref.value })}`
-      : null,
+  // The header reads it again, on the Statistics tab only: the
+  // documentation and the tester must not move with the page's refreshes.
+  const detail = useApiResource<RouteDetail>(
+    () =>
+      selection.ref.value
+        ? `${fetchUrl}?${new URLSearchParams({ route: selection.ref.value })}`
+        : null,
+    { refreshOnPageRefresh: false },
   )
   return {
     selection,

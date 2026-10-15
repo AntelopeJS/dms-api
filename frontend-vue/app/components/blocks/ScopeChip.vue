@@ -27,6 +27,7 @@ const { t } = useI18n()
 const { formatNumber } = useRegionalFormat({ locale: 'format' })
 const summary = useApiResource<{ scope: Scope; routes: number }>(
   () => props.fetchUrl,
+  { refreshOnPageRefresh: false },
 )
 
 const scope = computed(() => summary.data.value?.scope ?? props.scope ?? 'own')

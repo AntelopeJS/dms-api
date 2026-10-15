@@ -161,7 +161,9 @@ const dateFormat = useDateFormat()
 const toast = useToast()
 const { isLive } = usePageLive()
 const { data, error, pending, receivedAt, refresh } =
-  useApiResource<HealthPayload>(() => props.fetchUrl)
+  useApiResource<HealthPayload>(() => props.fetchUrl, {
+    refreshOnPageRefresh: false,
+  })
 
 // Read again on the live feed at the page's pace, and after a quiet minute:
 // the verdict judges time too. Never while paused.

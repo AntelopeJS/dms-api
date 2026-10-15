@@ -43,6 +43,7 @@ const { formatLocale: locale, formatNumber } = useRegionalFormat({
 const dateFormat = useDateFormat()
 const { data, error, pending, refresh } = useApiResource<LivePayload>(
   () => props.fetchUrl,
+  { refreshOnPageRefresh: false },
 )
 
 // The paused state is the browser's (the DMS remembers it per page), the

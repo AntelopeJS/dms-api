@@ -1,4 +1,4 @@
-import { computed, shallowRef, watch, type Ref } from 'vue'
+import { computed, type Ref } from 'vue'
 
 export interface ApiResource<T> {
   data: Readonly<Ref<T | null>>
@@ -12,11 +12,32 @@ export interface ApiResource<T> {
   refresh: () => Promise<void>
 }
 
+export interface ApiResourceOptions {
+  /**
+   * `false` for a resource its blocks read again on triggers of their own
+   * (`usePageLiveRefresh`): the page's refreshes would read it a second time.
+   */
+  refreshOnPageRefresh?: boolean
+}
+
 /** A response, with the URL it answers and when it came. */
 interface Received<T> {
   url: string
   value: T
   at: number
+}
+
+/**
+ * The prefix of the keys `useApiResource` loads under. The payload it keeps
+ * is its own shape (the response, its URL and its time), not the bare
+ * response `useApiData(url)` keeps under the URL's own key: the two must not
+ * share an entry.
+ */
+export const API_RESOURCE_KEY_PREFIX = 'dms-api:resource:'
+
+/** The key of `url`'s resource, or `null` (nothing to read) without a URL. */
+export function apiResourceKey(url: string | null | undefined): string | null {
+  return url ? `${API_RESOURCE_KEY_PREFIX}${url}` : null
 }
 
 /**
@@ -29,37 +50,29 @@ interface Received<T> {
  */
 export function useApiResource<T>(
   url: () => string | null | undefined,
+  options: ApiResourceOptions = {},
 ): ApiResource<T> {
-  const read = useApiData<Received<T>>(url, {
+  const read = useApiData<Received<T>>(
+    () => apiResourceKey(url()),
     // The URL and the time travel with the payload: the browser shows the
     // time the server received it.
-    transform: (value) => ({
-      url: url() as string,
-      value: value as T,
-      at: Date.now(),
-    }),
-    deep: false,
-  })
+    async ({ $authFetch, signal }) => {
+      const target = url() as string
+      const value = await $authFetch<T>(target, { signal })
+      return { url: target, value: value as T, at: Date.now() }
+    },
+    { refreshOnPageRefresh: options.refreshOnPageRefresh },
+  )
   const current = computed(() => {
     const received = read.data.value
     return received && received.url === url() ? received : null
   })
   const running = computed(() => read.status.value === 'pending')
 
-  // `useApiData` clears its error as a refresh starts: the last answer's is
-  // kept until the refresh answers.
-  const answered = shallowRef<unknown>(read.error.value)
-  watch(
-    read.status,
-    (status) => {
-      if (status !== 'pending') answered.value = read.error.value
-    },
-    { flush: 'sync' },
-  )
-
   return {
     data: computed(() => current.value?.value ?? null),
-    error: computed(() => (running.value ? answered.value : read.error.value)),
+    // `useApiData` keeps a failure until the next answer.
+    error: computed(() => read.error.value),
     pending: computed(() => running.value && current.value === null),
     refreshing: computed(() => running.value && current.value !== null),
     receivedAt: computed(() => current.value?.at ?? null),

@@ -87,7 +87,7 @@ const { data, error, pending, refresh } = useApiResource<{
   healthWindowMinutes?: number
   /** Minutes of traffic each request count covers. */
   requestsWindowMinutes?: number
-}>(() => props.fetchUrl)
+}>(() => props.fetchUrl, { refreshOnPageRefresh: false })
 
 // Live, the states and counts are read again in place, at the page's pace:
 // the list keeps its order, its scroll and the focus.
@@ -377,13 +377,13 @@ const count = (value: number) =>
 <template>
   <DmsCard
     :padded="false"
-    class="flex flex-col overflow-hidden @5xl:max-h-[calc(100dvh-2rem)] @5xl:min-h-[24rem]"
+    class="@5xl:max-h-[calc(100dvh-2rem)] @5xl:min-h-[24rem] flex flex-col overflow-hidden"
   >
     <!-- Stacked above the detail, the list folds to the route it shows. -->
     <button
       ref="foldToggle"
       type="button"
-      class="hover:bg-elevated flex items-center gap-2 px-3 py-2.5 text-left text-[13px] @5xl:hidden"
+      class="hover:bg-elevated @5xl:hidden flex items-center gap-2 px-3 py-2.5 text-left text-[13px]"
       :aria-expanded="listOpen"
       aria-controls="api-route-list"
       @click="listOpen = !listOpen"
@@ -407,7 +407,7 @@ const count = (value: number) =>
 
     <div
       id="api-route-list"
-      class="border-default flex min-h-0 flex-1 flex-col @max-5xl:border-t"
+      class="border-default @max-5xl:border-t flex min-h-0 flex-1 flex-col"
       :class="!listOpen && '@max-5xl:hidden'"
     >
       <div class="border-default flex flex-col gap-2.5 border-b p-3">
@@ -461,7 +461,7 @@ const count = (value: number) =>
 
       <div
         ref="scroller"
-        class="relative min-h-0 flex-1 overflow-y-auto py-1.5 @max-5xl:max-h-[50vh]"
+        class="@max-5xl:max-h-[50vh] relative min-h-0 flex-1 overflow-y-auto py-1.5"
       >
         <p
           v-if="healthWindow && routes.length"
@@ -668,8 +668,8 @@ const count = (value: number) =>
             @click="toggleAll"
           />
         </UTooltip>
-        <UKbd value="↑" size="sm" class="shrink-0 @max-5xl:hidden" />
-        <UKbd value="↓" size="sm" class="shrink-0 @max-5xl:hidden" />
+        <UKbd value="↑" size="sm" class="@max-5xl:hidden shrink-0" />
+        <UKbd value="↓" size="sm" class="@max-5xl:hidden shrink-0" />
       </div>
     </div>
   </DmsCard>
