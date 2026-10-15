@@ -19,10 +19,10 @@
 - **API settings**: the routes the console watches, retention, captured
   headers and the slow threshold.
 
-It requires `@antelopejs/dms` `>=0.8.3 <0.9.0` (`@antelopejs/interface-dms`
-0.6.0) and `@antelopejs/dms-frontend` `>=0.5.7 <0.6.0`, whose frontend
-server runs the tester's route from this module's `dms.server.ts`
-(`POST /api/_dms-api/tester`). These DMS releases
+It requires `@antelopejs/dms` `>=0.9.0 <0.10.0` (`@antelopejs/interface-dms`
+0.7.0) and `@antelopejs/dms-frontend` `>=0.6.0 <0.7.0`. The frontend server
+serves no tester route of its own: this module's `dms.server.ts` serves
+`POST /api/_dms-api/tester`. These DMS releases
 bring the pieces the console is built on: the row side panel, the page's
 Live / Pause state and its holds, the refresh the console's own blocks share
 with the DMS blocks, the period kept in the URL, the column tones, the
