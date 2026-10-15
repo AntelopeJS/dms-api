@@ -19,15 +19,16 @@
 - **API settings**: the routes the console watches, retention, captured
   headers and the slow threshold.
 
-It requires `@antelopejs/dms` `>=0.8.0 <0.9.0` (`@antelopejs/interface-dms`
+It requires `@antelopejs/dms` `>=0.8.3 <0.9.0` (`@antelopejs/interface-dms`
 0.6.0) and `@antelopejs/dms-frontend` `>=0.5.7 <0.6.0`, whose frontend
 server runs the tester's route from this module's `dms.server.ts`
 (`POST /api/_dms-api/tester`). These DMS releases
 bring the pieces the console is built on: the row side panel, the page's
 Live / Pause state and its holds, the refresh the console's own blocks share
 with the DMS blocks, the period kept in the URL, the column tones, the
-`Guard` block, the form API its settings fields use and the redirect of
-`/modules/api` to the Overview.
+`Guard` block, the form API its settings fields use, the redirect of
+`/modules/api` to the Overview, and `useApiData`, which renders the console's
+data on the server.
 
 The Overview, the Request logs and Routes have the DMS **Live / Pause**
 toggle (the L key). Live, the default, the page follows new requests as the

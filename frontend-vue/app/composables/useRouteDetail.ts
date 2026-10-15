@@ -1,4 +1,4 @@
-import { computed, markRaw, onBeforeUnmount, ref, watch } from 'vue'
+import { computed } from 'vue'
 import type { RouteState } from '../utils/routeExplorer'
 
 /** One step of the request pipeline of a route, in the order it runs. */
@@ -134,120 +134,24 @@ export interface RouteDetail {
   apiOrigin: string | null
 }
 
-/** The detail every block of the page reads, fetched once per route. */
-interface DetailSlot {
-  url: string | null
-  data: RouteDetail | null
-  error: unknown
-  pending: boolean
-  refreshing: boolean
-  receivedAt: number | null
-}
-
-const emptySlot = (): DetailSlot => ({
-  url: null,
-  data: null,
-  error: null,
-  pending: true,
-  refreshing: false,
-  receivedAt: null,
-})
-
-/** The request still running for a slot, and the blocks reading it. */
-const running = new WeakMap<object, AbortController>()
-const readers = new WeakMap<object, number>()
-
 /**
  * The route the page's `?route=` names, shared by the blocks that show it:
  * the header, the documentation, the tester and the parts of the page that
- * wait for a valid route read one payload, loaded once per route rather than
- * once per block. A newer route cancels the request still running; a failed
- * refresh keeps the last data and says so through `error`.
+ * wait for a valid route read one payload (`useApiResource`: one request per
+ * route, which a server render reads and hands over). A newer route cancels
+ * the request still running; a failed refresh keeps the last data and says so
+ * through `error`.
  */
 export function useRouteDetail(fetchUrl: string, queryKey = 'route') {
   const selection = useRouteSelection(queryKey)
-  const target = computed(() =>
+  const detail = useApiResource<RouteDetail>(() =>
     selection.ref.value
       ? `${fetchUrl}?${new URLSearchParams({ route: selection.ref.value })}`
       : null,
   )
-
-  // The server renders the page before anything is fetched.
-  if (import.meta.env.SSR) {
-    return {
-      selection,
-      missing: computed(() => false),
-      data: ref<RouteDetail | null>(null),
-      error: ref<unknown>(null),
-      pending: ref(true),
-      refreshing: ref(false),
-      receivedAt: ref<number | null>(null),
-      refresh: async () => {},
-    }
-  }
-
-  const { $authFetch } = useAuthFetch()
-  const state = useDmsState<DetailSlot>(
-    `dms-api-route-detail:${fetchUrl}`,
-    emptySlot,
-  )
-
-  async function load(url: string | null, force = false) {
-    const slot = state.value
-    if (!force && slot.url === url) return
-    running.get(slot)?.abort()
-    running.delete(slot)
-    if (slot.url !== url) {
-      slot.url = url
-      slot.data = null
-      slot.error = null
-    }
-    if (!url) {
-      slot.pending = false
-      return
-    }
-    const controller = new AbortController()
-    running.set(slot, controller)
-    slot.pending = slot.data === null
-    slot.refreshing = slot.data !== null
-    try {
-      const response = await $authFetch<RouteDetail>(url, {
-        signal: controller.signal,
-      })
-      if (running.get(slot) !== controller) return
-      slot.data = markRaw(response)
-      slot.error = null
-      slot.receivedAt = Date.now()
-    } catch (cause) {
-      if (running.get(slot) !== controller) return
-      if ((cause as { name?: string })?.name !== 'AbortError')
-        slot.error = cause
-    } finally {
-      if (running.get(slot) === controller) {
-        running.delete(slot)
-        slot.pending = false
-        slot.refreshing = false
-      }
-    }
-  }
-
-  // The first block of a page visit refreshes what an earlier visit left.
-  const slot = state.value
-  const count = readers.get(slot) ?? 0
-  readers.set(slot, count + 1)
-  onBeforeUnmount(() => readers.set(slot, (readers.get(slot) ?? 1) - 1))
-  if (count === 0 && slot.url !== null) void load(target.value, true)
-
-  watch(target, (url) => void load(url), { immediate: true })
-
   return {
     selection,
-    missing: computed(() => errorStatus(state.value.error) === 404),
-    data: computed(() => state.value.data),
-    error: computed(() => state.value.error),
-    pending: computed(() => state.value.pending),
-    refreshing: computed(() => state.value.refreshing),
-    receivedAt: computed(() => state.value.receivedAt),
-    refresh: () => load(target.value, true),
+    missing: computed(() => errorStatus(detail.error.value) === 404),
+    ...detail,
   }
 }

@@ -1,83 +1,69 @@
-import { onBeforeUnmount, ref, shallowRef, watch, type Ref } from 'vue'
+import { computed, shallowRef, watch, type Ref } from 'vue'
 
 export interface ApiResource<T> {
-  data: Ref<T | null>
-  error: Ref<unknown>
+  data: Readonly<Ref<T | null>>
+  error: Readonly<Ref<unknown>>
   /** First load still running: nothing to show yet. */
-  pending: Ref<boolean>
+  pending: Readonly<Ref<boolean>>
   /** A refresh is running over data already on screen. */
-  refreshing: Ref<boolean>
+  refreshing: Readonly<Ref<boolean>>
   /** When the data on screen was received. */
-  receivedAt: Ref<number | null>
+  receivedAt: Readonly<Ref<number | null>>
   refresh: () => Promise<void>
 }
 
+/** A response, with the URL it answers and when it came. */
+interface Received<T> {
+  url: string
+  value: T
+  at: number
+}
+
 /**
- * A backend payload that follows a URL. A failed refresh keeps the last data
- * on screen and says so through `error`, instead of replacing the page with
- * an error box; a newer request cancels the one still running.
+ * A backend payload that follows a URL, read through `useApiData`: a server
+ * render reads it and hands it over with the page, and the blocks reading the
+ * same URL share it. Another URL shows nothing until its payload is in. A
+ * failed refresh keeps the last data on screen and says so through `error`,
+ * instead of replacing the page with an error box; the error stays while the
+ * next refresh runs. A newer request cancels the one still running.
  */
 export function useApiResource<T>(
   url: () => string | null | undefined,
 ): ApiResource<T> {
-  const { $authFetch } = useAuthFetch()
-  const data = shallowRef<T | null>(null)
-  const error = ref<unknown>(null)
-  const pending = ref(true)
-  const refreshing = ref(false)
-  const receivedAt = ref<number | null>(null)
-  let controller: AbortController | null = null
-
-  async function load(target: string | null | undefined) {
-    controller?.abort()
-    if (!target) {
-      data.value = null
-      pending.value = false
-      return
-    }
-    const current = new AbortController()
-    controller = current
-    refreshing.value = data.value !== null
-    try {
-      const response = await $authFetch<T>(target, { signal: current.signal })
-      if (controller !== current) return
-      data.value = response
-      error.value = null
-      receivedAt.value = Date.now()
-    } catch (cause) {
-      if (controller !== current) return
-      if ((cause as { name?: string })?.name !== 'AbortError')
-        error.value = cause
-    } finally {
-      if (controller === current) {
-        pending.value = false
-        refreshing.value = false
-      }
-    }
-  }
-
-  watch(url, (target, previous) => {
-    if (target === previous) return
-    pending.value = true
-    data.value = null
-    void load(target)
+  const read = useApiData<Received<T>>(url, {
+    // The URL and the time travel with the payload: the browser shows the
+    // time the server received it.
+    transform: (value) => ({
+      url: url() as string,
+      value: value as T,
+      at: Date.now(),
+    }),
+    deep: false,
   })
+  const current = computed(() => {
+    const received = read.data.value
+    return received && received.url === url() ? received : null
+  })
+  const running = computed(() => read.status.value === 'pending')
 
-  if (import.meta.env.SSR) {
-    pending.value = true
-  } else {
-    void load(url())
-  }
-
-  onBeforeUnmount(() => controller?.abort())
+  // `useApiData` clears its error as a refresh starts: the last answer's is
+  // kept until the refresh answers.
+  const answered = shallowRef<unknown>(read.error.value)
+  watch(
+    read.status,
+    (status) => {
+      if (status !== 'pending') answered.value = read.error.value
+    },
+    { flush: 'sync' },
+  )
 
   return {
-    data,
-    error,
-    pending,
-    refreshing,
-    receivedAt,
-    refresh: () => load(url()),
+    data: computed(() => current.value?.value ?? null),
+    error: computed(() => (running.value ? answered.value : read.error.value)),
+    pending: computed(() => running.value && current.value === null),
+    refreshing: computed(() => running.value && current.value !== null),
+    receivedAt: computed(() => current.value?.at ?? null),
+    refresh: () => read.refresh(),
   }
 }
 

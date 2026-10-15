@@ -1,5 +1,13 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, reactive, ref, useId, watch } from 'vue'
+import {
+  computed,
+  onBeforeUnmount,
+  onMounted,
+  reactive,
+  ref,
+  useId,
+  watch,
+} from 'vue'
 import {
   byteLength,
   formatBytes,
@@ -202,6 +210,9 @@ const capturedLog = ref<CapturedRequest | null>(null)
 
 // The route the fields belong to, the call in flight and its route.
 let activeRef: string | null = null
+// The route the fields were filled for: they come from this browser's drafts,
+// history and headers, so the tester shows once mounted, never on a server.
+const filledRef = ref<string | null>(null)
 let inFlight: { controller: AbortController; ref: string } | null = null
 let confirming = false
 let unmounted = false
@@ -612,6 +623,7 @@ function loadRoute(next: string) {
     sending.value = false
   }
   activeRef = next
+  filledRef.value = next
   history.value = loadHistory(next)
   const draft = loadDraft(next)
   if (draft) {
@@ -626,12 +638,14 @@ function loadRoute(next: string) {
   if (typeof replayId === 'string' && replayId) void replay(replayId, next)
 }
 
-watch(
-  () => route.value?.ref,
-  (next) => {
-    if (next) loadRoute(next)
-  },
-  { immediate: true },
+onMounted(() =>
+  watch(
+    () => route.value?.ref,
+    (next) => {
+      if (next) loadRoute(next)
+    },
+    { immediate: true },
+  ),
 )
 
 // --- Replay ---
@@ -1204,7 +1218,7 @@ const shortcut = computed(() =>
 
 <template>
   <div v-if="!selection.ref.value" />
-  <USkeleton v-else-if="pending" class="h-72" />
+  <USkeleton v-else-if="pending || (route && !filledRef)" class="h-72" />
   <div
     v-else-if="route"
     class="flex flex-col gap-4"
