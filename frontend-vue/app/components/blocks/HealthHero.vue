@@ -339,6 +339,10 @@ const incident = computed(() => {
   }
 })
 
+// The tooltip of the duration waits for the browser: it writes a weekday,
+// which the server's ICU may punctuate otherwise.
+const incidentTitle = useClientValue(() => incident.value?.title)
+
 // One time only: once stale, the banner says when the figures date from.
 const checked = computed(() =>
   data.value && !stale.value
@@ -556,7 +560,7 @@ const metrics = computed<HeroMetric[]>(() => {
                 <time
                   v-if="incident"
                   :datetime="incident.datetime"
-                  :title="incident.title"
+                  :title="incidentTitle"
                 >
                   {{ incident.text }}
                 </time>
