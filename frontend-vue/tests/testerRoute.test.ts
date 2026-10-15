@@ -8,7 +8,7 @@ import {
 } from 'node:http'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import type { DmsServerEvent } from '#dms/server'
-import { testerMethodNotAllowed, testerRoute } from '../server/tester'
+import { testerRoute } from '../server/tester'
 
 // The route's own checks, on the event the frontend server hands it. The
 // server's (same-origin, the 64 KiB body limit, the session cookie) are its
@@ -295,11 +295,5 @@ describe('the tester route', () => {
     ])
       expect((await invoke(input)).response.status).toBe(400)
     expect(calls).toHaveLength(0)
-  })
-
-  it('answers any other method with 405', async () => {
-    const response = testerMethodNotAllowed()
-    expect(response.status).toBe(405)
-    expect(response.headers.get('allow')).toBe('POST')
   })
 })

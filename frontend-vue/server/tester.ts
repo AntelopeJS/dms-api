@@ -264,11 +264,3 @@ export async function testerRoute(event: DmsServerEvent): Promise<Response> {
       : failure(502, 'DMS tester request failed')
   }
 }
-
-/** Any other method on the tester's path. */
-export function testerMethodNotAllowed(): Response {
-  return Response.json(
-    { error: 'Method Not Allowed' },
-    { status: 405, headers: { allow: 'POST' } },
-  )
-}
