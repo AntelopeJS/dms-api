@@ -1,5 +1,12 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import {
+  computed,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  shallowRef,
+  watch,
+} from 'vue'
 import {
   createRetentionGuard,
   isLowered,
@@ -39,7 +46,6 @@ const PREVIOUS_PERIOD_DAYS = 30
 
 const { t } = useI18n()
 const { confirm } = useConfirm()
-const { $authFetch } = useAuthFetch()
 const form = useEnclosingForm()
 const { formatNumber } = useRegionalFormat({ locale: 'format' })
 
@@ -88,14 +94,16 @@ watch(
 )
 onBeforeUnmount(() => clearTimeout(impactTimer))
 
-const impactResource = useApiResource<RetentionImpact>(() =>
+const impactRead = useApiData<RetentionImpact>(() =>
   impactDays.value == null || !props.id
     ? null
     : impactUrlOf(props.id, impactDays.value),
 )
 const impact = computed(() =>
-  lowered.value && impactDays.value === model.value
-    ? impactResource.data.value
+  lowered.value &&
+  impactDays.value === model.value &&
+  !impactRead.placeholder.value
+    ? impactRead.data.value
     : null,
 )
 
@@ -139,25 +147,48 @@ function pendingChange(): RetentionChange | null {
 }
 
 /**
- * What a change deletes, read when the dialog opens: a save sent right after
- * the change, before the field's own count came back, still says it.
+ * What each change deletes, read when the dialog opens: a save sent right
+ * after the change, before the field's own count came back, still says it.
+ * A count that cannot be read is left out of the dialog.
  */
-async function deletedRequests(change: RetentionChange) {
-  try {
-    const read = await $authFetch<RetentionImpact>(
-      impactUrlOf(change.field, change.to),
-    )
-    return t('api.settings.retention.confirm_requests', {
-      requests: formatNumber(read.requests),
-    })
-  } catch {
-    return undefined
-  }
-}
+const confirmed = shallowRef<RetentionChange[]>([])
+const deletedCounts = useApiData<Array<number | undefined>>(
+  () =>
+    confirmed.value.length
+      ? `dms-api:retention-confirm:${confirmed.value
+          .map((change) => impactUrlOf(change.field, change.to))
+          .join(' ')}`
+      : null,
+  ({ $authFetch, signal }) =>
+    Promise.all(
+      confirmed.value.map((change) =>
+        $authFetch<RetentionImpact>(impactUrlOf(change.field, change.to), {
+          signal,
+        }).then(
+          (impact) => impact.requests,
+          () => undefined,
+        ),
+      ),
+    ),
+  {
+    immediate: false,
+    server: false,
+    watch: false,
+    refreshOnPageRefresh: false,
+  },
+)
 
 /** One dialog for every lowered retention of the form, with what each deletes. */
 async function askToConfirm(changes: RetentionChange[]): Promise<boolean> {
-  const counts = await Promise.all(changes.map(deletedRequests))
+  confirmed.value = changes
+  await deletedCounts.execute()
+  const counts = (deletedCounts.data.value ?? []).map((requests) =>
+    requests === undefined
+      ? undefined
+      : t('api.settings.retention.confirm_requests', {
+          requests: formatNumber(requests),
+        }),
+  )
   return confirm({
     title: t('api.settings.retention.confirm_title'),
     description: t('api.settings.retention.confirm_description'),

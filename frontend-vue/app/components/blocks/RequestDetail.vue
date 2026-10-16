@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { byteLength, formatMs } from '../../utils/format'
+import { errorStatus } from '../../utils/http'
 import {
   durationScale,
   fullDateTime,
@@ -128,16 +129,20 @@ const page = computed(() => {
     : ''
 })
 
-const {
-  data: log,
-  error,
-  pending,
-  refresh,
-} = useApiResource<RequestLog>(() =>
-  requestId.value && isRequestId(requestId.value)
-    ? `${props.detailUrl}/${encodeURIComponent(requestId.value)}`
-    : null,
+const logRead = useApiData<RequestLog>(
+  () =>
+    requestId.value && isRequestId(requestId.value)
+      ? `${props.detailUrl}/${encodeURIComponent(requestId.value)}`
+      : null,
+  // A request's log never changes once captured.
+  { refreshOnPageRefresh: false },
 )
+const { error, refresh } = logRead
+// Another request shows nothing until its log is in.
+const log = computed(() =>
+  logRead.placeholder.value ? null : logRead.data.value,
+)
+const pending = computed(() => logRead.pending.value && !log.value)
 const apiOrigin = useApiOrigin(() => log.value?.apiOrigin)
 
 const tab = ref('overview')
@@ -308,33 +313,30 @@ const seeAlso = computed(() => {
 })
 
 // A log stored without the reason of a missing body: the body capture turned
-// off says it. Read once per session, only then, and by an owner only: a
-// refusal leaves the generic reason.
-// Null until asked, false once refused.
-const settingsSummary = useDmsState<
-  { requestLogMaxBodyKb?: number } | false | null
->('dms-api:settings-summary', () => null)
-const { $authFetch } = useAuthFetch()
+// off says it. Read once per session, only then, in the browser, and by an
+// owner only: a refusal leaves the generic reason.
+const settingsSummary = useApiData<{ requestLogMaxBodyKb?: number }>(
+  SETTINGS_SUMMARY_API,
+  { immediate: false, server: false, refreshOnPageRefresh: false },
+)
 
-watch(
-  log,
-  (value) => {
-    if (!value || settingsSummary.value !== null) return
-    const unexplained =
-      (!value.requestBody && !value.requestBodyOmitted) ||
-      (!value.responseBody && !value.responseBodyOmitted)
-    if (!unexplained) return
-    settingsSummary.value = false
-    $authFetch<{ requestLogMaxBodyKb?: number }>(SETTINGS_SUMMARY_API)
-      .then((summary) => (settingsSummary.value = summary))
-      .catch(() => undefined)
-  },
-  { immediate: true },
+onMounted(() =>
+  watch(
+    log,
+    (value) => {
+      if (!value || settingsSummary.status.value !== 'idle') return
+      const unexplained =
+        (!value.requestBody && !value.requestBodyOmitted) ||
+        (!value.responseBody && !value.responseBodyOmitted)
+      if (unexplained) void settingsSummary.execute()
+    },
+    { immediate: true },
+  ),
 )
 
 function omission(reason: string | null | undefined) {
   if (reason) return reason
-  const summary = settingsSummary.value
+  const summary = settingsSummary.data.value
   return summary && summary.requestLogMaxBodyKb === 0 ? 'disabled' : null
 }
 

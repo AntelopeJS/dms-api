@@ -125,3 +125,13 @@ export function parseRouteRef(
   const match = ref?.trim().match(/^([A-Za-z]+)\s+(\/\S*)$/)
   return match ? { method: match[1].toUpperCase(), path: match[2] } : null
 }
+
+/** The HTTP status of a failed request, when it has one. */
+export function errorStatus(error: unknown): number | undefined {
+  const value = error as {
+    statusCode?: number
+    status?: number
+    response?: { status?: number }
+  }
+  return value?.statusCode ?? value?.status ?? value?.response?.status
+}

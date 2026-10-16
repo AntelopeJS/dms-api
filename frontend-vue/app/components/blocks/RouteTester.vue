@@ -1,5 +1,14 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, reactive, ref, useId, watch } from 'vue'
+import {
+  computed,
+  onBeforeUnmount,
+  onMounted,
+  reactive,
+  ref,
+  shallowRef,
+  useId,
+  watch,
+} from 'vue'
 import {
   byteLength,
   formatBytes,
@@ -9,6 +18,7 @@ import {
 } from '../../utils/format'
 import {
   acceptsRequestBody,
+  errorStatus,
   isWritingMethod,
   pathSegments,
   statusText,
@@ -111,6 +121,20 @@ interface CapturedRow {
 
 type CapturedState = 'idle' | 'loading' | 'found' | 'missing' | 'error'
 
+/** A backend read of the tester's own flows (a replay, a capture lookup). */
+type ReadJson = <R>(url: string) => Promise<R>
+
+/**
+ * A read the tester runs when it needs it (a replay, a lookup after a call),
+ * in the browser only and never again on the page's refreshes.
+ */
+const ON_DEMAND = {
+  immediate: false,
+  server: false,
+  watch: false,
+  refreshOnPageRefresh: false,
+} as const
+
 // The tester's own reads of the request logs: by its permission, not the
 // request logs page's.
 const LOGS_API = '/api/monitoring/logs/tester'
@@ -159,7 +183,7 @@ const { formatLocale: locale } = useRegionalFormat({ locale: 'format' })
 const dateFormat = useDateFormat()
 const toast = useToast()
 const { confirm } = useConfirm()
-const { loggedIn } = useUserSession()
+const { loggedIn } = useDmsUserSession()
 const currentRoute = useDmsRoute()
 const router = useDmsRouter()
 const { $authFetch } = useAuthFetch()
@@ -170,6 +194,8 @@ const {
 } = useRouteDetail(props.fetchUrl, props.queryKey)
 const apiOrigin = useApiOrigin(() => route.value?.apiOrigin)
 const blockerId = useId()
+// Not a `useApiData` read: each call mints a short-lived token, which must
+// never be shared between calls, cached or handed over with the page.
 const sourceTokens = createSourceTokens(() =>
   $authFetch<TesterSourceToken>(TESTER_SOURCE_URL),
 )
@@ -202,6 +228,9 @@ const capturedLog = ref<CapturedRequest | null>(null)
 
 // The route the fields belong to, the call in flight and its route.
 let activeRef: string | null = null
+// The route the fields were filled for: they come from this browser's drafts,
+// history and headers, so the tester shows once mounted, never on a server.
+const filledRef = ref<string | null>(null)
 let inFlight: { controller: AbortController; ref: string } | null = null
 let confirming = false
 let unmounted = false
@@ -612,6 +641,7 @@ function loadRoute(next: string) {
     sending.value = false
   }
   activeRef = next
+  filledRef.value = next
   history.value = loadHistory(next)
   const draft = loadDraft(next)
   if (draft) {
@@ -626,12 +656,14 @@ function loadRoute(next: string) {
   if (typeof replayId === 'string' && replayId) void replay(replayId, next)
 }
 
-watch(
-  () => route.value?.ref,
-  (next) => {
-    if (next) loadRoute(next)
-  },
-  { immediate: true },
+onMounted(() =>
+  watch(
+    () => route.value?.ref,
+    (next) => {
+      if (next) loadRoute(next)
+    },
+    { immediate: true },
+  ),
 )
 
 // --- Replay ---
@@ -642,13 +674,23 @@ function dropReplayParam() {
   return router.replace({ query: rest })
 }
 
+const replayedId = shallowRef<string | null>(null)
+const replayRead = useApiData<CapturedRequest>(
+  () =>
+    replayedId.value
+      ? `${LOGS_API}/${encodeURIComponent(replayedId.value)}`
+      : null,
+  ON_DEMAND,
+)
+
 async function replay(id: string, ref: string) {
   void dropReplayParam()
   try {
-    const log = await $authFetch<CapturedRequest>(
-      `${LOGS_API}/${encodeURIComponent(id)}`,
-    )
-    if (activeRef !== ref) return
+    replayedId.value = id
+    await replayRead.execute()
+    if (replayRead.error.value) throw replayRead.error.value
+    const log = replayRead.data.value
+    if (activeRef !== ref || !log) return
     const capturedRef = log.route
     if (capturedRef !== ref) {
       toast.add({
@@ -904,10 +946,11 @@ function commit(
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 async function findCaptured(
+  read: ReadJson,
   target: TesterResult,
 ): Promise<CapturedRequest | null> {
   const id = target.requestId as string
-  const page = await $authFetch<{ results: CapturedRow[] }>(
+  const page = await read<{ results: CapturedRow[] }>(
     `${LOGS_API}?${new URLSearchParams({ requestId: id })}`,
   )
   // Only the call sent: a list that ignored the filter is no answer.
@@ -923,29 +966,44 @@ async function findCaptured(
     (found.route && activeRef && found.route !== activeRef)
   )
     return null
-  return $authFetch<CapturedRequest>(
-    `${LOGS_API}/${encodeURIComponent(found._id)}`,
-  )
+  return read<CapturedRequest>(`${LOGS_API}/${encodeURIComponent(found._id)}`)
 }
+
+const capturedTarget = shallowRef<TesterResult | null>(null)
+const captured = useApiData<CapturedRequest | null>(
+  () =>
+    capturedTarget.value?.requestId
+      ? `dms-api:tester-captured:${capturedTarget.value.requestId}`
+      : null,
+  ({ $authFetch, signal }) =>
+    findCaptured(
+      (url) => $authFetch(url, { signal }),
+      capturedTarget.value as TesterResult,
+    ),
+  ON_DEMAND,
+)
 
 async function lookUpCaptured(target: TesterResult, retry: boolean) {
   const id = target.requestId
   if (!id) return
   capturedState.value = 'loading'
+  const current = () =>
+    result.value?.requestId === id && capturedTarget.value?.requestId === id
   for (const delay of retry ? CAPTURE_DELAYS_MS : [0]) {
     if (delay) await wait(delay)
     if (result.value?.requestId !== id) return
-    try {
-      const log = await findCaptured(target)
-      if (result.value?.requestId !== id) return
-      if (log) {
-        capturedLog.value = log
-        capturedState.value = 'found'
-        keepCaptured(id, log)
-        return
-      }
-    } catch {
-      if (result.value?.requestId === id) capturedState.value = 'error'
+    capturedTarget.value = target
+    await captured.execute()
+    if (!current()) return
+    if (captured.error.value) {
+      capturedState.value = 'error'
+      return
+    }
+    const log = captured.data.value
+    if (log) {
+      capturedLog.value = log
+      capturedState.value = 'found'
+      keepCaptured(id, log)
       return
     }
   }
@@ -1204,7 +1262,7 @@ const shortcut = computed(() =>
 
 <template>
   <div v-if="!selection.ref.value" />
-  <USkeleton v-else-if="pending" class="h-72" />
+  <USkeleton v-else-if="pending || (route && !filledRef)" class="h-72" />
   <div
     v-else-if="route"
     class="flex flex-col gap-4"

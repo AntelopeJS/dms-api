@@ -29,20 +29,22 @@ export type BodyMode = 'json' | 'text' | 'form' | 'none'
 /** Who the call is authenticated as, as the DMS proxy sends it. */
 export type AuthMode = 'session' | 'manual' | 'none'
 
-// --- The DMS proxy (`/api/_dms/tester`) ---
-// dms-frontend `templates/vue/server/tester.mjs`: the limits it applies, and
-// what it answers when it does not forward a call. Its error bodies hold one
+// --- The tester's server route (`/api/_dms-api/tester`) ---
+// `server/tester.ts`, in this module's `dms.server.ts`: the limits it applies,
+// and what it answers when it does not forward a call. Its error bodies hold one
 // generic text per status, so the status, the elapsed time and the checks
 // below are what tell the causes apart.
 
+/** Where the tester's server route answers. */
+export const TESTER_ROUTE = '/api/_dms-api/tester'
 /** The proxy reads at most this much of the request (the JSON envelope). */
 export const PROXY_BODY_LIMIT = 64 * 1024
 /**
  * The proxy fails (502) when the API answers more than this, and returns
  * neither the status nor the start of the body: `limitedText()` throws
- * "Backend response too large" past `RESPONSE_LIMIT` (tester.mjs, lines 5
- * and 131-141), and `handleTester()` turns every error into the same 502
- * "DMS tester request failed" (lines 220-226), as for an API down. Only the
+ * "Backend response too large" past `RESPONSE_LIMIT` (`server/tester.ts`),
+ * and `testerRoute()` turns every error into the same 502 "DMS tester request
+ * failed", as for an API down. Only the
  * capture of the call tells the two apart. For the DMS: return the status,
  * the headers and the first 64 KiB with a `truncated: true` flag instead of
  * throwing, and give the 502 a `reason` (`too_large`, `timeout`,
@@ -481,7 +483,7 @@ export async function sendTesterRequest(
   try {
     let response: Response
     try {
-      response = await fetch('/api/_dms/tester', {
+      response = await fetch(TESTER_ROUTE, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         credentials: 'same-origin',
