@@ -94,14 +94,16 @@ watch(
 )
 onBeforeUnmount(() => clearTimeout(impactTimer))
 
-const impactResource = useApiResource<RetentionImpact>(() =>
+const impactRead = useApiData<RetentionImpact>(() =>
   impactDays.value == null || !props.id
     ? null
     : impactUrlOf(props.id, impactDays.value),
 )
 const impact = computed(() =>
-  lowered.value && impactDays.value === model.value
-    ? impactResource.data.value
+  lowered.value &&
+  impactDays.value === model.value &&
+  !impactRead.placeholder.value
+    ? impactRead.data.value
     : null,
 )
 

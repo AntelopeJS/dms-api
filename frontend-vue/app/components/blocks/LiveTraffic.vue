@@ -41,7 +41,7 @@ const { formatLocale: locale, formatNumber } = useRegionalFormat({
   locale: 'format',
 })
 const dateFormat = useDateFormat()
-const { data, error, pending, refresh } = useApiResource<LivePayload>(
+const { data, error, pending, refresh } = useApiData<LivePayload>(
   () => props.fetchUrl,
   { refreshOnPageRefresh: false },
 )
@@ -240,7 +240,7 @@ const share = (part: number, bar: { heights: Record<string, number> }) => {
     </template>
 
     <div class="px-3 pb-2 pt-1">
-      <div v-if="pending" class="flex h-[112px] items-end gap-[2px] px-2">
+      <div v-if="pending && !data" class="flex h-[112px] items-end gap-[2px] px-2">
         <USkeleton
           v-for="index in 60"
           :key="index"

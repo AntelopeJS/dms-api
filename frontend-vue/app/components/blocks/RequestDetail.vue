@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { byteLength, formatMs } from '../../utils/format'
+import { errorStatus } from '../../utils/http'
 import {
   durationScale,
   fullDateTime,
@@ -128,12 +129,7 @@ const page = computed(() => {
     : ''
 })
 
-const {
-  data: log,
-  error,
-  pending,
-  refresh,
-} = useApiResource<RequestLog>(
+const logRead = useApiData<RequestLog>(
   () =>
     requestId.value && isRequestId(requestId.value)
       ? `${props.detailUrl}/${encodeURIComponent(requestId.value)}`
@@ -141,6 +137,12 @@ const {
   // A request's log never changes once captured.
   { refreshOnPageRefresh: false },
 )
+const { error, refresh } = logRead
+// Another request shows nothing until its log is in.
+const log = computed(() =>
+  logRead.placeholder.value ? null : logRead.data.value,
+)
+const pending = computed(() => logRead.pending.value && !log.value)
 const apiOrigin = useApiOrigin(() => log.value?.apiOrigin)
 
 const tab = ref('overview')

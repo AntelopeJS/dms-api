@@ -25,7 +25,7 @@ const props = defineProps<{
 
 const { t } = useI18n()
 const { formatNumber } = useRegionalFormat({ locale: 'format' })
-const summary = useApiResource<{ scope: Scope; routes: number }>(
+const summary = useApiData<{ scope: Scope; routes: number }>(
   () => props.fetchUrl,
   { refreshOnPageRefresh: false },
 )
@@ -45,27 +45,30 @@ const label = computed(() =>
  */
 const REFRESH_INTERVAL_MS = 60_000
 
-// When the chip last asked, so that a failing read is not retried each tick.
+// When the chip last asked (the mount reads it), so that a failing read is
+// not retried each tick.
 let lastAskedAt = Date.now()
 
-function refreshIfStale() {
-  const last = Math.max(lastAskedAt, summary.receivedAt.value ?? 0)
-  if (Date.now() - last < REFRESH_INTERVAL_MS) return
+function read() {
   lastAskedAt = Date.now()
   void summary.refresh()
+}
+
+function refreshIfStale() {
+  if (Date.now() - lastAskedAt >= REFRESH_INTERVAL_MS) read()
 }
 
 usePageLiveRefresh(refreshIfStale)
 if (props.realtimeTopic) useLiveMissedErrors(props.realtimeTopic)
 
 function refreshWhenShown() {
-  if (document.visibilityState === 'visible') void summary.refresh()
+  if (document.visibilityState === 'visible') read()
 }
 
 // The first activation follows the mount, which already read the scope.
 let activated = false
 onActivated(() => {
-  if (activated) void summary.refresh()
+  if (activated) read()
   activated = true
 })
 

@@ -1,4 +1,5 @@
 import { computed } from 'vue'
+import { errorStatus } from '../utils/http'
 import type { RouteState } from '../utils/routeExplorer'
 
 /** One step of the request pipeline of a route, in the order it runs. */
@@ -137,25 +138,32 @@ export interface RouteDetail {
 /**
  * The route the page's `?route=` names, shared by the blocks that show it:
  * the header, the documentation, the tester and the parts of the page that
- * wait for a valid route read one payload (`useApiResource`: one request per
- * route, which a server render reads and hands over). A newer route cancels
- * the request still running; a failed refresh keeps the last data and says so
- * through `error`.
+ * wait for a valid route read one `useApiData` payload (one request per
+ * route, which a server render reads and hands over). Another route shows
+ * nothing until its payload is in; a failed refresh keeps the last data and
+ * says so through `error`.
  */
 export function useRouteDetail(fetchUrl: string, queryKey = 'route') {
   const selection = useRouteSelection(queryKey)
   // The header reads it again, on the Statistics tab only: the
   // documentation and the tester must not move with the page's refreshes.
-  const detail = useApiResource<RouteDetail>(
+  const detail = useApiData<RouteDetail>(
     () =>
       selection.ref.value
         ? `${fetchUrl}?${new URLSearchParams({ route: selection.ref.value })}`
         : null,
     { refreshOnPageRefresh: false },
   )
+  const data = computed(() =>
+    detail.placeholder.value ? null : detail.data.value,
+  )
   return {
     selection,
+    data,
+    error: detail.error,
+    /** Nothing to show yet for the route named: its first read is running. */
+    pending: computed(() => detail.pending.value && data.value === null),
+    refresh: () => detail.refresh(),
     missing: computed(() => errorStatus(detail.error.value) === 404),
-    ...detail,
   }
 }

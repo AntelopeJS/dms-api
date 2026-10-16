@@ -18,6 +18,7 @@ import {
 } from '../../utils/format'
 import {
   acceptsRequestBody,
+  errorStatus,
   isWritingMethod,
   pathSegments,
   statusText,

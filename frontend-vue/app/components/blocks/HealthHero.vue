@@ -160,10 +160,10 @@ const { formatLocale: locale } = useRegionalFormat({ locale: 'format' })
 const dateFormat = useDateFormat()
 const toast = useToast()
 const { isLive } = usePageLive()
-const { data, error, pending, receivedAt, refresh } =
-  useApiResource<HealthPayload>(() => props.fetchUrl, {
-    refreshOnPageRefresh: false,
-  })
+const { data, error, pending, refresh } = useApiData<HealthPayload>(
+  () => props.fetchUrl,
+  { refreshOnPageRefresh: false },
+)
 
 // Read again on the live feed at the page's pace, and after a quiet minute:
 // the verdict judges time too. Never while paused.
@@ -246,7 +246,7 @@ function heldFor(health: HealthPayload): string {
 // A failed refresh keeps the last figures on screen: they are no longer live.
 const stale = computed(() => !!error.value && !!data.value)
 const staleSince = computed(() =>
-  receivedAt.value ? formatClock(receivedAt.value, dateFormat.value) : '',
+  data.value ? formatClock(data.value.checkedAt, dateFormat.value) : '',
 )
 
 const look = computed(() => (data.value ? LOOKS[data.value.verdict] : null))
@@ -437,7 +437,7 @@ const metrics = computed<HeroMetric[]>(() => {
     :aria-busy="pending"
     :aria-label="t('api.health.label')"
   >
-    <DmsCard v-if="pending" :padded="false" class="px-6 py-6">
+    <DmsCard v-if="pending && !data" :padded="false" class="px-6 py-6">
       <div class="flex items-center gap-6">
         <USkeleton class="size-16 rounded-full" />
         <div class="flex flex-col gap-2">

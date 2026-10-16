@@ -81,7 +81,7 @@ const { formatLocale: locale, formatNumber } = useRegionalFormat({
   locale: 'format',
 })
 const selection = useRouteSelection(props.queryKey)
-const { data, error, pending, refresh } = useApiResource<{
+const { data, error, pending, refresh } = useApiData<{
   routes: RouteRow[]
   /** Minutes of traffic each state is judged on. */
   healthWindowMinutes?: number
@@ -469,7 +469,7 @@ const count = (value: number) =>
         >
           {{ t('api.routes.tree.window', { window: healthWindow }) }}
         </p>
-        <div v-if="pending" class="flex flex-col gap-2 px-3 py-2">
+        <div v-if="pending && !data" class="flex flex-col gap-2 px-3 py-2">
           <USkeleton v-for="index in 8" :key="index" class="h-6 w-full" />
         </div>
         <DmsEmptyState
