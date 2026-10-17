@@ -49,8 +49,9 @@ export class RouteStatistics extends Table {
 
   /**
    * Optimistic-concurrency token, replaced on every write of `statistics`
-   * (see {@link RouteStatisticsModel.replaceStatistics}).
+   * (see {@link RouteStatisticsModel.replaceStatistics}). Absent on legacy rows
+   * until their first guarded write.
    */
   @Field("string")
-  declare revision: string;
+  declare revision?: string;
 }

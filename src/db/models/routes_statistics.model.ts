@@ -35,7 +35,8 @@ export class RouteStatisticsModel extends BasicDataModel(
       .atomicMutation(doc._id, {
         type: "update",
         revisionField: "revision",
-        expectedRevision: doc.revision,
+        expectedRevision:
+          doc.revision === undefined ? { kind: "missing" } : doc.revision,
         nextRevision: randomUUID(),
         patch: { statistics: doc.statistics },
       })

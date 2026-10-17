@@ -1,6 +1,12 @@
 import { randomUUID } from "node:crypto";
-import type { AtomicMutationOutcome } from "@antelopejs/interface-database/atomic";
-import { describe, expect, it } from "vitest";
+import {
+  AtomicMutationQuery,
+  type AtomicMutationOutcome,
+  type AtomicUpdate,
+} from "@antelopejs/interface-database/atomic";
+import { Schema } from "@antelopejs/interface-database/schema";
+import { describe, expect, it, vi } from "vitest";
+import { RouteStatisticsModel } from "@/db/models/routes_statistics.model";
 import {
   getRouteStatsKey,
   type RouteStatistics,
@@ -92,6 +98,89 @@ function todayOf(model: FakeStatisticsModel): DayStatistics | undefined {
   const today = getTodayTimestamp();
   return model.rows.get(KEY)?.statistics.find((s) => s.day === today);
 }
+
+describe("route statistics atomic persistence", () => {
+  it.each([undefined, "existing-revision"])(
+    "persists requests through the real model with initial revision %s",
+    async (revision) => {
+      let stored: Pick<
+        RouteStatistics,
+        "_id" | "method" | "uri" | "statistics" | "revision"
+      > = {
+        _id: KEY,
+        method: "GET",
+        uri: "/api/items/:id",
+        statistics: [dayStats(getTodayTimestamp(), 3)],
+      };
+      if (revision !== undefined) stored.revision = revision;
+      const model = new RouteStatisticsModel(
+        new Schema("statistics-regression", {}).instance("test"),
+      );
+      const stale = RouteStatisticsModel.fromDatabase(structuredClone(stored))!;
+      const read = vi
+        .spyOn(model, "get")
+        .mockImplementation(async () =>
+          RouteStatisticsModel.fromDatabase(structuredClone(stored)),
+        );
+      // Keep the real table's atomic input validation. Only adapter execution
+      // is in memory, matching tokens or an absent field, never stored null.
+      const run = vi
+        .spyOn(AtomicMutationQuery.prototype, "run")
+        .mockImplementation(async function (this: AtomicMutationQuery) {
+          const stages = this.build();
+          const mutation = stages.at(-1)!
+            .args![1] as AtomicUpdate<RouteStatistics>;
+          const matches =
+            typeof mutation.expectedRevision === "string"
+              ? stored.revision === mutation.expectedRevision
+              : !("revision" in stored);
+          if (!matches) return "not-applied";
+          stored = {
+            ...stored,
+            ...structuredClone(mutation.patch),
+            revision: mutation.nextRevision,
+          };
+          return "applied";
+        });
+      try {
+        await addRequestStatistics(model, request(500, 40));
+        await addRequestStatistics(model, request(404, 20));
+        expect(stored.statistics[0]).toMatchObject({
+          requestsCount: 5,
+          totalResponseTime: 90,
+          serverErrorsCount: 1,
+          clientErrorsCount: 1,
+        });
+        expect(stored.revision).toEqual(expect.any(String));
+        expect(await model.replaceStatistics(stale)).toBe("not-applied");
+        expect(stored.statistics[0].requestsCount).toBe(5);
+      } finally {
+        read.mockRestore();
+        run.mockRestore();
+      }
+    },
+  );
+
+  it.each([null, ""])(
+    "does not treat an invalid stored revision %s as absent",
+    async (revision) => {
+      const model = new RouteStatisticsModel(
+        new Schema("statistics-invalid-revision", {}).instance("test"),
+      );
+      const doc = RouteStatisticsModel.fromDatabase({
+        _id: KEY,
+        method: "GET",
+        uri: "/api/items/:id",
+        statistics: [],
+        revision,
+      })!;
+
+      await expect(model.replaceStatistics(doc)).rejects.toThrow(
+        "Expected revision must be a token or missing tag",
+      );
+    },
+  );
+});
 
 describe("addRequestStatistics", () => {
   it("keeps every increment when requests on one route overlap", async () => {
