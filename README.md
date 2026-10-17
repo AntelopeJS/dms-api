@@ -72,6 +72,8 @@ The guide's sources live in [`docs/`](./docs). The package also ships the `dms-a
 
 Read [CONTRIBUTING.md](./CONTRIBUTING.md) before opening a pull request. Use the pnpm version declared in `package.json`. The playground connects to MongoDB at `mongodb://localhost:27017` unless `MONGO_URL` points elsewhere.
 
+One root install includes the backend and shipped Vue module, retaining their separate lockfiles. The playground remains independent: run `pnpm --dir playground install --ignore-workspace --frozen-lockfile` before starting it. Use the root scripts below rather than recursive scripts: frontend `build` and `typecheck` need the playground or a generated Inertia workspace, and root checks already delegate to the Vue module.
+
 ```bash
 pnpm install
 pnpm dev            # playground backend
