@@ -44,7 +44,7 @@ jobs:
           path: ${{ steps.pnpm-store.outputs.path }}
           key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml', 'frontend-vue/pnpm-lock.yaml') }}
           restore-keys: pnpm-store-${{ runner.os }}-
-      - run: pnpm install --frozen-lockfile && pnpm --dir frontend-vue install --frozen-lockfile
+      - run: pnpm install --frozen-lockfile
       - run: pnpm lint
       # oxlint's type-aware pass degrades to `any` on a broken tsconfig
       # without failing, so the typecheck is what catches it. It checks
