@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.4.1
+
+[compare changes](https://github.com/AntelopeJS/dms-api/compare/v0.4.0...v0.4.1)
+
+### 📖 Documentation
+
+- Add user guide and module skill ([#33](https://github.com/AntelopeJS/dms-api/pull/33))
+- Make dense guide sections easier to scan ([#36](https://github.com/AntelopeJS/dms-api/pull/36))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <rizzitelli.antony@pm.me>
+
 ## v0.4.0
 
 [compare changes](https://github.com/AntelopeJS/dms-api/compare/v0.3.0...v0.4.0)
