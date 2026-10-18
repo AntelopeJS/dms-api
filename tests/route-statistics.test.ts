@@ -11,6 +11,7 @@ import {
   latencyBucketIndex,
 } from "@/services/statistics-utils";
 import { sumBuckets, type TrafficBucket } from "@/services/traffic";
+import { resolveWindow, type WindowComparison } from "@/services/window";
 
 function bucket(start: number, fields: Partial<TrafficBucket>): TrafficBucket {
   return {
@@ -190,5 +191,33 @@ describe("route statistics", () => {
         "2026-10-01T10:00:00.000Z",
       ),
     ).toEqual({ calls: traffic.total.requests });
+  });
+});
+
+describe("route statistics comparisons", () => {
+  it("names the comparison picked beside the calls, nothing without one", () => {
+    const comparedWith = (comparison: WindowComparison, previous = true) => {
+      const window = resolveWindow({ comparison }, "last-24h");
+      const [requests] = routeSummary(
+        { ...traffic, previous: previous ? traffic.previous : null, window },
+        250,
+      ).items;
+      return requests;
+    };
+    expect(comparedWith("previous-period")?.detail).toMatchObject({
+      key: "api.routes.statistics.vs_previous",
+    });
+    expect(comparedWith("previous-year")).toMatchObject({
+      detail: { key: "api.routes.statistics.vs_previous_year" },
+      detailTone: "success",
+    });
+    expect(comparedWith("previous-year", false)).toMatchObject({
+      detail: "$api.routes.statistics.no_baseline_year",
+      detailTone: "neutral",
+    });
+    const none = comparedWith("none", false);
+    expect(none).toMatchObject({ id: "requests", value: 10 });
+    expect(none).not.toHaveProperty("detail");
+    expect(none).not.toHaveProperty("detailTone");
   });
 });

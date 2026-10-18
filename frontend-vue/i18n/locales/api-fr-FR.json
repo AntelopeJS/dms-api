@@ -150,7 +150,6 @@
         "title": "Bêta",
         "description": "La console API est en lecture seule pour l'instant : inspecter, surveiller et tester les routes."
       },
-      "no_previous": "Pas de période précédente à comparer",
       "traffic": {
         "title": "Trafic et erreurs",
         "2xx": "2xx succès",
@@ -517,7 +516,11 @@
         "error_split": "{client} × 4xx · {server} × 5xx",
         "slow_line": "lent au-delà de {threshold}",
         "no_baseline": "Pas de période précédente",
+        "no_baseline_year": "Pas de données un an plus tôt à comparer",
+        "no_baseline_custom": "Pas de données sur la période comparée",
         "vs_previous": "{delta} par rapport à la période précédente",
+        "vs_previous_year": "{delta} par rapport à la même période l'an dernier",
+        "vs_custom": "{delta} par rapport à la période comparée",
         "summary": "Indicateurs de la route",
         "p95_detail": "p95 {p95}",
         "p95_none": "Aucune p95 conservée sur la période",

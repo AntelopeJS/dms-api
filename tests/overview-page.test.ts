@@ -43,7 +43,9 @@ describe("OverviewPage", () => {
       variant: "segmented",
       presets: ["last-hour", "last-24h", "last-7-days", "last-30-days"],
       defaultPreset: "last-24h",
-      comparisons: ["previous-period"],
+      comparisons: ["previous-period", "previous-year", "none"],
+      defaultComparison: "previous-period",
+      comparisonControl: "menu",
     });
   });
 

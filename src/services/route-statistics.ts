@@ -19,7 +19,13 @@ import {
   type TrafficBucket,
   windowTraffic,
 } from "./traffic";
-import { describeWindow, type TimeWindow, type WindowInfo } from "./window";
+import {
+  DEFAULT_COMPARISON,
+  describeWindow,
+  type TimeWindow,
+  type WindowComparison,
+  type WindowInfo,
+} from "./window";
 
 /** The method and path of a route, as `findRoute` resolves them. */
 export interface RouteKey {
@@ -155,14 +161,45 @@ function ms(value: number): ComposedText {
   };
 }
 
-function versus(delta: number | null): BlockText {
-  if (delta === null) return "$api.routes.statistics.no_baseline";
-  return {
-    key: "api.routes.statistics.vs_previous",
+/** What the calls are compared with, and what is said without a baseline. */
+const VERSUS_KEYS: Record<
+  Exclude<WindowComparison, "none">,
+  { versus: string; noBaseline: string }
+> = {
+  "previous-period": {
+    versus: "api.routes.statistics.vs_previous",
+    noBaseline: "$api.routes.statistics.no_baseline",
+  },
+  "previous-year": {
+    versus: "api.routes.statistics.vs_previous_year",
+    noBaseline: "$api.routes.statistics.no_baseline_year",
+  },
+  custom: {
+    versus: "api.routes.statistics.vs_custom",
+    noBaseline: "$api.routes.statistics.no_baseline_custom",
+  },
+};
+
+/**
+ * The calls against the period compared with, named after the comparison
+ * picked ("+12 % vs. same period last year"); nothing without a comparison.
+ */
+function versus(
+  delta: number | null,
+  comparison: WindowComparison,
+): Pick<StatGroupItem, "detail" | "detailTone"> {
+  if (comparison === "none") return {};
+  const keys = VERSUS_KEYS[comparison];
+  if (delta === null) {
+    return { detail: keys.noBaseline, detailTone: "neutral" };
+  }
+  const detail: BlockText = {
+    key: keys.versus,
     params: {
       delta: { type: "number", value: delta / PERCENT, format: "percent" },
     },
   };
+  return { detail, detailTone: delta >= 0 ? "success" : "warning" };
 }
 
 /**
@@ -229,9 +266,7 @@ export function routeSummary(
         icon: "i-ph-arrows-left-right",
         eyebrow: "$api.routes.statistics.requests",
         value: total.requests,
-        detail: versus(delta),
-        detailTone:
-          delta === null ? "neutral" : delta >= 0 ? "success" : "warning",
+        ...versus(delta, traffic.window?.comparison ?? DEFAULT_COMPARISON),
       },
       {
         id: "latency",
