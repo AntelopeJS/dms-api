@@ -1,12 +1,15 @@
 import type { ActivityFeedItem } from "@antelopejs/interface-dms/base/activity-feed";
 import type { TopListItem } from "@antelopejs/interface-dms/base/top-list-card";
-import type { ComposedText } from "@antelopejs/interface-dms/base/types/composed-text";
 import { getConfig } from "@/config";
 import type { RequestLogModel, RouteModel, RouteStatisticsModel } from "@/db";
 import type { RequestLogSample } from "@/db/models/request_log.model";
 import { MS_PER_MINUTE } from "@/types";
 import { cached } from "./aggregate-cache";
-import { count, milliseconds, percent, text } from "./composed-text";
+import {
+  alignComparison,
+  comparisonSeriesName,
+  shownComparison,
+} from "./comparison";
 import {
   evaluateHealth,
   HEALTH_THRESHOLDS,
@@ -14,7 +17,7 @@ import {
   type RuleWindowsInfo,
   ruleWindowsInfo,
 } from "./health-rules";
-import { logsLink, routeLink, routeRef, serverErrorsLink } from "./links";
+import { serverErrorsLink } from "./links";
 import {
   type RouteHealthState,
   type RouteState,
@@ -133,6 +136,11 @@ export interface SeriesPoint {
 export interface ChartSeriesPayload {
   name: string;
   data: SeriesPoint[];
+  /**
+   * `line` for a comparison drawn over columns: a line beside the stacked
+   * columns rather than one more part of them.
+   */
+  type?: "line";
 }
 
 /** Payload of a DMS `ChartCard`: a headline value, its delta, the series. */
@@ -143,6 +151,8 @@ export interface ChartCardPayload {
   delta?: number | null;
   deltaUnit?: "percent" | "pt";
   series: ChartSeriesPayload[];
+  /** The same measure over the period compared with, drawn dashed. */
+  comparisonSeries?: ChartSeriesPayload[];
   window?: WindowInfo;
 }
 
@@ -348,7 +358,7 @@ export async function getHealth(
 }
 
 /** The window's traffic in scope, and the previous period's if compared. */
-async function scopedWindowTraffic(
+export async function scopedWindowTraffic(
   models: OverviewModels,
   window: TimeWindow,
   keys: ScopeKeys,
@@ -374,8 +384,33 @@ function countOrGap(count: number, bucket: TrafficBucket): number | null {
 }
 
 /**
+ * The window's total per bucket over the period compared with, as the one
+ * dashed line drawn over the stacked columns; none without a comparison.
+ */
+function comparisonLine(
+  window: TimeWindow,
+  current: TrafficBucket[],
+  previous: TrafficBucket[] | null,
+  pick: (bucket: TrafficBucket) => number | null,
+): Pick<ChartCardPayload, "comparisonSeries"> {
+  const comparison = shownComparison(window);
+  if (!comparison || !previous) return {};
+  return {
+    comparisonSeries: [
+      {
+        name: comparisonSeriesName(comparison),
+        type: "line",
+        data: alignComparison(current, previous, pick),
+      },
+    ],
+  };
+}
+
+/**
  * Requests per bucket split by status class, for stacked columns, against
- * the previous period. Without a previous period kept, no comparison at all.
+ * the period compared with: its total, its delta, and its calls per bucket
+ * as a dashed line over the columns. Without a comparison, or without the
+ * period compared with still kept, no comparison at all.
  */
 export async function getTrafficChart(
   models: OverviewModels,
@@ -413,6 +448,9 @@ export async function getTrafficChart(
     previousValue,
     delta: percentChange(value, previousValue),
     deltaUnit: "percent",
+    ...comparisonLine(window, current, previous, (bucket) =>
+      countOrGap(bucket.requests, bucket),
+    ),
   };
 }
 
@@ -424,7 +462,9 @@ function shareOrGap(part: number, bucket: TrafficBucket): number | null {
 /**
  * Share of 4xx and 5xx per bucket, in percent. 2xx is left out so a small
  * rise of the errors stays visible instead of disappearing under a full bar;
- * a bucket without a call is a gap, not a 0 %. The delta is in points.
+ * a bucket without a call is a gap, not a 0 %. The delta is in points, and
+ * the share of errors over the period compared with is a dashed line: the
+ * height the stacked columns had then.
  */
 export async function getErrorShareChart(
   models: OverviewModels,
@@ -460,144 +500,12 @@ export async function getErrorShareChart(
     chart.previousValue = previousValue;
     chart.delta = roundTo(value - previousValue, ONE_DECIMAL);
     chart.deltaUnit = "pt";
+    Object.assign(
+      chart,
+      comparisonLine(window, current, previous, (bucket) =>
+        shareOrGap(bucket.clientErrors + bucket.serverErrors, bucket),
+      ),
+    );
   }
   return chart;
-}
-
-type StatusClass = "2xx" | "4xx" | "5xx";
-
-interface StatusClassRow {
-  id: StatusClass;
-  icon: string;
-  count: (bucket: TrafficBucket) => number;
-}
-
-const STATUS_CLASS_ROWS: StatusClassRow[] = [
-  {
-    id: "2xx",
-    icon: "i-ph-check-circle",
-    count: (bucket) =>
-      bucket.requests - bucket.clientErrors - bucket.serverErrors,
-  },
-  {
-    id: "4xx",
-    icon: "i-ph-warning",
-    count: (bucket) => bucket.clientErrors,
-  },
-  {
-    id: "5xx",
-    icon: "i-ph-x-circle",
-    count: (bucket) => bucket.serverErrors,
-  },
-];
-
-/** A status class row: its count as the value, its share as a number. */
-export interface StatusClassItem extends TopListItemPayload {
-  statusClass: StatusClass;
-  /** Share of the window's calls, in percent (one decimal). */
-  share: number;
-}
-
-/** Responses by status class over the window, with their share. */
-export async function getStatusClasses(
-  models: OverviewModels,
-  window: TimeWindow,
-  keys: ScopeKeys,
-): Promise<{ items: StatusClassItem[]; total: number; window: WindowInfo }> {
-  const total = sumBuckets(
-    scopeTraffic(await windowTraffic(models, window, window.granularity), keys),
-  );
-  const info = describeWindow(window);
-  if (total.requests === 0) return { items: [], total: 0, window: info };
-  return {
-    items: STATUS_CLASS_ROWS.map((row) => {
-      const calls = row.count(total);
-      return {
-        id: row.id,
-        statusClass: row.id,
-        title: `$api.overview.classes.${row.id}`,
-        description: text("overview.classes.share", {
-          share: percent(roundPercent(calls / total.requests)),
-        }),
-        value: calls,
-        share: roundPercent(calls / total.requests),
-        icon: row.icon,
-        to: logsLink({ tab: row.id, period: window.preset, from: "overview" }),
-      };
-    }),
-    total: total.requests,
-    window: info,
-  };
-}
-
-const SLOWEST_LIMIT = 5;
-
-/** A slowest-routes row: its average as the value, the rest as numbers. */
-export interface SlowRouteItem extends TopListItemPayload {
-  route: string;
-  averageMs: number;
-  /**
-   * Exact over a window read from the logs, estimated from the latency
-   * histograms over a longer one, never above `maxMs`; null without a
-   * measured call.
-   */
-  p95Ms: number | null;
-  maxMs: number;
-  requests: number;
-}
-
-/** "p95 300 ms · max 300 ms · 6 calls" under a slowest route of the Overview. */
-function slowRouteDetail(route: {
-  p95: number | null;
-  calls: number;
-  max: number;
-}): ComposedText {
-  const figures = { calls: count(route.calls), max: milliseconds(route.max) };
-  if (route.p95 === null)
-    return text("overview.slowest.detail_no_p95", figures);
-  return text("overview.slowest.detail", {
-    ...figures,
-    p95: milliseconds(route.p95),
-  });
-}
-
-/** The routes with the highest average latency over the window. */
-export async function getSlowestRoutes(
-  models: OverviewModels,
-  window: TimeWindow,
-  keys: ScopeKeys,
-): Promise<{ items: SlowRouteItem[]; window: WindowInfo }> {
-  const traffic = await windowTraffic(models, window, window.granularity);
-  const rows: Array<{ key: string; total: TrafficBucket }> = [];
-  for (const [key, buckets] of traffic.routes) {
-    if (keys && !keys.has(key)) continue;
-    const total = sumBuckets(buckets);
-    if (total.requests > 0) rows.push({ key, total });
-  }
-  const items = rows
-    .sort((a, b) => averageLatency(b.total) - averageLatency(a.total))
-    .slice(0, SLOWEST_LIMIT)
-    .map(({ key, total }) => {
-      const separator = key.indexOf(":");
-      const ref = routeRef(key.slice(0, separator), key.slice(separator + 1));
-      const p95 = p95Latency(total);
-      const average = Math.round(averageLatency(total));
-      return {
-        id: ref,
-        title: ref,
-        description: slowRouteDetail({
-          p95,
-          calls: total.requests,
-          max: total.maxLatency,
-        }),
-        route: ref,
-        value: average,
-        averageMs: average,
-        p95Ms: p95 === null ? null : Math.round(p95),
-        maxMs: Math.round(total.maxLatency),
-        requests: total.requests,
-        to: routeLink(ref, undefined, window.preset),
-      };
-    });
-  return { items, window: describeWindow(window) };
 }

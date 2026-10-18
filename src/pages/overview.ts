@@ -146,7 +146,8 @@ export class OverviewPage extends PageController(
             // "vs" figure stays (DMS-12).
             showDelta: false,
             showLegend: false,
-            // Names the 4xx and the 5xx columns.
+            // Names the 4xx and the 5xx columns, and the dashed line of the
+            // error share over the period compared with.
             showSeriesLegend: true,
             chart: ChartColumn({
               height: "220px",
@@ -174,7 +175,9 @@ export class OverviewPage extends PageController(
             // Names the 2xx, 4xx and 5xx parts of each column.
             showSeriesLegend: true,
             // 2xx, 4xx and 5xx stacked on one axis: the height of a column
-            // is the traffic, its red part the server errors.
+            // is the traffic, its red part the server errors. Under a
+            // comparison, the calls of the period compared with are a dashed
+            // line over the columns.
             chart: ChartColumn({
               height: "260px",
               xaxisType: "datetime",

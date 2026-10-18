@@ -113,13 +113,14 @@ export type WindowComparison = (typeof WINDOW_COMPARISONS)[number];
 
 /**
  * The comparisons the monitoring pages offer, the one they open on first:
- * the deltas, the "vs" figures and their labels follow the one picked.
+ * the dashed series, the deltas, the "vs" figures and their labels follow
+ * the one picked. Only what the retention can show: the statistics behind
+ * 7D and 30D are kept 90 days at most, and the logs behind 1H and 24H only
+ * reach a year back when kept that long (30 days by default), so
+ * "previous-year" (still resolved, for a link) would compare with nothing.
+ * Offer it again if the statistics retention ever reaches a year.
  */
-export const PAGE_COMPARISONS: WindowComparison[] = [
-  "previous-period",
-  "previous-year",
-  "none",
-];
+export const PAGE_COMPARISONS: WindowComparison[] = ["previous-period", "none"];
 export const DEFAULT_COMPARISON: WindowComparison = "previous-period";
 
 export interface TimeWindow extends TimeRange {
