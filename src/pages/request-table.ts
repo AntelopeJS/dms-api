@@ -9,7 +9,7 @@ import {
 import type { ComponentBuilder } from "@antelopejs/interface-dms/component";
 import { LIVE_REQUESTS_TOPIC } from "@/types";
 import { apiBlock } from "./blocks";
-import { PERIOD_SCOPE } from "./period";
+import { PERIOD_SCOPE } from "@/services/window";
 import { PathDisplay, TimeDisplay } from "./displays";
 
 /** Route answering the request tables, in the `TableView.fromSource` shape. */

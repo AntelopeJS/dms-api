@@ -9,8 +9,8 @@ import { PageController, RegisterPage } from "@antelopejs/interface-dms/page";
 import { logsLink, serverErrorsLink } from "@/services/links";
 import { LIVE_REQUESTS_TOPIC } from "@/types";
 import { apiBlock } from "./blocks";
-import { PERIOD_SCOPE, periodSelector } from "./period";
-import { liveMode, pageToolbar } from "./toolbar";
+import { PERIOD_SCOPE } from "@/services/window";
+import { liveMode, monitoringToolbar } from "./toolbar";
 import { monitorCategory } from "./module";
 import { requestTable } from "./request-table";
 import { scopeChip } from "./scope-chip";
@@ -54,11 +54,13 @@ export class OverviewPage extends PageController(
 ) {
   // The toolbar of every monitoring page. The period selector keeps its
   // period in the URL (`?api.period=last-24h`), against the period before.
-  static toolbar = pageToolbar({
-    scope: scopeChip(),
-    // Still in beta: a pill beside the scope, its meaning in a tooltip.
-    badge: apiBlock("BetaBadge"),
-    period: periodSelector({ compare: true }),
+  static toolbar = monitoringToolbar({
+    leading: {
+      scope: scopeChip(),
+      // Still in beta: a pill beside the scope, its meaning in a tooltip.
+      beta: apiBlock("BetaBadge"),
+    },
+    compare: true,
   }).meta({ name: "$api.overview.toolbar", icon: "i-ph-sliders-horizontal" });
 
   // The verdict, since when and why, with the figures it rests on: a DMS

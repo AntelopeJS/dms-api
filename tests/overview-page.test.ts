@@ -23,7 +23,7 @@ describe("OverviewPage", () => {
   const dashboard = OverviewPage.dashboard.serializeSync() as Serialized;
 
   it("holds the toolbar of the monitoring pages, with the Beta badge", () => {
-    expect(toolbar.componentName).toBe("dms-h-stack");
+    expect(toolbar.componentName).toBe("dms-page-toolbar-block");
     expect(
       toolbar.children?.map((entry) => [
         entry.id,
@@ -32,7 +32,6 @@ describe("OverviewPage", () => {
     ).toEqual([
       ["scope", "DmsApiScopeChip"],
       ["beta", "DmsApiBetaBadge"],
-      ["spacer", expect.stringMatching(/spacer/)],
       ["live", "dms-live-toggle-block"],
       ["period", "dms-period-selector"],
     ]);

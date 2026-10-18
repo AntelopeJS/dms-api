@@ -17,7 +17,7 @@ function blockAt(
 describe("RoutesPage", () => {
   it("holds the toolbar of the monitoring pages: scope, live, period", () => {
     const toolbar = RoutesPage.toolbar.serializeSync();
-    expect(toolbar.componentName).toBe("dms-h-stack");
+    expect(toolbar.componentName).toBe("dms-page-toolbar-block");
     expect(
       toolbar.children?.map(({ id, component }) => [
         id,
@@ -25,7 +25,6 @@ describe("RoutesPage", () => {
       ]),
     ).toEqual([
       ["scope", "DmsApiScopeChip"],
-      ["spacer", expect.stringMatching(/spacer/)],
       ["live", "dms-live-toggle-block"],
       ["period", "dms-period-selector"],
     ]);

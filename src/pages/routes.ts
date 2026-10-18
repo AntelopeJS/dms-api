@@ -13,8 +13,8 @@ import { ROUTE_TABS } from "@/services/links";
 import { LIVE_REQUESTS_TOPIC } from "@/types";
 import { apiBlock } from "./blocks";
 import { exploreCategory } from "./module";
-import { PERIOD_SCOPE, periodSelector } from "./period";
-import { liveMode, pageToolbar } from "./toolbar";
+import { PERIOD_SCOPE } from "@/services/window";
+import { liveMode, monitoringToolbar } from "./toolbar";
 import { requestTable } from "./request-table";
 import { scopeChip } from "./scope-chip";
 
@@ -293,10 +293,10 @@ export class RoutesPage extends PageController(
   },
   DefaultLayout(),
 ) {
-  // The toolbar of every monitoring page (`pageToolbar`).
-  static toolbar = pageToolbar({
-    scope: scopeChip(),
-    period: periodSelector({ compare: true }),
+  // The toolbar of every monitoring page (`monitoringToolbar`).
+  static toolbar = monitoringToolbar({
+    leading: { scope: scopeChip() },
+    compare: true,
   }).meta({ name: "$api.routes.toolbar", icon: "i-ph-sliders-horizontal" });
 
   static explorer = apiBlock("SplitLayout", {
