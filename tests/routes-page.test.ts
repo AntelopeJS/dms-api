@@ -126,7 +126,8 @@ describe("thresholdLabel", () => {
 describe("RoutesPage live mode", () => {
   const explorer = RoutesPage.explorer.serializeSync();
   const topicOf = (ids: string[]) =>
-    blockAt(explorer, ids).options?.realtimeTopic;
+    (blockAt(explorer, ids).options as { realtimeTopic?: string })
+      .realtimeTopic;
   const statistics = ["tabs", "statistics"];
   const grid = [...statistics, "grid"];
 
@@ -147,8 +148,11 @@ describe("RoutesPage live mode", () => {
 
   it("holds the recent requests while paused, counting what it missed", () => {
     expect(
-      blockAt(explorer, [...grid, "recent", "requests", "table"]).options
-        ?.liveHold,
+      (
+        blockAt(explorer, [...grid, "recent", "requests", "table"]).options as {
+          liveHold?: unknown;
+        }
+      ).liveHold,
     ).toMatchObject({ missedLabel: "$api.live_mode.new_requests" });
   });
 
