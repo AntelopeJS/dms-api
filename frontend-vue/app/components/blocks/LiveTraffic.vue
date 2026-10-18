@@ -165,6 +165,8 @@ const periodName = computed(() => {
   const payload = data.value
   if (!payload) return ''
   if (payload.period) return t(`api.live.period_${payload.period}`)
+  // A server older than the period (no range sent) draws the last hour.
+  if (!payload.from || !payload.to) return t('api.live.period_last-hour')
   const format = dateFormat.value(TIME_FORMATS.dateTime)
   return t('api.live.period_custom', {
     from: format.format(new Date(payload.from)),
