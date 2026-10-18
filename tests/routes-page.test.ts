@@ -30,11 +30,11 @@ describe("RoutesPage", () => {
     ]);
   });
 
-  it("offers the period before, the year before or no comparison, as a menu", () => {
+  it("offers the period before or no comparison, as a menu", () => {
     const period = blockAt(RoutesPage.toolbar.serializeSync(), ["period"]);
     expect(period.options).toMatchObject({
       id: "api",
-      comparisons: ["previous-period", "previous-year", "none"],
+      comparisons: ["previous-period", "none"],
       defaultComparison: "previous-period",
       comparisonControl: "menu",
     });
@@ -71,6 +71,21 @@ describe("RoutesPage", () => {
       color: ["info", "neutral", "secondary"],
       legendPosition: "top",
       rawOptions: [{ key: "markers" }],
+    });
+  });
+
+  it("shows the latency's delta against the comparison, slower as worse", () => {
+    const { options } = blockAt(RoutesPage.explorer.serializeSync(), [
+      "tabs",
+      "statistics",
+      "grid",
+      "charts",
+      "latency",
+    ]);
+    expect(options).toMatchObject({
+      showDelta: true,
+      invert: true,
+      showLegend: true,
     });
   });
 

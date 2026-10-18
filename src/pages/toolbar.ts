@@ -43,9 +43,9 @@ export interface MonitoringToolbarOptions {
    */
   leading: Record<string, Component>;
   /**
-   * Offer to compare each card, its delta and "vs" figure, with the period
-   * before, the same period a year before, or nothing: the pages with cards.
-   * The request logs compare nothing.
+   * Offer to compare each chart and figure, its dashed series, delta and
+   * "vs" figure, with the period before, or nothing: the pages with charts.
+   * The request logs, a list, compare nothing.
    */
   compare?: boolean;
   /**
@@ -66,9 +66,9 @@ export interface MonitoringToolbarOptions {
  * the same period. Without one in the URL, the user's last choice on any
  * page of the module comes back (`rememberKey`), else the last 24 hours.
  * Where the page compares, the comparison is a menu ("vs previous period
- * ▾": previous period, previous year, no comparison), on the period before
- * unless the URL (`?api.compare=previous-year`) or the last choice says
- * otherwise; the request logs have none.
+ * ▾": previous period or no comparison), on the period before unless the
+ * URL (`?api.compare=none`) or the last choice says otherwise; every chart
+ * and figure of the page shows it. The request logs, a list, have none.
  *
  * The children keep their ids (`scope`, `beta`, `live`, `period`).
  */
