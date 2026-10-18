@@ -53,7 +53,9 @@ export class OverviewPage extends PageController(
   DefaultLayout(),
 ) {
   // The toolbar of every monitoring page. The period selector keeps its
-  // period in the URL (`?api.period=last-24h`), against the period before.
+  // period in the URL (`?api.period=last-24h`), and its comparison: the
+  // period before, the year before, or none. A chart with nothing to compare
+  // with shows no "vs" line, the same under "none" as when it is not kept.
   static toolbar = monitoringToolbar({
     leading: {
       scope: scopeChip(),
@@ -133,8 +135,6 @@ export class OverviewPage extends PageController(
           "errorShare",
           ChartCard({
             title: "$api.overview.error_share.title",
-            // Shown in place of the "vs" figure, so only when there is none.
-            description: "$api.overview.no_previous",
             icon: "i-ph-warning-diamond",
             fetchUrl: `${OVERVIEW_API}/error-share`,
             periodScope: PERIOD_SCOPE,
@@ -165,7 +165,6 @@ export class OverviewPage extends PageController(
           "chart",
           ChartCard({
             title: "$api.overview.traffic.title",
-            description: "$api.overview.no_previous",
             icon: "i-ph-chart-bar",
             fetchUrl: `${OVERVIEW_API}/traffic`,
             periodScope: PERIOD_SCOPE,

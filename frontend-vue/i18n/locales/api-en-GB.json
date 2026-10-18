@@ -150,7 +150,6 @@
         "title": "Beta",
         "description": "The API console is read-only for now: inspect, monitor and test routes."
       },
-      "no_previous": "No previous period to compare with",
       "traffic": {
         "title": "Traffic & errors",
         "2xx": "2xx success",
@@ -517,7 +516,11 @@
         "error_split": "{client} × 4xx · {server} × 5xx",
         "slow_line": "slow above {threshold}",
         "no_baseline": "No previous period",
+        "no_baseline_year": "No data a year back to compare with",
+        "no_baseline_custom": "No data over the compared period",
         "vs_previous": "{delta} vs. previous period",
+        "vs_previous_year": "{delta} vs. same period last year",
+        "vs_custom": "{delta} vs. compared period",
         "summary": "Route figures",
         "p95_detail": "p95 {p95}",
         "p95_none": "No p95 kept over the period",

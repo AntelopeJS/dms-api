@@ -30,6 +30,16 @@ describe("RoutesPage", () => {
     ]);
   });
 
+  it("offers the period before, the year before or no comparison, as a menu", () => {
+    const period = blockAt(RoutesPage.toolbar.serializeSync(), ["period"]);
+    expect(period.options).toMatchObject({
+      id: "api",
+      comparisons: ["previous-period", "previous-year", "none"],
+      defaultComparison: "previous-period",
+      comparisonControl: "menu",
+    });
+  });
+
   it("guards the Statistics tab with one empty state while the route has no call", () => {
     const guard = blockAt(RoutesPage.explorer.serializeSync(), [
       "tabs",
