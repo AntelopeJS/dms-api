@@ -4,17 +4,26 @@ import { formatClock, formatCount } from '../../utils/format'
 import { bodyLimit } from '../../utils/logsQuery'
 import {
   axisTicks,
+  barTimeFormat,
+  bucketLabel,
   liveStatus,
   minuteBars,
   peakBar,
+  type BarTimeFormat,
   type MinuteBucket,
 } from '../../utils/minuteHistogram'
 
-// The shape of the last hour above the request table: requests per minute by
-// status class, for all traffic whatever the table's filters. It follows the
-// page's Direct / Pause state (`usePageLive`): read again on the live feed and
-// every minute in Direct, still while paused, and it says which. A read that fails says so
-// at once, with the time of the data still shown; the next refresh retries.
+// The shape of the page's period above the request table: requests per bar
+// by status class, for all traffic whatever the table's filters. The bars
+// follow the toolbar's period (a minute over the last hour, 15 minutes over
+// 24 hours, 2 hours over 7 days, 6 hours over 30 days and all time: the
+// server picks the length). A period reaching now follows the page's
+// Direct / Pause state (`usePageLive`): read again on the live feed and
+// every minute in Direct, still while paused, and it says which; a past
+// range is read once and says it is not live. A read that fails says so at
+// once, with the time of the data still shown; the next refresh retries.
+// A change of period keeps the bars shown until the new ones arrive, in a
+// block of one height whatever the period, loading or not.
 defineOptions({ inheritAttrs: false })
 
 const props = defineProps<{
@@ -34,17 +43,47 @@ interface LivePayload {
   serverErrors: number
   refreshedAt: string
   retentionDays: number
+  /** The length of a bar, in ms. */
+  bucketMs: number
+  /** The selector's preset, `all`, or `null` for a custom range. */
+  period: string | null
+  from: string
+  to: string
+  /** Whether the period reaches now: the bars follow the live feed. */
+  live: boolean
 }
+
+/** The DMS selector's own custom range: sent as its bounds. */
+const CUSTOM_RANGE = 'custom'
 
 const { t } = useI18n()
 const { formatLocale: locale, formatNumber } = useRegionalFormat({
   locale: 'format',
 })
 const dateFormat = useDateFormat()
-const { data, error, pending, refresh } = useApiData<LivePayload>(
-  () => props.fetchUrl,
-  { refreshOnPageRefresh: false },
-)
+
+// The page's period: a preset is sent by its name, which the server rolls up
+// to now, so the server render and the browser ask for the same URL; a
+// custom range by its bounds, known once mounted (`useApiPeriod`).
+const periodPreset = usePeriodScopePreset('api')
+const period = useApiPeriod()
+const url = computed(() => {
+  const preset = period.value?.preset ?? periodPreset.value
+  if (!preset) return props.fetchUrl
+  const params = new URLSearchParams({ preset })
+  if (preset === CUSTOM_RANGE) {
+    const range = period.value?.range
+    if (!range) return null
+    params.set('from', range.from.toISOString())
+    params.set('to', range.to.toISOString())
+  }
+  const separator = props.fetchUrl.includes('?') ? '&' : '?'
+  return `${props.fetchUrl}${separator}${params.toString()}`
+})
+
+const { data, error, pending, refresh } = useApiData<LivePayload>(url, {
+  refreshOnPageRefresh: false,
+})
 
 // The paused state is the browser's (the DMS remembers it per page), the
 // server renders Direct: the card says it is paused once mounted, so the
@@ -60,12 +99,20 @@ async function poll() {
   failures.value = error.value ? failures.value + 1 : 0
 }
 
+// Whether the bars follow now: a past range is read once, not on the feed.
+const followsNow = computed(() => data.value?.live ?? true)
+
 // The current minute moves without traffic too: read again after a quiet
 // minute.
-usePageLiveRefresh(() => void poll(), {
-  realtimeTopic: props.realtimeTopic,
-  idleRefresh: 60,
-})
+usePageLiveRefresh(
+  () => {
+    if (followsNow.value) void poll()
+  },
+  {
+    realtimeTopic: props.realtimeTopic,
+    idleRefresh: 60,
+  },
+)
 
 // A first load that failed counts as a failed poll: the graph says it is
 // reconnecting at once, not after the next poll.
@@ -73,14 +120,65 @@ watch(pending, (loading) => {
   if (!loading && error.value && failures.value === 0) failures.value = 1
 })
 
-const status = computed(() => liveStatus(isLive.value, failures.value))
+const status = computed(() =>
+  liveStatus(isLive.value, failures.value, followsNow.value),
+)
 
 const count = (value: number) => formatCount(value, locale.value)
-const MINUTE: Intl.DateTimeFormatOptions = {
-  hour: '2-digit',
-  minute: '2-digit',
+const TIME_FORMATS: Record<BarTimeFormat, Intl.DateTimeFormatOptions> = {
+  time: { hour: '2-digit', minute: '2-digit' },
+  dateTime: {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  },
+  date: { month: 'short', day: 'numeric' },
 }
-const minute = (start: number) => dateFormat.value(MINUTE).format(start)
+const MINUTE_MS = 60_000
+const bucketMs = computed(() => data.value?.bucketMs ?? MINUTE_MS)
+const spanMs = computed(() =>
+  data.value
+    ? new Date(data.value.to).getTime() - new Date(data.value.from).getTime()
+    : 0,
+)
+const timeFormat = computed(() => barTimeFormat(bucketMs.value, spanMs.value))
+const at = (start: number | string) =>
+  dateFormat.value(TIME_FORMATS[timeFormat.value]).format(new Date(start))
+/** A bar's stretch of time: its start, or its start and end past a minute. */
+const stretch = (start: number) => {
+  if (bucketMs.value <= MINUTE_MS || timeFormat.value === 'date')
+    return at(start)
+  const end = dateFormat
+    .value(TIME_FORMATS.time)
+    .format(new Date(start + bucketMs.value))
+  return `${at(start)}–${end}`
+}
+
+const bucketName = computed(() => {
+  const label = bucketLabel(bucketMs.value)
+  return 'amount' in label
+    ? t(`api.live.bucket_${label.unit}`, { amount: label.amount })
+    : t(`api.live.bucket_${label.unit}`)
+})
+const periodName = computed(() => {
+  const payload = data.value
+  if (!payload) return ''
+  if (payload.period) return t(`api.live.period_${payload.period}`)
+  const format = dateFormat.value(TIME_FORMATS.dateTime)
+  return t('api.live.period_custom', {
+    from: format.format(new Date(payload.from)),
+    to: format.format(new Date(payload.to)),
+  })
+})
+const title = computed(() =>
+  data.value
+    ? t('api.live.title', {
+        bucket: bucketName.value,
+        period: periodName.value,
+      })
+    : t('api.live.title_pending'),
+)
 
 const kept = computed(() => {
   if (!data.value) return ''
@@ -105,7 +203,11 @@ const lastData = computed(() =>
 )
 
 const chart = computed(() =>
-  minuteBars(data.value?.buckets ?? [], data.value?.refreshedAt),
+  minuteBars(
+    data.value?.buckets ?? [],
+    followsNow.value ? data.value?.refreshedAt : undefined,
+    bucketMs.value,
+  ),
 )
 const ticks = computed(() => axisTicks(chart.value.bars))
 
@@ -115,11 +217,13 @@ const summary = computed(() => {
   if (!payload || payload.total === 0) return t('api.live.summary_empty')
   const peak = peakBar(chart.value.bars)
   return t('api.live.summary', {
+    bucket: bucketName.value,
+    period: periodName.value,
     total: count(payload.total),
     client: count(payload.clientErrors),
     server: count(payload.serverErrors),
     peak: count(peak?.total ?? 0),
-    time: peak ? minute(peak.start) : '',
+    time: peak ? stretch(peak.start) : '',
   })
 })
 
@@ -131,7 +235,7 @@ const hoveredBar = computed(() =>
 const tooltip = computed(() => {
   const bar = hoveredBar.value
   if (!bar) return ''
-  const parts = [minute(bar.start)]
+  const parts = [stretch(bar.start)]
   if (bar.total === 0) parts.push(t('api.live.tooltip_none'))
   else {
     parts.push(t('api.live.total', { count: count(bar.total) }, bar.total))
@@ -179,7 +283,7 @@ const share = (part: number, bar: { heights: Record<string, number> }) => {
   <DmsCard :padded="false" class="overflow-hidden">
     <template #header>
       <div class="flex w-full flex-wrap items-center gap-x-3 gap-y-1.5">
-        <DmsEyebrow :label="t('api.live.title')" />
+        <DmsEyebrow :label="title" />
         <span class="text-dimmed font-mono text-[11px]">{{ kept }}</span>
         <span class="grow" />
         <span
@@ -236,22 +340,28 @@ const share = (part: number, bar: { heights: Record<string, number> }) => {
           <UIcon name="i-ph-pause-fill" class="size-3" />
           {{ t('api.live.paused') }} · {{ lastData }}
         </span>
+        <span
+          v-else-if="status === 'past'"
+          class="text-muted flex items-center gap-1.5 font-mono text-[11px]"
+        >
+          <UIcon name="i-ph-clock-counter-clockwise" class="size-3" />
+          {{ t('api.live.past') }}
+        </span>
       </div>
     </template>
 
-    <div class="px-3 pb-2 pt-1">
-      <div v-if="pending && !data" class="flex h-[112px] items-end gap-[2px] px-2">
-        <USkeleton
-          v-for="index in 60"
-          :key="index"
-          class="flex-1"
-          :style="{ height: `${20 + ((index * 37) % 60)}%` }"
-        />
-      </div>
-      <div v-else-if="data">
-        <div class="text-dimmed mb-1 font-mono text-[10px]">
+    <!-- One height whatever the state (the scale line, the bars and the
+         axis), so nothing below moves while it loads or changes period. -->
+    <div class="h-[160px] px-3 pb-2 pt-1">
+      <div v-if="data">
+        <div class="text-dimmed leading-3.5 mb-1 h-3.5 font-mono text-[10px]">
           <template v-if="chart.ceiling">
-            {{ t('api.live.scale', { count: count(chart.ceiling) }) }}
+            {{
+              t('api.live.scale', {
+                count: count(chart.ceiling),
+                bucket: bucketName,
+              })
+            }}
             <template v-if="chart.clipped">
               · {{ t('api.live.scale_cut') }}
             </template>
@@ -316,24 +426,39 @@ const share = (part: number, bar: { heights: Record<string, number> }) => {
             {{ tooltip }}
           </div>
         </div>
-        <div class="text-dimmed relative mt-1 h-3.5 font-mono text-[10px]">
+        <div
+          class="text-dimmed leading-3.5 relative mt-1 h-3.5 font-mono text-[10px]"
+        >
           <span
             v-for="index in ticks"
             :key="index"
-            class="absolute top-0"
+            class="absolute top-0 whitespace-nowrap"
             :style="tickStyle(index)"
           >
-            {{ minute(chart.bars[index].start) }}
+            {{ at(chart.bars[index].start) }}
           </span>
         </div>
       </div>
       <DmsEmptyState
-        v-else
+        v-else-if="error && !pending"
         size="sm"
         variant="error"
+        class="h-full overflow-hidden"
         :title="t('api.live.error')"
         :description="t('api.live.error_description')"
       />
+      <div v-else aria-hidden="true">
+        <div class="mb-1 h-3.5" />
+        <div class="flex h-[112px] items-end gap-[2px] px-2">
+          <USkeleton
+            v-for="index in 60"
+            :key="index"
+            class="flex-1"
+            :style="{ height: `${20 + ((index * 37) % 60)}%` }"
+          />
+        </div>
+        <div class="mt-1 h-3.5" />
+      </div>
     </div>
   </DmsCard>
 </template>

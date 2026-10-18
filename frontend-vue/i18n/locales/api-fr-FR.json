@@ -220,7 +220,19 @@
       }
     },
     "live": {
-      "title": "Requêtes par minute · dernière heure · tout le trafic",
+      "title": "Requêtes par {bucket} · {period} · tout le trafic",
+      "title_pending": "Requêtes · tout le trafic",
+      "bucket_minute": "minute",
+      "bucket_minutes": "{amount} min",
+      "bucket_hours": "{amount} h",
+      "bucket_day": "jour",
+      "period_last-hour": "dernière heure",
+      "period_last-24h": "dernières 24 h",
+      "period_last-7-days": "7 derniers jours",
+      "period_last-30-days": "30 derniers jours",
+      "period_all": "tous les logs conservés",
+      "period_custom": "{from} – {to}",
+      "past": "Période passée · pas en direct",
       "kept": "Conservées {days} jours · corps jusqu'à {size}",
       "kept_days": "Conservées {days} jours",
       "kept_no_bodies": "Conservées {days} jours · corps non capturés",
@@ -233,14 +245,14 @@
       "paused": "En pause",
       "last_data": "données de {time}",
       "no_data_yet": "aucune donnée pour l'instant",
-      "error": "Impossible de charger la dernière heure",
+      "error": "Impossible de charger l'histogramme des requêtes",
       "error_description": "Le graphe réessaie à la prochaine actualisation.",
-      "scale": "Échelle jusqu'à {count} par minute",
-      "scale_cut": "les minutes plus chargées sont coupées",
+      "scale": "Échelle jusqu'à {count} par {bucket}",
+      "scale_cut": "les barres plus hautes sont coupées",
       "tooltip_none": "aucune requête",
-      "tooltip_current": "minute en cours",
-      "summary": "Requêtes par minute sur la dernière heure : {total} requêtes, {client} 4xx, {server} 5xx. Minute la plus chargée : {peak} à {time}.",
-      "summary_empty": "Aucune requête sur la dernière heure."
+      "tooltip_current": "en cours",
+      "summary": "Requêtes par {bucket}, {period} : {total} requêtes, {client} 4xx, {server} 5xx. Pic : {peak} à {time}.",
+      "summary_empty": "Aucune requête sur cette période."
     },
     "live_mode": {
       "verdict": {

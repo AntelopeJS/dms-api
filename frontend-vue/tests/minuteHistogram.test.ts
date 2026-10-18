@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   axisTicks,
+  barTimeFormat,
+  bucketLabel,
   liveStatus,
   minuteBars,
   peakBar,
@@ -8,6 +10,8 @@ import {
 } from '../app/utils/minuteHistogram'
 
 const MINUTE = 60_000
+const HOUR = 60 * MINUTE
+const DAY = 24 * HOUR
 const START = Date.UTC(2026, 9, 10, 16, 40)
 
 function bucket(index: number, success: number, client = 0, server = 0) {
@@ -85,10 +89,57 @@ describe('minuteBars', () => {
   })
 })
 
+describe('bars longer than a minute', () => {
+  const quarter = 15 * MINUTE
+  const buckets = [0, 1, 2].map((index) => ({
+    start: START + index * quarter,
+    success: 4,
+    clientErrors: 0,
+    serverErrors: 0,
+  }))
+
+  it('marks the bar holding now as still running', () => {
+    const now = new Date(START + 2 * quarter + 7 * MINUTE).toISOString()
+    const { bars } = minuteBars(buckets, now, quarter)
+    expect(bars.map((bar) => bar.current)).toEqual([false, false, true])
+  })
+
+  it('marks none over a past range', () => {
+    const { bars } = minuteBars(buckets, undefined, quarter)
+    expect(bars.some((bar) => bar.current)).toBe(false)
+  })
+})
+
+describe('bucketLabel', () => {
+  it('names each bar length as the title says it', () => {
+    expect(bucketLabel(MINUTE)).toEqual({ unit: 'minute' })
+    expect(bucketLabel(15 * MINUTE)).toEqual({ unit: 'minutes', amount: 15 })
+    expect(bucketLabel(2 * HOUR)).toEqual({ unit: 'hours', amount: 2 })
+    expect(bucketLabel(6 * HOUR)).toEqual({ unit: 'hours', amount: 6 })
+    expect(bucketLabel(DAY)).toEqual({ unit: 'day' })
+  })
+})
+
+describe('barTimeFormat', () => {
+  it('writes the date once the period spans days', () => {
+    expect(barTimeFormat(MINUTE, HOUR)).toBe('time')
+    expect(barTimeFormat(15 * MINUTE, DAY)).toBe('time')
+    expect(barTimeFormat(2 * HOUR, 7 * DAY)).toBe('dateTime')
+    expect(barTimeFormat(6 * HOUR, 30 * DAY)).toBe('dateTime')
+    expect(barTimeFormat(DAY, 200 * DAY)).toBe('date')
+  })
+})
+
 describe('live indicator', () => {
   it('says reconnecting from the first failure, paused whatever failed', () => {
     expect(liveStatus(true, 0)).toBe('live')
     expect(liveStatus(true, 1)).toBe('reconnecting')
     expect(liveStatus(false, 4)).toBe('paused')
+  })
+
+  it('says a past range is not live, Direct or paused', () => {
+    expect(liveStatus(true, 0, false)).toBe('past')
+    expect(liveStatus(false, 0, false)).toBe('past')
+    expect(liveStatus(true, 1, false)).toBe('reconnecting')
   })
 })
