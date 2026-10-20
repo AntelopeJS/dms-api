@@ -171,8 +171,9 @@ const DETAIL_URLS: Record<RequestTablePage, string> = {
 
 /**
  * Opens a request of the table in a DMS drawer on the right, on a single
- * click: the DMS draws its header (the row's "POST /api/orders", "Request 3
- * of 50 shown", ∧ ∨, J / K, close), keeps the open row in the URL
+ * click: the DMS draws its header (the row's "POST /api/orders", its
+ * default "3 of 26,120" over the whole table, in the locale's digits, ∧ ∨,
+ * J / K, close), keeps the open row in the URL
  * (`?record=`), and says so when a `?record=` names a request no longer
  * stored; `RequestDetail` draws the request. The drawer opens at the DMS's
  * default width, and at the width the user last left it.
@@ -189,7 +190,6 @@ function requestPanelAction(page: RequestTablePage) {
       component: apiBlock("RequestDetail", { detailUrl: DETAIL_URLS[page] }),
       title: "$api.logs.drawer_title",
       rowTitle: "$api.request.heading",
-      positionLabel: "$api.request.position",
       // On by default for a side panel, off for a drawer.
       deepLink: true,
       notFound: {

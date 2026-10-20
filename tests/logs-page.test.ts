@@ -66,7 +66,6 @@ describe("LogsPage", () => {
       direction: "right",
       title: "$api.logs.drawer_title",
       rowTitle: "$api.request.heading",
-      positionLabel: "$api.request.position",
       deepLink: true,
       notFound: {
         title: "$api.request.not_found_title",
@@ -75,6 +74,9 @@ describe("LogsPage", () => {
     });
     // The DMS's default width, and the one the user resizes it to.
     expect(action?.target).not.toHaveProperty("size");
+    // The DMS's default position, over the whole table, its numbers in the
+    // locale's digits: no "Request 1 of 26120 shown".
+    expect(action?.target).not.toHaveProperty("positionLabel");
   });
 
   it("opens its search on /", () => {

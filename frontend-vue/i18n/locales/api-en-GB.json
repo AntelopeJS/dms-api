@@ -418,7 +418,6 @@
       "forbidden_description": "Your role shows this list but not the detail of its requests. Ask an administrator for access to Request logs.",
       "error_title": "Could not open this request",
       "error_description": "The console did not answer. Try again.",
-      "position": "Request {index} of {total} shown",
       "heading": "{method} {path}"
     },
     "routes": {

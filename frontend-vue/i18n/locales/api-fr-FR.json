@@ -418,7 +418,6 @@
       "forbidden_description": "Votre rôle affiche cette liste, mais pas le détail de ses requêtes. Demandez à un administrateur l'accès aux journaux des requêtes.",
       "error_title": "Impossible d'ouvrir cette requête",
       "error_description": "La console n'a pas répondu. Réessayez.",
-      "position": "Requête {index} sur {total} affichées",
       "heading": "{method} {path}"
     },
     "routes": {

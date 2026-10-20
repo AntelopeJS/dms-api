@@ -25,9 +25,9 @@ import ApiTesterBadge from '../internal/ApiTesterBadge.vue'
 // One captured request, in the DMS drawer on the right, which a request
 // table's row opens (a `drawer` row action, `src/pages/request-table.ts`).
 // The DMS draws the drawer's header: the request's method and path
-// ("POST /api/orders", its `rowTitle`), "Request 3 of 50 shown", the previous
-// / next buttons, J / K and close, and the not-found state of a `?record=`
-// that names no stored request. Here, the top stays put: where the request
+// ("POST /api/orders", its `rowTitle`), its position over the whole table
+// ("3 of 26,120"), the previous / next buttons, J / K and close, and the
+// not-found state of a `?record=` that names no stored request. Here, the top stays put: where the request
 // went, how it ended, what to do with it. Below, the summary puts
 // the error first, then what the request was and how long it took against
 // the slow threshold; then what was sent and what came back. Every action
