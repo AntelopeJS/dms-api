@@ -40,6 +40,6 @@ it('registers the blocks the backend pages name, and nothing else', async () => 
   // Universal: the cell displays draw in the server render too.
   expect(registerPlugin).toHaveBeenCalledTimes(1)
   expect(registerPlugin.mock.calls[0]?.[1]).toEqual({ clientOnly: false })
-  // The side panel and its URL are the DMS's: no middleware.
+  // The request drawer and its URL are the DMS's: no middleware.
   expect(registerMiddleware).not.toHaveBeenCalled()
 })

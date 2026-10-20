@@ -170,11 +170,12 @@ const DETAIL_URLS: Record<RequestTablePage, string> = {
 };
 
 /**
- * Opens a request of the table in the DMS side panel on the right, on a
- * single click: the DMS draws its header (the row's "POST /api/orders",
- * "Request 3 of 50 shown", ∧ ∨, J / K, close), highlights the open row and
- * keeps it in the URL (`?record=`), and says so when a `?record=` names a
- * request no longer stored; `RequestDetail` draws the request.
+ * Opens a request of the table in a DMS drawer on the right, on a single
+ * click: the DMS draws its header (the row's "POST /api/orders", "Request 3
+ * of 50 shown", ∧ ∨, J / K, close), keeps the open row in the URL
+ * (`?record=`), and says so when a `?record=` names a request no longer
+ * stored; `RequestDetail` draws the request. The drawer opens at the DMS's
+ * default width, and at the width the user last left it.
  */
 function requestPanelAction(page: RequestTablePage) {
   return {
@@ -183,11 +184,14 @@ function requestPanelAction(page: RequestTablePage) {
     isVisible: true,
     isDefault: true,
     target: {
-      type: "sidePanel" as const,
+      type: "drawer" as const,
+      direction: "right" as const,
       component: apiBlock("RequestDetail", { detailUrl: DETAIL_URLS[page] }),
       title: "$api.logs.drawer_title",
       rowTitle: "$api.request.heading",
       positionLabel: "$api.request.position",
+      // On by default for a side panel, off for a drawer.
+      deepLink: true,
       notFound: {
         title: "$api.request.not_found_title",
         description: "$api.request.not_found_description",
@@ -224,7 +228,7 @@ type RequestTableOptions = Omit<
 /**
  * A table over the captured requests, over the page's period. The route
  * pages, searches, sorts and filters on the server; a row opens its request
- * in the side panel. `?route=`,
+ * in a drawer. `?route=`,
  * `?error=` and `?slow=` in the page URL filter it on arrival, so another
  * page can link to "the 5xx of this route".
  */
@@ -273,8 +277,8 @@ export function requestTable(
     // Read again on the live feed, and held while the page is paused ("12
     // new requests · Show"): the route lists the rows as they stood
     // (`liveHeldAt`).
-    // A request open in the side panel holds the table alone, the page
-    // staying live; the request logs also hold it while scrolled down.
+    // A request open holds the table alone, the page staying live; the
+    // request logs also hold it while scrolled down.
     realtimeTopic: LIVE_REQUESTS_TOPIC,
     liveHold: liveHold ?? {
       whileRowOpen: true,

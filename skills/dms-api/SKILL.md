@@ -12,7 +12,7 @@ Monitors the project's own HTTP API: it captures each request of the routes in s
 
 ## When to reach for it
 
-- Debug a route: read its failed requests in `/modules/api/logs` (the side panel holds the error, stack, headers and bodies) or replay one in the route's Tester.
+- Debug a route: read its failed requests in `/modules/api/logs` (its drawer holds the error, stack, headers and bodies) or replay one in the route's Tester.
 - Alert on a broken route: an automation procedure on `api.route-unhealthy` (`flags`: `broken`, `slow`, `warn`; default `broken` + `slow`).
 
 ## Config (`antelope.config.ts`; the API settings page overrides it at runtime)

@@ -22,9 +22,9 @@ import ApiKeyValues from '../internal/ApiKeyValues.vue'
 import ApiStatusBadge from '../internal/ApiStatusBadge.vue'
 import ApiTesterBadge from '../internal/ApiTesterBadge.vue'
 
-// One captured request, in the DMS side panel on the right, which a request
-// table's row opens (a `sidePanel` row action, `src/pages/request-table.ts`).
-// The DMS draws the panel's header: the request's method and path
+// One captured request, in the DMS drawer on the right, which a request
+// table's row opens (a `drawer` row action, `src/pages/request-table.ts`).
+// The DMS draws the drawer's header: the request's method and path
 // ("POST /api/orders", its `rowTitle`), "Request 3 of 50 shown", the previous
 // / next buttons, J / K and close, and the not-found state of a `?record=`
 // that names no stored request. Here, the top stays put: where the request
