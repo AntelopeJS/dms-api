@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
-import { byteLength, formatMs } from '../../utils/format'
+import { byteLength, formatMs, unbreakable } from '../../utils/format'
 import { errorStatus } from '../../utils/http'
 import {
   durationScale,
@@ -32,6 +32,9 @@ import ApiTesterBadge from '../internal/ApiTesterBadge.vue'
 // the error first, then what the request was and how long it took against
 // the slow threshold; then what was sent and what came back. Every action
 // leads somewhere: the tester, the route, the requests alike.
+// The drawer's body scrolls and pads, as for every row drawer (dms#375):
+// the top sticks under the drawer's header, both at its 16px inset with an
+// inset divider, and the content lays out by the drawer's width.
 
 interface RequestLog {
   _id: string
@@ -192,6 +195,8 @@ const timing = computed(() =>
 const ratio = computed(() =>
   thresholdRatio(timing.value?.ratio ?? 0, locale.value),
 )
+/** A duration that never wraps between its number and its unit. */
+const ms = (value: number) => unbreakable(formatMs(value, locale.value))
 
 // --- the error, folded to six lines ---
 const message = ref<HTMLElement | null>(null)
@@ -362,10 +367,10 @@ const dateFormat = useDateFormat()
 </script>
 
 <template>
-  <section class="-m-4 flex min-h-0 flex-col" :aria-busy="pending">
+  <section class="flex flex-col" :aria-busy="pending">
     <header
       v-if="log"
-      class="border-default bg-default sticky top-0 z-10 flex shrink-0 flex-col gap-2.5 border-b px-4 pt-3 sm:px-5"
+      class="border-default bg-default sticky top-0 z-10 flex flex-col gap-2.5 border-b"
     >
       <div class="flex min-w-0 items-center gap-1">
         <bdi
@@ -384,7 +389,7 @@ const dateFormat = useDateFormat()
           class="font-mono tabular-nums"
           :class="timing.slow ? 'text-warning font-semibold' : 'text-muted'"
         >
-          {{ formatMs(log.responseTimeMs ?? 0, locale) }}
+          {{ ms(log.responseTimeMs ?? 0) }}
         </span>
         <UTooltip v-else :text="t('api.request.not_measured_hint')">
           <span class="text-dimmed font-mono" tabindex="0">
@@ -453,7 +458,7 @@ const dateFormat = useDateFormat()
       />
     </header>
 
-    <div class="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5">
+    <div :class="log ? 'pt-4' : ''">
       <div v-if="pending" class="flex flex-col gap-3">
         <USkeleton class="h-4 w-1/2" />
         <USkeleton class="h-28 w-full" />
@@ -540,7 +545,7 @@ const dateFormat = useDateFormat()
           <template v-if="timing">
             <div class="flex flex-wrap items-baseline gap-x-2 gap-y-1">
               <span class="text-highlighted font-mono text-xl font-semibold">
-                {{ formatMs(log.responseTimeMs ?? 0, locale) }}
+                {{ ms(log.responseTimeMs ?? 0) }}
               </span>
               <span
                 class="text-xs"
@@ -554,31 +559,15 @@ const dateFormat = useDateFormat()
                     : t('api.request.threshold_ratio', { ratio })
                 }}
               </span>
-              <span
-                v-if="log.routeLatency"
-                class="text-dimmed font-mono text-xs tabular-nums"
-              >
-                {{
-                  t(
-                    'api.request.route_latency',
-                    {
-                      days: count(log.routeLatency.windowDays),
-                      p50: formatMs(log.routeLatency.p50, locale),
-                      p95: formatMs(log.routeLatency.p95, locale),
-                    },
-                    log.routeLatency.windowDays,
-                  )
-                }}
-              </span>
             </div>
             <div
-              class="bg-elevated relative h-2 rounded-full"
+              class="bg-elevated relative my-1 h-2 rounded-full"
               role="meter"
               :aria-label="t('api.request.meter_label')"
               aria-valuemin="0"
               :aria-valuemax="Math.round(timing.max)"
               :aria-valuenow="Math.round(log.responseTimeMs ?? 0)"
-              :aria-valuetext="formatMs(log.responseTimeMs ?? 0, locale)"
+              :aria-valuetext="ms(log.responseTimeMs ?? 0)"
             >
               <div
                 class="h-full rounded-full"
@@ -591,13 +580,30 @@ const dateFormat = useDateFormat()
                 aria-hidden="true"
               />
             </div>
-            <p class="text-dimmed text-xs">
-              {{
-                t('api.request.threshold', {
-                  threshold: formatMs(log.slowThresholdMs, locale),
-                })
-              }}
-            </p>
+            <!-- The threshold, then how the route does lately: each its own
+              line, at every width. -->
+            <div class="text-dimmed flex flex-col gap-1 text-xs">
+              <p>
+                {{
+                  t('api.request.threshold', {
+                    threshold: ms(log.slowThresholdMs),
+                  })
+                }}
+              </p>
+              <p v-if="log.routeLatency" class="font-mono tabular-nums">
+                {{
+                  t(
+                    'api.request.route_latency',
+                    {
+                      days: count(log.routeLatency.windowDays),
+                      p50: ms(log.routeLatency.p50),
+                      p95: ms(log.routeLatency.p95),
+                    },
+                    log.routeLatency.windowDays,
+                  )
+                }}
+              </p>
+            </div>
           </template>
           <p v-else class="text-dimmed text-sm">
             {{ t('api.request.not_measured_hint') }}

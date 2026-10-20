@@ -11,6 +11,7 @@ import {
   formatRelativeDay,
   formatThreshold,
   spanPart,
+  unbreakable,
 } from '../app/utils/format'
 
 // What the blocks pass, the DMS's regional formatter, without preferences.
@@ -22,7 +23,7 @@ const en: DateFormat = formatIn('en-GB')
 const fr: DateFormat = formatIn('fr-FR')
 
 // Intl writes French spaces as narrow no-break ones: compare on plain spaces.
-const plain = (text: string) => text.replace(/[  ]/g, ' ')
+const plain = (text: string) => text.replace(/[ \u00A0]/g, ' ')
 
 describe('formatPercent', () => {
   it('writes a percentage the way the locale does', () => {
@@ -134,6 +135,14 @@ describe('formatMs', () => {
     expect(formatMs(1840, 'en-GB')).toBe('1,840 ms')
     expect(formatMs(12_400, 'en-GB')).toBe('12.4 s')
     expect(plain(formatMs(12_400, 'fr-FR'))).toBe('12,4 s')
+  })
+})
+
+describe('unbreakable', () => {
+  it('joins a value and its unit with no-break spaces', () => {
+    expect(unbreakable(formatMs(68, 'en-GB'))).toBe('68\u00A0ms')
+    expect(unbreakable(formatMs(0.4, 'en-GB'))).toBe('<\u00A01\u00A0ms')
+    expect(unbreakable('1,840')).toBe('1,840')
   })
 })
 

@@ -376,7 +376,7 @@
       "slow_ratio": "Lente · {ratio}× le seuil",
       "threshold_ratio": "{ratio}× le seuil de lenteur",
       "threshold": "Seuil de lenteur {threshold}, tel que réglé aujourd'hui.",
-      "route_latency": "Cette route, dernier jour : p50 {p50} · p95 {p95} | Cette route, {days} derniers jours : p50 {p50} · p95 {p95}",
+      "route_latency": "Cette route, dernier jour : p50\u00a0{p50} · p95\u00a0{p95} | Cette route, {days} derniers jours : p50\u00a0{p50} · p95\u00a0{p95}",
       "meter_label": "Durée par rapport au seuil de lenteur",
       "not_measured": "non mesurée",
       "not_measured_hint": "Non mesurée : la requête a été rejetée avant d'atteindre un handler.",
