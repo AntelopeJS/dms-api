@@ -7,6 +7,7 @@ import {
   type TableViewSourceOptions,
 } from "@antelopejs/interface-dms/base/table-view";
 import type { DrawerTargetOptions } from "@antelopejs/interface-dms/base/types/action-target";
+import type { CustomRowAction } from "@antelopejs/interface-dms/base/types/row-action";
 import type { ComponentBuilder } from "@antelopejs/interface-dms/component";
 import { LIVE_REQUESTS_TOPIC } from "@/types";
 import { apiBlock } from "./blocks";
@@ -171,14 +172,6 @@ const DETAIL_URLS: Record<RequestTablePage, string> = {
 };
 
 /**
- * A custom row action of a source table. Read through the table's options
- * while `interface-dms` does not export `CustomRowAction`.
- */
-type RequestRowAction = NonNullable<
-  NonNullable<TableViewSourceOptions["rowActions"]>["custom"]
->[number];
-
-/**
  * Opens a request of the table in a DMS drawer on the right, on a single
  * click: the DMS draws its header (the row's "POST /api/orders", its
  * default "3 of 26,120" over the whole table, in the locale's digits, ∧ ∨,
@@ -187,7 +180,7 @@ type RequestRowAction = NonNullable<
  * stored; `RequestDetail` draws the request. The drawer opens at the DMS's
  * default width, and at the width the user last left it.
  */
-function requestPanelAction(page: RequestTablePage): RequestRowAction {
+function requestPanelAction(page: RequestTablePage): CustomRowAction {
   return {
     label: "$api.logs.open_request",
     icon: "i-ph-sidebar-simple",
