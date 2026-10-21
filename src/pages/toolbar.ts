@@ -90,8 +90,6 @@ export function monitoringToolbar(
         ? {
             comparisons: PAGE_COMPARISONS,
             defaultComparison: DEFAULT_COMPARISON,
-            // The page toolbar hides its comparison by default.
-            comparisonControl: "menu" as const,
           }
         : {
             comparisons: ["none" as const],
