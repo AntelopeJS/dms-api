@@ -170,6 +170,16 @@ const DETAIL_URLS: Record<RequestTablePage, string> = {
 };
 
 /**
+ * A custom row action of a source table, typed against the DMS so the drawer
+ * options it sets (`rowTitle`, `notFound`, `deepLink`: AntelopeJS/dms#375)
+ * fail the typecheck on an interface without them. Read through the table's
+ * options while `interface-dms` does not export `CustomRowAction`.
+ */
+type RequestRowAction = NonNullable<
+  NonNullable<TableViewSourceOptions["rowActions"]>["custom"]
+>[number];
+
+/**
  * Opens a request of the table in a DMS drawer on the right, on a single
  * click: the DMS draws its header (the row's "POST /api/orders", its
  * default "3 of 26,120" over the whole table, in the locale's digits, ∧ ∨,
@@ -178,15 +188,15 @@ const DETAIL_URLS: Record<RequestTablePage, string> = {
  * stored; `RequestDetail` draws the request. The drawer opens at the DMS's
  * default width, and at the width the user last left it.
  */
-function requestPanelAction(page: RequestTablePage) {
+function requestPanelAction(page: RequestTablePage): RequestRowAction {
   return {
     label: "$api.logs.open_request",
     icon: "i-ph-sidebar-simple",
     isVisible: true,
     isDefault: true,
     target: {
-      type: "drawer" as const,
-      direction: "right" as const,
+      type: "drawer",
+      direction: "right",
       component: apiBlock("RequestDetail", { detailUrl: DETAIL_URLS[page] }),
       title: "$api.logs.drawer_title",
       rowTitle: "$api.request.heading",
