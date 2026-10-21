@@ -3,18 +3,8 @@ import type { StatGroupItem } from "@antelopejs/interface-dms/base/stat-group";
 import type {
   BlockText,
   ComposedText,
-  ComposedTextParam,
 } from "@antelopejs/interface-dms/base/types/composed-text";
 import { getConfig } from "@/config";
-import {
-  alignComparison,
-  comparisonSeriesName,
-  noBaselineText,
-  shownComparison,
-  versusText,
-  withVersus,
-} from "./comparison";
-import { count, percent, text } from "./composed-text";
 import { logsLink, testerLink } from "./links";
 import type { CatalogModels } from "./route-catalog";
 import { computeRouteHealth } from "./route-health";
@@ -29,12 +19,7 @@ import {
   type TrafficBucket,
   windowTraffic,
 } from "./traffic";
-import {
-  describeWindow,
-  horizonOf,
-  type TimeWindow,
-  type WindowInfo,
-} from "./window";
+import { describeWindow, type TimeWindow, type WindowInfo } from "./window";
 
 /** The method and path of a route, as `findRoute` resolves them. */
 export interface RouteKey {
@@ -57,13 +42,9 @@ interface SeriesPayload {
 /** What a DMS `ChartCard` reads from its `fetchUrl`. */
 export interface RouteChartPayload {
   value: number;
-  /** The headline over the period compared with: the card's "vs" figure. */
-  previousValue?: number;
   delta: number | null;
   deltaUnit?: "percent" | "pt";
   series: SeriesPayload[];
-  /** The headline measure over the period compared with, drawn dashed. */
-  comparisonSeries?: SeriesPayload[];
   window?: WindowInfo;
 }
 
@@ -100,8 +81,6 @@ export interface RouteErrorItem {
   message: string | null;
   first: string;
   last: string;
-  /** Its count over the period compared with; absent without one. */
-  previous?: number;
 }
 
 const PERCENT = 100;
@@ -109,15 +88,11 @@ const ONE_DECIMAL = 10;
 const TOP_ERRORS_LIMIT = 5;
 const SERVER_ERROR = 500;
 
-/**
- * A route's traffic over the window, and over the period it is compared
- * with if there is one, in total and bucket by bucket.
- */
+/** A route's traffic over the window, and over the previous one if asked. */
 export interface RouteTraffic {
   buckets: TrafficBucket[];
   total: TrafficBucket;
   previous: TrafficBucket | null;
-  previousBuckets?: TrafficBucket[] | null;
   window?: TimeWindow;
 }
 
@@ -134,13 +109,7 @@ export async function loadRouteTraffic(
   window: TimeWindow,
 ): Promise<RouteTraffic> {
   if (!route) {
-    return {
-      buckets: [],
-      total: sumBuckets([]),
-      previous: null,
-      previousBuckets: null,
-      window,
-    };
+    return { buckets: [], total: sumBuckets([]), previous: null, window };
   }
   const key = scopeRouteKey(route.method, route.path);
   const [current, previous] = await Promise.all([
@@ -152,15 +121,10 @@ export async function loadRouteTraffic(
   const buckets =
     current.routes.get(key) ??
     current.starts.map((start) => emptyBucket(start));
-  const previousBuckets = previous
-    ? (previous.routes.get(key) ??
-      previous.starts.map((start) => emptyBucket(start)))
-    : null;
   return {
     buckets,
     total: sumBuckets(buckets),
-    previous: previousBuckets ? sumBuckets(previousBuckets) : null,
-    previousBuckets,
+    previous: previous ? sumBuckets(previous.routes.get(key) ?? []) : null,
     window,
   };
 }
@@ -191,55 +155,15 @@ function ms(value: number): ComposedText {
   };
 }
 
-/**
- * The calls against the period compared with, named after the comparison
- * picked ("+12 % vs. 1,020 last year"); "No data a year back to compare
- * with" when that period is no longer kept; nothing without a comparison.
- */
-function callsVersus(
-  traffic: RouteTraffic,
-): Pick<StatGroupItem, "detail" | "detailTone"> {
-  const { window } = traffic;
-  if (!window || window.comparison === "none") return {};
-  const comparison = shownComparison(window);
-  if (!comparison || !traffic.previous) {
-    return {
-      detail: noBaselineText(window.comparison),
-      detailTone: "neutral",
-    };
-  }
-  const before = traffic.previous.requests;
+function versus(delta: number | null): BlockText {
+  if (delta === null) return "$api.routes.statistics.no_baseline";
   return {
-    detail: versusText(comparison, traffic.total.requests, before, count),
-    detailTone: traffic.total.requests >= before ? "success" : "warning",
+    key: "api.routes.statistics.vs_previous",
+    params: {
+      delta: { type: "number", value: delta / PERCENT, format: "percent" },
+    },
   };
 }
-
-/**
- * A figure of the period against the same over the period compared with:
- * undefined without a comparison, or when the route had nothing to measure
- * then.
- */
-function figureVersus(
-  traffic: RouteTraffic,
-  measure: (bucket: TrafficBucket) => number | null,
-  format: (value: number) => ComposedTextParam,
-  unit: "percent" | "pt" = "percent",
-): ComposedText | undefined {
-  const comparison = traffic.window ? shownComparison(traffic.window) : null;
-  if (!comparison || !traffic.previous) return undefined;
-  const current = measure(traffic.total);
-  const before = measure(traffic.previous);
-  if (current === null || before === null) return undefined;
-  return versusText(comparison, current, before, format, unit);
-}
-
-const timedAverage = (bucket: TrafficBucket) =>
-  bucket.timed > 0 ? Math.round(averageLatency(bucket)) : null;
-const timedMax = (bucket: TrafficBucket) =>
-  bucket.timed > 0 ? Math.round(bucket.maxLatency) : null;
-const calledErrorRate = (bucket: TrafficBucket) =>
-  bucket.requests > 0 ? errorRate(bucket) : null;
 
 /**
  * Share of 4xx and 5xx over the window, and its change against the previous
@@ -267,12 +191,15 @@ function p95Detail(total: TrafficBucket, slowThreshold: number) {
   const p95 = p95Latency(total);
   if (p95 === null) {
     return {
-      detail: text("routes.statistics.p95_none"),
+      detail: "$api.routes.statistics.p95_none",
       detailTone: "neutral" as const,
     };
   }
   return {
-    detail: text("routes.statistics.p95_detail", { p95: ms(p95) }),
+    detail: {
+      key: "api.routes.statistics.p95_detail",
+      params: { p95: ms(p95) },
+    },
     detailTone:
       p95 >= slowThreshold ? ("warning" as const) : ("neutral" as const),
   };
@@ -280,11 +207,9 @@ function p95Detail(total: TrafficBucket, slowThreshold: number) {
 
 /**
  * The headline figures of a route over the page's period, as a DMS
- * `StatGroup`: the calls, the average latency with the p95 under it, the
- * error rate split into 4xx and 5xx, and the slowest call against the slow
- * threshold. Under a comparison each figure says its change against the
- * period compared with and what it was then ("+12 % vs. 1,020 previous
- * period", the error rate in points). A duration never measured (a request
+ * `StatGroup`: calls against the previous period, the average latency with
+ * the p95 under it, the error rate split into 4xx and 5xx, and the slowest
+ * call against the slow threshold. A duration never measured (a request
  * turned away before any handler) counts as a call, not as a 0 ms one.
  */
 export function routeSummary(
@@ -294,8 +219,8 @@ export function routeSummary(
   const { total } = traffic;
   // No call over the period: no figures, so the StatGroup shows its empty state.
   if (total.requests === 0) return { items: [] };
+  const delta = change(total.requests, traffic.previous?.requests);
   const rate = errorRateFigures(traffic).value;
-  const latency = p95Detail(total, slowThreshold);
   const timed = total.timed > 0;
   return {
     items: [
@@ -304,18 +229,16 @@ export function routeSummary(
         icon: "i-ph-arrows-left-right",
         eyebrow: "$api.routes.statistics.requests",
         value: total.requests,
-        ...callsVersus(traffic),
+        detail: versus(delta),
+        detailTone:
+          delta === null ? "neutral" : delta >= 0 ? "success" : "warning",
       },
       {
         id: "latency",
         icon: "i-ph-timer",
         eyebrow: "$api.routes.statistics.average",
         value: timed ? ms(averageLatency(total)) : "—",
-        ...latency,
-        detail: withVersus(
-          latency.detail,
-          figureVersus(traffic, timedAverage, ms),
-        ),
+        ...p95Detail(total, slowThreshold),
       },
       {
         id: "errors",
@@ -328,13 +251,13 @@ export function routeSummary(
             rate: { type: "number", value: rate / PERCENT, format: "percent" },
           },
         },
-        detail: withVersus(
-          text("routes.statistics.error_split", {
-            client: count(total.clientErrors),
-            server: count(total.serverErrors),
-          }),
-          figureVersus(traffic, calledErrorRate, percent, "pt"),
-        ),
+        detail: {
+          key: "api.routes.statistics.error_split",
+          params: {
+            client: { type: "count", value: total.clientErrors },
+            server: { type: "count", value: total.serverErrors },
+          },
+        },
         detailTone: total.serverErrors > 0 ? "error" : "neutral",
       },
       {
@@ -343,10 +266,10 @@ export function routeSummary(
         tone: timed && total.maxLatency >= slowThreshold ? "warning" : "muted",
         eyebrow: "$api.routes.statistics.max",
         value: timed ? ms(total.maxLatency) : "—",
-        detail: withVersus(
-          text("routes.statistics.slow_line", { threshold: ms(slowThreshold) }),
-          figureVersus(traffic, timedMax, ms),
-        ),
+        detail: {
+          key: "api.routes.statistics.slow_line",
+          params: { threshold: ms(slowThreshold) },
+        },
         detailTone:
           timed && total.maxLatency >= slowThreshold ? "warning" : "neutral",
       },
@@ -403,30 +326,8 @@ function gapPoints(
 }
 
 /**
- * One measure of the route over the period compared with, bucket by bucket
- * on the window's own: the card draws it dashed. None without a comparison.
- */
-function comparisonSeries(
-  traffic: RouteTraffic,
-  pick: (bucket: TrafficBucket) => number | null,
-): Pick<RouteChartPayload, "comparisonSeries"> {
-  const comparison = traffic.window ? shownComparison(traffic.window) : null;
-  if (!comparison || !traffic.previousBuckets) return {};
-  return {
-    comparisonSeries: [
-      {
-        name: comparisonSeriesName(comparison),
-        data: alignComparison(traffic.buckets, traffic.previousBuckets, pick),
-      },
-    ],
-  };
-}
-
-/**
  * Share of 4xx and of 5xx per bucket, in percent, so a few errors stay
- * visible next to a busy day. The delta is in points; under a comparison
- * the error rate of the period compared with is its "vs" figure and a
- * dashed line.
+ * visible next to a busy day. The delta is in points.
  */
 export function errorRateChart(
   traffic: RouteTraffic,
@@ -436,10 +337,8 @@ export function errorRateChart(
     (part: (bucket: TrafficBucket) => number) => (bucket: TrafficBucket) =>
       (part(bucket) / bucket.requests) * PERCENT;
   const { value, delta } = errorRateFigures(traffic);
-  const before = traffic.previous ? calledErrorRate(traffic.previous) : null;
   return {
     value,
-    ...(before !== null && { previousValue: before }),
     delta,
     deltaUnit: "pt",
     series: [
@@ -458,7 +357,6 @@ export function errorRateChart(
         ),
       },
     ],
-    ...(before !== null && comparisonSeries(traffic, calledErrorRate)),
     window: windowOf(traffic),
   };
 }
@@ -471,9 +369,7 @@ const Y_STEP_MS = 100;
  * Average, max and p95 latency per bucket (in that order), a gap where the
  * route was not called or no duration was measured, and the slow threshold
  * the chart draws its line at, with an axis range holding it. The p95 of an
- * hour is exact; that of a day comes from its latency histogram. Under a
- * comparison the average of the period compared with is the card's "vs"
- * figure, its delta and a dashed line.
+ * hour is exact; that of a day comes from its latency histogram.
  */
 export function latencyChart(
   traffic: RouteTraffic,
@@ -500,23 +396,14 @@ export function latencyChart(
       data: points(p95Latency),
     },
   ];
-  const value = Math.round(averageLatency(traffic.total));
-  const before = traffic.previous ? timedAverage(traffic.previous) : null;
-  const compared =
-    before === null ? {} : comparisonSeries(traffic, timedAverage);
   const highest = Math.max(
     slowThresholdMs,
-    ...[...series, ...(compared.comparisonSeries ?? [])].flatMap((line) =>
-      line.data.map((point) => point.y ?? 0),
-    ),
+    ...series.flatMap((line) => line.data.map((point) => point.y ?? 0)),
   );
   return {
-    value,
-    ...(before !== null && { previousValue: before }),
-    delta: before === null ? null : change(value, before),
-    deltaUnit: "percent",
+    value: Math.round(averageLatency(traffic.total)),
+    delta: null,
     series,
-    ...compared,
     slowThresholdMs,
     yMin: 0,
     yMax: Math.ceil((highest * Y_HEADROOM) / Y_STEP_MS) * Y_STEP_MS,
@@ -525,36 +412,9 @@ export function latencyChart(
 }
 
 /**
- * The route's errors over the period compared with, by group; null without
- * a comparison or when the logs of that period are already pruned (an error
- * count of a pruned period would read "none").
- */
-async function previousErrorCounts(
-  models: CatalogModels,
-  window: TimeWindow,
-  key: string,
-): Promise<Map<string, number> | null> {
-  if (!shownComparison(window) || !window.previous) return null;
-  if (window.previous.from < horizonOf("minute", new Date())) return null;
-  const errors = await loadErrorSamples(
-    models.logs,
-    window.previous,
-    new Set([key]),
-    400,
-  );
-  const groups = computeRouteHealth(errors).get(key)?.errors ?? [];
-  return new Map(groups.map((group) => [errorId(group), group.count]));
-}
-
-function errorId(group: { status: number; message: string | null }): string {
-  return `${group.status}:${group.message ?? ""}`;
-}
-
-/**
  * Why the route fails over the window: its errors grouped by status and
  * message, most frequent first, each linking to its requests in the logs
- * over the same window, and under a comparison its count then ("+200 % vs.
- * 4 previous period").
+ * over the same window.
  */
 export async function routeTopErrors(
   models: CatalogModels,
@@ -572,29 +432,20 @@ export async function routeTopErrors(
     400,
   );
   const groups = computeRouteHealth(errors).get(key)?.errors ?? [];
-  const before = await previousErrorCounts(models, window, key);
-  const comparison = shownComparison(window);
   return {
     items: groups.slice(0, TOP_ERRORS_LIMIT).map((group) => {
       const isServer = group.status >= SERVER_ERROR;
-      const id = errorId(group);
-      const previous = before ? (before.get(id) ?? 0) : undefined;
       return {
-        id,
+        id: `${group.status}:${group.message ?? ""}`,
         title: group.message
           ? `${group.status} · ${group.message}`
           : String(group.status),
-        description: withVersus(
-          text(
-            isServer
-              ? "routes.statistics.server_error"
-              : "routes.statistics.client_error",
-            { at: { type: "relative", value: group.last.toISOString() } },
-          ),
-          comparison && previous !== undefined
-            ? versusText(comparison, group.count, previous, count)
-            : undefined,
-        ),
+        description: {
+          key: isServer
+            ? "api.routes.statistics.server_error"
+            : "api.routes.statistics.client_error",
+          params: { at: { type: "relative", value: group.last.toISOString() } },
+        },
         value: group.count,
         icon: isServer ? "i-ph-x-circle" : "i-ph-warning",
         to: logsLink({
@@ -608,7 +459,6 @@ export async function routeTopErrors(
         message: group.message,
         first: group.first.toISOString(),
         last: group.last.toISOString(),
-        ...(previous !== undefined && { previous }),
       };
     }),
     window: info,

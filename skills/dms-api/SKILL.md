@@ -29,4 +29,3 @@ Monitors the project's own HTTP API: it captures each request of the routes in s
 - A route reads "Auth unknown" when the check happens inside the handler; guard with the DMS auth decorators or name the middleware in `authMiddlewareCallbacks`.
 - Each block is its own permission (`@AuthUserWithPermission(<block>)`): grant roles the blocks they need.
 - Request logs can hold application data; secret-looking keys are always redacted.
-- Overview and Routes compare with the period before or with nothing (`?api.compare=previous-period|none`); every chart draws the compared period dashed and every figure says its change and its value then. No year-back comparison: the retention never keeps a year of statistics. The Request logs compare nothing.

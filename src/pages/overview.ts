@@ -53,9 +53,7 @@ export class OverviewPage extends PageController(
   DefaultLayout(),
 ) {
   // The toolbar of every monitoring page. The period selector keeps its
-  // period in the URL (`?api.period=last-24h`), and its comparison: the
-  // period before, the year before, or none. A chart with nothing to compare
-  // with shows no "vs" line, the same under "none" as when it is not kept.
+  // period in the URL (`?api.period=last-24h`), against the period before.
   static toolbar = monitoringToolbar({
     leading: {
       scope: scopeChip(),
@@ -135,6 +133,8 @@ export class OverviewPage extends PageController(
           "errorShare",
           ChartCard({
             title: "$api.overview.error_share.title",
+            // Shown in place of the "vs" figure, so only when there is none.
+            description: "$api.overview.no_previous",
             icon: "i-ph-warning-diamond",
             fetchUrl: `${OVERVIEW_API}/error-share`,
             periodScope: PERIOD_SCOPE,
@@ -146,8 +146,7 @@ export class OverviewPage extends PageController(
             // "vs" figure stays (DMS-12).
             showDelta: false,
             showLegend: false,
-            // Names the 4xx and the 5xx columns, and the dashed line of the
-            // error share over the period compared with.
+            // Names the 4xx and the 5xx columns.
             showSeriesLegend: true,
             chart: ChartColumn({
               height: "220px",
@@ -166,6 +165,7 @@ export class OverviewPage extends PageController(
           "chart",
           ChartCard({
             title: "$api.overview.traffic.title",
+            description: "$api.overview.no_previous",
             icon: "i-ph-chart-bar",
             fetchUrl: `${OVERVIEW_API}/traffic`,
             periodScope: PERIOD_SCOPE,
@@ -175,9 +175,7 @@ export class OverviewPage extends PageController(
             // Names the 2xx, 4xx and 5xx parts of each column.
             showSeriesLegend: true,
             // 2xx, 4xx and 5xx stacked on one axis: the height of a column
-            // is the traffic, its red part the server errors. Under a
-            // comparison, the calls of the period compared with are a dashed
-            // line over the columns.
+            // is the traffic, its red part the server errors.
             chart: ChartColumn({
               height: "260px",
               xaxisType: "datetime",

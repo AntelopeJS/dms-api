@@ -8,9 +8,7 @@ import type {
 } from "@antelopejs/interface-dms/component";
 import type { PageLiveOptions } from "@antelopejs/interface-dms/page";
 import {
-  DEFAULT_COMPARISON,
   DEFAULT_WINDOW,
-  PAGE_COMPARISONS,
   PERIOD_SCOPE,
   WINDOW_PRESETS,
 } from "@/services/window";
@@ -43,9 +41,8 @@ export interface MonitoringToolbarOptions {
    */
   leading: Record<string, Component>;
   /**
-   * Offer to compare each chart and figure, its dashed series, delta and
-   * "vs" figure, with the period before, or nothing: the pages with charts.
-   * The request logs, a list, compare nothing.
+   * Compare each card with the period right before it, the "vs" figure: the
+   * pages with cards. The request logs compare nothing.
    */
   compare?: boolean;
   /**
@@ -57,24 +54,22 @@ export interface MonitoringToolbarOptions {
 
 /**
  * The toolbar of the monitoring pages, the DMS `pageToolbar()`: `[scope]
- * [beta] ··· updated · Live / Pause · window · vs … ▾ · 1H 24H 7D 30D` on one
+ * [beta] ··· updated · Live / Pause · window · vs · 1H 24H 7D 30D` on one
  * line at one size, wrapping on a narrow window. Paused, the toggle says
  * what was missed ("Paused · 40 new requests · 2 in 5xx").
  *
  * The period is the one every block follows (`PERIOD_SCOPE`), kept in the
  * page URL (`?api.period=last-24h`): a link, a reload and a shared URL show
  * the same period. Without one in the URL, the user's last choice on any
- * page of the module comes back (`rememberKey`), else the last 24 hours.
- * Where the page compares, the comparison is a menu ("vs previous period
- * ▾": previous period or no comparison), on the period before unless the
- * URL (`?api.compare=none`) or the last choice says otherwise; every chart
- * and figure of the page shows it. The request logs, a list, have none.
+ * page of the module comes back (`rememberKey`), else the last 24 hours. The
+ * comparison, where the page offers one, is always on and never offered.
  *
  * The children keep their ids (`scope`, `beta`, `live`, `period`).
  */
 export function monitoringToolbar(
   options: MonitoringToolbarOptions,
 ): ComponentBuilder<PageToolbarProps> {
+  const comparison = options.compare ? "previous-period" : "none";
   return pageToolbar({
     leading: options.leading,
     live: { missedLabel: "$api.live_mode.new_requests" },
@@ -86,17 +81,8 @@ export function monitoringToolbar(
         ...(options.allTime ? ["all" as const] : []),
       ],
       defaultPreset: DEFAULT_WINDOW,
-      ...(options.compare
-        ? {
-            comparisons: PAGE_COMPARISONS,
-            defaultComparison: DEFAULT_COMPARISON,
-            // The page toolbar hides its comparison by default.
-            comparisonControl: "menu" as const,
-          }
-        : {
-            comparisons: ["none" as const],
-            defaultComparison: "none" as const,
-          }),
+      comparisons: [comparison],
+      defaultComparison: comparison,
     },
   });
 }

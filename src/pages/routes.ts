@@ -76,13 +76,13 @@ export function thresholdLabel(ms: number): string {
 
 /**
  * The p95 as dots on its line: a bucket between quiet ones is a lone point,
- * which a line alone would not draw. Average, Max, p95, then the dashed
- * average compared with: the order of `/statistics/latency-chart`.
+ * which a line alone would not draw. Average, Max, p95: the order of
+ * `/statistics/latency-chart`.
  */
 const LATENCY_MARKERS = {
   key: "markers",
   value: JSON.stringify({
-    size: [0, 0, 3, 0],
+    size: [0, 0, 3],
     strokeWidth: 0,
     hover: { size: 5 },
   }),
@@ -164,11 +164,7 @@ function chartRow() {
         // ("881.664"). The threshold keeps the range wide enough for whole
         // numbers never to repeat.
         valuePrecision: 0,
-        // The average against the period compared with: slower is worse.
-        showDelta: true,
-        invert: true,
-        // "Period" and "Comparison", the dashed average of the period
-        // compared with, when the toolbar compares.
+        showDelta: false,
         showLegend: true,
         // Names the Average, Max and p95 lines.
         showSeriesLegend: true,

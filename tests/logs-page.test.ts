@@ -165,26 +165,20 @@ describe("LogsPage toolbar and filters", () => {
     // and "All time" draws as its short code, as wide as the other presets.
     expect(logs.options).toEqual(overview.options);
     expect(options(logs, "live")).toEqual(options(overview, "live"));
-    const {
-      presets,
-      comparisons,
-      defaultComparison,
-      comparisonControl,
-      ...period
-    } = options(logs, "period");
+    const { presets, comparisons, defaultComparison, ...period } = options(
+      logs,
+      "period",
+    );
     const overviewPeriod = options(overview, "period");
     expect(period).toEqual({
       ...overviewPeriod,
       presets: undefined,
       comparisons: undefined,
       defaultComparison: undefined,
-      comparisonControl: undefined,
     });
     expect(presets).toEqual([...(overviewPeriod.presets as string[]), "all"]);
-    // A list of requests compares nothing: no comparison menu.
     expect(comparisons).toEqual(["none"]);
     expect(defaultComparison).toBe("none");
-    expect(comparisonControl).toBe("hidden");
   });
 
   it("serves the slowness threshold and the body limit in force", async () => {

@@ -14,10 +14,11 @@ import { ATTENTION_LIMIT, getAttention } from "@/services/attention";
 import {
   getErrorShareChart,
   getHealth,
+  getSlowestRoutes,
+  getStatusClasses,
   getTrafficChart,
   type OverviewModels,
 } from "@/services/overview";
-import { getSlowestRoutes, getStatusClasses } from "@/services/overview-lists";
 import { countRoutes } from "@/services/route-catalog";
 import { getScopedRouteKeys } from "@/services/scope";
 import { getActiveScope } from "@/services/settings";

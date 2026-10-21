@@ -4,7 +4,6 @@ import {
   bucketOf,
   bucketStarts,
   CACHE_QUANTUM_MS,
-  describeWindow,
   resolveWindow,
 } from "@/services/window";
 import { MS_PER_DAY, MS_PER_HOUR, MS_PER_MINUTE } from "@/types";
@@ -53,7 +52,6 @@ describe("resolveWindow", () => {
       from: new Date(window.from.getTime() - 7 * MS_PER_DAY),
       to: window.from,
     });
-    expect(window.comparison).toBe("previous-period");
     expect(window.previousAvailable).toBe(true);
   });
 
@@ -70,15 +68,12 @@ describe("resolveWindow", () => {
       NOW,
     );
     expect(window.preset).toBeNull();
-    expect(window.comparison).toBe("custom");
     expect(window.previous?.from).toEqual(new Date("2026-09-29T15:00:00.000Z"));
   });
 
   it("leaves the comparison out when the selector asks for none", () => {
     const window = resolveWindow({ comparison: "none" }, "last-7-days", NOW);
-    expect(window.comparison).toBe("none");
     expect(window.previous).toBeNull();
-    expect(window.previousAvailable).toBe(false);
   });
 
   it("says when the period before 30 days is no longer kept", () => {
@@ -114,72 +109,6 @@ describe("resolveWindow", () => {
     expect(NOW.getTime() - window.from.getTime()).toBeLessThanOrEqual(
       31 * MS_PER_DAY,
     );
-  });
-});
-
-describe("resolveWindow comparisons", () => {
-  it("compares with the same period a year before", () => {
-    setConfig({ statisticsLifetime: 400 * MS_PER_DAY });
-    const window = resolveWindow(
-      {
-        preset: "last-7-days",
-        comparison: "previous-year",
-        // The selector's own bounds, from the browser's clock: not read.
-        compareFrom: "2025-09-30T00:00:00.000Z",
-        compareTo: "2025-10-07T00:00:00.000Z",
-      },
-      "last-24h",
-      NOW,
-    );
-    expect(window.comparison).toBe("previous-year");
-    expect(window.previous).toEqual({
-      from: new Date("2025-09-30T15:00:00.000Z"),
-      to: new Date("2025-10-07T15:00:00.000Z"),
-    });
-    expect(describeWindow(window)).toMatchObject({
-      comparison: "previous-year",
-      previous: { from: "2025-09-30T15:00:00.000Z" },
-    });
-  });
-
-  it("says when the year before is no longer kept", () => {
-    const window = resolveWindow(
-      { preset: "last-24h", comparison: "previous-year" },
-      "last-24h",
-      NOW,
-    );
-    expect(window.comparison).toBe("previous-year");
-    expect(window.previousAvailable).toBe(false);
-    expect(window.previous).toBeNull();
-  });
-
-  it("compares 29 February with the 28th a year before", () => {
-    setConfig({ statisticsLifetime: 400 * MS_PER_DAY });
-    const window = resolveWindow(
-      {
-        from: "2028-02-22T12:00:00.000",
-        to: "2028-02-29T12:00:00.000",
-        comparison: "previous-year",
-      },
-      "last-24h",
-      new Date("2028-03-01T00:00:00.000"),
-    );
-    expect(window.previous).toEqual({
-      from: new Date("2027-02-22T12:00:00.000"),
-      to: new Date("2027-02-28T12:00:00.000"),
-    });
-  });
-
-  it("compares with the period before when the comparison is unknown or unbounded", () => {
-    for (const comparison of [undefined, "soon", "custom"]) {
-      const window = resolveWindow(
-        { preset: "last-24h", comparison },
-        "last-24h",
-        NOW,
-      );
-      expect(window.comparison).toBe("previous-period");
-      expect(window.previous?.to).toEqual(window.from);
-    }
   });
 });
 
