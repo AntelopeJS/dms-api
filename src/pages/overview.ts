@@ -54,7 +54,7 @@ export class OverviewPage extends PageController(
 ) {
   // The toolbar of every monitoring page. The period selector keeps its
   // period in the URL (`?api.period=last-24h`), and its comparison: the
-  // period before, the year before, or none. A chart with nothing to compare
+  // period before or none. A chart with nothing to compare
   // with shows no "vs" line, the same under "none" as when it is not kept.
   static toolbar = monitoringToolbar({
     leading: {

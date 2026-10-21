@@ -18,7 +18,6 @@ type Compared = Exclude<WindowComparison, "none">;
 
 const COMPARISON_KEYS: Record<Compared, string> = {
   "previous-period": "previous_period",
-  "previous-year": "previous_year",
   custom: "custom",
 };
 

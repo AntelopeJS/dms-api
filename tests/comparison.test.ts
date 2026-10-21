@@ -92,6 +92,22 @@ function windowFor(comparison: WindowComparison) {
   return resolveWindow({ preset: "last-24h", comparison }, "last-24h", now);
 }
 
+/** A custom comparison a year back: past every retention, so not kept. */
+function unkeptWindow() {
+  const yearBack = (days: number) =>
+    new Date(now.getTime() - days * MS_PER_DAY).toISOString();
+  return resolveWindow(
+    {
+      preset: "last-24h",
+      comparison: "custom",
+      compareFrom: yearBack(366),
+      compareTo: yearBack(365),
+    },
+    "last-24h",
+    now,
+  );
+}
+
 beforeEach(() => {
   clearAggregateCache();
   forgetRecentScan();
@@ -110,8 +126,8 @@ describe("comparison texts", () => {
         previous: count(100),
       }),
     );
-    expect(versusText("previous-year", 50, 100, count)).toMatchObject({
-      key: "api.compare.versus.previous_year",
+    expect(versusText("custom", 50, 100, count)).toMatchObject({
+      key: "api.compare.versus.custom",
       params: { delta: { params: { sign: "−", value: percent(50) } } },
     });
   });
@@ -165,8 +181,8 @@ describe("comparison texts", () => {
       "previous-period",
     );
     expect(shownComparison(windowFor("none"))).toBeNull();
-    // A year back is past the 30 days of logs.
-    expect(shownComparison(windowFor("previous-year"))).toBeNull();
+    // A compared range past the 30 days of logs is not kept.
+    expect(shownComparison(unkeptWindow())).toBeNull();
     expect(comparisonSeriesName("previous-period")).toBe(
       "$api.compare.series.previous_period",
     );
@@ -216,8 +232,7 @@ describe("Overview comparisons", () => {
   });
 
   it("drops the series, the delta and the vs figure without a comparison", async () => {
-    for (const comparison of ["none", "previous-year"] as const) {
-      const window = windowFor(comparison);
+    for (const window of [windowFor("none"), unkeptWindow()]) {
       for (const chart of [
         await getTrafficChart(overviewModels(), window, null),
         await getErrorShareChart(overviewModels(), window, null),
@@ -349,13 +364,13 @@ describe("Routes comparisons", () => {
     });
   });
 
-  it("says a year back is no longer kept rather than comparing with zeros", async () => {
+  it("says a compared range no longer kept rather than comparing with zeros", async () => {
     const [requests, latency] = routeSummary(
-      await trafficFor("previous-year"),
+      await loadRouteTraffic(catalogModels(), route, unkeptWindow()),
       1000,
     ).items;
     expect(requests).toMatchObject({
-      detail: "$api.compare.no_baseline.previous_year",
+      detail: "$api.compare.no_baseline.custom",
       detailTone: "neutral",
     });
     expect(latency?.detail).toMatchObject({

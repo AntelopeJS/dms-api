@@ -100,12 +100,13 @@ export interface TimeRange {
 
 /**
  * What a window is compared with, by the DMS names its `PeriodSelector`
- * sends (`comparison`): the period right before, the same period a year
- * before, the `compareFrom` / `compareTo` range, or nothing.
+ * sends (`comparison`): the period right before, the `compareFrom` /
+ * `compareTo` range, or nothing. No year-back comparison: the statistics are
+ * kept 90 days at most (the Settings page offers 30, 60 or 90), so a year
+ * back would only ever compare with nothing.
  */
 export const WINDOW_COMPARISONS = [
   "previous-period",
-  "previous-year",
   "custom",
   "none",
 ] as const;
@@ -114,11 +115,7 @@ export type WindowComparison = (typeof WINDOW_COMPARISONS)[number];
 /**
  * The comparisons the monitoring pages offer, the one they open on first:
  * the dashed series, the deltas, the "vs" figures and their labels follow
- * the one picked. Only what the retention can show: the statistics behind
- * 7D and 30D are kept 90 days at most, and the logs behind 1H and 24H only
- * reach a year back when kept that long (30 days by default), so
- * "previous-year" (still resolved, for a link) would compare with nothing.
- * Offer it again if the statistics retention ever reaches a year.
+ * the one picked.
  */
 export const PAGE_COMPARISONS: WindowComparison[] = ["previous-period", "none"];
 export const DEFAULT_COMPARISON: WindowComparison = "previous-period";
@@ -216,27 +213,16 @@ export function currentRange(
   return orderedRange(from, to);
 }
 
-/** `date` on the same day and time a year before (29 February: the 28th). */
-function yearBefore(date: Date): Date {
-  const shifted = new Date(date);
-  shifted.setFullYear(shifted.getFullYear() - 1);
-  // 29 February has no match a year before: setFullYear rolls it to 1 March.
-  if (shifted.getMonth() !== date.getMonth()) shifted.setDate(0);
-  return shifted;
-}
-
 /**
- * The comparison a query asks for. A custom one without both its bounds, and
- * anything we do not know (an older link, no `comparison` at all), compare
- * with the period right before.
+ * The comparison a query asks for, as the DMS period scope sends it with
+ * every read. A query naming none, one we do not offer, or a custom one
+ * without both its bounds compares with nothing.
  */
 function comparisonOf(query: WindowQuery): WindowComparison {
   const asked = WINDOW_COMPARISONS.find((name) => name === query.comparison);
-  if (asked === "custom") {
-    const bounded = parseDate(query.compareFrom) && parseDate(query.compareTo);
-    return bounded ? "custom" : DEFAULT_COMPARISON;
-  }
-  return asked ?? DEFAULT_COMPARISON;
+  if (asked !== "custom") return asked ?? "none";
+  const bounded = parseDate(query.compareFrom) && parseDate(query.compareTo);
+  return bounded ? "custom" : "none";
 }
 
 /**
@@ -253,9 +239,6 @@ function comparisonRange(
   const compareTo = parseDate(query.compareTo);
   if (comparison === "custom" && compareFrom && compareTo) {
     return orderedRange(compareFrom, compareTo);
-  }
-  if (comparison === "previous-year") {
-    return { from: yearBefore(range.from), to: yearBefore(range.to) };
   }
   const span = range.to.getTime() - range.from.getTime();
   return { from: new Date(range.from.getTime() - span), to: range.from };

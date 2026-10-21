@@ -4,7 +4,6 @@ import {
   bucketOf,
   bucketStarts,
   CACHE_QUANTUM_MS,
-  describeWindow,
   resolveWindow,
 } from "@/services/window";
 import { MS_PER_DAY, MS_PER_HOUR, MS_PER_MINUTE } from "@/types";
@@ -48,7 +47,11 @@ describe("resolveWindow", () => {
   });
 
   it("compares to the period right before, of the same length", () => {
-    const window = resolveWindow({ preset: "last-7-days" }, "last-7-days", NOW);
+    const window = resolveWindow(
+      { preset: "last-7-days", comparison: "previous-period" },
+      "last-7-days",
+      NOW,
+    );
     expect(window.previous).toEqual({
       from: new Date(window.from.getTime() - 7 * MS_PER_DAY),
       to: window.from,
@@ -83,14 +86,14 @@ describe("resolveWindow", () => {
 
   it("says when the period before 30 days is no longer kept", () => {
     setConfig({ statisticsLifetime: 30 * MS_PER_DAY });
-    const short = resolveWindow({ preset: "last-30-days" }, "last-7-days", NOW);
+    const query = { preset: "last-30-days", comparison: "previous-period" };
+    const short = resolveWindow(query, "last-7-days", NOW);
     expect(short.previousAvailable).toBe(false);
     expect(short.previous).toBeNull();
     setConfig({ statisticsLifetime: 60 * MS_PER_DAY });
-    expect(
-      resolveWindow({ preset: "last-30-days" }, "last-7-days", NOW)
-        .previousAvailable,
-    ).toBe(true);
+    expect(resolveWindow(query, "last-7-days", NOW).previousAvailable).toBe(
+      true,
+    );
   });
 
   it("puts a reversed range back in order and ignores garbage", () => {
@@ -118,67 +121,15 @@ describe("resolveWindow", () => {
 });
 
 describe("resolveWindow comparisons", () => {
-  it("compares with the same period a year before", () => {
-    setConfig({ statisticsLifetime: 400 * MS_PER_DAY });
-    const window = resolveWindow(
-      {
-        preset: "last-7-days",
-        comparison: "previous-year",
-        // The selector's own bounds, from the browser's clock: not read.
-        compareFrom: "2025-09-30T00:00:00.000Z",
-        compareTo: "2025-10-07T00:00:00.000Z",
-      },
-      "last-24h",
-      NOW,
-    );
-    expect(window.comparison).toBe("previous-year");
-    expect(window.previous).toEqual({
-      from: new Date("2025-09-30T15:00:00.000Z"),
-      to: new Date("2025-10-07T15:00:00.000Z"),
-    });
-    expect(describeWindow(window)).toMatchObject({
-      comparison: "previous-year",
-      previous: { from: "2025-09-30T15:00:00.000Z" },
-    });
-  });
-
-  it("says when the year before is no longer kept", () => {
-    const window = resolveWindow(
-      { preset: "last-24h", comparison: "previous-year" },
-      "last-24h",
-      NOW,
-    );
-    expect(window.comparison).toBe("previous-year");
-    expect(window.previousAvailable).toBe(false);
-    expect(window.previous).toBeNull();
-  });
-
-  it("compares 29 February with the 28th a year before", () => {
-    setConfig({ statisticsLifetime: 400 * MS_PER_DAY });
-    const window = resolveWindow(
-      {
-        from: "2028-02-22T12:00:00.000",
-        to: "2028-02-29T12:00:00.000",
-        comparison: "previous-year",
-      },
-      "last-24h",
-      new Date("2028-03-01T00:00:00.000"),
-    );
-    expect(window.previous).toEqual({
-      from: new Date("2027-02-22T12:00:00.000"),
-      to: new Date("2027-02-28T12:00:00.000"),
-    });
-  });
-
-  it("compares with the period before when the comparison is unknown or unbounded", () => {
-    for (const comparison of [undefined, "soon", "custom"]) {
+  it("compares with nothing when the query names no comparison it offers", () => {
+    for (const comparison of [undefined, "soon", "previous-year", "custom"]) {
       const window = resolveWindow(
         { preset: "last-24h", comparison },
         "last-24h",
         NOW,
       );
-      expect(window.comparison).toBe("previous-period");
-      expect(window.previous?.to).toEqual(window.from);
+      expect(window.comparison).toBe("none");
+      expect(window.previous).toBeNull();
     }
   });
 });

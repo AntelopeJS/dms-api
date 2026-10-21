@@ -862,22 +862,18 @@
     "compare": {
       "series": {
         "previous_period": "Previous period",
-        "previous_year": "Same period last year",
         "custom": "Compared period"
       },
       "versus": {
         "previous_period": "{delta} vs. {previous} previous period",
-        "previous_year": "{delta} vs. {previous} last year",
         "custom": "{delta} vs. {previous} compared period"
       },
       "from_zero": {
         "previous_period": "none over the previous period",
-        "previous_year": "none a year before",
         "custom": "none over the compared period"
       },
       "no_baseline": {
         "previous_period": "No previous period",
-        "previous_year": "No data a year back to compare with",
         "custom": "No data over the compared period"
       },
       "change_percent": "{sign}{value}",

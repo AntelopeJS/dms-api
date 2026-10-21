@@ -211,9 +211,9 @@ describe("route statistics comparisons", () => {
       detail: { key: "api.compare.versus.previous_period" },
       detailTone: "success",
     });
-    // A year back is past every retention: said, never compared with zeros.
-    expect(comparedWith("previous-year")).toMatchObject({
-      detail: "$api.compare.no_baseline.previous_year",
+    // A previous period no longer kept: said, never compared with zeros.
+    expect(comparedWith("previous-period", false)).toMatchObject({
+      detail: "$api.compare.no_baseline.previous_period",
       detailTone: "neutral",
     });
     const none = comparedWith("none", false);
