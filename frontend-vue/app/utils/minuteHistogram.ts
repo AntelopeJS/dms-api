@@ -1,13 +1,9 @@
-// The live histogram above the request logs: one bar per stretch of the
-// page's period (a minute over the last hour, 15 minutes over 24 hours, up
-// to 6 hours over 30 days: the server picks it), stacked by status class, on
-// a scale a single spike cannot flatten.
+// The live histogram above the request logs: one bar per minute of the last
+// hour, stacked by status class, on a scale a single spike cannot flatten.
 
 const MS_PER_MINUTE = 60_000
-const MS_PER_HOUR = 60 * MS_PER_MINUTE
-const MS_PER_DAY = 24 * MS_PER_HOUR
 
-/** One bar of the histogram, as `/api/monitoring/logs/live` sends it. */
+/** One minute of the histogram, as `/api/monitoring/logs/live` sends it. */
 export interface MinuteBucket {
   start: number
   /** Every answer below 400: 2xx and 3xx. */
@@ -51,21 +47,25 @@ export function scaleCeiling(totals: number[]): number {
     : peak
 }
 
+/** The minute `at` falls in, as the start of its bucket. */
+export function minuteOf(at: number): number {
+  return Math.floor(at / MS_PER_MINUTE) * MS_PER_MINUTE
+}
+
 /**
- * The bars of `buckets`, each `bucketMs` long, on their scale. The bar
- * holding `refreshedAt` is the one still running (none over a past range:
- * leave `refreshedAt` out). An empty bar has no segment: nothing is drawn.
+ * The bars of `buckets` on their scale. The minute holding `refreshedAt` is
+ * the one still running. An empty minute has no segment: nothing is drawn.
  */
 export function minuteBars(
   buckets: MinuteBucket[],
   refreshedAt?: string | number,
-  bucketMs: number = MS_PER_MINUTE,
 ): { bars: MinuteBar[]; ceiling: number; clipped: boolean } {
   const totals = buckets.map(
     (bucket) => bucket.success + bucket.clientErrors + bucket.serverErrors,
   )
   const ceiling = scaleCeiling(totals)
   const at = refreshedAt === undefined ? NaN : new Date(refreshedAt).getTime()
+  const currentMinute = Number.isNaN(at) ? undefined : minuteOf(at)
   const bars = buckets.map((bucket, index) => {
     const total = totals[index]
     const shown = Math.min(total, ceiling)
@@ -75,7 +75,7 @@ export function minuteBars(
     return {
       ...bucket,
       total,
-      current: bucket.start <= at && at < bucket.start + bucketMs,
+      current: bucket.start === currentMinute,
       clipped: total > ceiling,
       heights: {
         success: percent(bucket.success),
@@ -104,48 +104,13 @@ export function axisTicks(bars: MinuteBar[]): number[] {
 }
 
 /**
- * The length of a bar, as its title names it: "minute", "15 min", "6 h",
- * "day".
- */
-export type BucketLabel =
-  | { unit: 'minute' }
-  | { unit: 'minutes' | 'hours'; amount: number }
-  | { unit: 'day' }
-
-export function bucketLabel(bucketMs: number): BucketLabel {
-  if (bucketMs <= MS_PER_MINUTE) return { unit: 'minute' }
-  if (bucketMs < MS_PER_HOUR)
-    return { unit: 'minutes', amount: Math.round(bucketMs / MS_PER_MINUTE) }
-  if (bucketMs < MS_PER_DAY)
-    return { unit: 'hours', amount: Math.round(bucketMs / MS_PER_HOUR) }
-  return { unit: 'day' }
-}
-
-/**
- * How the axis, the tooltip and the summary write a bar's time: the time
- * alone over a day at most, the date and time over longer periods, the date
- * alone for bars of a day.
- */
-export type BarTimeFormat = 'time' | 'dateTime' | 'date'
-
-export function barTimeFormat(bucketMs: number, spanMs: number): BarTimeFormat {
-  if (bucketMs >= MS_PER_DAY) return 'date'
-  return spanMs > MS_PER_DAY ? 'dateTime' : 'time'
-}
-
-/**
  * What the histogram's live indicator says: following the page's live mode,
- * paused with it, reconnecting since the last read failed (from the first
- * failure), or a past range, which nothing updates.
+ * paused with it, or reconnecting since the last read failed (from the first
+ * failure).
  */
-export type LiveStatus = 'live' | 'paused' | 'reconnecting' | 'past'
+export type LiveStatus = 'live' | 'paused' | 'reconnecting'
 
-export function liveStatus(
-  live: boolean,
-  failures: number,
-  followsNow = true,
-): LiveStatus {
-  if (!followsNow) return failures > 0 ? 'reconnecting' : 'past'
+export function liveStatus(live: boolean, failures: number): LiveStatus {
   if (!live) return 'paused'
   return failures > 0 ? 'reconnecting' : 'live'
 }

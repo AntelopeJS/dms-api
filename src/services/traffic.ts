@@ -1,7 +1,6 @@
 import type { RouteStatisticsModel } from "@/db";
 import type { RequestLogSample } from "@/db/models/request_log.model";
 import type { RouteStatistics } from "@/db/tables/routes_statistics.table";
-import { createMemo } from "@/memo";
 import type { DayStatistics } from "@/types";
 import { cached } from "./aggregate-cache";
 import { scopeRouteKey } from "./scope";
@@ -24,7 +23,6 @@ import {
   bucketStarts,
   CACHE_QUANTUM_MS,
   horizonOf,
-  pinnedNow,
   type TimeRange,
   type WindowGranularity,
 } from "./window";
@@ -311,119 +309,6 @@ function dayProfile(
     },
     PROFILE_TTL_MS,
   );
-}
-
-// ---------------------------------------------------------------------------
-// Calls per minute, over long windows
-// ---------------------------------------------------------------------------
-
-/** The calls of one route in one minute, by outcome. */
-export interface MinuteCount {
-  minute: number;
-  requests: number;
-  clientErrors: number;
-  serverErrors: number;
-}
-
-/** A past day of logs, per route and per minute, counts only. */
-type DayCounts = Map<string, MinuteCount[]>;
-
-/**
- * The counted past days, kept apart from the aggregate cache: a 30-day
- * histogram holds 30 of them, which would push every other aggregate out.
- * Bounded by the longest log retention the histogram reads.
- */
-const MAX_COUNTED_DAYS = 400;
-const countedDays = createMemo(MAX_COUNTED_DAYS, PROFILE_TTL_MS);
-
-/** Forget the counted days: for tests, with the aggregate cache. */
-export function forgetDayCounts(): void {
-  countedDays.clear();
-}
-
-/** Fold one logged request into the minutes of its route. */
-function countSample(
-  routes: DayCounts,
-  sample: RequestLogSample,
-  keys: ScopeKeys,
-): void {
-  const key = scopeRouteKey(sample.method, sample.uri);
-  if (keys && !keys.has(key)) return;
-  const minute = bucketOf(timeOf(sample), "minute");
-  const minutes = routes.get(key) ?? [];
-  let last = minutes[minutes.length - 1];
-  if (!last || last.minute !== minute) {
-    last = { minute, requests: 0, clientErrors: 0, serverErrors: 0 };
-    minutes.push(last);
-    routes.set(key, minutes);
-  }
-  last.requests += 1;
-  if (sample.statusCode >= 500) last.serverErrors += 1;
-  else if (sample.statusCode >= 400) last.clientErrors += 1;
-}
-
-/**
- * The calls per route and per minute of the past day starting at
- * `dayStart`: read once, then kept for hours, since a past day no longer
- * changes. A day the retention already cut holds what is left of it.
- */
-function dayCounts(model: SampleSource, dayStart: number): Promise<DayCounts> {
-  return countedDays.cached(`${dayStart}`, async () => {
-    const range = {
-      from: new Date(dayStart),
-      to: new Date(nextDay(dayStart)),
-    };
-    const { samples } = await scanSamples(model, range);
-    const routes: DayCounts = new Map();
-    for (const sample of samples) countSample(routes, sample, null);
-    return routes;
-  });
-}
-
-/**
- * The calls per minute of the routes in scope over `range`, one entry per
- * route and per minute that saw any: what a histogram of days or weeks is
- * summed from, rather than every request of the window. Past days come
- * from their counts, read once each; today from the logs of the last day,
- * which every live block already shares.
- */
-export async function minuteCounts(
-  model: SampleSource,
-  range: TimeRange,
-  keys: ScopeKeys,
-): Promise<MinuteCount[]> {
-  if (keys && keys.size === 0) return [];
-  const from = range.from.getTime();
-  const to = range.to.getTime();
-  const today = startOfDay(pinnedNow().getTime());
-  const counts: MinuteCount[] = [];
-  const keep = (entry: MinuteCount) => {
-    if (entry.minute >= bucketOf(from, "minute") && entry.minute < to) {
-      counts.push(entry);
-    }
-  };
-  const days: number[] = [];
-  for (let day = startOfDay(from); day < Math.min(to, today);) {
-    days.push(day);
-    day = nextDay(day);
-  }
-  const past = await Promise.all(days.map((day) => dayCounts(model, day)));
-  for (const routes of past) {
-    for (const [key, minutes] of routes) {
-      if (keys && !keys.has(key)) continue;
-      minutes.forEach(keep);
-    }
-  }
-  if (to > today) {
-    const recent: DayCounts = new Map();
-    const samples = await samplesIn(model, {
-      from: new Date(Math.max(from, today)),
-      to: range.to,
-    });
-    for (const sample of samples) countSample(recent, sample, keys);
-    for (const minutes of recent.values()) minutes.forEach(keep);
-  }
-  return counts;
 }
 
 /**

@@ -220,19 +220,7 @@
       }
     },
     "live": {
-      "title": "Requests per {bucket} · {period} · all traffic",
-      "title_pending": "Requests · all traffic",
-      "bucket_minute": "minute",
-      "bucket_minutes": "{amount} min",
-      "bucket_hours": "{amount} h",
-      "bucket_day": "day",
-      "period_last-hour": "last hour",
-      "period_last-24h": "last 24 h",
-      "period_last-7-days": "last 7 days",
-      "period_last-30-days": "last 30 days",
-      "period_all": "all kept logs",
-      "period_custom": "{from} – {to}",
-      "past": "Past range · not live",
+      "title": "Requests per minute · last hour · all traffic",
       "kept": "Kept {days} days · bodies up to {size}",
       "kept_days": "Kept {days} days",
       "kept_no_bodies": "Kept {days} days · bodies not captured",
@@ -245,14 +233,14 @@
       "paused": "Paused",
       "last_data": "data from {time}",
       "no_data_yet": "no data yet",
-      "error": "Could not load the request histogram",
+      "error": "Could not load the last hour",
       "error_description": "The graph tries again at the next refresh.",
-      "scale": "Scale up to {count} per {bucket}",
-      "scale_cut": "taller bars are cut",
+      "scale": "Scale up to {count} per minute",
+      "scale_cut": "busier minutes are cut",
       "tooltip_none": "no request",
-      "tooltip_current": "in progress",
-      "summary": "Requests per {bucket}, {period}: {total} requests, {client} 4xx, {server} 5xx. Busiest: {peak} at {time}.",
-      "summary_empty": "No request in this period."
+      "tooltip_current": "minute in progress",
+      "summary": "Requests per minute over the last hour: {total} requests, {client} 4xx, {server} 5xx. Busiest minute: {peak} at {time}.",
+      "summary_empty": "No request over the last hour."
     },
     "live_mode": {
       "verdict": {

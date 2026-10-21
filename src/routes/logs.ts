@@ -18,7 +18,6 @@ import { RoutesPage } from "@/pages/routes";
 import { apiOrigin } from "@/services/api-origin";
 import { logsLink, routeLink, routeRef, testerLink } from "@/services/links";
 import { getMaxLogDays } from "@/services/period";
-import { windowQueryFrom } from "@/services/window";
 import { canReadLog, type LogTable } from "@/services/request-log/access";
 import { getRequestLog, getRouteLatency } from "@/services/request-log/read";
 import {
@@ -221,24 +220,10 @@ export class LogsController extends Controller("/api/monitoring/logs") {
     });
   }
 
-  /**
-   * The histogram above the logs, over the page's period as its selector
-   * sends it (`preset`, or `from` / `to` for a custom range; `preset=all`
-   * for every request kept), the last hour without one. `bucket` asks for a
-   * bar length in ms, one the histogram offers and within its bar cap; the
-   * period's own otherwise.
-   */
   @Get("live")
-  async getLive(
-    @AuthUserWithPermission(LogsPage.live) _user: User,
-    @Context() context: RequestContext,
-  ) {
-    const query = sourceQuery(context);
+  async getLive(@AuthUserWithPermission(LogsPage.live) _user: User) {
     return {
-      ...(await getLiveTraffic(GetModel(RequestLogModel), await scopeKeys(), {
-        ...windowQueryFrom(query),
-        bucket: query.bucket,
-      })),
+      ...(await getLiveTraffic(GetModel(RequestLogModel), await scopeKeys())),
       retentionDays: getMaxLogDays(),
     };
   }
