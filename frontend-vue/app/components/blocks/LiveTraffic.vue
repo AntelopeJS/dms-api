@@ -100,7 +100,8 @@ async function poll() {
 }
 
 // Whether the bars follow now: a past range is read once, not on the feed.
-const followsNow = computed(() => data.value?.live ?? true)
+// Before the first read answers (or when it failed), the block keeps polling.
+const followsNow = computed(() => !data.value || data.value.live)
 
 // The current minute moves without traffic too: read again after a quiet
 // minute.
@@ -136,7 +137,8 @@ const TIME_FORMATS: Record<BarTimeFormat, Intl.DateTimeFormatOptions> = {
   date: { month: 'short', day: 'numeric' },
 }
 const MINUTE_MS = 60_000
-const bucketMs = computed(() => data.value?.bucketMs ?? MINUTE_MS)
+// A minute until the first read answers: the block draws no bar before it.
+const bucketMs = computed(() => (data.value ? data.value.bucketMs : MINUTE_MS))
 const spanMs = computed(() =>
   data.value
     ? new Date(data.value.to).getTime() - new Date(data.value.from).getTime()
