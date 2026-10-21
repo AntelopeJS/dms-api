@@ -190,17 +190,10 @@ async function copyCurl() {
       />
     </DmsCard>
 
-    <!-- The lines of the header below, at their heights. -->
     <DmsCard v-else-if="pending" :padded="false" class="px-5 py-4">
-      <div class="flex h-7 items-center">
-        <USkeleton class="h-3 w-40 max-w-full" />
-      </div>
-      <div class="mt-2 flex h-7 items-center">
-        <USkeleton class="h-7 w-72 max-w-full" />
-      </div>
-      <div class="mt-3 flex h-[1.5em] items-center text-[12.5px]">
-        <USkeleton class="h-3 w-96 max-w-full" />
-      </div>
+      <USkeleton class="h-3 w-40" />
+      <USkeleton class="mt-3 h-7 w-72" />
+      <USkeleton class="mt-3 h-3 w-96" />
     </DmsCard>
 
     <DmsCard v-else-if="!route" :padded="false" class="px-5 py-6">
@@ -233,22 +226,19 @@ async function copyCurl() {
       />
     </DmsCard>
 
-    <!-- Each line keeps one height whatever its width and the font drawing
-         it: the actions sit on the folder's line, the path is cut rather
-         than wrapped (whole in its tooltip). -->
     <DmsCard v-else :padded="false" class="px-5 py-4">
-      <div class="flex h-7 items-center gap-3">
-        <p
-          class="text-dimmed flex min-w-0 items-center gap-1.5 font-mono text-[11.5px]"
-        >
-          <UIcon name="i-ph-folder-simple" class="size-3.5 shrink-0" />
-          <span class="truncate">
-            {{ route.folder }}
-            <template v-if="route.controller">
-              · {{ route.controller }}
-            </template>
-          </span>
-        </p>
+      <p class="text-dimmed flex items-center gap-1.5 font-mono text-[11.5px]">
+        <UIcon name="i-ph-folder-simple" class="size-3.5" />
+        {{ route.folder }}
+        <template v-if="route.controller">· {{ route.controller }}</template>
+      </p>
+      <div class="mt-2 flex flex-wrap items-center gap-3">
+        <ApiMethodBadge :method="route.method" />
+        <ApiPath
+          :path="route.path"
+          class="text-highlighted text-xl font-semibold tracking-tight"
+        />
+        <DmsCopyButton :value="route.path" />
         <span class="grow" />
         <UButton
           :to="requestsLink"
@@ -256,7 +246,6 @@ async function copyCurl() {
           color="neutral"
           variant="outline"
           icon="i-ph-list-magnifying-glass"
-          class="shrink-0"
           :label="t('api.routes.header.requests')"
         />
         <UButton
@@ -265,18 +254,9 @@ async function copyCurl() {
           color="neutral"
           variant="outline"
           icon="i-ph-terminal"
-          class="shrink-0"
           :label="t('api.request.copy_curl')"
           @click="copyCurl"
         />
-      </div>
-      <div class="mt-2 flex h-7 items-center gap-3">
-        <ApiMethodBadge :method="route.method" class="shrink-0" />
-        <ApiPath
-          :path="route.path"
-          class="text-highlighted text-xl font-semibold tracking-tight"
-        />
-        <DmsCopyButton :value="route.path" />
       </div>
       <div
         class="text-muted mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[12.5px]"

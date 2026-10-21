@@ -1,14 +1,15 @@
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import {
   bySeverity,
-  defaultRouteLocation,
   type ExplorerRoute,
   groupRoutes,
   initialRoute,
+  lastRoute,
   listedFolders,
   listedMessages,
   needsAttention,
   optionId,
+  rememberRoute,
   type RouteState,
   stepFrom,
   windowParts,
@@ -142,44 +143,36 @@ describe('opening the page', () => {
     expect(initialRoute(ROUTES, null)?.ref).toBe('POST /api/orders')
   })
 
-  describe('a visit naming no route', () => {
-    const PAGE = '/modules/api/routes'
-
-    it('lands on the route the list would open, the query kept', () => {
-      expect(
-        defaultRouteLocation(
-          { path: PAGE, query: { tab: 'tester' } },
-          ROUTES,
-          null,
-        ),
-      ).toEqual({
-        path: PAGE,
-        query: { tab: 'tester', route: 'POST /api/orders' },
+  describe('memory of the last route', () => {
+    const store = new Map<string, string>()
+    beforeEach(() => {
+      store.clear()
+      Object.assign(globalThis, {
+        window: {
+          sessionStorage: {
+            getItem: (key: string) => store.get(key) ?? null,
+            setItem: (key: string, value: string) => store.set(key, value),
+          },
+        },
       })
     })
 
-    it('lands on the last route opened while it is listed', () => {
-      expect(
-        defaultRouteLocation({ path: PAGE, query: {} }, ROUTES, 'GET /health')
-          ?.query.route,
-      ).toBe('GET /health')
-      expect(
-        defaultRouteLocation({ path: PAGE, query: {} }, ROUTES, 'GET /gone')
-          ?.query.route,
-      ).toBe('POST /api/orders')
+    it('keeps the last route for the tab', () => {
+      expect(lastRoute()).toBeNull()
+      rememberRoute('GET /health')
+      expect(lastRoute()).toBe('GET /health')
     })
 
-    it('leaves a visit naming a route, or a list without any, as it is', () => {
-      expect(
-        defaultRouteLocation(
-          { path: PAGE, query: { route: 'GET /api/orders' } },
-          ROUTES,
-          null,
-        ),
-      ).toBeUndefined()
-      expect(
-        defaultRouteLocation({ path: PAGE, query: {} }, [], 'GET /health'),
-      ).toBeUndefined()
+    it('does without when storage is blocked', () => {
+      Object.assign(globalThis, {
+        window: {
+          get sessionStorage(): Storage {
+            throw new Error('blocked')
+          },
+        },
+      })
+      expect(() => rememberRoute('GET /health')).not.toThrow()
+      expect(lastRoute()).toBeNull()
     })
   })
 })

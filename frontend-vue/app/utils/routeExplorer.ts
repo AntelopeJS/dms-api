@@ -186,29 +186,21 @@ export function windowParts(minutes: number): {
   return { unit: 'min', amount: minutes }
 }
 
-/** The Routes page, which a visit naming no route lands on with one. */
-export const ROUTES_PAGE_PATH = '/modules/api/routes'
+const LAST_ROUTE_KEY = 'dms-api:routes:last'
 
-/** Query parameter holding the selected route, as `METHOD /path`. */
-export const ROUTE_QUERY_KEY = 'route'
+/** The route last opened in this tab, if the browser lets us keep it. */
+export function lastRoute(): string | null {
+  try {
+    return window.sessionStorage.getItem(LAST_ROUTE_KEY)
+  } catch {
+    return null
+  }
+}
 
-/**
- * The address a visit of the Routes page naming no route is sent to: the
- * same page with `?route=` the route `initialRoute` picks, the rest of its
- * query kept. Undefined when the visit names one already, or when there is
- * no route to pick.
- */
-export function defaultRouteLocation(
-  to: { path: string; query: Record<string, unknown> },
-  routes: ExplorerRoute[],
-  last: string | null,
-): { path: string; query: Record<string, unknown> } | undefined {
-  const named = to.query[ROUTE_QUERY_KEY]
-  if (typeof named === 'string' && named) return undefined
-  const first = initialRoute(routes, last)
-  if (!first) return undefined
-  return {
-    path: to.path,
-    query: { ...to.query, [ROUTE_QUERY_KEY]: first.ref },
+export function rememberRoute(ref: string): void {
+  try {
+    window.sessionStorage.setItem(LAST_ROUTE_KEY, ref)
+  } catch {
+    // Storage blocked: the page falls back to the route needing a look.
   }
 }

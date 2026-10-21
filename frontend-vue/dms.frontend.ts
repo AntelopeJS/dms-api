@@ -1,6 +1,5 @@
 import { defineAsyncComponent, type Component } from 'vue'
 import type { DmsFrontendModule } from '#dms/frontend-module'
-import defaultRoute from './app/middleware/defaultRoute'
 import displays from './app/plugins/displays'
 
 interface VueModule {
@@ -27,10 +26,6 @@ const frontendModule: DmsFrontendModule = {
     }
     // Universal: the request tables draw their cells in the server render too.
     sdk.registerPlugin(displays, { clientOnly: false })
-    // The Routes page opened without a route lands on one, on the server too.
-    sdk.registerMiddleware('dms-api-default-route', defaultRoute, {
-      global: true,
-    })
   },
 }
 
