@@ -6,6 +6,7 @@ import {
   type TableViewSourceColumn,
   type TableViewSourceOptions,
 } from "@antelopejs/interface-dms/base/table-view";
+import type { DrawerTargetOptions } from "@antelopejs/interface-dms/base/types/action-target";
 import type { ComponentBuilder } from "@antelopejs/interface-dms/component";
 import { LIVE_REQUESTS_TOPIC } from "@/types";
 import { apiBlock } from "./blocks";
@@ -170,10 +171,8 @@ const DETAIL_URLS: Record<RequestTablePage, string> = {
 };
 
 /**
- * A custom row action of a source table, typed against the DMS so the drawer
- * options it sets (`rowTitle`, `notFound`, `deepLink`: AntelopeJS/dms#375)
- * fail the typecheck on an interface without them. Read through the table's
- * options while `interface-dms` does not export `CustomRowAction`.
+ * A custom row action of a source table. Read through the table's options
+ * while `interface-dms` does not export `CustomRowAction`.
  */
 type RequestRowAction = NonNullable<
   NonNullable<TableViewSourceOptions["rowActions"]>["custom"]
@@ -199,16 +198,25 @@ function requestPanelAction(page: RequestTablePage): RequestRowAction {
       direction: "right",
       component: apiBlock("RequestDetail", { detailUrl: DETAIL_URLS[page] }),
       title: "$api.logs.drawer_title",
-      rowTitle: "$api.request.heading",
-      // On by default for a side panel, off for a drawer.
-      deepLink: true,
-      notFound: {
-        title: "$api.request.not_found_title",
-        description: "$api.request.not_found_description",
-      },
+      ...REQUEST_DRAWER,
     },
   };
 }
+
+/**
+ * The drawer options of the request target, typed on their own against the
+ * DMS (AntelopeJS/dms#375): an interface without them fails the typecheck
+ * here, where the action's union would accept them silently.
+ */
+const REQUEST_DRAWER: DrawerTargetOptions = {
+  rowTitle: "$api.request.heading",
+  // On by default for a side panel, off for a drawer.
+  deepLink: true,
+  notFound: {
+    title: "$api.request.not_found_title",
+    description: "$api.request.not_found_description",
+  },
+};
 
 /**
  * Query parameters another page links to the request table with, sent to
