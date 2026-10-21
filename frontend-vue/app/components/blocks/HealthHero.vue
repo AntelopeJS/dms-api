@@ -437,32 +437,22 @@ const metrics = computed<HeroMetric[]>(() => {
     :aria-busy="pending"
     :aria-label="t('api.health.label')"
   >
-    <!-- The loaded hero's boxes: the card (its padding, and its content's
-         82.5 px on a wide screen) and the row of reasons under it, so
-         nothing below moves when the verdict arrives. -->
-    <template v-if="pending && !data">
-      <DmsCard :padded="false" class="px-4 py-[22px] sm:px-[26px]">
-        <div class="flex min-h-[82.5px] items-center gap-6">
-          <USkeleton class="size-16 rounded-full" />
-          <div class="flex flex-col gap-2">
-            <USkeleton class="h-3 w-28" />
-            <USkeleton class="h-7 w-40" />
-            <USkeleton class="h-3 w-52" />
-          </div>
-          <div class="ml-auto hidden flex-1 grid-cols-4 gap-6 lg:grid">
-            <div v-for="index in 4" :key="index" class="flex flex-col gap-2">
-              <USkeleton class="h-2.5 w-20" />
-              <USkeleton class="h-6 w-16" />
-            </div>
+    <DmsCard v-if="pending && !data" :padded="false" class="px-6 py-6">
+      <div class="flex items-center gap-6">
+        <USkeleton class="size-16 rounded-full" />
+        <div class="flex flex-col gap-2">
+          <USkeleton class="h-3 w-28" />
+          <USkeleton class="h-7 w-40" />
+          <USkeleton class="h-3 w-52" />
+        </div>
+        <div class="ml-auto hidden flex-1 grid-cols-4 gap-6 lg:grid">
+          <div v-for="index in 4" :key="index" class="flex flex-col gap-2">
+            <USkeleton class="h-2.5 w-20" />
+            <USkeleton class="h-6 w-16" />
           </div>
         </div>
-      </DmsCard>
-      <div class="flex h-7 items-center gap-2" aria-hidden="true">
-        <USkeleton class="h-4 w-56" />
-        <span class="grow" />
-        <USkeleton class="h-7 w-24" />
       </div>
-    </template>
+    </DmsCard>
 
     <DmsCard v-else-if="!data">
       <DmsEmptyState

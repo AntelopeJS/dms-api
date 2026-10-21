@@ -84,12 +84,8 @@ export class OverviewPage extends PageController(
           // Its head counts every route to check (the route's `count`, more
           // than the rows shown when capped) and says the window it covers;
           // each row's top error is its third line. Every row is read whole
-          // (`wrap`) and the list folds past the first five. It fills its
-          // cell (`fillHeight`) and scrolls inside it: the slowest routes
-          // beside it set the row's height, the same while loading and
-          // whatever the routes to check, so the rows below never move
-          // when they arrive or change (its wrapped rows are taller than its
-          // skeleton's).
+          // (`wrap`), so the card grows with them rather than filling its
+          // cell, and folds past the first five.
           ActivityFeed({
             title: "$api.overview.attention.title",
             badge: "$api.overview.attention.badge",
@@ -100,8 +96,7 @@ export class OverviewPage extends PageController(
             maxItems: ATTENTION_ROWS,
             visibleItems: ATTENTION_VISIBLE_ROWS,
             wrap: true,
-            fillHeight: true,
-            skeletonCount: ATTENTION_VISIBLE_ROWS,
+            skeletonCount: 3,
             actions: [
               {
                 label: "$api.overview.attention.all_errors",

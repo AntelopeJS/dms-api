@@ -77,19 +77,6 @@ describe("OverviewPage", () => {
     });
   });
 
-  it("keeps the first row one height while what needs a look loads", () => {
-    // The routes to check fill their cell and scroll inside it: their
-    // wrapped rows, taller than the skeleton's, never grow the row.
-    expect(
-      child(child(dashboard, "health"), "attention").options,
-    ).toMatchObject({
-      wrap: true,
-      fillHeight: true,
-      skeletonCount: 5,
-      visibleItems: 5,
-    });
-  });
-
   it("follows the live feed, which the page's Direct / Pause holds", () => {
     const info = GetMetadata(OverviewPage, PageMetadata).pageInfo as {
       live?: unknown;
