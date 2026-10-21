@@ -198,6 +198,7 @@ describe("getSettingsFormContext", () => {
     expect(patches[SETTINGS_FIELDS.statsRetention]).toBeUndefined();
     expect(patches[SETTINGS_FIELDS.slowThreshold]).toEqual({
       defaultValue: 1000,
+      offersDefault: true,
     });
   });
 });

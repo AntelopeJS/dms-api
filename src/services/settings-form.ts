@@ -65,10 +65,10 @@ export function moduleDefaults() {
 }
 
 /**
- * Each field holding a module default shows "Module default · Use default"
- * next to another value; the retentions do not: one click there could
- * shorten a retention, and lowering one deletes data, which the retention
- * field asks to confirm instead.
+ * Each field holding a module default offers it (`offersDefault`), so it
+ * shows "Module default · Use default" next to another value; the retentions
+ * do not: one click there could shorten a retention, and lowering one deletes
+ * data, which the retention field asks to confirm instead.
  */
 export function getSettingsFormContext(): SettingsFormContext {
   const defaults = moduleDefaults();
@@ -77,7 +77,10 @@ export function getSettingsFormContext(): SettingsFormContext {
     patches: Object.fromEntries(
       Object.entries(defaults)
         .filter(([id]) => !retention.has(id))
-        .map(([id, value]) => [id, { defaultValue: value }]),
+        .map(([id, value]) => [
+          id,
+          { defaultValue: value, offersDefault: true },
+        ]),
     ),
   };
 }
