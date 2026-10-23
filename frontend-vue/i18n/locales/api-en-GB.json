@@ -150,7 +150,6 @@
         "title": "Beta",
         "description": "The API console is read-only for now: inspect, monitor and test routes."
       },
-      "no_previous": "No previous period to compare with",
       "traffic": {
         "title": "Traffic & errors",
         "2xx": "2xx success",
@@ -515,8 +514,6 @@
         "rate": "{rate}",
         "error_split": "{client} × 4xx · {server} × 5xx",
         "slow_line": "slow above {threshold}",
-        "no_baseline": "No previous period",
-        "vs_previous": "{delta} vs. previous period",
         "summary": "Route figures",
         "p95_detail": "p95 {p95}",
         "p95_none": "No p95 kept over the period",
@@ -860,6 +857,27 @@
         "adjusted_min": "{typed} is below the minimum: set to {value}.",
         "adjusted_step": "{typed} is not a step of {step}: rounded to {value}."
       }
+    },
+    "compare": {
+      "series": {
+        "previous_period": "Previous period",
+        "custom": "Compared period"
+      },
+      "versus": {
+        "previous_period": "{delta} vs. {previous} previous period",
+        "custom": "{delta} vs. {previous} compared period"
+      },
+      "from_zero": {
+        "previous_period": "none over the previous period",
+        "custom": "none over the compared period"
+      },
+      "no_baseline": {
+        "previous_period": "No previous period",
+        "custom": "No data over the compared period"
+      },
+      "change_percent": "{sign}{value}",
+      "change_points": "{sign}{value} pt",
+      "with": "{detail} · {versus}"
     }
   }
 }

@@ -102,6 +102,9 @@ async function logDetail(id: string, table: LogTable) {
     method: log.method,
     routeMethod: log.routeMethod ?? null,
     uri: log.uri,
+    // As a listed row has it: the panel's title of a request opened by a
+    // link (`?record=`) reads it, the request not being among the rows.
+    path: log.rawPath,
     rawPath: log.rawPath,
     statusCode: log.statusCode,
     responseTimeMs: log.responseTimeMs ?? null,

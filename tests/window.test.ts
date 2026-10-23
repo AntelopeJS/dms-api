@@ -47,11 +47,16 @@ describe("resolveWindow", () => {
   });
 
   it("compares to the period right before, of the same length", () => {
-    const window = resolveWindow({ preset: "last-7-days" }, "last-7-days", NOW);
+    const window = resolveWindow(
+      { preset: "last-7-days", comparison: "previous-period" },
+      "last-7-days",
+      NOW,
+    );
     expect(window.previous).toEqual({
       from: new Date(window.from.getTime() - 7 * MS_PER_DAY),
       to: window.from,
     });
+    expect(window.comparison).toBe("previous-period");
     expect(window.previousAvailable).toBe(true);
   });
 
@@ -68,24 +73,27 @@ describe("resolveWindow", () => {
       NOW,
     );
     expect(window.preset).toBeNull();
+    expect(window.comparison).toBe("custom");
     expect(window.previous?.from).toEqual(new Date("2026-09-29T15:00:00.000Z"));
   });
 
   it("leaves the comparison out when the selector asks for none", () => {
     const window = resolveWindow({ comparison: "none" }, "last-7-days", NOW);
+    expect(window.comparison).toBe("none");
     expect(window.previous).toBeNull();
+    expect(window.previousAvailable).toBe(false);
   });
 
   it("says when the period before 30 days is no longer kept", () => {
     setConfig({ statisticsLifetime: 30 * MS_PER_DAY });
-    const short = resolveWindow({ preset: "last-30-days" }, "last-7-days", NOW);
+    const query = { preset: "last-30-days", comparison: "previous-period" };
+    const short = resolveWindow(query, "last-7-days", NOW);
     expect(short.previousAvailable).toBe(false);
     expect(short.previous).toBeNull();
     setConfig({ statisticsLifetime: 60 * MS_PER_DAY });
-    expect(
-      resolveWindow({ preset: "last-30-days" }, "last-7-days", NOW)
-        .previousAvailable,
-    ).toBe(true);
+    expect(resolveWindow(query, "last-7-days", NOW).previousAvailable).toBe(
+      true,
+    );
   });
 
   it("puts a reversed range back in order and ignores garbage", () => {
@@ -109,6 +117,20 @@ describe("resolveWindow", () => {
     expect(NOW.getTime() - window.from.getTime()).toBeLessThanOrEqual(
       31 * MS_PER_DAY,
     );
+  });
+});
+
+describe("resolveWindow comparisons", () => {
+  it("compares with nothing when the query names no comparison it offers", () => {
+    for (const comparison of [undefined, "soon", "previous-year", "custom"]) {
+      const window = resolveWindow(
+        { preset: "last-24h", comparison },
+        "last-24h",
+        NOW,
+      );
+      expect(window.comparison).toBe("none");
+      expect(window.previous).toBeNull();
+    }
   });
 });
 
