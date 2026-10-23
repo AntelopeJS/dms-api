@@ -5,8 +5,7 @@ import { getConfig } from "@/config";
 import { LIVE_REQUESTS_TOPIC } from "@/types";
 import { apiBlock } from "./blocks";
 import { monitorCategory } from "./module";
-import { periodSelector } from "./period";
-import { liveMode, pageToolbar } from "./toolbar";
+import { liveMode, monitoringToolbar } from "./toolbar";
 import { requestTable } from "./request-table";
 import { scopeChip } from "./scope-chip";
 
@@ -58,11 +57,11 @@ export class LogsPage extends PageController(
   },
   DefaultLayout(),
 ) {
-  // The toolbar of every monitoring page (`pageToolbar`): the scope, then
-  // the DMS Direct / Pause toggle and the period.
-  static toolbar = pageToolbar({
-    scope: scopeChip(),
-    period: periodSelector({ allTime: true }),
+  // The toolbar of every monitoring page (`monitoringToolbar`): the scope,
+  // then the DMS Direct / Pause toggle and the period, with its "All time".
+  static toolbar = monitoringToolbar({
+    leading: { scope: scopeChip() },
+    allTime: true,
   }).meta({ name: "$api.logs.toolbar", icon: "i-ph-sliders-horizontal" });
 
   static live = apiBlock<{
