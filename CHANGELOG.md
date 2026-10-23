@@ -1,5 +1,22 @@
 # Changelog
 
+## v0.4.2
+
+[compare changes](https://github.com/AntelopeJS/dms-api/compare/v0.4.1...v0.4.2)
+
+### 🩹 Fixes
+
+- Install API frontend from the root workspace ([#37](https://github.com/AntelopeJS/dms-api/pull/37))
+- **frontend:** Run on @antelopejs/dms-frontend 0.7 ([#43](https://github.com/AntelopeJS/dms-api/pull/43))
+
+### 📖 Documentation
+
+- Clarify learning paths and illustrate real outcomes ([#40](https://github.com/AntelopeJS/dms-api/pull/40))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <rizzitelli.antony@pm.me>
+
 ## v0.4.1
 
 [compare changes](https://github.com/AntelopeJS/dms-api/compare/v0.4.0...v0.4.1)
