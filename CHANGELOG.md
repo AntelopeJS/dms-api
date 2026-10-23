@@ -1,5 +1,33 @@
 # Changelog
 
+## v0.5.0
+
+[compare changes](https://github.com/AntelopeJS/dms-api/compare/v0.4.2...v0.5.0)
+
+### 🚀 Enhancements
+
+- **frontend:** The frontend registration as a pure function, declared as dmsFrontend ([#50](https://github.com/AntelopeJS/dms-api/pull/50))
+- **pages:** Adopt the DMS page toolbar on Overview, Routes and Request logs ([#41](https://github.com/AntelopeJS/dms-api/pull/41))
+- **pages:** Compare Overview and Routes with the previous period or nothing ([#45](https://github.com/AntelopeJS/dms-api/pull/45))
+- **logs:** Open a request in a resizable drawer instead of the side panel ([#44](https://github.com/AntelopeJS/dms-api/pull/44))
+- **logs:** Make the request histogram follow the page's period ([#47](https://github.com/AntelopeJS/dms-api/pull/47))
+
+### 🩹 Fixes
+
+- **logs:** Return the path of a request opened by its id ([#42](https://github.com/AntelopeJS/dms-api/pull/42))
+- **routes:** Open the Routes page on its default route before it renders ([#46](https://github.com/AntelopeJS/dms-api/pull/46))
+- **overview:** Keep the hero and the first row one height while they load ([#48](https://github.com/AntelopeJS/dms-api/pull/48))
+- **settings:** Offer the module default on the settings form's fields ([#49](https://github.com/AntelopeJS/dms-api/pull/49))
+
+### 📦 Build
+
+- Run on @antelopejs/dms 0.10 and @antelopejs/dms-frontend 0.8 ([#51](https://github.com/AntelopeJS/dms-api/pull/51))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <rizzitelli.antony@pm.me>
+- Maxime Westhoven ([@mwesto](http://github.com/mwesto))
+
 ## v0.4.2
 
 [compare changes](https://github.com/AntelopeJS/dms-api/compare/v0.4.1...v0.4.2)
