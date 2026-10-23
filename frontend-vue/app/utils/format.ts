@@ -137,6 +137,15 @@ export function formatMs(value: number, locale?: string): string {
 }
 
 /**
+ * A value written with its unit ("68 ms", "< 1 ms") that never wraps
+ * between the two: its spaces become no-break spaces. A narrow drawer
+ * breaks a line of figures between them, never inside one.
+ */
+export function unbreakable(text: string): string {
+  return text.replace(/ /g, '\u00A0')
+}
+
+/**
  * A duration threshold (the slow threshold of the settings), the one way
  * every page writes it: "800 ms" under a second, "1 s", "1.5 s" from one.
  */

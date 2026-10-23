@@ -6,7 +6,6 @@ import "./routes";
 import "./services/request-log/capture";
 import "./pages";
 
-import path from "node:path";
 import { getRegisteredRoutes } from "@antelopejs/interface-api";
 import {
   GetModel,
@@ -35,6 +34,7 @@ import {
 import { isSensitiveHeader } from "./services/request-log/redaction";
 import { configErrors } from "./services/settings-form";
 import { SCHEMA_NAME } from "./types/constants";
+import { frontendModule } from "./frontend-module";
 
 let pruneTask: ScheduledTask | null = null;
 
@@ -46,13 +46,7 @@ export async function construct(config?: Partial<DmsApiConfig>): Promise<void> {
     throw new Error(`[dms-api] invalid configuration: ${errors.join("; ")}`);
   }
 
-  await AddFrontendModule({
-    name: "@antelopejs/dms-api-frontend-vue",
-    sourcePath: path.join(__dirname, "../frontend-vue"),
-    renderer: { name: "vue", version: "3" },
-    configKey: "dmsApi",
-    priority: 0,
-  });
+  await AddFrontendModule(frontendModule());
 }
 
 export async function start(): Promise<void> {

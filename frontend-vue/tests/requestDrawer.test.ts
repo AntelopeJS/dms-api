@@ -177,3 +177,16 @@ describe('reading a request', () => {
     ).toBe('/modules/api/logs?route=GET+%2Forders&slow=true')
   })
 })
+
+describe("the route's latency line", () => {
+  it('keeps each percentile with its value, in every locale', async () => {
+    for (const locale of ['en-GB', 'fr-FR']) {
+      const messages = (await import(`../i18n/locales/api-${locale}.json`))
+        .default as { api: { request: { route_latency: string } } }
+      const line = messages.api.request.route_latency
+      expect(line).toMatch(/p50 \{p50\}/)
+      expect(line).toMatch(/p95 \{p95\}/)
+      expect(line).not.toMatch(/p(50|95) \{/)
+    }
+  })
+})
