@@ -1,10 +1,19 @@
-import { LiveToggle } from "@antelopejs/interface-dms/base/live-toggle";
-import { HStack, Spacer } from "@antelopejs/interface-dms/base/stack";
+import {
+  pageToolbar,
+  type PageToolbarProps,
+} from "@antelopejs/interface-dms/base/page-toolbar";
 import type {
   Component,
   ComponentBuilder,
 } from "@antelopejs/interface-dms/component";
 import type { PageLiveOptions } from "@antelopejs/interface-dms/page";
+import {
+  DEFAULT_COMPARISON,
+  DEFAULT_WINDOW,
+  PAGE_COMPARISONS,
+  PERIOD_SCOPE,
+  WINDOW_PRESETS,
+} from "@/services/window";
 
 /**
  * The live mode of a monitoring page (its `live` option): each block read
@@ -26,41 +35,66 @@ export function liveMode(
   };
 }
 
-/** The parts of a monitoring page's toolbar, the same on every page. */
-export interface PageToolbarParts {
-  /** The route scope chip (`scopeChip()`). */
-  scope: Component;
-  /** A pill right of the scope: the Overview's Beta. */
-  badge?: Component;
-  /** The page's period. */
-  period: Component;
+/** What a monitoring page puts in its toolbar besides the live mode. */
+export interface MonitoringToolbarOptions {
+  /**
+   * The blocks on the left, keyed by child id: the scope chip (`scope`), the
+   * Overview's Beta badge (`beta`). Permissions name them by these ids.
+   */
+  leading: Record<string, Component>;
+  /**
+   * Offer to compare each chart and figure, its dashed series, delta and
+   * "vs" figure, with the period before, or nothing: the pages with charts.
+   * The request logs, a list, compare nothing.
+   */
+  compare?: boolean;
+  /**
+   * Offer every request kept as well, the DMS "All time" (`ALL`,
+   * `?api.period=all`, no bounds sent): the request logs.
+   */
+  allTime?: boolean;
 }
 
 /**
- * The toolbar of the monitoring pages, a DMS `HStack`: `[scope] [badge] ···
- * [live] [period]` on one line, wrapping on a narrow window. `live` is the
- * DMS `LiveToggle` as a pill: a pulsing "Live" and Pause over the page's
- * realtime (its `live` option), "Updated 12 s ago" and the L key; paused,
- * why and what was missed ("Paused · 40 new requests · 2 in 5xx"), and
- * Resume. The children keep their ids (`scope`, `beta`, `live`, `period`):
- * permissions and blocks name them so.
+ * The toolbar of the monitoring pages, the DMS `pageToolbar()`: `[scope]
+ * [beta] ··· updated · Live / Pause · window · vs … ▾ · 1H 24H 7D 30D` on one
+ * line at one size, wrapping on a narrow window. Paused, the toggle says
+ * what was missed ("Paused · 40 new requests · 2 in 5xx").
+ *
+ * The period is the one every block follows (`PERIOD_SCOPE`), kept in the
+ * page URL (`?api.period=last-24h`): a link, a reload and a shared URL show
+ * the same period. Without one in the URL, the user's last choice on any
+ * page of the module comes back (`rememberKey`), else the last 24 hours.
+ * Where the page compares, the comparison is a menu ("vs previous period
+ * ▾": previous period or no comparison), on the period before unless the
+ * URL (`?api.compare=none`) or the last choice says otherwise; every chart
+ * and figure of the page shows it. The request logs, a list, have none.
+ *
+ * The children keep their ids (`scope`, `beta`, `live`, `period`).
  */
-export function pageToolbar(parts: PageToolbarParts): ComponentBuilder {
-  const toolbar = HStack({
-    alignment: "center",
-    spacing: "0.75rem",
-    wrap: true,
-  }).child("scope", parts.scope);
-  if (parts.badge) toolbar.child("beta", parts.badge);
-  return toolbar
-    .child("spacer", Spacer())
-    .child(
-      "live",
-      LiveToggle({
-        align: "right",
-        variant: "pill",
-        missedLabel: "$api.live_mode.new_requests",
-      }),
-    )
-    .child("period", parts.period);
+export function monitoringToolbar(
+  options: MonitoringToolbarOptions,
+): ComponentBuilder<PageToolbarProps> {
+  return pageToolbar({
+    leading: options.leading,
+    live: { missedLabel: "$api.live_mode.new_requests" },
+    period: {
+      id: PERIOD_SCOPE,
+      rememberKey: PERIOD_SCOPE,
+      presets: [
+        ...WINDOW_PRESETS,
+        ...(options.allTime ? ["all" as const] : []),
+      ],
+      defaultPreset: DEFAULT_WINDOW,
+      ...(options.compare
+        ? {
+            comparisons: PAGE_COMPARISONS,
+            defaultComparison: DEFAULT_COMPARISON,
+          }
+        : {
+            comparisons: ["none" as const],
+            defaultComparison: "none" as const,
+          }),
+    },
+  });
 }

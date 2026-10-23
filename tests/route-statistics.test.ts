@@ -11,6 +11,7 @@ import {
   latencyBucketIndex,
 } from "@/services/statistics-utils";
 import { sumBuckets, type TrafficBucket } from "@/services/traffic";
+import { resolveWindow, type WindowComparison } from "@/services/window";
 
 function bucket(start: number, fields: Partial<TrafficBucket>): TrafficBucket {
   return {
@@ -64,6 +65,7 @@ const traffic: RouteTraffic = {
     totalLatency: 400,
     maxLatency: 100,
   }),
+  window: resolveWindow({ comparison: "previous-period" }, "last-24h"),
 };
 
 describe("route statistics", () => {
@@ -71,18 +73,20 @@ describe("route statistics", () => {
     const [requests, latency, errors, max] = routeSummary(traffic, 250).items;
     expect(requests).toMatchObject({ value: 10, detailTone: "success" });
     expect(requests?.detail).toMatchObject({
-      params: { delta: { value: 1 } },
+      params: { delta: { params: { sign: "+", value: { value: 1 } } } },
     });
     expect(latency?.value).toMatchObject({ params: { value: { value: 90 } } });
     // The p95 under the average, not the minimum.
     expect(latency?.detail).toMatchObject({
-      key: "api.routes.statistics.p95_detail",
+      params: { detail: { key: "api.routes.statistics.p95_detail" } },
     });
     expect(errors?.value).toMatchObject({
       params: { rate: { value: 0.2 } },
     });
     expect(errors?.detail).toMatchObject({
-      params: { client: { value: 1 }, server: { value: 1 } },
+      params: {
+        detail: { params: { client: { value: 1 }, server: { value: 1 } } },
+      },
     });
     expect(errors?.detailTone).toBe("error");
     expect(max).toMatchObject({ tone: "warning", detailTone: "warning" });
@@ -103,7 +107,7 @@ describe("route statistics", () => {
       250,
     ).items;
     expect(latency?.value).toBe("—");
-    expect(latency?.detail).toBe("$api.routes.statistics.p95_none");
+    expect(latency?.detail).toEqual({ key: "api.routes.statistics.p95_none" });
     expect(max).toMatchObject({ value: "—", tone: "muted" });
   });
 
@@ -142,7 +146,7 @@ describe("route statistics", () => {
   it("says when there is no previous period", () => {
     const [requests] = routeSummary({ ...traffic, previous: null }, 250).items;
     expect(requests).toMatchObject({
-      detail: "$api.routes.statistics.no_baseline",
+      detail: "$api.compare.no_baseline.previous_period",
       detailTone: "neutral",
     });
   });
@@ -190,5 +194,31 @@ describe("route statistics", () => {
         "2026-10-01T10:00:00.000Z",
       ),
     ).toEqual({ calls: traffic.total.requests });
+  });
+});
+
+describe("route statistics comparisons", () => {
+  it("names the comparison picked beside the calls, nothing without one", () => {
+    const comparedWith = (comparison: WindowComparison, previous = true) => {
+      const window = resolveWindow({ comparison }, "last-24h");
+      const [requests] = routeSummary(
+        { ...traffic, previous: previous ? traffic.previous : null, window },
+        250,
+      ).items;
+      return requests;
+    };
+    expect(comparedWith("previous-period")).toMatchObject({
+      detail: { key: "api.compare.versus.previous_period" },
+      detailTone: "success",
+    });
+    // A previous period no longer kept: said, never compared with zeros.
+    expect(comparedWith("previous-period", false)).toMatchObject({
+      detail: "$api.compare.no_baseline.previous_period",
+      detailTone: "neutral",
+    });
+    const none = comparedWith("none", false);
+    expect(none).toMatchObject({ id: "requests", value: 10 });
+    expect(none).not.toHaveProperty("detail");
+    expect(none).not.toHaveProperty("detailTone");
   });
 });

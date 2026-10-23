@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { getConfig } from "@/config";
 import { LogsPage } from "@/pages/logs";
+import { OverviewPage } from "@/pages/overview";
 
 const context = { tenantId: "t1", user: undefined };
 
@@ -50,7 +51,7 @@ describe("LogsPage", () => {
     });
   });
 
-  it("opens a request in the DMS side panel on a single click", () => {
+  it("opens a request in a DMS drawer on the right on a single click", () => {
     const options = LogsPage.requests.serializeSync().options as {
       rowClick?: string;
       rowActions: { custom: { isDefault?: boolean; target: unknown }[] };
@@ -62,15 +63,21 @@ describe("LogsPage", () => {
     const [action] = options.rowActions.custom;
     expect(action?.isDefault).toBe(true);
     expect(action?.target).toMatchObject({
-      type: "sidePanel",
+      type: "drawer",
+      direction: "right",
       title: "$api.logs.drawer_title",
       rowTitle: "$api.request.heading",
-      positionLabel: "$api.request.position",
+      deepLink: true,
       notFound: {
         title: "$api.request.not_found_title",
         description: "$api.request.not_found_description",
       },
     });
+    // The DMS's default width, and the one the user resizes it to.
+    expect(action?.target).not.toHaveProperty("size");
+    // The DMS's default position, over the whole table, its numbers in the
+    // locale's digits: no "Request 1 of 26120 shown".
+    expect(action?.target).not.toHaveProperty("positionLabel");
   });
 
   it("opens its search on /", () => {
@@ -137,7 +144,7 @@ describe("LogsPage toolbar and filters", () => {
       componentName: string;
       children: { id: string; component: { componentName: string } }[];
     };
-    expect(toolbar.componentName).toBe("dms-h-stack");
+    expect(toolbar.componentName).toBe("dms-page-toolbar-block");
     expect(
       toolbar.children.map((child) => [
         child.id,
@@ -145,7 +152,6 @@ describe("LogsPage toolbar and filters", () => {
       ]),
     ).toEqual([
       ["scope", "DmsApiScopeChip"],
-      ["spacer", expect.stringMatching(/spacer/)],
       ["live", "dms-live-toggle-block"],
       ["period", "dms-period-selector"],
     ]);
@@ -153,6 +159,38 @@ describe("LogsPage toolbar and filters", () => {
     expect(live?.component).toMatchObject({
       options: { variant: "pill", missedLabel: "$api.live_mode.new_requests" },
     });
+  });
+
+  it("draws the same bar as the Overview, its All time included", () => {
+    const logs = LogsPage.toolbar.serializeSync();
+    const overview = OverviewPage.toolbar.serializeSync();
+    const options = (serialized: typeof logs, id: string) =>
+      serialized.children?.find((child) => child.id === id)?.component
+        .options as Record<string, unknown>;
+    // One size and one set of controls: `PageToolbar` sizes its children,
+    // and "All time" draws as its short code, as wide as the other presets.
+    expect(logs.options).toEqual(overview.options);
+    expect(options(logs, "live")).toEqual(options(overview, "live"));
+    const {
+      presets,
+      comparisons,
+      defaultComparison,
+      comparisonControl,
+      ...period
+    } = options(logs, "period");
+    const overviewPeriod = options(overview, "period");
+    expect(period).toEqual({
+      ...overviewPeriod,
+      presets: undefined,
+      comparisons: undefined,
+      defaultComparison: undefined,
+      comparisonControl: undefined,
+    });
+    expect(presets).toEqual([...(overviewPeriod.presets as string[]), "all"]);
+    // A list of requests compares nothing: no comparison menu.
+    expect(comparisons).toEqual(["none"]);
+    expect(defaultComparison).toBe("none");
+    expect(comparisonControl).toBe("hidden");
   });
 
   it("serves the slowness threshold and the body limit in force", async () => {

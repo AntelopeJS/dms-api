@@ -150,7 +150,6 @@
         "title": "Bêta",
         "description": "La console API est en lecture seule pour l'instant : inspecter, surveiller et tester les routes."
       },
-      "no_previous": "Pas de période précédente à comparer",
       "traffic": {
         "title": "Trafic et erreurs",
         "2xx": "2xx succès",
@@ -376,7 +375,7 @@
       "slow_ratio": "Lente · {ratio}× le seuil",
       "threshold_ratio": "{ratio}× le seuil de lenteur",
       "threshold": "Seuil de lenteur {threshold}, tel que réglé aujourd'hui.",
-      "route_latency": "Cette route, dernier jour : p50 {p50} · p95 {p95} | Cette route, {days} derniers jours : p50 {p50} · p95 {p95}",
+      "route_latency": "Cette route, dernier jour : p50\u00a0{p50} · p95\u00a0{p95} | Cette route, {days} derniers jours : p50\u00a0{p50} · p95\u00a0{p95}",
       "meter_label": "Durée par rapport au seuil de lenteur",
       "not_measured": "non mesurée",
       "not_measured_hint": "Non mesurée : la requête a été rejetée avant d'atteindre un handler.",
@@ -418,7 +417,6 @@
       "forbidden_description": "Votre rôle affiche cette liste, mais pas le détail de ses requêtes. Demandez à un administrateur l'accès aux journaux des requêtes.",
       "error_title": "Impossible d'ouvrir cette requête",
       "error_description": "La console n'a pas répondu. Réessayez.",
-      "position": "Requête {index} sur {total} affichées",
       "heading": "{method} {path}"
     },
     "routes": {
@@ -516,8 +514,6 @@
         "rate": "{rate}",
         "error_split": "{client} × 4xx · {server} × 5xx",
         "slow_line": "lent au-delà de {threshold}",
-        "no_baseline": "Pas de période précédente",
-        "vs_previous": "{delta} par rapport à la période précédente",
         "summary": "Indicateurs de la route",
         "p95_detail": "p95 {p95}",
         "p95_none": "Aucune p95 conservée sur la période",
@@ -861,6 +857,27 @@
         "adjusted_min": "{typed} est sous le minimum : ramené à {value}.",
         "adjusted_step": "{typed} n'est pas un multiple de {step} : arrondi à {value}."
       }
+    },
+    "compare": {
+      "series": {
+        "previous_period": "Période précédente",
+        "custom": "Période comparée"
+      },
+      "versus": {
+        "previous_period": "{delta} vs {previous} période précédente",
+        "custom": "{delta} vs {previous} période comparée"
+      },
+      "from_zero": {
+        "previous_period": "aucun sur la période précédente",
+        "custom": "aucun sur la période comparée"
+      },
+      "no_baseline": {
+        "previous_period": "Pas de période précédente",
+        "custom": "Pas de données sur la période comparée"
+      },
+      "change_percent": "{sign}{value}",
+      "change_points": "{sign}{value} pt",
+      "with": "{detail} · {versus}"
     }
   }
 }

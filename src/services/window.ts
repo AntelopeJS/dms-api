@@ -98,15 +98,40 @@ export interface TimeRange {
   to: Date;
 }
 
+/**
+ * What a window is compared with, by the DMS names its `PeriodSelector`
+ * sends (`comparison`): the period right before, the `compareFrom` /
+ * `compareTo` range, or nothing. No year-back comparison: the statistics are
+ * kept 90 days at most (the Settings page offers 30, 60 or 90), so a year
+ * back would only ever compare with nothing.
+ */
+export const WINDOW_COMPARISONS = [
+  "previous-period",
+  "custom",
+  "none",
+] as const;
+export type WindowComparison = (typeof WINDOW_COMPARISONS)[number];
+
+/**
+ * The comparisons the monitoring pages offer, the one they open on first:
+ * the dashed series, the deltas, the "vs" figures and their labels follow
+ * the one picked.
+ */
+export const PAGE_COMPARISONS: WindowComparison[] = ["previous-period", "none"];
+export const DEFAULT_COMPARISON: WindowComparison = "previous-period";
+
 export interface TimeWindow extends TimeRange {
   /** The preset the window follows; null for a custom range. */
   preset: WindowPreset | null;
   granularity: WindowGranularity;
-  /** Same length, right before: what deltas compare to; null when not asked or not kept. */
+  /** What `previous` is: what the "vs" figures say they compare with. */
+  comparison: WindowComparison;
+  /** What deltas compare to; null when not asked or not kept. */
   previous: TimeRange | null;
   /**
-   * Whether the previous period is still stored. With a 30-day retention the
-   * period before a 30-day window is already pruned: the comparison says so
+   * Whether the period compared with is still stored; false without a
+   * comparison. With a 30-day retention the period before a 30-day window,
+   * and any period a year back, is already pruned: the comparison says so
    * rather than comparing to zeros.
    */
   previousAvailable: boolean;
@@ -136,8 +161,6 @@ export function presetRange(
 
 const MINUTE_MAX_SPAN_MS = MS_PER_HOUR;
 const HOURLY_MAX_SPAN_MS = 2 * MS_PER_DAY;
-const NO_COMPARISON = "none";
-const CUSTOM_COMPARISON = "custom";
 
 export function granularityOf(range: TimeRange): WindowGranularity {
   const span = range.to.getTime() - range.from.getTime();
@@ -190,10 +213,31 @@ export function currentRange(
   return orderedRange(from, to);
 }
 
-function previousRange(query: WindowQuery, range: TimeRange): TimeRange {
+/**
+ * The comparison a query asks for, as the DMS period scope sends it with
+ * every read. A query naming none, one we do not offer, or a custom one
+ * without both its bounds compares with nothing.
+ */
+function comparisonOf(query: WindowQuery): WindowComparison {
+  const asked = WINDOW_COMPARISONS.find((name) => name === query.comparison);
+  if (asked !== "custom") return asked ?? "none";
+  const bounded = parseDate(query.compareFrom) && parseDate(query.compareTo);
+  return bounded ? "custom" : "none";
+}
+
+/**
+ * The range `range` is compared with, computed here rather than read from
+ * `compareFrom` / `compareTo` (but for a custom comparison): the window rolls
+ * up to our own pinned now, the selector's bounds to the browser's clock.
+ */
+function comparisonRange(
+  comparison: Exclude<WindowComparison, "none">,
+  query: WindowQuery,
+  range: TimeRange,
+): TimeRange {
   const compareFrom = parseDate(query.compareFrom);
   const compareTo = parseDate(query.compareTo);
-  if (query.comparison === CUSTOM_COMPARISON && compareFrom && compareTo) {
+  if (comparison === "custom" && compareFrom && compareTo) {
     return orderedRange(compareFrom, compareTo);
   }
   const span = range.to.getTime() - range.from.getTime();
@@ -223,16 +267,25 @@ export function resolveWindow(
     from: range.from < horizon ? horizon : range.from,
     to: range.to,
   };
-  const previous = previousRange(query, clamped);
+  const comparison = comparisonOf(query);
+  if (comparison === "none") {
+    return {
+      ...clamped,
+      preset,
+      granularity,
+      comparison,
+      previous: null,
+      previousAvailable: false,
+    };
+  }
+  const previous = comparisonRange(comparison, query, clamped);
   const previousAvailable = previous.from >= horizon;
   return {
     ...clamped,
     preset,
     granularity,
-    previous:
-      query.comparison === NO_COMPARISON || !previousAvailable
-        ? null
-        : previous,
+    comparison,
+    previous: previousAvailable ? previous : null,
     previousAvailable,
   };
 }
@@ -243,6 +296,7 @@ export interface WindowInfo {
   from: string;
   to: string;
   granularity: WindowGranularity;
+  comparison: WindowComparison;
   previous: { from: string; to: string } | null;
   previousAvailable: boolean;
 }
@@ -253,6 +307,7 @@ export function describeWindow(window: TimeWindow): WindowInfo {
     from: window.from.toISOString(),
     to: window.to.toISOString(),
     granularity: window.granularity,
+    comparison: window.comparison,
     previous: window.previous
       ? {
           from: window.previous.from.toISOString(),

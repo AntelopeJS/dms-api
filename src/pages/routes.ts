@@ -13,8 +13,8 @@ import { ROUTE_TABS } from "@/services/links";
 import { LIVE_REQUESTS_TOPIC } from "@/types";
 import { apiBlock } from "./blocks";
 import { exploreCategory } from "./module";
-import { PERIOD_SCOPE, periodSelector } from "./period";
-import { liveMode, pageToolbar } from "./toolbar";
+import { PERIOD_SCOPE } from "@/services/window";
+import { liveMode, monitoringToolbar } from "./toolbar";
 import { requestTable } from "./request-table";
 import { scopeChip } from "./scope-chip";
 
@@ -76,13 +76,13 @@ export function thresholdLabel(ms: number): string {
 
 /**
  * The p95 as dots on its line: a bucket between quiet ones is a lone point,
- * which a line alone would not draw. Average, Max, p95: the order of
- * `/statistics/latency-chart`.
+ * which a line alone would not draw. Average, Max, p95, then the dashed
+ * average compared with: the order of `/statistics/latency-chart`.
  */
 const LATENCY_MARKERS = {
   key: "markers",
   value: JSON.stringify({
-    size: [0, 0, 3],
+    size: [0, 0, 3, 0],
     strokeWidth: 0,
     hover: { size: 5 },
   }),
@@ -164,7 +164,11 @@ function chartRow() {
         // ("881.664"). The threshold keeps the range wide enough for whole
         // numbers never to repeat.
         valuePrecision: 0,
-        showDelta: false,
+        // The average against the period compared with: slower is worse.
+        showDelta: true,
+        invert: true,
+        // "Period" and "Comparison", the dashed average of the period
+        // compared with, when the toolbar compares.
         showLegend: true,
         // Names the Average, Max and p95 lines.
         showSeriesLegend: true,
@@ -293,10 +297,10 @@ export class RoutesPage extends PageController(
   },
   DefaultLayout(),
 ) {
-  // The toolbar of every monitoring page (`pageToolbar`).
-  static toolbar = pageToolbar({
-    scope: scopeChip(),
-    period: periodSelector({ compare: true }),
+  // The toolbar of every monitoring page (`monitoringToolbar`).
+  static toolbar = monitoringToolbar({
+    leading: { scope: scopeChip() },
+    compare: true,
   }).meta({ name: "$api.routes.toolbar", icon: "i-ph-sliders-horizontal" });
 
   static explorer = apiBlock("SplitLayout", {

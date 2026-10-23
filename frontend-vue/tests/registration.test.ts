@@ -42,7 +42,7 @@ it('registers the blocks the backend pages name, and nothing else', async () => 
   expect(registerPlugin).toHaveBeenCalledTimes(1)
   expect(registerPlugin.mock.calls[0]?.[1]).toEqual({ clientOnly: false })
   // One middleware, on every visit: the Routes page opened without a route
-  // lands on one, on the server too. The side panel and its URL are the DMS's.
+  // lands on one, on the server too. The request drawer and its URL are the DMS's.
   expect(registerMiddleware).toHaveBeenCalledTimes(1)
   expect(registerMiddleware.mock.calls[0]?.[0]).toBe('dms-api-default-route')
   expect(registerMiddleware.mock.calls[0]?.[2]).toEqual({ global: true })

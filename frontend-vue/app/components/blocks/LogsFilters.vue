@@ -134,7 +134,7 @@ const origin = computed(() => {
 const shortcutsOpen = ref(false)
 
 // The table's search is the DMS table's own shortcut, set to "/" by the
-// page (`searchShortcut`); J / K, Esc and L are the DMS side panel's and
+// page (`searchShortcut`); J / K, Esc and L are the DMS drawer's and
 // live toggle's.
 const SHORTCUTS = [
   { keys: ['/'], label: 'api.logs.shortcuts.search' },
