@@ -150,7 +150,6 @@
         "title": "Beta",
         "description": "The API console is read-only for now: inspect, monitor and test routes."
       },
-      "no_previous": "No previous period to compare with",
       "traffic": {
         "title": "Traffic & errors",
         "2xx": "2xx success",
@@ -221,7 +220,19 @@
       }
     },
     "live": {
-      "title": "Requests per minute · last hour · all traffic",
+      "title": "Requests per {bucket} · {period} · all traffic",
+      "title_pending": "Requests · all traffic",
+      "bucket_minute": "minute",
+      "bucket_minutes": "{amount} min",
+      "bucket_hours": "{amount} h",
+      "bucket_day": "day",
+      "period_last-hour": "last hour",
+      "period_last-24h": "last 24 h",
+      "period_last-7-days": "last 7 days",
+      "period_last-30-days": "last 30 days",
+      "period_all": "all kept logs",
+      "period_custom": "{from} – {to}",
+      "past": "Past range · not live",
       "kept": "Kept {days} days · bodies up to {size}",
       "kept_days": "Kept {days} days",
       "kept_no_bodies": "Kept {days} days · bodies not captured",
@@ -234,14 +245,14 @@
       "paused": "Paused",
       "last_data": "data from {time}",
       "no_data_yet": "no data yet",
-      "error": "Could not load the last hour",
+      "error": "Could not load the request histogram",
       "error_description": "The graph tries again at the next refresh.",
-      "scale": "Scale up to {count} per minute",
-      "scale_cut": "busier minutes are cut",
+      "scale": "Scale up to {count} per {bucket}",
+      "scale_cut": "taller bars are cut",
       "tooltip_none": "no request",
-      "tooltip_current": "minute in progress",
-      "summary": "Requests per minute over the last hour: {total} requests, {client} 4xx, {server} 5xx. Busiest minute: {peak} at {time}.",
-      "summary_empty": "No request over the last hour."
+      "tooltip_current": "in progress",
+      "summary": "Requests per {bucket}, {period}: {total} requests, {client} 4xx, {server} 5xx. Busiest: {peak} at {time}.",
+      "summary_empty": "No request in this period."
     },
     "live_mode": {
       "verdict": {
@@ -376,7 +387,7 @@
       "slow_ratio": "Slow · {ratio}× the threshold",
       "threshold_ratio": "{ratio}× the slow threshold",
       "threshold": "Slow threshold {threshold}, as set now.",
-      "route_latency": "This route, last day: p50 {p50} · p95 {p95} | This route, last {days} days: p50 {p50} · p95 {p95}",
+      "route_latency": "This route, last day: p50\u00a0{p50} · p95\u00a0{p95} | This route, last {days} days: p50\u00a0{p50} · p95\u00a0{p95}",
       "meter_label": "Duration against the slow threshold",
       "not_measured": "not measured",
       "not_measured_hint": "Not measured: the request was turned away before reaching a handler.",
@@ -418,7 +429,6 @@
       "forbidden_description": "Your role shows this list but not the detail of its requests. Ask an administrator for access to Request logs.",
       "error_title": "Could not open this request",
       "error_description": "The console did not answer. Try again.",
-      "position": "Request {index} of {total} shown",
       "heading": "{method} {path}"
     },
     "routes": {
@@ -516,8 +526,6 @@
         "rate": "{rate}",
         "error_split": "{client} × 4xx · {server} × 5xx",
         "slow_line": "slow above {threshold}",
-        "no_baseline": "No previous period",
-        "vs_previous": "{delta} vs. previous period",
         "summary": "Route figures",
         "p95_detail": "p95 {p95}",
         "p95_none": "No p95 kept over the period",
@@ -861,6 +869,27 @@
         "adjusted_min": "{typed} is below the minimum: set to {value}.",
         "adjusted_step": "{typed} is not a step of {step}: rounded to {value}."
       }
+    },
+    "compare": {
+      "series": {
+        "previous_period": "Previous period",
+        "custom": "Compared period"
+      },
+      "versus": {
+        "previous_period": "{delta} vs. {previous} previous period",
+        "custom": "{delta} vs. {previous} compared period"
+      },
+      "from_zero": {
+        "previous_period": "none over the previous period",
+        "custom": "none over the compared period"
+      },
+      "no_baseline": {
+        "previous_period": "No previous period",
+        "custom": "No data over the compared period"
+      },
+      "change_percent": "{sign}{value}",
+      "change_points": "{sign}{value} pt",
+      "with": "{detail} · {versus}"
     }
   }
 }

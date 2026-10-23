@@ -23,7 +23,7 @@ describe("OverviewPage", () => {
   const dashboard = OverviewPage.dashboard.serializeSync() as Serialized;
 
   it("holds the toolbar of the monitoring pages, with the Beta badge", () => {
-    expect(toolbar.componentName).toBe("dms-h-stack");
+    expect(toolbar.componentName).toBe("dms-page-toolbar-block");
     expect(
       toolbar.children?.map((entry) => [
         entry.id,
@@ -32,7 +32,6 @@ describe("OverviewPage", () => {
     ).toEqual([
       ["scope", "DmsApiScopeChip"],
       ["beta", "DmsApiBetaBadge"],
-      ["spacer", expect.stringMatching(/spacer/)],
       ["live", "dms-live-toggle-block"],
       ["period", "dms-period-selector"],
     ]);
@@ -44,7 +43,9 @@ describe("OverviewPage", () => {
       variant: "segmented",
       presets: ["last-hour", "last-24h", "last-7-days", "last-30-days"],
       defaultPreset: "last-24h",
-      comparisons: ["previous-period"],
+      comparisons: ["previous-period", "none"],
+      defaultComparison: "previous-period",
+      comparisonControl: "menu",
     });
   });
 
@@ -73,6 +74,19 @@ describe("OverviewPage", () => {
     });
     expect(child(row, "attention").options).toMatchObject({
       badge: "$api.overview.attention.badge",
+    });
+  });
+
+  it("keeps the first row one height while what needs a look loads", () => {
+    // The routes to check fill their cell and scroll inside it: their
+    // wrapped rows, taller than the skeleton's, never grow the row.
+    expect(
+      child(child(dashboard, "health"), "attention").options,
+    ).toMatchObject({
+      wrap: true,
+      fillHeight: true,
+      skeletonCount: 5,
+      visibleItems: 5,
     });
   });
 

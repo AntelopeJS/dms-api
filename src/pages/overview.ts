@@ -9,8 +9,8 @@ import { PageController, RegisterPage } from "@antelopejs/interface-dms/page";
 import { logsLink, serverErrorsLink } from "@/services/links";
 import { LIVE_REQUESTS_TOPIC } from "@/types";
 import { apiBlock } from "./blocks";
-import { PERIOD_SCOPE, periodSelector } from "./period";
-import { liveMode, pageToolbar } from "./toolbar";
+import { PERIOD_SCOPE } from "@/services/window";
+import { liveMode, monitoringToolbar } from "./toolbar";
 import { monitorCategory } from "./module";
 import { requestTable } from "./request-table";
 import { scopeChip } from "./scope-chip";
@@ -53,12 +53,16 @@ export class OverviewPage extends PageController(
   DefaultLayout(),
 ) {
   // The toolbar of every monitoring page. The period selector keeps its
-  // period in the URL (`?api.period=last-24h`), against the period before.
-  static toolbar = pageToolbar({
-    scope: scopeChip(),
-    // Still in beta: a pill beside the scope, its meaning in a tooltip.
-    badge: apiBlock("BetaBadge"),
-    period: periodSelector({ compare: true }),
+  // period in the URL (`?api.period=last-24h`), and its comparison: the
+  // period before or none. A chart with nothing to compare
+  // with shows no "vs" line, the same under "none" as when it is not kept.
+  static toolbar = monitoringToolbar({
+    leading: {
+      scope: scopeChip(),
+      // Still in beta: a pill beside the scope, its meaning in a tooltip.
+      beta: apiBlock("BetaBadge"),
+    },
+    compare: true,
   }).meta({ name: "$api.overview.toolbar", icon: "i-ph-sliders-horizontal" });
 
   // The verdict, since when and why, with the figures it rests on: a DMS
@@ -80,8 +84,12 @@ export class OverviewPage extends PageController(
           // Its head counts every route to check (the route's `count`, more
           // than the rows shown when capped) and says the window it covers;
           // each row's top error is its third line. Every row is read whole
-          // (`wrap`), so the card grows with them rather than filling its
-          // cell, and folds past the first five.
+          // (`wrap`) and the list folds past the first five. It fills its
+          // cell (`fillHeight`) and scrolls inside it: the slowest routes
+          // beside it set the row's height, the same while loading and
+          // whatever the routes to check, so the rows below never move
+          // when they arrive or change (its wrapped rows are taller than its
+          // skeleton's).
           ActivityFeed({
             title: "$api.overview.attention.title",
             badge: "$api.overview.attention.badge",
@@ -92,7 +100,8 @@ export class OverviewPage extends PageController(
             maxItems: ATTENTION_ROWS,
             visibleItems: ATTENTION_VISIBLE_ROWS,
             wrap: true,
-            skeletonCount: 3,
+            fillHeight: true,
+            skeletonCount: ATTENTION_VISIBLE_ROWS,
             actions: [
               {
                 label: "$api.overview.attention.all_errors",
@@ -131,8 +140,6 @@ export class OverviewPage extends PageController(
           "errorShare",
           ChartCard({
             title: "$api.overview.error_share.title",
-            // Shown in place of the "vs" figure, so only when there is none.
-            description: "$api.overview.no_previous",
             icon: "i-ph-warning-diamond",
             fetchUrl: `${OVERVIEW_API}/error-share`,
             periodScope: PERIOD_SCOPE,
@@ -144,7 +151,8 @@ export class OverviewPage extends PageController(
             // "vs" figure stays (DMS-12).
             showDelta: false,
             showLegend: false,
-            // Names the 4xx and the 5xx columns.
+            // Names the 4xx and the 5xx columns, and the dashed line of the
+            // error share over the period compared with.
             showSeriesLegend: true,
             chart: ChartColumn({
               height: "220px",
@@ -163,7 +171,6 @@ export class OverviewPage extends PageController(
           "chart",
           ChartCard({
             title: "$api.overview.traffic.title",
-            description: "$api.overview.no_previous",
             icon: "i-ph-chart-bar",
             fetchUrl: `${OVERVIEW_API}/traffic`,
             periodScope: PERIOD_SCOPE,
@@ -173,7 +180,9 @@ export class OverviewPage extends PageController(
             // Names the 2xx, 4xx and 5xx parts of each column.
             showSeriesLegend: true,
             // 2xx, 4xx and 5xx stacked on one axis: the height of a column
-            // is the traffic, its red part the server errors.
+            // is the traffic, its red part the server errors. Under a
+            // comparison, the calls of the period compared with are a dashed
+            // line over the columns.
             chart: ChartColumn({
               height: "260px",
               xaxisType: "datetime",

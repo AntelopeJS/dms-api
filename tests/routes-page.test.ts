@@ -17,7 +17,7 @@ function blockAt(
 describe("RoutesPage", () => {
   it("holds the toolbar of the monitoring pages: scope, live, period", () => {
     const toolbar = RoutesPage.toolbar.serializeSync();
-    expect(toolbar.componentName).toBe("dms-h-stack");
+    expect(toolbar.componentName).toBe("dms-page-toolbar-block");
     expect(
       toolbar.children?.map(({ id, component }) => [
         id,
@@ -25,10 +25,19 @@ describe("RoutesPage", () => {
       ]),
     ).toEqual([
       ["scope", "DmsApiScopeChip"],
-      ["spacer", expect.stringMatching(/spacer/)],
       ["live", "dms-live-toggle-block"],
       ["period", "dms-period-selector"],
     ]);
+  });
+
+  it("offers the period before or no comparison, as a menu", () => {
+    const period = blockAt(RoutesPage.toolbar.serializeSync(), ["period"]);
+    expect(period.options).toMatchObject({
+      id: "api",
+      comparisons: ["previous-period", "none"],
+      defaultComparison: "previous-period",
+      comparisonControl: "menu",
+    });
   });
 
   it("guards the Statistics tab with one empty state while the route has no call", () => {
@@ -65,6 +74,21 @@ describe("RoutesPage", () => {
     });
   });
 
+  it("shows the latency's delta against the comparison, slower as worse", () => {
+    const { options } = blockAt(RoutesPage.explorer.serializeSync(), [
+      "tabs",
+      "statistics",
+      "grid",
+      "charts",
+      "latency",
+    ]);
+    expect(options).toMatchObject({
+      showDelta: true,
+      invert: true,
+      showLegend: true,
+    });
+  });
+
   it("names the series of its charts with the DMS series legend", () => {
     for (const chart of ["status", "latency"]) {
       const { options } = blockAt(RoutesPage.explorer.serializeSync(), [
@@ -96,5 +120,44 @@ describe("thresholdLabel", () => {
     expect(thresholdLabel(1000)).toBe("1 s");
     expect(thresholdLabel(1500)).toBe("1.5 s");
     expect(thresholdLabel(2250)).toBe("2.25 s");
+  });
+});
+
+describe("RoutesPage live mode", () => {
+  const explorer = RoutesPage.explorer.serializeSync();
+  const topicOf = (ids: string[]) =>
+    (blockAt(explorer, ids).options as { realtimeTopic?: string })
+      .realtimeTopic;
+  const statistics = ["tabs", "statistics"];
+  const grid = [...statistics, "grid"];
+
+  it("reads every block of the route's figures again on the live feed", () => {
+    for (const ids of [
+      ["tree"],
+      ["header"],
+      statistics,
+      [...grid, "summary", "summary"],
+      [...grid, "charts", "status"],
+      [...grid, "charts", "latency"],
+      [...grid, "detail", "errors"],
+      [...grid, "recent", "requests", "table"],
+    ]) {
+      expect(topicOf(ids), ids.join(".")).toBe("api:monitor:requests");
+    }
+  });
+
+  it("holds the recent requests while paused, counting what it missed", () => {
+    expect(
+      (
+        blockAt(explorer, [...grid, "recent", "requests", "table"]).options as {
+          liveHold?: unknown;
+        }
+      ).liveHold,
+    ).toMatchObject({ missedLabel: "$api.live_mode.new_requests" });
+  });
+
+  it("leaves the contract and the tester still: they do not follow the feed", () => {
+    expect(topicOf(["tabs", "documentation"])).toBeUndefined();
+    expect(topicOf(["tabs", "tester"])).toBeUndefined();
   });
 });

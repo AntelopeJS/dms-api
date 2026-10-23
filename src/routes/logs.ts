@@ -18,6 +18,7 @@ import { RoutesPage } from "@/pages/routes";
 import { apiOrigin } from "@/services/api-origin";
 import { logsLink, routeLink, routeRef, testerLink } from "@/services/links";
 import { getMaxLogDays } from "@/services/period";
+import { windowQueryFrom } from "@/services/window";
 import { canReadLog, type LogTable } from "@/services/request-log/access";
 import { getRequestLog, getRouteLatency } from "@/services/request-log/read";
 import {
@@ -80,7 +81,7 @@ const routesTable = RoutesPage.explorer.targetChild(
   "table",
 );
 
-/** One request in full, as the side panel shows it. */
+/** One request in full, as its drawer shows it. */
 async function logDetail(id: string, table: LogTable) {
   const model = GetModel(RequestLogModel);
   const log = await getRequestLog(model, id);
@@ -102,6 +103,9 @@ async function logDetail(id: string, table: LogTable) {
     method: log.method,
     routeMethod: log.routeMethod ?? null,
     uri: log.uri,
+    // As a listed row has it: the panel's title of a request opened by a
+    // link (`?record=`) reads it, the request not being among the rows.
+    path: log.rawPath,
     rawPath: log.rawPath,
     statusCode: log.statusCode,
     responseTimeMs: log.responseTimeMs ?? null,
@@ -159,7 +163,7 @@ async function logDetail(id: string, table: LogTable) {
 /**
  * The request tables' route (the request logs page and the Overview's recent
  * requests), the live histogram above the logs, and one request in full for
- * the side panel.
+ * the request drawer.
  *
  * The list answers `{ results, total }`. `?requestId=<id>` finds the request
  * sent with that `x-request-id` (the Tester's "Captured" tab).
@@ -220,10 +224,24 @@ export class LogsController extends Controller("/api/monitoring/logs") {
     });
   }
 
+  /**
+   * The histogram above the logs, over the page's period as its selector
+   * sends it (`preset`, or `from` / `to` for a custom range; `preset=all`
+   * for every request kept), the last hour without one. `bucket` asks for a
+   * bar length in ms, one the histogram offers and within its bar cap; the
+   * period's own otherwise.
+   */
   @Get("live")
-  async getLive(@AuthUserWithPermission(LogsPage.live) _user: User) {
+  async getLive(
+    @AuthUserWithPermission(LogsPage.live) _user: User,
+    @Context() context: RequestContext,
+  ) {
+    const query = sourceQuery(context);
     return {
-      ...(await getLiveTraffic(GetModel(RequestLogModel), await scopeKeys())),
+      ...(await getLiveTraffic(GetModel(RequestLogModel), await scopeKeys(), {
+        ...windowQueryFrom(query),
+        bucket: query.bucket,
+      })),
       retentionDays: getMaxLogDays(),
     };
   }
