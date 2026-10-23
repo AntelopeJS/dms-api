@@ -51,7 +51,7 @@ describe("LogsPage", () => {
     });
   });
 
-  it("opens a request in the DMS side panel on a single click", () => {
+  it("opens a request in a DMS drawer on the right on a single click", () => {
     const options = LogsPage.requests.serializeSync().options as {
       rowClick?: string;
       rowActions: { custom: { isDefault?: boolean; target: unknown }[] };
@@ -63,15 +63,21 @@ describe("LogsPage", () => {
     const [action] = options.rowActions.custom;
     expect(action?.isDefault).toBe(true);
     expect(action?.target).toMatchObject({
-      type: "sidePanel",
+      type: "drawer",
+      direction: "right",
       title: "$api.logs.drawer_title",
       rowTitle: "$api.request.heading",
-      positionLabel: "$api.request.position",
+      deepLink: true,
       notFound: {
         title: "$api.request.not_found_title",
         description: "$api.request.not_found_description",
       },
     });
+    // The DMS's default width, and the one the user resizes it to.
+    expect(action?.target).not.toHaveProperty("size");
+    // The DMS's default position, over the whole table, its numbers in the
+    // locale's digits: no "Request 1 of 26120 shown".
+    expect(action?.target).not.toHaveProperty("positionLabel");
   });
 
   it("opens its search on /", () => {

@@ -375,7 +375,7 @@
       "slow_ratio": "Slow · {ratio}× the threshold",
       "threshold_ratio": "{ratio}× the slow threshold",
       "threshold": "Slow threshold {threshold}, as set now.",
-      "route_latency": "This route, last day: p50 {p50} · p95 {p95} | This route, last {days} days: p50 {p50} · p95 {p95}",
+      "route_latency": "This route, last day: p50\u00a0{p50} · p95\u00a0{p95} | This route, last {days} days: p50\u00a0{p50} · p95\u00a0{p95}",
       "meter_label": "Duration against the slow threshold",
       "not_measured": "not measured",
       "not_measured_hint": "Not measured: the request was turned away before reaching a handler.",
@@ -417,7 +417,6 @@
       "forbidden_description": "Your role shows this list but not the detail of its requests. Ask an administrator for access to Request logs.",
       "error_title": "Could not open this request",
       "error_description": "The console did not answer. Try again.",
-      "position": "Request {index} of {total} shown",
       "heading": "{method} {path}"
     },
     "routes": {

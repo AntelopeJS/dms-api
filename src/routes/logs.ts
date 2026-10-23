@@ -80,7 +80,7 @@ const routesTable = RoutesPage.explorer.targetChild(
   "table",
 );
 
-/** One request in full, as the side panel shows it. */
+/** One request in full, as its drawer shows it. */
 async function logDetail(id: string, table: LogTable) {
   const model = GetModel(RequestLogModel);
   const log = await getRequestLog(model, id);
@@ -162,7 +162,7 @@ async function logDetail(id: string, table: LogTable) {
 /**
  * The request tables' route (the request logs page and the Overview's recent
  * requests), the live histogram above the logs, and one request in full for
- * the side panel.
+ * the request drawer.
  *
  * The list answers `{ results, total }`. `?requestId=<id>` finds the request
  * sent with that `x-request-id` (the Tester's "Captured" tab).
