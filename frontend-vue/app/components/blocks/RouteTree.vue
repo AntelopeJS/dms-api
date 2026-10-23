@@ -5,11 +5,9 @@ import {
   bySeverity,
   groupRoutes,
   initialRoute,
-  lastRoute,
   listedFolders,
   needsAttention,
   optionId,
-  rememberRoute,
   type RouteState,
   stepFrom,
   windowParts,
@@ -81,6 +79,7 @@ const { formatLocale: locale, formatNumber } = useRegionalFormat({
   locale: 'format',
 })
 const selection = useRouteSelection(props.queryKey)
+const lastRoute = useLastRoute()
 const { data, error, pending, refresh } = useApiData<{
   routes: RouteRow[]
   /** Minutes of traffic each state is judged on. */
@@ -332,14 +331,14 @@ function onSearchKey(event: KeyboardEvent) {
 
 onBeforeUnmount(stopSettling)
 
-// A page opened without a route shows the last one looked at in this tab,
-// else the one needing a look first, without a history entry of its own,
-// over the module's last period.
+// A page opened without a route lands on one before it renders
+// (`middleware/defaultRoute.ts`). Should the list come in only now, the
+// route it opens on is picked here, without a history entry of its own.
 watch(
   routes,
   (all) => {
     if (selection.ref.value || all.length === 0) return
-    const first = initialRoute(all, lastRoute())
+    const first = initialRoute(all, lastRoute.value)
     if (first) void selection.select(first.ref, { replace: true })
   },
   { immediate: true },
@@ -347,7 +346,7 @@ watch(
 
 watch(selection.ref, (current) => {
   if (!settle) cursor.value = null
-  if (current) rememberRoute(current)
+  if (current) lastRoute.value = current
 })
 
 // The selected route is never hidden: its folder opens and the list
@@ -365,7 +364,7 @@ watch(
   { flush: 'post' },
 )
 onMounted(() => {
-  if (selection.ref.value) rememberRoute(selection.ref.value)
+  if (selection.ref.value) lastRoute.value = selection.ref.value
   // Once the list is laid out.
   void nextTick(() => revealActive(true))
 })
