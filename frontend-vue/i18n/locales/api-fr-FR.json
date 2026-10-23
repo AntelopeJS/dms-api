@@ -150,7 +150,6 @@
         "title": "Bêta",
         "description": "La console API est en lecture seule pour l'instant : inspecter, surveiller et tester les routes."
       },
-      "no_previous": "Pas de période précédente à comparer",
       "traffic": {
         "title": "Trafic et erreurs",
         "2xx": "2xx succès",
@@ -516,8 +515,6 @@
         "rate": "{rate}",
         "error_split": "{client} × 4xx · {server} × 5xx",
         "slow_line": "lent au-delà de {threshold}",
-        "no_baseline": "Pas de période précédente",
-        "vs_previous": "{delta} par rapport à la période précédente",
         "summary": "Indicateurs de la route",
         "p95_detail": "p95 {p95}",
         "p95_none": "Aucune p95 conservée sur la période",
@@ -861,6 +858,27 @@
         "adjusted_min": "{typed} est sous le minimum : ramené à {value}.",
         "adjusted_step": "{typed} n'est pas un multiple de {step} : arrondi à {value}."
       }
+    },
+    "compare": {
+      "series": {
+        "previous_period": "Période précédente",
+        "custom": "Période comparée"
+      },
+      "versus": {
+        "previous_period": "{delta} vs {previous} période précédente",
+        "custom": "{delta} vs {previous} période comparée"
+      },
+      "from_zero": {
+        "previous_period": "aucun sur la période précédente",
+        "custom": "aucun sur la période comparée"
+      },
+      "no_baseline": {
+        "previous_period": "Pas de période précédente",
+        "custom": "Pas de données sur la période comparée"
+      },
+      "change_percent": "{sign}{value}",
+      "change_points": "{sign}{value} pt",
+      "with": "{detail} · {versus}"
     }
   }
 }
