@@ -4,6 +4,11 @@
 
 [compare changes](https://github.com/AntelopeJS/dms-api/compare/v0.4.2...v0.5.0)
 
+### Upgrade notes
+
+- Runs on `@antelopejs/dms` 0.10 (`@antelopejs/interface-dms >=0.8.0`) and builds its frontend with `@antelopejs/dms-frontend` 0.8.
+- i18n keys removed: `api.request.position` (the request drawer shows the DMS's own position, [#44](https://github.com/AntelopeJS/dms-api/pull/44)), and `api.overview.no_previous`, `api.routes.statistics.no_baseline`, `api.routes.statistics.vs_previous` (the figures use the DMS comparison, [#45](https://github.com/AntelopeJS/dms-api/pull/45)). A project that overrides them can drop its overrides.
+
 ### 🚀 Enhancements
 
 - **frontend:** The frontend registration as a pure function, declared as dmsFrontend ([#50](https://github.com/AntelopeJS/dms-api/pull/50))
