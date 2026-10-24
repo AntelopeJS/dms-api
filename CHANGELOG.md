@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.5.1
+
+[compare changes](https://github.com/AntelopeJS/dms-api/compare/v0.5.0...v0.5.1)
+
+### 📖 Documentation
+
+- **changelog:** Upgrade notes of dms-api 0.5.0 ([#52](https://github.com/AntelopeJS/dms-api/pull/52))
+
+### 📦 Build
+
+- Run on @antelopejs/dms 0.11, interface-dms 0.9 and dms-frontend 0.9 ([#53](https://github.com/AntelopeJS/dms-api/pull/53))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <rizzitelli.antony@pm.me>
+
 ## v0.5.0
 
 [compare changes](https://github.com/AntelopeJS/dms-api/compare/v0.4.2...v0.5.0)
