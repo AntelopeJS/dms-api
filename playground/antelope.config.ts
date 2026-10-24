@@ -24,7 +24,7 @@ export default defineConfig({
       source: {
         type: "package",
         package: "@antelopejs/dms",
-        version: ">=0.9.3 <1.0.0",
+        version: ">=0.11.0 <1.0.0",
       },
       config: {
         homepage: "/home",
@@ -39,7 +39,7 @@ export default defineConfig({
       source: {
         type: "package",
         package: "@antelopejs/mongodb",
-        version: "^1.4.3",
+        version: "^1.5.0",
       },
       config: {
         url: process.env.MONGO_URL ?? "mongodb://localhost:27017",
@@ -90,7 +90,7 @@ export default defineConfig({
       source: {
         type: "package",
         package: "@antelopejs/api",
-        version: "^1.3.5",
+        version: "^1.5.0",
       },
       config: {
         servers: [
