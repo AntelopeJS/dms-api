@@ -4,6 +4,13 @@
 
 [compare changes](https://github.com/AntelopeJS/dms-api/compare/v0.5.0...v0.5.1)
 
+### ⚠️ Breaking changes
+
+This patch release contains breaking changes. Ranges such as `^0.5.0` resolve to it.
+
+- Requires `@antelopejs/dms` 0.11 (`>=0.11.0 <1.0.0`), `@antelopejs/interface-dms` `>=0.9.0 <1.0.0` and the renderer `@antelopejs/dms-frontend` 0.9 (`>=0.9.0 <0.10.0`). Projects on DMS 0.10 must stay on 0.5.0.
+- Raised floors: `@antelopejs/interface-database` `>=0.1.11` and `@antelopejs/interface-database-decorators` `>=0.1.10` ([#53](https://github.com/AntelopeJS/dms-api/pull/53)).
+
 ### 📖 Documentation
 
 - **changelog:** Upgrade notes of dms-api 0.5.0 ([#52](https://github.com/AntelopeJS/dms-api/pull/52))
