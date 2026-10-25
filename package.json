@@ -34,7 +34,7 @@
     "build": "rimraf dist && tsc",
     "dev": "ajs project dev -w -p playground",
     "lint:fix": "oxlint --fix --max-warnings=1000000 && oxfmt . && pnpm --dir frontend-vue lint:fix",
-    "lint": "oxlint && oxfmt --check . && pnpm --dir frontend-vue lint && antelopejs-check-interface-ranges",
+    "lint": "oxlint && pnpm --dir frontend-vue lint && antelopejs-check-interface-ranges",
     "typecheck": "tsc -p tests",
     "test": "vitest run && pnpm --dir frontend-vue test",
     "format": "oxfmt . && pnpm --dir frontend-vue format",
@@ -42,7 +42,15 @@
     "release": "pnpm --dir frontend-vue install --frozen-lockfile && release-it",
     "prepack": "pnpm run build",
     "knip": "knip --dependencies",
-    "knip:all": "knip"
+    "knip:all": "knip",
+    "prepare": "if git rev-parse --is-inside-work-tree >/dev/null 2>&1 && command -v lefthook >/dev/null 2>&1; then lefthook install; fi",
+    "checks": "antelopejs-checks",
+    "size": "antelopejs-check-size",
+    "ratchet": "antelopejs-ratchet",
+    "sync": "antelopejs-sync",
+    "ratchet:update": "antelopejs-ratchet --update",
+    "sync:check": "antelopejs-sync --check",
+    "format:check": "oxfmt --check ."
   },
   "dependencies": {
     "@antelopejs/interface-api": ">=0.0.15 <1.0.0",
@@ -56,9 +64,10 @@
   },
   "devDependencies": {
     "@antelopejs/core": "1.17.1",
-    "@antelopejs/tooling-configs": ">=0.0.9 <1.0.0",
+    "@antelopejs/tooling-configs": "^0.2.0",
     "@types/node": "^24.0.0",
     "knip": "^6.34.0",
+    "lefthook": "^2.2.2",
     "oxfmt": "^0.66.0",
     "oxlint": "1.81.0",
     "oxlint-tsgolint": "^7.0.2001",
