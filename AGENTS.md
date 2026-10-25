@@ -6,7 +6,7 @@
 | --------------- | ------------------------------------------------------------------------------------------------------- |
 | `src`, `tests`  | `@antelopejs/dms-api`, the back-end DMS module, and its Vitest suite                                    |
 | `frontend-vue`  | The Vue layer, shipped as source and built by the DMS loader. ESLint and Prettier own it, not oxlint and oxfmt |
-| `playground`    | An AntelopeJS project that runs the module against MongoDB. It is not a workspace package and has its own lockfile |
+| `playground`    | An AntelopeJS project that runs the module against MongoDB. It is not a workspace package: install it with `--ignore-workspace` |
 | `skills`        | Agent skills published with the package                                                                 |
 
 `frontend-vue` keeps its own lockfile (`shared-workspace-lockfile=false` in `.npmrc`). The root `pnpm install` installs it.
@@ -14,14 +14,14 @@
 ## Versioning
 
 - `antelopejs-check-interface-ranges` (part of `pnpm lint`) checks the `@antelopejs/interface-*` dependency ranges.
-- `frontend-vue/package.json` pins the `@antelopejs/dms-frontend` minor it builds against in `engines`. Change it with the `@antelopejs/dms` and `interface-dms` ranges.
+- `frontend-vue/package.json` pins the `@antelopejs/dms-frontend` minor it builds against in `engines`. Move it together with the `@antelopejs/dms`, `@antelopejs/interface-dms` and `@antelopejs/dms-frontend` versions in `playground/package.json` and the compatibility table in `README.md`.
 - The root package publishes CommonJS from `dist`. Do not add `"type": "module"` to it.
 
 ## What `pnpm run checks` does not run
 
 - The build. CI runs `pnpm build` after the checks, and so does `prepack`.
 - `pnpm --dir frontend-vue typecheck`. It needs a running DMS backend, so that `ajs dms prepare` can generate the Inertia workspace. Set `DMS_FRONTEND_WORKSPACE` to that workspace.
-- The playground. Run `.agents/playground`, then `pnpm dev`.
+- The playground's typecheck and build (oxlint still lints it). Run `.agents/playground`, then `pnpm dev`.
 - Unused files and exports. `pnpm knip` checks dependencies only. `pnpm knip:all` also reports dead files and exports, and expects findings: confirm each one before you remove it.
 
 ## Orb
