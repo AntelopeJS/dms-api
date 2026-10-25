@@ -7,7 +7,7 @@ services:
     port: 27017
 
   dms-backend:
-    command: pnpm --dir playground dev
+    command: .agents/playground && pnpm --dir playground dev
     port: 5010
     health: /api/onboarding/informations
 
