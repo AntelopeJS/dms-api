@@ -33,7 +33,7 @@
   "scripts": {
     "build": "rimraf dist && tsc",
     "dev": "ajs project dev -w -p playground",
-    "lint:fix": "oxlint --fix && oxfmt . && pnpm --dir frontend-vue lint:fix",
+    "lint:fix": "oxlint --fix --max-warnings=1000000 && oxfmt . && pnpm --dir frontend-vue lint:fix",
     "lint": "oxlint && pnpm --dir frontend-vue lint && antelopejs-check-interface-ranges",
     "typecheck": "tsc -p tests",
     "test": "vitest run && pnpm --dir frontend-vue test",
