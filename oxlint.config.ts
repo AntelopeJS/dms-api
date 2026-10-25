@@ -8,5 +8,5 @@ import {
 export default defineConfig({
   extends: [antelopePreset({ importSorting: false })],
   ignorePatterns: [...ANTELOPE_IGNORE_PATTERNS, "frontend-vue/**"],
-  options: { typeAware: true },
+  options: { typeAware: true, maxWarnings: 0 },
 });
