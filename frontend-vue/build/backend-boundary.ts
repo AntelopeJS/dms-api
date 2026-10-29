@@ -77,10 +77,10 @@ function backendSourceFile(id: string): string | undefined {
 /**
  * Fails the build and the dev server when a module of the frontend resolves to
  * a file under the `src` of `@antelopejs/dms-api` (the repository's `src`):
- * the browser reaches the backend only through its HTTP interface. It checks what the whole resolution chain
- * returns, an id marked external included, so an alias is seen through and a
- * symlink the resolver returns is followed to its real path, and it runs
- * before the other plugins (`enforce: "pre"`).
+ * the browser reaches the backend only through its HTTP interface. It checks
+ * what the whole resolution chain returns, an id marked external included, so
+ * an alias is seen through and a symlink the resolver returns is followed to
+ * its real path, and it runs before the other plugins (`enforce: "pre"`).
  */
 export function backendBoundary(): VitePlugin {
   return {
