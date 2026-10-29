@@ -9,6 +9,7 @@ on:
   # secret scanner ran.
   pull_request:
 
+  workflow_dispatch: null
 permissions:
   contents: read
 
@@ -17,17 +18,20 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  checks:
+  ci:
     uses: AntelopeJS/.github/.github/workflows/ci-node.yml@v1
     with:
       # `pnpm run checks` typechecks without emitting; the build also checks
       # the declaration output that gets published.
       extra-commands: pnpm build
+    permissions:
+      contents: write
+      actions: write
 
   # Branch protection requires the `ubuntu` check.
   ubuntu:
     if: always()
-    needs: [checks]
+    needs: [ci]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

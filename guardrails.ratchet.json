@@ -4,7 +4,7 @@
     "antelopejs/no-constant-value-assertion": 1,
     "anti-slop/no-known-value-widening": 18,
     "anti-slop/no-module-mocking": 13,
-    "anti-slop/no-runtime-typeof": 34,
+    "anti-slop/no-runtime-typeof": 31,
     "anti-slop/no-shape-in-symbol-names": 5,
     "anti-slop/no-unknown-parameters": 28,
     "anti-slop/no-unknown-returns": 5,
@@ -18,8 +18,6 @@
     "frontend-vue/app/components/blocks/RouteTester.vue": 61443,
     "frontend-vue/app/components/blocks/RouteTree.vue": 22123,
     "frontend-vue/app/utils/testerRequest.ts": 20844,
-    "frontend-vue/i18n/locales/api-en-GB.json": 43585,
-    "frontend-vue/i18n/locales/api-fr-FR.json": 48039,
     "src/services/request-log/capture.ts": 21038
   }
 }
