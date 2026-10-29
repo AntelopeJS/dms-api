@@ -12,8 +12,6 @@
     "frontend-vue/app/components/blocks/RequestDetail.vue": 24082,
     "frontend-vue/app/components/blocks/RouteDocumentation.vue": 21134,
     "frontend-vue/app/components/blocks/RouteTester.vue": 61443,
-    "frontend-vue/app/components/blocks/RouteTree.vue": 22123,
-    "frontend-vue/app/utils/testerRequest.ts": 20844,
-    "src/services/request-log/capture.ts": 20827
+    "frontend-vue/app/components/blocks/RouteTree.vue": 22123
   }
 }
