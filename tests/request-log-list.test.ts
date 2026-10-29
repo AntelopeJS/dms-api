@@ -186,8 +186,24 @@ describe("status classes", () => {
     ]);
   });
 
-  it("keeps the 3xx out of the 2xx tab", () => {
-    expect(STATUS_CLASS_RANGES.success).toEqual({ min: 200, max: 300 });
+  it("lists in each tab exactly the statuses its label names: no 3xx in the 2xx tab", () => {
+    const inTab = (tab: string, status: number) => {
+      const { statusClass } = filtersFromQuery(
+        { filter_statusClass: `is:${tab}` },
+        NOW,
+      );
+      if (!statusClass) return false;
+      const { min, max } = STATUS_CLASS_RANGES[statusClass];
+      return status >= min && (max === undefined || status < max);
+    };
+    const misplaced = ["2xx", "4xx", "5xx"].flatMap((tab) =>
+      Array.from({ length: 500 }, (_, index) => 100 + index)
+        .filter(
+          (status) => inTab(tab, status) !== (statusClassOf(status) === tab),
+        )
+        .map((status) => `${tab} ${status}`),
+    );
+    expect(misplaced).toEqual([]);
   });
 });
 

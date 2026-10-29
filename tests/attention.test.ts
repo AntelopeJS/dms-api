@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type {
   RequestLogFilters,
   RequestLogSample,
@@ -8,15 +8,11 @@ import { getAttention } from "@/services/attention";
 import { forgetRecentScan, type SampleSource } from "@/services/traffic";
 import { pinnedNow } from "@/services/window";
 import { MS_PER_MINUTE } from "@/types";
-
-const registered = vi.hoisted(() => ({
-  handlers: [] as Array<{ id: string; handler: Record<string, unknown> }>,
-}));
-
-vi.mock("@antelopejs/interface-api", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@antelopejs/interface-api")>()),
-  getRegisteredRouteHandlers: () => registered.handlers,
-}));
+import {
+  registerRoutes,
+  routeHandler,
+  unregisterRoutes,
+} from "./helpers/routes";
 
 /** A whole minute, so the 15-minute window is exactly the last 15 minutes. */
 const NOW = new Date(
@@ -53,8 +49,9 @@ function modelsOf(rows: RequestLogSample[]): { logs: SampleSource } {
 beforeEach(() => {
   clearAggregateCache();
   forgetRecentScan();
-  registered.handlers = [];
 });
+
+afterEach(unregisterRoutes);
 
 /** The line under a listed route: the composed text after its state. */
 function detailOf(item: { meta?: unknown[] } | undefined) {
@@ -123,12 +120,7 @@ describe("getAttention", () => {
   });
 
   it("puts the registered routes first and marks the stray paths", async () => {
-    registered.handlers = [
-      {
-        id: "1",
-        handler: { mode: "handler", method: "post", location: "/orders" },
-      },
-    ];
+    registerRoutes(routeHandler("post", "/orders"));
     // A stray path failing outright, a registered route with 4xx only: the
     // route keeps its place within the cap.
     const rows = [

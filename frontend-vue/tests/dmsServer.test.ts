@@ -1,38 +1,26 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
+import setup from '../dms.server'
 import { testerRoute } from '../server/tester'
 
-// The frontend server (dms-frontend 0.6) serves no tester route of its own:
-// the module's `dms.server.ts` is the only one to declare it.
-
-vi.mock('#dms/server', () => ({
-  defineDmsServer: (setup: unknown) => setup,
-}))
-
 interface Registration {
-  method: unknown
+  method: string
   path: string
   handler: unknown
-  options: unknown
+  options: object | undefined
 }
 
-async function registrations(): Promise<Registration[]> {
-  const { default: setup } = await import('../dms.server')
+function registrations(): Registration[] {
   const routes: Registration[] = []
-  const server = {
-    registerRoute: (
-      method: unknown,
-      path: string,
-      handler: unknown,
-      options?: unknown,
-    ) => routes.push({ method, path, handler, options }),
-  }
-  ;(setup as unknown as (server: unknown) => void)(server)
+  setup({
+    registerRoute: (method, path, handler, options) =>
+      routes.push({ method, path, handler, options }),
+  })
   return routes
 }
 
 describe('dms.server.ts', () => {
-  it("serves the tester's POST under the module's own namespace, and nothing else", async () => {
-    expect(await registrations()).toEqual([
+  it("serves the tester's POST under the module's own namespace, and nothing else", () => {
+    expect(registrations()).toEqual([
       {
         method: 'POST',
         path: '/api/_dms-api/tester',

@@ -1,30 +1,56 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { getRegisteredRoutes } from "@antelopejs/interface-api";
+import { ImplementInterface } from "@antelopejs/interface-core";
+import {
+  GetModuleInfo,
+  ListModules,
+  type ModuleInfo,
+} from "@antelopejs/interface-core/modules";
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 import type { Route } from "@/db/tables/routes.table";
+import { routesStatisticsTableName } from "@/db/tables/routes_statistics.table";
 import { ensureRoutesSynced, syncRoutes } from "@/services/routes-sync";
+import { serveTable } from "./helpers/database";
+import {
+  registerRoutes,
+  routeHandler,
+  unregisterRoutes,
+} from "./helpers/routes";
 
-const registered = vi.hoisted(() => ({
-  routes: [] as Array<{ method: string; location: string; module?: string }>,
-}));
+/** The shop module, loaded from the project itself. */
+const SHOP_MODULE: ModuleInfo = {
+  source: { type: "local" },
+  config: {},
+  importOverrides: {},
+  disabledExports: [],
+  status: "active",
+  localPath: "/shop",
+};
 
-vi.mock("@antelopejs/interface-api", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@antelopejs/interface-api")>()),
-  getRegisteredRoutes: () => registered.routes,
-}));
-
-vi.mock(
-  "@antelopejs/interface-database-decorators",
-  async (importOriginal) => ({
-    ...(await importOriginal<
-      typeof import("@antelopejs/interface-database-decorators")
-    >()),
-    GetModel: () => ({ getAll: () => Promise.resolve([]) }),
-  }),
+ImplementInterface(
+  { ListModules, GetModuleInfo },
+  {
+    ListModules: () => Promise.resolve(["shop"]),
+    GetModuleInfo: () => Promise.resolve(SHOP_MODULE),
+  },
 );
 
-vi.mock("@antelopejs/interface-core/modules", () => ({
-  ListModules: () => Promise.resolve(["shop"]),
-  GetModuleInfo: () => Promise.resolve({ source: { type: "local" } }),
-}));
+beforeAll(() => serveTable(routesStatisticsTableName, []));
+
+afterEach(unregisterRoutes);
+
+/** The routes the shop module registers, as the sync takes them. */
+const SHOP_ROUTES = [
+  { method: "get", location: "/api/orders/", module: "shop" },
+  { method: "post", location: "/api/orders/", module: "shop" },
+];
 
 const DAY = 86_400_000;
 const NOW = Date.now();
@@ -89,15 +115,11 @@ let store: Parameters<typeof syncRoutes>[0];
 beforeEach(() => {
   routes = new FakeRoutes();
   store = routes as never;
-  registered.routes = [
-    { method: "get", location: "/api/orders/", module: "shop" },
-    { method: "post", location: "/api/orders/", module: "shop" },
-  ];
 });
 
 describe("syncRoutes", () => {
   it("stores routes under their canonical path", async () => {
-    await syncRoutes(store, registered.routes as never, stats([]));
+    await syncRoutes(store, SHOP_ROUTES as never, stats([]));
     expect(
       [...routes.rows.values()].map((r) => `${r.method} ${r.uri}`),
     ).toEqual(["GET /api/orders", "POST /api/orders"]);
@@ -107,7 +129,7 @@ describe("syncRoutes", () => {
     const firstCall = NOW - 60 * DAY;
     await syncRoutes(
       store,
-      registered.routes as never,
+      SHOP_ROUTES as never,
       stats([
         { method: "GET", uri: "/api/orders/", days: [NOW - DAY, firstCall] },
       ]),
@@ -121,15 +143,16 @@ describe("syncRoutes", () => {
 
 describe("ensureRoutesSynced", () => {
   it("syncs again only when the registered routes changed", async () => {
-    await syncRoutes(store, registered.routes as never, stats([]));
+    registerRoutes(
+      routeHandler("get", "/api/orders/"),
+      routeHandler("post", "/api/orders/"),
+    );
+    await syncRoutes(store, getRegisteredRoutes(), stats([]));
     const getAll = vi.spyOn(routes, "getAll");
     await ensureRoutesSynced(store);
     expect(getAll).not.toHaveBeenCalled();
 
-    registered.routes = [
-      ...registered.routes,
-      { method: "get", location: "/api/customers", module: "shop" },
-    ];
+    registerRoutes(routeHandler("get", "/api/customers"));
     await ensureRoutesSynced(store);
     expect([...routes.rows.values()].map((r) => r.uri)).toContain(
       "/api/customers",

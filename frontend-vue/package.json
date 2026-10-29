@@ -21,8 +21,10 @@
     "vue": "^3.5.18"
   },
   "devDependencies": {
+    "@antelopejs/tooling-configs": "^0.2.11",
     "@typescript-eslint/parser": "^8.0.0",
-    "eslint": "^9.0.0",
+    "@vitejs/plugin-vue": "^6.0.0",
+    "eslint": "^9.39.5",
     "eslint-plugin-vue": "^10.0.0",
     "prettier": "^3.5.3",
     "prettier-plugin-tailwindcss": "^0.6.11",
