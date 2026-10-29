@@ -23,6 +23,7 @@ export default [
       'antelopejs/no-constant-value-assertion': 'error',
       'antelopejs/no-self-import-in-tests': 'error',
       'anti-slop/no-module-mocking': 'error',
+      'antelopejs/no-typeof-function-only-test': 'error',
     },
   },
 ]

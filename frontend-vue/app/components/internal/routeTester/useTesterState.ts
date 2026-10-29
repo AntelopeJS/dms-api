@@ -534,7 +534,6 @@ export function useTesterState(props: RouteTesterProps) {
     blockerId,
     sourceTokens,
     bodyHintId,
-    nextRowId,
     row,
     rows,
     bodyMode,

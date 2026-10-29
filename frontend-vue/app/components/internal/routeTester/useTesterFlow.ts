@@ -613,8 +613,6 @@ export function useTesterFlow(state: ReturnType<typeof useTesterState>) {
     warnLostSecrets,
     resetToExample,
     currentDraft,
-    saveTimer,
-    saveRef,
     flushDraft,
     loadRoute,
     dropReplayParam,
