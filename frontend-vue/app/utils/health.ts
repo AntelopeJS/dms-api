@@ -1,7 +1,7 @@
 export type Verdict = 'down' | 'degraded' | 'recovered' | 'operational' | 'idle'
 
 /** Rates in percent (0–100); the figures cover the last `windowMinutes`. */
-export interface HealthMetrics {
+interface HealthMetrics {
   serverErrorRate: number
   clientErrorRate: number
   /** Null when no call was measured in the window. */
@@ -10,7 +10,7 @@ export interface HealthMetrics {
 }
 
 /** Rates in percent, like the metrics. */
-export interface HealthThresholds {
+interface HealthThresholds {
   /** Degraded from this 5xx rate over `windowMinutes`. */
   degradedServerErrorRate: number
   /** Down from this 5xx rate over `downWindowMinutes`. */
@@ -24,7 +24,7 @@ export interface HealthThresholds {
 }
 
 /** What one rule reads now, over its own window. */
-export interface RuleWindow {
+interface RuleWindow {
   minutes: number
   requests: number
   serverErrors: number

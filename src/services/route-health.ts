@@ -294,7 +294,7 @@ function impact(route: RouteHealthState): number {
 }
 
 /** A route state "Needs attention" lists: every one but healthy and idle. */
-export type AttentionState = Exclude<RouteState, "healthy" | "idle">;
+type AttentionState = Exclude<RouteState, "healthy" | "idle">;
 
 /** Whether `route` is in a state "Needs attention" lists. */
 function needsAttention(

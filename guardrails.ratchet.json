@@ -7,7 +7,5 @@
     "anti-slop/no-unsafe-dictionary-type": 3,
     "anti-slop/require-safety-comment-for-type-assertion": 19
   },
-  "oversizeFiles": {
-    "frontend-vue/app/components/blocks/RouteTester.vue": 61443
-  }
+  "oversizeFiles": {}
 }
