@@ -245,10 +245,7 @@ const calledErrorRate = (bucket: TrafficBucket) =>
  * Share of 4xx and 5xx over the window, and its change against the previous
  * window in points: from 2 % to 3 % is "+1 pt", not "+50 %".
  */
-function errorRateFigures(traffic: RouteTraffic): {
-  value: number;
-  delta: number | null;
-} {
+function errorRateFigures(traffic: RouteTraffic) {
   const value = errorRate(traffic.total);
   const previous = traffic.previous?.requests
     ? errorRate(traffic.previous)

@@ -61,7 +61,7 @@ function select(values: readonly string[], labelKey?: string) {
  * request ID, which the panel and the search hold too, is hidden until the
  * column menu shows it.
  */
-const REQUEST_COLUMNS: Record<string, TableViewSourceColumn> = {
+const REQUEST_COLUMNS = {
   timestamp: {
     name: "$api.logs.columns.time",
     type: new DefaultDataTypes.DateType(),
@@ -152,7 +152,7 @@ const REQUEST_COLUMNS: Record<string, TableViewSourceColumn> = {
     filterable: false,
     order: 10,
   },
-};
+} satisfies Record<string, TableViewSourceColumn>;
 
 /**
  * Columns a table keeps, hidden, when its page does not show them: the tabs
@@ -260,7 +260,7 @@ export function requestTable(
     ...rest
   } = options;
   const picked = Object.fromEntries(
-    Object.entries(REQUEST_COLUMNS)
+    Object.entries<TableViewSourceColumn>(REQUEST_COLUMNS)
       .filter(
         ([key]) => !columns || columns.includes(key) || FILTER_COLUMNS.has(key),
       )

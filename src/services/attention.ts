@@ -249,9 +249,12 @@ function incidentOf(route: RouteHealthState) {
  * `GET /.env`) says so first; the evidence is on a third line:
  * `500 "Cart is empty" × 16`.
  */
-function attentionItem(route: RouteHealthState, known: boolean): AttentionItem {
+function attentionItem(
+  route: ReturnType<typeof routesNeedingAttention>[number],
+  known: boolean,
+): AttentionItem {
   const { traffic } = route;
-  const state = route.state as keyof typeof ATTENTION_FEED;
+  const { state } = route;
   const key = state.replace("-", "_");
   const top = topErrorOf(route);
   const serverErrorRate = roundPercent(serverErrorShare(traffic));

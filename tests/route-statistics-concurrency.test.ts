@@ -207,7 +207,7 @@ describe("pruneAllStatistics", () => {
       uri: "/api/items/:id",
       statistics: [dayStats(expired, 7), dayStats(today, 2)],
       revision: randomUUID(),
-    } as RouteStatistics);
+    });
 
     const [pruned] = await Promise.all([
       pruneAllStatistics(model),

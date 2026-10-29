@@ -233,7 +233,7 @@ export class RequestLogModel extends BasicDataModel(
         responseTimeMs: doc.key("responseTimeMs"),
         errorMessage: doc.key("error").default(null).key("message"),
       }))
-      .run() as Promise<RequestLogSample[]>;
+      .run();
   }
 
   private listItems(rows: this["table"]): Promise<RequestLogListItem[]> {
@@ -252,7 +252,7 @@ export class RequestLogModel extends BasicDataModel(
         source: doc.key("source"),
         requestId: doc.key("requestId"),
       }))
-      .run() as Promise<RequestLogListItem[]>;
+      .run();
   }
 
   private applyFilters(

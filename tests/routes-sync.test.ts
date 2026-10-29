@@ -46,10 +46,27 @@ beforeAll(() => serveTable(routesStatisticsTableName, []));
 
 afterEach(unregisterRoutes);
 
+/** A route of the shop module, as `getRegisteredRoutes` lists it. */
+function shopRoute(
+  id: string,
+  method: string,
+  location: string,
+): ReturnType<typeof getRegisteredRoutes>[number] {
+  return {
+    id,
+    method,
+    location,
+    callbackName: "handle",
+    parameters: [],
+    properties: {},
+    module: "shop",
+  };
+}
+
 /** The routes the shop module registers, as the sync takes them. */
 const SHOP_ROUTES = [
-  { method: "get", location: "/api/orders/", module: "shop" },
-  { method: "post", location: "/api/orders/", module: "shop" },
+  shopRoute("0", "get", "/api/orders/"),
+  shopRoute("1", "post", "/api/orders/"),
 ];
 
 const DAY = 86_400_000;
@@ -119,7 +136,7 @@ beforeEach(() => {
 
 describe("syncRoutes", () => {
   it("stores routes under their canonical path", async () => {
-    await syncRoutes(store, SHOP_ROUTES as never, stats([]));
+    await syncRoutes(store, SHOP_ROUTES, stats([]));
     expect(
       [...routes.rows.values()].map((r) => `${r.method} ${r.uri}`),
     ).toEqual(["GET /api/orders", "POST /api/orders"]);
@@ -129,7 +146,7 @@ describe("syncRoutes", () => {
     const firstCall = NOW - 60 * DAY;
     await syncRoutes(
       store,
-      SHOP_ROUTES as never,
+      SHOP_ROUTES,
       stats([
         { method: "GET", uri: "/api/orders/", days: [NOW - DAY, firstCall] },
       ]),

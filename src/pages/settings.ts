@@ -17,6 +17,7 @@ import {
   getSettingsFormContext,
   SETTINGS_BOUNDS,
   SETTINGS_FIELDS,
+  type SettingsFormContext,
 } from "@/services/settings-form";
 import { configureCategory } from "./module";
 
@@ -218,17 +219,13 @@ const settingsForm = Form({
   ],
 }).meta({ name: "$api.settings.form", icon: "i-ph-sliders-horizontal" });
 
-type FieldPatch = Record<string, unknown>;
-
 function patchFields(
   fields: FormFieldOrGroupSerialized[],
-  patches: Record<string, FieldPatch>,
+  patches: SettingsFormContext["patches"],
 ): FormFieldOrGroupSerialized[] {
   return fields.map((field) => {
     const patch = patches[field.id];
-    return patch
-      ? ({ ...field, ...patch } as FormFieldOrGroupSerialized)
-      : field;
+    return patch ? { ...field, ...patch } : field;
   });
 }
 

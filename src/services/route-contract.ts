@@ -203,7 +203,7 @@ function exampleResponse(log: RequestLog | undefined): ObservedResponse | null {
   };
 }
 
-function responseShape(
+function responseFieldsOf(
   logs: RequestLog[],
 ): Pick<ObservedContract, "responseKind" | "responseFields"> {
   const bodies = logs.map((log) => parseJson(log.responseBody));
@@ -313,7 +313,7 @@ export function contractOf({
     examplePath: last?.pathParams ?? {},
     exampleQuery: last?.query ?? {},
     exampleResponse: exampleResponse(last),
-    ...responseShape(successful),
+    ...responseFieldsOf(successful),
     latency: latencyOf(samples),
   };
 }
@@ -390,20 +390,21 @@ export function documentParameters(
       .map((segment) => ({ in: "path" as const, name: segment.slice(1) })),
     ...[
       ...new Set([
-        ...inspection.parameters
-          .filter((parameter) => parameter.source === "query" && parameter.name)
-          .map((parameter) => parameter.name as string),
+        ...inspection.parameters.flatMap((parameter) =>
+          parameter.source === "query" && parameter.name
+            ? [parameter.name]
+            : [],
+        ),
         ...queryParams,
       ]),
     ]
       .sort()
       .map((name) => ({ in: "query" as const, name })),
-    ...inspection.parameters
-      .filter((parameter) => parameter.source === "header" && parameter.name)
-      .map((parameter) => ({
-        in: "header" as const,
-        name: parameter.name as string,
-      })),
+    ...inspection.parameters.flatMap((parameter) =>
+      parameter.source === "header" && parameter.name
+        ? [{ in: "header" as const, name: parameter.name }]
+        : [],
+    ),
   ];
   return entries.map((entry) => {
     const source = entry.in === "path" ? "param" : entry.in;

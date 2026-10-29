@@ -15,7 +15,6 @@
 import {
   type ComputedParameter,
   getRegisteredRouteHandlers,
-  type RegisteredRouteHandler,
   type RouteHandler,
   type RouteHandlerMode,
 } from "@antelopejs/interface-api";
@@ -92,17 +91,27 @@ export interface RouteInspection {
   authGuards: string[];
 }
 
-const MIDDLEWARE_MODES: ReadonlySet<RouteHandlerMode> = new Set([
+const MIDDLEWARE_MODES: readonly MiddlewareMode[] = [
   "prefix",
   "postfix",
   "monitor",
-]);
+];
 
-const PARAMETER_SOURCES: ReadonlySet<string> = new Set([
+function isMiddlewareMode(mode: RouteHandlerMode): mode is MiddlewareMode {
+  return MIDDLEWARE_MODES.some((middlewareMode) => middlewareMode === mode);
+}
+
+const PARAMETER_SOURCES: readonly ParameterSource[] = [
   "param",
   "query",
   "header",
-]);
+];
+
+function isParameterSource(source: string): source is ParameterSource {
+  return PARAMETER_SOURCES.some(
+    (parameterSource) => parameterSource === source,
+  );
+}
 
 const DECLARED_TYPES: Record<string, InferredType> = {
   String: "string",
@@ -134,11 +143,11 @@ function declaredParameter(
     return undefined;
   }
   const [name, source = "param"] = decorated.args;
-  if (!name || !source || !PARAMETER_SOURCES.has(source)) return undefined;
+  if (!name || !source || !isParameterSource(source)) return undefined;
   const multi = decorated.decorator === "MultiParameter";
   return {
     name,
-    source: source as ParameterSource,
+    source,
     multi,
     inferredType: multi
       ? "object"
@@ -226,11 +235,15 @@ function locationCovers(prefix: string, full: string): boolean {
   return true;
 }
 
-function toMiddlewareInfo(id: string, handler: RouteHandler): MiddlewareInfo {
+function toMiddlewareInfo(
+  id: string,
+  handler: RouteHandler,
+  mode: MiddlewareMode,
+): MiddlewareInfo {
   const callbackName = handler.callback.name || "anonymous";
   return {
     id,
-    mode: handler.mode as MiddlewareMode,
+    mode,
     location: handler.location,
     method: handler.method,
     callbackName,
@@ -239,10 +252,11 @@ function toMiddlewareInfo(id: string, handler: RouteHandler): MiddlewareInfo {
   };
 }
 
-function listMiddlewareEntries(): RegisteredRouteHandler[] {
-  return getRegisteredRouteHandlers().filter(({ handler }) =>
-    MIDDLEWARE_MODES.has(handler.mode),
-  );
+function listMiddlewareEntries() {
+  return getRegisteredRouteHandlers().flatMap(({ id, handler }) => {
+    const { mode } = handler;
+    return isMiddlewareMode(mode) ? [{ id, handler, mode }] : [];
+  });
 }
 
 function applicableMiddleware(
@@ -259,20 +273,20 @@ function applicableMiddleware(
       ),
     )
     .sort(comparePriorityThenMode)
-    .map(({ id, handler }) => toMiddlewareInfo(id, handler));
+    .map(({ id, handler, mode }) => toMiddlewareInfo(id, handler, mode));
 }
 
 function comparePriorityThenMode(
   a: { handler: RouteHandler },
   b: { handler: RouteHandler },
 ): number {
-  const modeOrder: Record<string, number> = {
+  const modeOrder = {
     prefix: 0,
     postfix: 1,
     monitor: 2,
     handler: 3,
     websocket: 4,
-  };
+  } satisfies Record<RouteHandlerMode, number>;
   const am = modeOrder[a.handler.mode] ?? 99;
   const bm = modeOrder[b.handler.mode] ?? 99;
   if (am !== bm) return am - bm;

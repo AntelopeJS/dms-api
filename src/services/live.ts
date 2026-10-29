@@ -112,15 +112,18 @@ export interface LiveQuery extends WindowQuery {
   bucket?: string;
 }
 
+/** A period a request names, and the range it covers. */
+export interface LiveRange {
+  period: LivePeriod;
+  range: TimeRange;
+}
+
 /**
  * The period a request names, clamped to the log retention: a preset up to
  * now, `all` for every request kept, else its custom `from` / `to` (never
  * past now), else the last hour.
  */
-export function liveRange(
-  query: LiveQuery,
-  now: Date,
-): { period: LivePeriod; range: TimeRange } {
+export function liveRange(query: LiveQuery, now: Date): LiveRange {
   const horizon = now.getTime() - getMaxLogDays() * MS_PER_DAY;
   const clamp = (range: TimeRange): TimeRange => ({
     from: new Date(Math.max(range.from.getTime(), horizon)),

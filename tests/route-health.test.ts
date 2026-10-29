@@ -34,7 +34,7 @@ function sample(
     method,
     uri,
     statusCode,
-    responseTimeMs: responseTimeMs as number,
+    responseTimeMs,
     errorMessage,
   };
 }

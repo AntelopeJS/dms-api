@@ -5,6 +5,7 @@ import {
   type RouteStatistics,
 } from "@/db/tables/routes_statistics.table";
 import type { DayStatistics, RequestStatistics } from "@/types";
+import { isNumber } from "@/guards";
 import {
   emptyHistogram,
   getTodayTimestamp,
@@ -70,7 +71,7 @@ function mergeDayStats(
   existing: DayStatistics,
   request: RequestStatistics,
 ): void {
-  if (typeof request.responseTime === "number") {
+  if (isNumber(request.responseTime)) {
     addTiming(existing, request.responseTime);
   }
   existing.requestsCount++;
@@ -162,7 +163,7 @@ async function insertRouteStats(
       uri: first.uri,
       statistics: [day],
       revision: randomUUID(),
-    } as RouteStatistics);
+    });
     return true;
   } catch (error) {
     if (isDuplicateKeyError(error)) return false;

@@ -1,4 +1,7 @@
-import type { ComputedParameter } from "@antelopejs/interface-api";
+import type {
+  ComputedParameter,
+  ParameterProvider,
+} from "@antelopejs/interface-api";
 
 /**
  * Source-text inspection for ComputedParameter providers.
@@ -189,7 +192,7 @@ export function probeProvider(
   };
 }
 
-function providerSource(fn: unknown): string {
+function providerSource(fn: ParameterProvider): string {
   try {
     return Function.prototype.toString.call(fn);
   } catch {

@@ -192,10 +192,7 @@ function windowStart(
 }
 
 /** First minutes of the windows the degraded and the down rules read at `at`. */
-function ruleWindowsAt(
-  series: MinuteSeries,
-  at: number,
-): { wide: number; narrow: number } {
+function ruleWindowsAt(series: MinuteSeries, at: number) {
   const wide = windowStart(series, at, HEALTH_THRESHOLDS.windowMinutes, 0);
   return {
     wide,

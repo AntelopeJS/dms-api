@@ -4,6 +4,7 @@ import {
   Controller,
   getRegisteredRouteHandlers,
   HandlerPriority,
+  type HTTPResult,
   Monitor,
   Prefix,
   type RequestContext,
@@ -12,10 +13,7 @@ import { Logging } from "@antelopejs/interface-core/logging";
 import { GetModel } from "@antelopejs/interface-database-decorators";
 import { type DmsApiConfig, getConfig } from "@/config";
 import { RequestLogModel, RouteStatisticsModel } from "@/db";
-import type {
-  RequestLog,
-  RequestLogSource,
-} from "@/db/tables/request_log.table";
+import type { RequestLogSource } from "@/db/tables/request_log.table";
 import { normalizeRoutePath } from "@/db/tables/routes_statistics.table";
 import { recordLiveRequest } from "@/services/live-feed";
 import { requestSource } from "@/services/tester-source";
@@ -27,6 +25,7 @@ import {
   REQUEST_ID_HEADER,
   REQUEST_ID_MAX_LENGTH,
 } from "@/types";
+import { hasStatusGetter, isMessageBody, isString } from "@/guards";
 import {
   type CapturedBody,
   captureBody,
@@ -49,7 +48,7 @@ interface CaptureContext extends RequestContext {
  * requests with no start and a duration of 0 ms. The router sorts prefixes by
  * this number, lowest first.
  */
-const CAPTURE_START_PRIORITY = (HandlerPriority.HIGHEST - 1) as HandlerPriority;
+const CAPTURE_START_PRIORITY: HandlerPriority = HandlerPriority.HIGHEST - 1;
 
 /**
  * Per-request capture middleware.
@@ -297,7 +296,7 @@ async function captureRequest(
   );
   let raw: unknown;
   try {
-    raw = await (context.body as Promise<unknown> | undefined);
+    raw = await context.body;
   } catch (err) {
     const tooLarge = extractStatusCode(err) === PAYLOAD_TOO_LARGE;
     return { headers, body: omittedBody(tooLarge ? "too-large" : "not-read") };
@@ -321,23 +320,23 @@ async function captureRequest(
  * content type and length the server adds when writing it.
  */
 function sentHeaders(
-  response: unknown,
+  response: HTTPResult,
   contentType: string | undefined,
   body: unknown,
-): Record<string, string> {
+) {
   const headers: Record<string, string> = {};
   for (const [name, value] of Object.entries(extractHeaders(response))) {
     headers[name.toLowerCase()] = value;
   }
   if (contentType) headers["content-type"] ??= contentType;
-  if (typeof body === "string" || Buffer.isBuffer(body)) {
+  if (isString(body) || Buffer.isBuffer(body)) {
     headers["content-length"] ??= String(Buffer.byteLength(body));
   }
   return headers;
 }
 
 function captureResponse(
-  response: unknown,
+  response: HTTPResult,
   config: DmsApiConfig,
   droppedHeaders: string[],
 ): BodyCapture {
@@ -493,7 +492,7 @@ async function persistLog(context: CaptureContext): Promise<void> {
     query: queryToRecord(context.url),
     droppedHeaders,
   });
-  await GetModel(RequestLogModel).insert(log as RequestLog);
+  await GetModel(RequestLogModel).insert(log);
   recordLiveRequest({
     timestamp: log.timestamp,
     statusCode,
@@ -569,24 +568,24 @@ const BODY_MESSAGE_KEYS = ["error", "message"] as const;
 export function bodyErrorMessage(body: unknown): string | undefined {
   let value = body;
   if (Buffer.isBuffer(value)) value = value.toString("utf8");
-  if (typeof value === "string") {
+  if (isString(value)) {
     try {
       value = JSON.parse(value);
     } catch {
       return undefined;
     }
   }
-  if (!value || typeof value !== "object") return undefined;
+  if (!isMessageBody(value)) return undefined;
   for (const key of BODY_MESSAGE_KEYS) {
-    const message = (value as Record<string, unknown>)[key];
-    if (typeof message === "string" && message.trim()) return message.trim();
+    const message = value[key];
+    if (isString(message) && message.trim()) return message.trim();
   }
   return undefined;
 }
 
 function responseError(
   statusCode: number,
-  response: unknown,
+  response: HTTPResult,
 ): { message: string } | undefined {
   if (statusCode < ERROR_STATUS_MIN) return undefined;
   const message = bodyErrorMessage(extractBody(response));
@@ -610,7 +609,7 @@ function formatError(
   if (err instanceof Error) {
     return { message: err.message, stack: err.stack };
   }
-  if (typeof (err as { getStatus?: unknown }).getStatus === "function") {
+  if (hasStatusGetter(err)) {
     return {
       message:
         bodyErrorMessage(extractBody(err)) ?? `HTTP ${extractStatusCode(err)}`,
@@ -626,7 +625,7 @@ function formatError(
 
 function clientIp(context: CaptureContext): string | undefined {
   const fwd = context.rawRequest.headers["x-forwarded-for"];
-  if (typeof fwd === "string") {
+  if (isString(fwd)) {
     return fwd.split(",")[0].trim();
   }
   if (Array.isArray(fwd) && fwd.length > 0) {

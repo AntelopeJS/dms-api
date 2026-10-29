@@ -1,6 +1,4 @@
 import { describe, expect, it, vi } from "vitest";
-import type { RequestLogListItem } from "@/db/models/request_log.model";
-import type { RequestLog } from "@/db/tables/request_log.table";
 import {
   filtersFromQuery,
   listRequestLogs,
@@ -218,7 +216,7 @@ describe("toRow", () => {
       statusCode: 404,
       responseTimeMs: 1500.4,
       errorMessage: "Invoice not found",
-    } as RequestLogListItem);
+    });
     expect(row).toMatchObject({
       route: "GET /api/invoices/:id/pdf",
       path: "/api/invoices/INV-1/pdf",
@@ -242,7 +240,7 @@ describe("toRow", () => {
         rawPath: "/api/orders",
         statusCode: 413,
         responseTimeMs,
-      } as RequestLogListItem).responseTimeMs;
+      }).responseTimeMs;
     expect(row(0.2802)).toBe(0.28);
     expect(row(0.0004)).toBe(0.01);
     expect(row(1.4)).toBe(1);
@@ -264,7 +262,7 @@ describe("toRow, unmeasured and Tester requests", () => {
     const row = toRow({
       _id: "req_2",
       timestamp: NOW,
-      method: "HEAD" as RequestLog["method"],
+      method: "HEAD",
       routeMethod: "GET",
       uri: "/api/orders",
       rawPath: "/api/orders",
@@ -272,7 +270,7 @@ describe("toRow, unmeasured and Tester requests", () => {
       responseTimeMs: null,
       source: "tester",
       requestId: "6f1c",
-    } as RequestLogListItem);
+    });
     expect(row).toMatchObject({
       route: "GET /api/orders",
       responseTimeMs: null,
@@ -428,7 +426,15 @@ describe("getRouteLatency", () => {
       ),
       rollupDay(today, [1200]),
     ];
-    const getByRoute = vi.fn(() => Promise.resolve({ statistics } as never));
+    const getByRoute = vi.fn(() =>
+      Promise.resolve({
+        _id: "GET:/api/latency-a",
+        method: "GET",
+        uri: "/api/latency-a",
+        statistics,
+        revision: "r1",
+      }),
+    );
     const list = vi.fn(() => Promise.resolve({ results: [], total: 2 }));
     const latency = await getRouteLatency(
       { stats: { getByRoute }, logs: { list } },

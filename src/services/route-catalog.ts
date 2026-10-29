@@ -162,16 +162,17 @@ const MIDDLEWARE_STAGE: Record<MiddlewareInfo["mode"], number> = {
 
 /** Middleware and handler of a route, in the order a request meets them. */
 export function pipelineOf(inspection: RouteInspection): PipelineStep[] {
-  const steps = inspection.applicableMiddleware.map((middleware) => ({
-    stage: MIDDLEWARE_STAGE[middleware.mode],
-    step: {
-      kind: middleware.mode,
-      name: middleware.callbackName,
-      location: middleware.location,
-      priority: middleware.priority,
-      isAuth: middleware.isAuth,
-    } as PipelineStep,
-  }));
+  const steps: Array<{ stage: number; step: PipelineStep }> =
+    inspection.applicableMiddleware.map((middleware) => ({
+      stage: MIDDLEWARE_STAGE[middleware.mode],
+      step: {
+        kind: middleware.mode,
+        name: middleware.callbackName,
+        location: middleware.location,
+        priority: middleware.priority,
+        isAuth: middleware.isAuth,
+      },
+    }));
   steps.push({
     stage: 1,
     step: {

@@ -2,6 +2,7 @@ import type { RouteStatisticsModel } from "@/db";
 import type { RequestLogSample } from "@/db/models/request_log.model";
 import type { RouteStatistics } from "@/db/tables/routes_statistics.table";
 import { createMemo } from "@/memo";
+import { isNumber } from "@/guards";
 import type { DayStatistics } from "@/types";
 import { cached } from "./aggregate-cache";
 import { scopeRouteKey } from "./scope";
@@ -95,8 +96,8 @@ function addLatency(bucket: TrafficBucket, min: number, max: number): void {
 export function durationOf(
   sample: Pick<RequestLogSample, "responseTimeMs">,
 ): number | null {
-  const ms = sample.responseTimeMs as number | null | undefined;
-  return typeof ms === "number" && Number.isFinite(ms) ? ms : null;
+  const ms = sample.responseTimeMs;
+  return isNumber(ms) && Number.isFinite(ms) ? ms : null;
 }
 
 /** Fold one logged request into its bucket. */

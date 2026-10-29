@@ -293,16 +293,24 @@ function impact(route: RouteHealthState): number {
   }
 }
 
+/** A route state "Needs attention" lists: every one but healthy and idle. */
+export type AttentionState = Exclude<RouteState, "healthy" | "idle">;
+
+/** Whether `route` is in a state "Needs attention" lists. */
+function needsAttention(
+  route: RouteHealthState,
+): route is RouteHealthState & { state: AttentionState } {
+  return route.state !== "healthy" && route.state !== "idle";
+}
+
 /**
  * Routes that need a look, worst first: failing (down before degraded, then
  * by how many 5xx), recovered (the latest first), slow (by p95), then those
  * answering many 4xx.
  */
-export function routesNeedingAttention(
-  health: Iterable<RouteHealthState>,
-): RouteHealthState[] {
+export function routesNeedingAttention(health: Iterable<RouteHealthState>) {
   return [...health]
-    .filter((route) => STATE_RANK[route.state] < STATE_RANK.healthy)
+    .filter(needsAttention)
     .sort(
       (a, b) =>
         STATE_RANK[a.state] - STATE_RANK[b.state] || impact(b) - impact(a),

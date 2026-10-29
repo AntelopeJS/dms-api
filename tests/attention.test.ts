@@ -5,7 +5,8 @@ import type {
 } from "@/db/models/request_log.model";
 import { clearAggregateCache } from "@/services/aggregate-cache";
 import { getAttention } from "@/services/attention";
-import { forgetRecentScan, type SampleSource } from "@/services/traffic";
+import { isObject, isString } from "@/guards";
+import { forgetRecentScan } from "@/services/traffic";
 import { pinnedNow } from "@/services/window";
 import { MS_PER_MINUTE } from "@/types";
 import {
@@ -33,7 +34,7 @@ function call(
   };
 }
 
-function modelsOf(rows: RequestLogSample[]): { logs: SampleSource } {
+function modelsOf(rows: RequestLogSample[]) {
   return {
     logs: {
       samples: async ({ since, until }: RequestLogFilters) =>
@@ -57,8 +58,10 @@ afterEach(unregisterRoutes);
 function detailOf(item: { meta?: unknown[] } | undefined) {
   return item?.meta?.find(
     (entry) =>
-      typeof entry === "object" &&
-      /_(detail|last)$/.test((entry as { key: string }).key),
+      isObject(entry) &&
+      "key" in entry &&
+      isString(entry.key) &&
+      /_(detail|last)$/.test(entry.key),
   );
 }
 

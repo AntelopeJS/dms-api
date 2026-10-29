@@ -1,3 +1,4 @@
+import { isNumber, isObject, isString } from "@/guards";
 import { TESTER_SOURCE_HEADER } from "@/types/constants";
 
 const REDACTED = "[REDACTED]";
@@ -163,12 +164,12 @@ class Redactor {
     if (Array.isArray(value)) {
       return value.map((item) => this.value(item, depth + 1));
     }
-    if (typeof value === "string") return this.text(value);
-    if (typeof value === "number" && Number.isSafeInteger(value)) {
+    if (isString(value)) return this.text(value);
+    if (isNumber(value) && Number.isSafeInteger(value)) {
       const redacted = this.text(String(value));
       return redacted === REDACTED ? redacted : value;
     }
-    if (value === null || typeof value !== "object") return value;
+    if (!isObject(value)) return value;
     return Object.fromEntries(
       Object.entries(value).map(([key, item]) => {
         if (!isSensitiveKey(key)) return [key, this.value(item, depth + 1)];
@@ -243,13 +244,12 @@ export function sanitizeBody(
   }
   try {
     if (isForm) {
-      if (typeof text !== "string")
-        return { omitted: "malformed", redacted: 0 };
+      if (!isString(text)) return { omitted: "malformed", redacted: 0 };
       const { value, redacted } = redactSearchParams(new URLSearchParams(text));
       return { text: value.toString(), redacted };
     }
-    const parsed: unknown = typeof text === "string" ? JSON.parse(text) : text;
-    if (parsed === null || typeof parsed !== "object") {
+    const parsed: unknown = isString(text) ? JSON.parse(text) : text;
+    if (!isObject(parsed)) {
       return { omitted: "not-json", redacted: 0 };
     }
     const { value, redacted } = redactValue(parsed);

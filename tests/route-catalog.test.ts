@@ -73,8 +73,9 @@ function log(overrides: Partial<RequestLog> = {}): RequestLog {
     responseTimeMs: 40,
     responseHeaders: {},
     responseBodyTruncated: false,
+    redactions: { query: 0, requestBody: 0, responseBody: 0, headers: [] },
     ...overrides,
-  } as RequestLog;
+  };
 }
 
 function sample(
@@ -339,7 +340,7 @@ describe("error codes from the handler", () => {
 class HTTPResult {
   constructor(
     readonly status: number,
-    readonly body: unknown,
+    readonly body: { error: string },
   ) {}
 }
 

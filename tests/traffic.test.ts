@@ -85,7 +85,8 @@ function rollupsOf(rows: RequestLogSample[]): RouteStatistics[] {
       method: "GET",
       uri: "/a",
       statistics: [...days.values()],
-    } as RouteStatistics,
+      revision: "r1",
+    },
   ];
 }
 

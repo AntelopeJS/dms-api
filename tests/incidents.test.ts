@@ -7,7 +7,6 @@ import {
   type ActivityModels,
   findIncidents,
   getActivity,
-  type IncidentItem,
 } from "@/services/activity";
 import { clearAggregateCache } from "@/services/aggregate-cache";
 import { MS_PER_MINUTE } from "@/types";
@@ -93,15 +92,17 @@ describe("getActivity", () => {
       error(3),
     ];
     const { items } = await getActivity(modelsOf(rows), null, new Date(NOW));
-    const [ongoing, closed] = items as IncidentItem[];
-    expect(ongoing.incident.endedAt).toBeNull();
-    expect(closed.incident.end).toBe(
+    const [ongoing, closed] = items;
+    expect(ongoing).toHaveProperty("incident.endedAt", null);
+    expect(closed).toHaveProperty(
+      "incident.end",
       new Date(NOW - 129.2 * MS_PER_MINUTE).toISOString(),
     );
-    expect(closed.incident.endedAt).toBe(
+    expect(closed).toHaveProperty(
+      "incident.endedAt",
       new Date(NOW - (129.2 - 15) * MS_PER_MINUTE).toISOString(),
     );
-    const link = new URL(closed.to ?? "", "http://console");
+    const link = new URL(closed?.to ?? "", "http://console");
     expect(
       link.searchParams.get("since"),
       "Whole minutes from the first 5xx to the last, the route's 5xx only: a linked filter, the page's period left as the user chose it.",
@@ -112,11 +113,11 @@ describe("getActivity", () => {
     expect(link.searchParams.get("api.period")).toBeNull();
     expect(link.searchParams.get("route")).toBe("POST /hook");
     expect(link.searchParams.get("requests.tab")).toBe("5xx");
-    expect(closed.params).toMatchObject({
+    expect(closed?.params).toMatchObject({
       topStatus: "500",
       topMessage: "TypeError",
       topCount: "2",
     });
-    expect(closed.meta).toContain("$api.overview.activity.incident_top_error");
+    expect(closed?.meta).toContain("$api.overview.activity.incident_top_error");
   });
 });

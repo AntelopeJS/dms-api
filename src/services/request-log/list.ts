@@ -98,7 +98,7 @@ function filterValue(raw: string | undefined): string | undefined {
   return filterValues(raw)[0];
 }
 
-const STATUS_TONES: Record<string, Tone> = {
+const STATUS_TONES: Partial<Record<ReturnType<typeof statusClassOf>, Tone>> = {
   "5xx": "error",
   "4xx": "warning",
   "3xx": "info",
@@ -110,7 +110,7 @@ function statusToneOf(status: number): Tone {
 }
 
 /** `2xx`… of a status, as the tabs and the pills group them. */
-export function statusClassOf(status: number): string {
+export function statusClassOf(status: number) {
   if (status >= 500) return "5xx";
   if (status >= 400) return "4xx";
   if (status >= 300) return "3xx";

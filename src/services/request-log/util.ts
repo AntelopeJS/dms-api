@@ -1,5 +1,6 @@
 import type { IncomingHttpHeaders } from "node:http";
 import type { RequestLogBodyOmission } from "@/db/tables/request_log.table";
+import { isNumber, isObject } from "@/guards";
 import { HTTP_STATUS_OK } from "@/types/constants";
 import {
   isSensitiveHeader,
@@ -16,7 +17,7 @@ export function pickHeaders(
   headers: IncomingHttpHeaders | Record<string, string | string[] | undefined>,
   allowList: ReadonlyArray<string>,
   dropped?: string[],
-): Record<string, string> {
+) {
   const out: Record<string, string> = {};
   const allow = new Set(allowList.map((h) => h.toLowerCase()));
   for (const [name, value] of Object.entries(headers)) {
@@ -92,10 +93,7 @@ function utf8Prefix(bytes: Buffer, maxBytes: number): string {
 }
 
 /** The query of `url` as a record, redacted, and how many values were. */
-export function queryToRecord(url: URL): {
-  query: Record<string, string | string[]>;
-  redacted: number;
-} {
+export function queryToRecord(url: URL) {
   const { value: params, redacted } = redactSearchParams(url.searchParams);
   const query = Object.fromEntries(
     [...new Set(params.keys())].map((key) => {
@@ -112,7 +110,7 @@ export function queryToRecord(url: URL): {
  * otherwise.
  */
 export function extractStatusCode(value: unknown): number {
-  if (!value || typeof value !== "object") return HTTP_STATUS_OK;
+  if (!isObject(value)) return HTTP_STATUS_OK;
   const v = value as {
     getStatus?: () => number;
     statusCode?: number;
@@ -123,13 +121,13 @@ export function extractStatusCode(value: unknown): number {
       return v.getStatus();
     } catch {}
   }
-  if (typeof v.statusCode === "number") return v.statusCode;
-  if (typeof v.status === "number") return v.status;
+  if (isNumber(v.statusCode)) return v.statusCode;
+  if (isNumber(v.status)) return v.status;
   return HTTP_STATUS_OK;
 }
 
 export function extractBody(value: unknown): unknown {
-  if (!value || typeof value !== "object") return undefined;
+  if (!isObject(value)) return undefined;
   const v = value as { getBody?: () => unknown; body?: unknown };
   if (typeof v.getBody === "function") {
     try {
@@ -142,7 +140,7 @@ export function extractBody(value: unknown): unknown {
 }
 
 export function extractContentType(value: unknown): string | undefined {
-  if (!value || typeof value !== "object") return undefined;
+  if (!isObject(value)) return undefined;
   const v = value as { getContentType?: () => string };
   if (typeof v.getContentType === "function") {
     try {
@@ -155,7 +153,7 @@ export function extractContentType(value: unknown): string | undefined {
 }
 
 export function extractHeaders(value: unknown): Record<string, string> {
-  if (!value || typeof value !== "object") return {};
+  if (!isObject(value)) return {};
   const v = value as { getHeaders?: () => Record<string, string> };
   if (typeof v.getHeaders === "function") {
     try {

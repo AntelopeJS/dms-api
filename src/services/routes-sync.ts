@@ -216,7 +216,7 @@ async function runSync(
 
   await Promise.all([
     ...idsToDelete.map((id) => routesModel.delete(id)),
-    ...routesToInsert.map((r) => routesModel.insert(r as Route)),
+    ...routesToInsert.map((r) => routesModel.insert(r)),
     ...routesToUpdate.map((r) => routesModel.update(r)),
   ]);
   await backdateToFirstCall(routesModel, stats);

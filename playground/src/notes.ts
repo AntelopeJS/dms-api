@@ -5,6 +5,7 @@ import {
   JSONBody,
   Post,
 } from "@antelopejs/interface-api";
+import type { JsonValue } from "@antelopejs/interface-dms/base/types/json";
 import {
   BasicDataModel,
   Field,
@@ -74,7 +75,7 @@ export class NotesController extends Controller("/playground/notes") {
   }
 
   @Post("")
-  async create(@JSONBody() body: unknown) {
+  async create(@JSONBody() body: JsonValue | undefined) {
     const parsed = notesFormSchema.safeParse(body);
     if (!parsed.success) {
       return new HTTPResult(400, { error: "Invalid form payload" });
