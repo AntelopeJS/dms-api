@@ -1,3 +1,4 @@
+import type { HTTPResult } from "@antelopejs/interface-api";
 import type { IncomingHttpHeaders } from "node:http";
 import type { RequestLogBodyOmission } from "@/db/tables/request_log.table";
 import { isNumber, isObject } from "@/guards";
@@ -139,12 +140,11 @@ export function extractBody(value: unknown): unknown {
   return v.body;
 }
 
-export function extractContentType(value: unknown): string | undefined {
+export function extractContentType(value: HTTPResult): string | undefined {
   if (!isObject(value)) return undefined;
-  const v = value as { getContentType?: () => string };
-  if (typeof v.getContentType === "function") {
+  if (typeof value.getContentType === "function") {
     try {
-      return v.getContentType();
+      return value.getContentType();
     } catch {
       return undefined;
     }
@@ -152,12 +152,11 @@ export function extractContentType(value: unknown): string | undefined {
   return undefined;
 }
 
-export function extractHeaders(value: unknown): Record<string, string> {
+export function extractHeaders(value: HTTPResult): Record<string, string> {
   if (!isObject(value)) return {};
-  const v = value as { getHeaders?: () => Record<string, string> };
-  if (typeof v.getHeaders === "function") {
+  if (typeof value.getHeaders === "function") {
     try {
-      return v.getHeaders();
+      return value.getHeaders();
     } catch {
       return {};
     }

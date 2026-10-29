@@ -59,7 +59,7 @@ interface CaptureContext extends RequestContext {
  * requests with no start and a duration of 0 ms. The router sorts prefixes by
  * this number, lowest first.
  */
-const CAPTURE_START_PRIORITY: HandlerPriority = HandlerPriority.HIGHEST - 1;
+const CAPTURE_START_PRIORITY = HandlerPriority.HIGHEST - 1;
 
 /**
  * Per-request capture middleware.
