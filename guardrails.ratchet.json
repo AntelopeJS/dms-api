@@ -10,7 +10,6 @@
   "oversizeFiles": {
     "frontend-vue/app/components/blocks/HealthHero.vue": 22560,
     "frontend-vue/app/components/blocks/RequestDetail.vue": 24082,
-    "frontend-vue/app/components/blocks/RouteTester.vue": 61443,
-    "frontend-vue/app/components/blocks/RouteTree.vue": 22123
+    "frontend-vue/app/components/blocks/RouteTester.vue": 61443
   }
 }
