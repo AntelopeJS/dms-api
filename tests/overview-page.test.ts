@@ -1,26 +1,21 @@
 import { describe, expect, it } from "vitest";
 import { GetMetadata } from "@antelopejs/interface-core";
+import type { ComponentInfoSerialized } from "@antelopejs/interface-dms/component";
 import { PageMetadata } from "@antelopejs/interface-dms/page";
 import { OverviewPage } from "@/pages/overview";
 
-interface Serialized {
-  componentName: string;
-  options?: Record<string, unknown> & {
-    watchActions?: { event: string; functionId: string }[];
-    realtimeTopic?: unknown;
-  };
-  children?: { id: string; slot?: string; component: Serialized }[];
-}
-
-function child(parent: Serialized, id: string): Serialized {
+function child(
+  parent: ComponentInfoSerialized,
+  id: string,
+): ComponentInfoSerialized {
   const found = parent.children?.find((entry) => entry.id === id);
   if (!found) throw new Error(`no child ${id}`);
   return found.component;
 }
 
 describe("OverviewPage", () => {
-  const toolbar = OverviewPage.toolbar.serializeSync() as Serialized;
-  const dashboard = OverviewPage.dashboard.serializeSync() as Serialized;
+  const toolbar = OverviewPage.toolbar.serializeSync();
+  const dashboard = OverviewPage.dashboard.serializeSync();
 
   it("holds the toolbar of the monitoring pages, with the Beta badge", () => {
     expect(toolbar.componentName).toBe("dms-page-toolbar-block");
@@ -50,7 +45,7 @@ describe("OverviewPage", () => {
   });
 
   it("leads with the health hero, read from the overview's health route", () => {
-    const health = OverviewPage.health.serializeSync() as Serialized;
+    const health = OverviewPage.health.serializeSync();
     expect(health.componentName).toBe("DmsApiHealthHero");
     expect(health.options).toMatchObject({
       fetchUrl: "/api/monitoring/overview/health",
@@ -78,10 +73,9 @@ describe("OverviewPage", () => {
   });
 
   it("keeps the first row one height while what needs a look loads", () => {
-    // The routes to check fill their cell and scroll inside it: their
-    // wrapped rows, taller than the skeleton's, never grow the row.
     expect(
       child(child(dashboard, "health"), "attention").options,
+      "The routes to check fill their cell and scroll inside it: their wrapped rows, taller than the skeleton's, never grow the row.",
     ).toMatchObject({
       wrap: true,
       fillHeight: true,
@@ -91,11 +85,11 @@ describe("OverviewPage", () => {
   });
 
   it("follows the live feed, which the page's Direct / Pause holds", () => {
-    const info = GetMetadata(OverviewPage, PageMetadata).pageInfo as {
-      live?: unknown;
-    };
-    // One Direct / Pause choice for the module's pages, slower over a week.
-    expect(info.live).toEqual({
+    const info = GetMetadata(OverviewPage, PageMetadata).pageInfo;
+    expect(
+      info?.live,
+      "One Direct / Pause choice for the module's pages, slower over a week.",
+    ).toEqual({
       maxRate: 10,
       slowRateAfter: { period: "7d", maxRate: 60 },
       rememberKey: "api",
@@ -105,7 +99,10 @@ describe("OverviewPage", () => {
       ["recent", "activity"],
     ] as const) {
       const block = child(child(dashboard, row), id);
-      expect(block.options?.realtimeTopic).toBe("api:monitor:requests");
+      expect(block.options).toHaveProperty(
+        "realtimeTopic",
+        "api:monitor:requests",
+      );
     }
     const table = child(child(child(dashboard, "recent"), "requests"), "table");
     expect(table.options).toMatchObject({

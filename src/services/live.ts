@@ -112,15 +112,18 @@ export interface LiveQuery extends WindowQuery {
   bucket?: string;
 }
 
+/** A period a request names, and the range it covers. */
+export interface LiveRange {
+  period: LivePeriod;
+  range: TimeRange;
+}
+
 /**
  * The period a request names, clamped to the log retention: a preset up to
  * now, `all` for every request kept, else its custom `from` / `to` (never
  * past now), else the last hour.
  */
-export function liveRange(
-  query: LiveQuery,
-  now: Date,
-): { period: LivePeriod; range: TimeRange } {
+export function liveRange(query: LiveQuery, now: Date): LiveRange {
   const horizon = now.getTime() - getMaxLogDays() * MS_PER_DAY;
   const clamp = (range: TimeRange): TimeRange => ({
     from: new Date(Math.max(range.from.getTime(), horizon)),
@@ -159,7 +162,10 @@ export function barOf(at: number, bucketMs: number): number {
  * Requests per bar over the page's period, split by status class: every
  * route in scope, whatever the table's filters. A period of a day at most
  * is read from the logs, which the live blocks share; a longer one from the
- * calls per minute of each day, so a month does not read every request.
+ * calls per minute of each day, so a month does not read every request. A
+ * period reaching now ends on the bar still running, and keeps its count of
+ * bars (the last hour: 60) as the clock moves; a past one covers its range
+ * with whole bars.
  */
 export async function getLiveTraffic(
   model: SampleSource,
@@ -173,9 +179,6 @@ export async function getLiveTraffic(
   const to = range.to.getTime();
   const bucketMs = resolveBucketMs(query.bucket, to - from);
   const live = to >= pinned.getTime() - CACHE_QUANTUM_MS;
-  // A period reaching now ends on the bar still running, and keeps its
-  // count of bars (the last hour: 60) as the clock moves; a past one covers
-  // its range with whole bars.
   const last = barOf(live ? to : Math.max(to - 1, from), bucketMs);
   const barCount = live
     ? Math.ceil((to - from) / bucketMs)

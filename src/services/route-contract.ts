@@ -1,3 +1,10 @@
+/**
+ * What a route's traffic says about its contract, for the Documentation tab:
+ * statuses with their volume and messages, bodies, parameters with examples,
+ * the response a successful call gets.
+ *
+ * @packageDocumentation
+ */
 import type { RequestLogModel } from "@/db";
 import type { RequestLogSample } from "@/db/models/request_log.model";
 import type { RequestLog } from "@/db/tables/request_log.table";
@@ -5,10 +12,6 @@ import { normalizeRoutePath } from "@/db/tables/routes_statistics.table";
 import { MS_PER_DAY } from "@/types";
 import type { RouteInspection } from "./introspection";
 import { exactQuantile } from "./statistics-utils";
-
-// What a route's traffic says about its contract, for the Documentation tab:
-// statuses with their volume and messages, bodies, parameters with examples,
-// the response a successful call gets.
 
 /** A field seen in the logged bodies of a route. */
 export interface InferredField {
@@ -200,7 +203,7 @@ function exampleResponse(log: RequestLog | undefined): ObservedResponse | null {
   };
 }
 
-function responseShape(
+function responseFieldsOf(
   logs: RequestLog[],
 ): Pick<ObservedContract, "responseKind" | "responseFields"> {
   const bodies = logs.map((log) => parseJson(log.responseBody));
@@ -258,7 +261,6 @@ export async function loadContractTraffic(
   now: Date = new Date(),
 ): Promise<ContractTraffic> {
   const since = new Date(now.getTime() - CONTRACT_WINDOW_DAYS * MS_PER_DAY);
-  // Stored paths are canonical (see `normalizeRoutePath`).
   const filters = {
     method,
     since,
@@ -311,7 +313,7 @@ export function contractOf({
     examplePath: last?.pathParams ?? {},
     exampleQuery: last?.query ?? {},
     exampleResponse: exampleResponse(last),
-    ...responseShape(successful),
+    ...responseFieldsOf(successful),
     latency: latencyOf(samples),
   };
 }
@@ -388,20 +390,21 @@ export function documentParameters(
       .map((segment) => ({ in: "path" as const, name: segment.slice(1) })),
     ...[
       ...new Set([
-        ...inspection.parameters
-          .filter((parameter) => parameter.source === "query" && parameter.name)
-          .map((parameter) => parameter.name as string),
+        ...inspection.parameters.flatMap((parameter) =>
+          parameter.source === "query" && parameter.name
+            ? [parameter.name]
+            : [],
+        ),
         ...queryParams,
       ]),
     ]
       .sort()
       .map((name) => ({ in: "query" as const, name })),
-    ...inspection.parameters
-      .filter((parameter) => parameter.source === "header" && parameter.name)
-      .map((parameter) => ({
-        in: "header" as const,
-        name: parameter.name as string,
-      })),
+    ...inspection.parameters.flatMap((parameter) =>
+      parameter.source === "header" && parameter.name
+        ? [{ in: "header" as const, name: parameter.name }]
+        : [],
+    ),
   ];
   return entries.map((entry) => {
     const source = entry.in === "path" ? "param" : entry.in;

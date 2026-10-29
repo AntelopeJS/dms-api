@@ -100,7 +100,7 @@ function latencyChart() {
     height: "220px",
     xaxisType: "datetime",
     curve: "straight",
-    // Average, Max, p95: three hues apart (info and primary are both cyan).
+    /** Average, Max, p95: three hues apart (info and primary are both cyan). */
     color: ["info", "neutral", "secondary"],
     autoYRange: {},
     legendPosition: "top",
@@ -133,14 +133,20 @@ function chartRow() {
         realtimeTopic: LIVE_REQUESTS_TOPIC,
         valueFormat: "percent",
         valuePrecision: 1,
-        // A rate's change in points, bad when up: the DMS badge would show it
-        // as a relative change, green. The "vs" figure stays (DMS-12).
+        /**
+         * A rate's change in points, bad when up: the DMS badge would show it
+         * as a relative change, green. The "vs" figure stays (DMS-12).
+         */
         showDelta: false,
         showLegend: true,
-        // Names the 4xx and the 5xx lines, which the period legend does not.
+        /**
+         * Names the 4xx and the 5xx lines, which the period legend does not.
+         */
         showSeriesLegend: true,
-        // 4xx and 5xx as a share of each bucket's calls: an incident reads
-        // whatever the volume around it.
+        /**
+         * 4xx and 5xx as a share of each bucket's calls: an incident reads
+         * whatever the volume around it.
+         */
         chart: ChartLine({
           height: "220px",
           xaxisType: "datetime",
@@ -159,18 +165,22 @@ function chartRow() {
         periodScope: PERIOD_SCOPE,
         realtimeTopic: LIVE_REQUESTS_TOPIC,
         valueFormat: "number",
-        // Whole milliseconds: the axis spreads its ticks evenly between the
-        // bounds autoYRange widens to the threshold, fractions otherwise
-        // ("881.664"). The threshold keeps the range wide enough for whole
-        // numbers never to repeat.
+        /**
+         * Whole milliseconds: the axis spreads its ticks evenly between the
+         * bounds autoYRange widens to the threshold, fractions otherwise
+         * ("881.664"). The threshold keeps the range wide enough for whole
+         * numbers never to repeat.
+         */
         valuePrecision: 0,
-        // The average against the period compared with: slower is worse.
+        /** The average against the period compared with: slower is worse. */
         showDelta: true,
         invert: true,
-        // "Period" and "Comparison", the dashed average of the period
-        // compared with, when the toolbar compares.
+        /**
+         * "Period" and "Comparison", the dashed average of the period
+         * compared with, when the toolbar compares.
+         */
         showLegend: true,
-        // Names the Average, Max and p95 lines.
+        /** Names the Average, Max and p95 lines. */
         showSeriesLegend: true,
         chart: latencyChart(),
       }),
@@ -291,18 +301,24 @@ export class RoutesPage extends PageController(
     module: "api",
     category: exploreCategory,
     order: 0,
-    // Direct / Pause over the live feed, each block read at most every 15 s,
-    // every minute over a week or a month.
+    /**
+     * Direct / Pause over the live feed, each block read at most every 15 s,
+     * every minute over a week or a month.
+     */
     live: liveMode(15, 60),
   },
   DefaultLayout(),
 ) {
-  // The toolbar of every monitoring page (`monitoringToolbar`).
+  /** The toolbar of every monitoring page (`monitoringToolbar`). */
   static toolbar = monitoringToolbar({
     leading: { scope: scopeChip() },
     compare: true,
   }).meta({ name: "$api.routes.toolbar", icon: "i-ph-sliders-horizontal" });
 
+  /**
+   * The route list beside the route it selects: its header and its tabs,
+   * shown once the URL names a route that exists.
+   */
   static explorer = apiBlock("SplitLayout", {
     asideWidth: "340px",
     detailUrl: DETAIL_URL,
@@ -314,7 +330,9 @@ export class RoutesPage extends PageController(
         fetchUrl: `${ROUTES_API}/list`,
         queryKey: ROUTE_QUERY_KEY,
         realtimeTopic: LIVE_REQUESTS_TOPIC,
-        // The header below, by its key path: the list scrolls to it on a phone.
+        /**
+         * The header below, by its key path: the list scrolls to it on a phone.
+         */
         detailBlock: "explorer.header",
       }),
       { slot: "aside" },
@@ -374,7 +392,6 @@ export class RoutesPage extends PageController(
           { slot: ROUTE_TABS.tester },
         )
         .meta({ name: "$api.routes.tabs.name", icon: "i-ph-tabs" }),
-      // Shown once the URL names a route that exists.
       { slot: "route" },
     )
     .meta({ name: "$api.routes.explorer", icon: "i-ph-tree-structure" });

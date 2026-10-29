@@ -92,10 +92,10 @@ describe("liveBucketMs", () => {
     expect(resolveBucketMs(`${10 * MS_PER_MINUTE}`, MS_PER_DAY)).toBe(
       10 * MS_PER_MINUTE,
     );
-    // 288 bars: past the cap.
-    expect(resolveBucketMs(`${5 * MS_PER_MINUTE}`, MS_PER_DAY)).toBe(
-      15 * MS_PER_MINUTE,
-    );
+    expect(
+      resolveBucketMs(`${5 * MS_PER_MINUTE}`, MS_PER_DAY),
+      "288 bars: past the cap.",
+    ).toBe(15 * MS_PER_MINUTE);
     expect(resolveBucketMs(`${MS_PER_MINUTE}`, MS_PER_DAY)).toBe(
       15 * MS_PER_MINUTE,
     );
@@ -147,8 +147,10 @@ describe("getLiveTraffic", () => {
     expect(traffic.buckets.at(-1)?.start).toBe(
       Math.floor(NOW.getTime() / MS_PER_MINUTE) * MS_PER_MINUTE,
     );
-    // The first bar starts on the minute after the hour began, as before.
-    expect(traffic.total).toBe(2);
+    expect(
+      traffic.total,
+      "The first bar starts on the minute after the hour began, as before.",
+    ).toBe(2);
   });
 
   it("draws the last 24 hours in 96 bars of 15 minutes", async () => {
@@ -186,12 +188,14 @@ describe("getLiveTraffic", () => {
       expected.filter((row) => row.statusCode >= 500).length,
     );
 
-    // A later tick reads only the last day again, not the 30 before.
     const scans = logs.ranges.length;
     vi.setSystemTime(NOW.getTime() + 10_000);
     await getLiveTraffic(logs, null, query, new Date());
     const fresh = logs.ranges.slice(scans);
-    expect(fresh.length).toBeGreaterThan(0);
+    expect(
+      fresh.length,
+      "A later tick reads only the last day again, not the 30 before.",
+    ).toBeGreaterThan(0);
     for (const [since] of fresh) {
       expect(NOW.getTime() - since).toBeLessThanOrEqual(MS_PER_DAY);
     }

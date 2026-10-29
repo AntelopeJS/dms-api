@@ -1,10 +1,23 @@
 import { expect, it, vi } from 'vitest'
-import frontendModule from '../dms.frontend'
 
-vi.mock('../app/plugins/displays', () => ({ default: () => {} }))
-vi.mock('../app/middleware/defaultRoute', () => ({ default: () => {} }))
+/** Loads the module entry with the DMS's auto-imported helpers it calls on load. */
+async function loadModule() {
+  vi.stubGlobal('defineDmsPlugin', <T>(setup: T) => setup)
+  vi.stubGlobal('defineDmsMiddleware', <T>(handler: T) => handler)
+  const [
+    { default: frontendModule },
+    { default: displays },
+    { default: defaultRoute },
+  ] = await Promise.all([
+    import('../dms.frontend'),
+    import('../app/plugins/displays'),
+    import('../app/middleware/defaultRoute'),
+  ])
+  return { frontendModule, displays, defaultRoute }
+}
 
 it('registers the blocks the backend pages name, and nothing else', async () => {
+  const { frontendModule, displays, defaultRoute } = await loadModule()
   const registerComponent = vi.fn()
   const registerPlugin = vi.fn()
   const registerMiddleware = vi.fn()
@@ -40,10 +53,13 @@ it('registers the blocks the backend pages name, and nothing else', async () => 
   expect(new Set(names).size).toBe(names.length)
   // Universal: the cell displays draw in the server render too.
   expect(registerPlugin).toHaveBeenCalledTimes(1)
-  expect(registerPlugin.mock.calls[0]?.[1]).toEqual({ clientOnly: false })
+  expect(registerPlugin).toHaveBeenCalledWith(displays, { clientOnly: false })
   // One middleware, on every visit: the Routes page opened without a route
   // lands on one, on the server too. The request drawer and its URL are the DMS's.
   expect(registerMiddleware).toHaveBeenCalledTimes(1)
-  expect(registerMiddleware.mock.calls[0]?.[0]).toBe('dms-api-default-route')
-  expect(registerMiddleware.mock.calls[0]?.[2]).toEqual({ global: true })
+  expect(registerMiddleware).toHaveBeenCalledWith(
+    'dms-api-default-route',
+    defaultRoute,
+    { global: true },
+  )
 })

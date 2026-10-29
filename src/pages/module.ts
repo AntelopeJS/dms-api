@@ -23,13 +23,22 @@ const MODULE_ID = "api";
  */
 const LANDING_PAGE = "overview";
 
+/** Whether a parsed `package.json` names its version. */
+function hasVersion(manifest: unknown): manifest is { version: string } {
+  return (
+    typeof manifest === "object" &&
+    manifest !== null &&
+    "version" in manifest &&
+    typeof manifest.version === "string"
+  );
+}
+
 function packageVersion(): string | undefined {
   try {
-    const manifest = readFileSync(
-      path.join(__dirname, "../../package.json"),
-      "utf8",
+    const manifest: unknown = JSON.parse(
+      readFileSync(path.join(__dirname, "../../package.json"), "utf8"),
     );
-    return (JSON.parse(manifest) as { version?: string }).version;
+    return hasVersion(manifest) ? manifest.version : undefined;
   } catch {
     return undefined;
   }

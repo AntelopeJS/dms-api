@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { isObject } from "@/guards";
 
 /**
  * Decorators read back from the compiled source of a controller.
@@ -45,7 +46,11 @@ export interface ControllerDecorators {
 const IDENTIFIER = /^[A-Za-z_$][\w$]*$/;
 const BLOCK_END =
   /^\s*,\s*([A-Za-z_$][\w$]*)(?:\.prototype\s*,\s*"([^"]+)"\s*,\s*(null|void 0))?\s*\)/;
-const OPENERS: Record<string, string> = { "(": ")", "[": "]", "{": "}" };
+const OPENERS = new Map([
+  ["(", ")"],
+  ["[", "]"],
+  ["{", "}"],
+]);
 
 /** Index just past the string literal that starts at `start`. */
 function skipString(text: string, start: number): number {
@@ -67,7 +72,8 @@ function closingOf(text: string, start: number): number {
       index = skipString(text, index);
       continue;
     }
-    if (OPENERS[char]) stack.push(OPENERS[char]);
+    const closer = OPENERS.get(char);
+    if (closer) stack.push(closer);
     else if (char === stack[stack.length - 1]) {
       stack.pop();
       if (stack.length === 0) return index;
@@ -89,7 +95,7 @@ function splitTopLevel(text: string): string[] {
       index = skipString(text, index);
       continue;
     }
-    if (OPENERS[char]) depth += 1;
+    if (OPENERS.has(char)) depth += 1;
     else if (char === ")" || char === "]" || char === "}") depth -= 1;
     else if (char === "," && depth === 0) {
       parts.push(text.slice(from, index).trim());
@@ -109,15 +115,15 @@ function literal(expression: string): string | null {
 
 /**
  * A decorator expression's name and arguments: `(0, mod_1.Parameter)("id")`,
- * `mod_1.Parameter("id")`, `Parameter("id")` or a bare `JSONBody`.
+ * `mod_1.Parameter("id")`, `Parameter("id")` or a bare `JSONBody`. The
+ * argument list is the group that closes on the last character; one opening
+ * the expression is the `(0, mod_1.Name)` sequence, not a call.
  */
 function decoratorCall(
   expression: string,
 ): { name: string; args: string[] } | undefined {
   let callee = expression.trim();
   let args: string[] = [];
-  // The argument list is the group that closes on the last character; one
-  // opening the expression is the `(0, mod_1.Name)` sequence, not a call.
   let start = callee.indexOf("(");
   while (start >= 0 && closingOf(callee, start) !== callee.length - 1) {
     start = callee.indexOf("(", start + 1);
@@ -209,7 +215,7 @@ const parsed = new WeakMap<object, ControllerDecorators | null>();
 
 function exportsOf(exported: unknown): unknown[] {
   if (typeof exported === "function") return [exported];
-  if (typeof exported !== "object" || exported === null) return [];
+  if (!isObject(exported)) return [];
   try {
     return Object.values(exported);
   } catch {
@@ -217,7 +223,10 @@ function exportsOf(exported: unknown): unknown[] {
   }
 }
 
-/** The file of a loaded module that exports `ctor` and defines it. */
+/**
+ * The file of a loaded module that exports `ctor` and defines it. A module
+ * without a readable file (built in, virtual) is not ours.
+ */
 function definingSource(ctor: { name: string }): string | undefined {
   const cache = typeof require === "undefined" ? undefined : require.cache;
   const definition = new RegExp(`\\bclass ${ctor.name}\\b`);
@@ -226,9 +235,7 @@ function definingSource(ctor: { name: string }): string | undefined {
     try {
       const source = readFileSync(loaded.filename, "utf8");
       if (definition.test(source)) return source;
-    } catch {
-      // A module without a readable file (built in, virtual): not ours.
-    }
+    } catch {}
   }
   return undefined;
 }

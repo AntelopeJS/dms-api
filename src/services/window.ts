@@ -44,7 +44,7 @@ const PRESET_SPAN_MS: Record<WindowPreset, number> = {
 };
 
 export function isWindowPreset(value: unknown): value is WindowPreset {
-  return WINDOW_PRESETS.includes(value as WindowPreset);
+  return WINDOW_PRESETS.some((preset) => preset === value);
 }
 
 /**

@@ -1,25 +1,11 @@
 {
   "rules": {
-    "antelopejs/no-comments": 318,
-    "antelopejs/no-constant-value-assertion": 1,
-    "anti-slop/no-known-value-widening": 18,
-    "anti-slop/no-module-mocking": 13,
-    "anti-slop/no-runtime-typeof": 34,
-    "anti-slop/no-shape-in-symbol-names": 5,
-    "anti-slop/no-unknown-parameters": 28,
+    "anti-slop/no-known-value-widening": 5,
+    "anti-slop/no-runtime-typeof": 9,
+    "anti-slop/no-unknown-parameters": 17,
     "anti-slop/no-unknown-returns": 5,
-    "anti-slop/no-unsafe-dictionary-type": 17,
-    "anti-slop/require-safety-comment-for-type-assertion": 86
+    "anti-slop/no-unsafe-dictionary-type": 3,
+    "anti-slop/require-safety-comment-for-type-assertion": 17
   },
-  "oversizeFiles": {
-    "frontend-vue/app/components/blocks/HealthHero.vue": 22560,
-    "frontend-vue/app/components/blocks/RequestDetail.vue": 24082,
-    "frontend-vue/app/components/blocks/RouteDocumentation.vue": 21134,
-    "frontend-vue/app/components/blocks/RouteTester.vue": 61443,
-    "frontend-vue/app/components/blocks/RouteTree.vue": 22123,
-    "frontend-vue/app/utils/testerRequest.ts": 20844,
-    "frontend-vue/i18n/locales/api-en-GB.json": 43585,
-    "frontend-vue/i18n/locales/api-fr-FR.json": 48039,
-    "src/services/request-log/capture.ts": 21038
-  }
+  "oversizeFiles": {}
 }

@@ -1,7 +1,6 @@
 import "./home";
 import "./shop";
-// Evaluated here on purpose, ahead of the named import below.
-// oxlint-disable-next-line import/no-duplicates
+// oxlint-disable-next-line import/no-duplicates -- evaluated here on purpose, ahead of the named import below
 import "./notes";
 
 import { RegisterSchema } from "@antelopejs/interface-database-decorators";

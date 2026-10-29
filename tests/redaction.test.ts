@@ -82,9 +82,12 @@ describe("card numbers", () => {
   });
 
   it("leaves a long numeric id that no card network issues", () => {
-    // Luhn-valid, but no network issues these prefixes at these lengths.
     const ids = ["52345678901234565", "400000000000000002", "2000000000000006"];
-    for (const id of ids) expect(passesLuhn(id)).toBe(true);
+    for (const id of ids)
+      expect(
+        passesLuhn(id),
+        "Luhn-valid, but no network issues these prefixes at these lengths.",
+      ).toBe(true);
     const { value, redacted } = redactValue({
       orderId: ids[0],
       snowflake: ids[1],

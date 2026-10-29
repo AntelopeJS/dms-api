@@ -17,6 +17,7 @@ import {
   getSettingsFormContext,
   SETTINGS_BOUNDS,
   SETTINGS_FIELDS,
+  type SettingsFormContext,
 } from "@/services/settings-form";
 import { configureCategory } from "./module";
 
@@ -30,7 +31,7 @@ function apiInput<T>(name: string, options: T): ComponentInfoSerialized<T> {
 
 const scopeType = new DefaultDataTypes.SelectType({
   display: "cards",
-  // The three scopes side by side, rather than two and one under them.
+  /** The three scopes side by side, rather than two and one under them. */
   columns: 3,
   deselectable: false,
   items: [
@@ -125,7 +126,7 @@ const settingsForm = Form({
           }),
         },
         {
-          // 30, 60 or 90 days: the steps of 30 from 30 to 90.
+          /** 30, 60 or 90 days: the steps of 30 from 30 to 90. */
           id: SETTINGS_FIELDS.statsRetention,
           label: "$api.settings.retention.statistics",
           description: "$api.settings.retention.statistics_description",
@@ -158,9 +159,11 @@ const settingsForm = Form({
           label: "$api.settings.capture.headers",
           description: "$api.settings.capture.headers_description",
           hint: "$api.settings.capture.headers_hint",
-          // The route checks the names: one HTTP does not allow, or one the
-          // capture never stores, comes back as a field error naming it,
-          // which the DMS input shows red.
+          /**
+           * The route checks the names: one HTTP does not allow, or one the
+           * capture never stores, comes back as a field error naming it,
+           * which the DMS input shows red.
+           */
           type: new TagsType(headersInput),
         },
         {
@@ -182,8 +185,10 @@ const settingsForm = Form({
       icon: "i-ph-gauge",
       fields: [
         {
-          // Steps from 50, so round values stay round: a minimum of 1 put
-          // the grid on 1 + 50·k (1000 became 1001).
+          /**
+           * Steps from 50, so round values stay round: a minimum of 1 put
+           * the grid on 1 + 50·k (1000 became 1001).
+           */
           id: SETTINGS_FIELDS.slowThreshold,
           label: "$api.settings.thresholds.slow",
           description: "$api.settings.thresholds.slow_description",
@@ -214,17 +219,13 @@ const settingsForm = Form({
   ],
 }).meta({ name: "$api.settings.form", icon: "i-ph-sliders-horizontal" });
 
-type FieldPatch = Record<string, unknown>;
-
 function patchFields(
   fields: FormFieldOrGroupSerialized[],
-  patches: Record<string, FieldPatch>,
+  patches: SettingsFormContext["patches"],
 ): FormFieldOrGroupSerialized[] {
   return fields.map((field) => {
     const patch = patches[field.id];
-    return patch
-      ? ({ ...field, ...patch } as FormFieldOrGroupSerialized)
-      : field;
+    return patch ? { ...field, ...patch } : field;
   });
 }
 

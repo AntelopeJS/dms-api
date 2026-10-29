@@ -1,6 +1,4 @@
 import { describe, expect, it, vi } from "vitest";
-import type { RequestLogListItem } from "@/db/models/request_log.model";
-import type { RequestLog } from "@/db/tables/request_log.table";
 import {
   filtersFromQuery,
   listRequestLogs,
@@ -77,7 +75,6 @@ describe("filtersFromQuery", () => {
     expect(
       filtersFromQuery({ search: "orders", liveHeldAt: held }, NOW).until,
     ).toEqual(new Date(held));
-    // A range ending earlier, an incident's, keeps its own end.
     expect(
       filtersFromQuery(
         {
@@ -88,6 +85,7 @@ describe("filtersFromQuery", () => {
         },
         NOW,
       ).until,
+      "A range ending earlier, an incident's, keeps its own end.",
     ).toEqual(new Date("2026-10-07T14:00:00.000Z"));
     expect(filtersFromQuery({ liveHeldAt: "soon" }, NOW).until).toBeUndefined();
   });
@@ -186,8 +184,24 @@ describe("status classes", () => {
     ]);
   });
 
-  it("keeps the 3xx out of the 2xx tab", () => {
-    expect(STATUS_CLASS_RANGES.success).toEqual({ min: 200, max: 300 });
+  it("lists in each tab exactly the statuses its label names: no 3xx in the 2xx tab", () => {
+    const inTab = (tab: string, status: number) => {
+      const { statusClass } = filtersFromQuery(
+        { filter_statusClass: `is:${tab}` },
+        NOW,
+      );
+      if (!statusClass) return false;
+      const { min, max } = STATUS_CLASS_RANGES[statusClass];
+      return status >= min && (max === undefined || status < max);
+    };
+    const misplaced = ["2xx", "4xx", "5xx"].flatMap((tab) =>
+      Array.from({ length: 500 }, (_, index) => 100 + index)
+        .filter(
+          (status) => inTab(tab, status) !== (statusClassOf(status) === tab),
+        )
+        .map((status) => `${tab} ${status}`),
+    );
+    expect(misplaced).toEqual([]);
   });
 });
 
@@ -202,7 +216,7 @@ describe("toRow", () => {
       statusCode: 404,
       responseTimeMs: 1500.4,
       errorMessage: "Invoice not found",
-    } as RequestLogListItem);
+    });
     expect(row).toMatchObject({
       route: "GET /api/invoices/:id/pdf",
       path: "/api/invoices/INV-1/pdf",
@@ -226,7 +240,7 @@ describe("toRow", () => {
         rawPath: "/api/orders",
         statusCode: 413,
         responseTimeMs,
-      } as RequestLogListItem).responseTimeMs;
+      }).responseTimeMs;
     expect(row(0.2802)).toBe(0.28);
     expect(row(0.0004)).toBe(0.01);
     expect(row(1.4)).toBe(1);
@@ -248,7 +262,7 @@ describe("toRow, unmeasured and Tester requests", () => {
     const row = toRow({
       _id: "req_2",
       timestamp: NOW,
-      method: "HEAD" as RequestLog["method"],
+      method: "HEAD",
       routeMethod: "GET",
       uri: "/api/orders",
       rawPath: "/api/orders",
@@ -256,7 +270,7 @@ describe("toRow, unmeasured and Tester requests", () => {
       responseTimeMs: null,
       source: "tester",
       requestId: "6f1c",
-    } as RequestLogListItem);
+    });
     expect(row).toMatchObject({
       route: "GET /api/orders",
       responseTimeMs: null,
@@ -265,7 +279,7 @@ describe("toRow, unmeasured and Tester requests", () => {
       errorTone: null,
       source: "tester",
       requestId: "6f1c",
-      // The status pill's tone, by its class.
+      /** The status pill's tone, by its class. */
       statusTone: "warning",
     });
   });
@@ -412,7 +426,15 @@ describe("getRouteLatency", () => {
       ),
       rollupDay(today, [1200]),
     ];
-    const getByRoute = vi.fn(() => Promise.resolve({ statistics } as never));
+    const getByRoute = vi.fn(() =>
+      Promise.resolve({
+        _id: "GET:/api/latency-a",
+        method: "GET",
+        uri: "/api/latency-a",
+        statistics,
+        revision: "r1",
+      }),
+    );
     const list = vi.fn(() => Promise.resolve({ results: [], total: 2 }));
     const latency = await getRouteLatency(
       { stats: { getByRoute }, logs: { list } },
@@ -422,8 +444,10 @@ describe("getRouteLatency", () => {
     );
     expect(latency?.windowDays).toBe(7);
     expect(latency?.slow).toBe(2);
-    // 19 calls of 20 ms and one of 1.2 s: the older day is left out.
-    expect(latency?.p50).toBeGreaterThanOrEqual(20);
+    expect(
+      latency?.p50,
+      "19 calls of 20 ms and one of 1.2 s: the older day is left out.",
+    ).toBeGreaterThanOrEqual(20);
     expect(latency?.p50).toBeLessThan(25);
     expect(latency?.p95).toBeLessThanOrEqual(25);
     expect(getByRoute).toHaveBeenCalledWith("GET", "/api/latency-a");

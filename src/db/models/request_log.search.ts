@@ -9,7 +9,7 @@ export function escapeRegex(input: string): string {
 }
 
 /** Shape of a request id (a UUID), hex digit by hex digit. */
-const UUID_SHAPE = "hhhhhhhh-hhhh-hhhh-hhhh-hhhhhhhhhhhh";
+const UUID_LAYOUT = "hhhhhhhh-hhhh-hhhh-hhhh-hhhhhhhhhhhh";
 /** Shortest id prefix searched as an id: the 8 digits the table shows. */
 const MIN_ID_PREFIX = 8;
 
@@ -20,13 +20,13 @@ const MIN_ID_PREFIX = 8;
  */
 export function requestIdPrefix(search: string): string | undefined {
   const value = search.trim().toLowerCase();
-  if (value.length < MIN_ID_PREFIX || value.length > UUID_SHAPE.length) {
+  if (value.length < MIN_ID_PREFIX || value.length > UUID_LAYOUT.length) {
     return undefined;
   }
   for (let index = 0; index < value.length; index++) {
     const char = value[index];
     const fits =
-      UUID_SHAPE[index] === "-" ? char === "-" : /[0-9a-f]/.test(char);
+      UUID_LAYOUT[index] === "-" ? char === "-" : /[0-9a-f]/.test(char);
     if (!fits) return undefined;
   }
   return value;

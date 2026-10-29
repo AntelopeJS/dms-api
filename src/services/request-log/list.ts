@@ -98,7 +98,7 @@ function filterValue(raw: string | undefined): string | undefined {
   return filterValues(raw)[0];
 }
 
-const STATUS_TONES: Record<string, Tone> = {
+const STATUS_TONES: Partial<Record<ReturnType<typeof statusClassOf>, Tone>> = {
   "5xx": "error",
   "4xx": "warning",
   "3xx": "info",
@@ -110,7 +110,7 @@ function statusToneOf(status: number): Tone {
 }
 
 /** `2xx`… of a status, as the tabs and the pills group them. */
-export function statusClassOf(status: number): string {
+export function statusClassOf(status: number) {
   if (status >= 500) return "5xx";
   if (status >= 400) return "4xx";
   if (status >= 300) return "3xx";
@@ -142,7 +142,13 @@ function periodRange(query: SourceQuery, now: Date): Partial<TimeRange> {
   };
 }
 
-/** The log filters a source list query names. */
+/**
+ * The log filters a source list query names. The route filter names the
+ * route's method, not the request's: a HEAD served by the GET handler stays
+ * on its GET route, and `GET /api/orders/` and `GET /api/orders` are one
+ * route. The path filter is read whole after its mode, like the error: a path
+ * may hold a comma. An incident's range narrows the period, never widens it.
+ */
 export function filtersFromQuery(
   query: SourceQuery,
   now: Date = new Date(),
@@ -157,20 +163,15 @@ export function filtersFromQuery(
   if (filterValue(query.filter_slow) === "true") {
     filters.slowThresholdMs = getConfig().requestSlownessThreshold;
   }
-  // The route's method, not the request's: a HEAD served by the GET handler
-  // stays on its GET route. `GET /api/orders/` and `GET /api/orders` are one
-  // route.
   const route = parseRouteRef(filterValue(query.filter_route));
   if (route) {
     filters.routeMethod = route.method;
     filters.uri = normalizeRoutePath(route.path);
   }
-  // Whole after the mode, like the error: a path may hold a comma.
   const rawPath = query.filter_path?.replace(/^[a-z_]+:/, "");
   if (rawPath) filters.rawPath = rawPath;
   const error = query.filter_error?.replace(/^[a-z_]+:/, "");
   if (error) filters.errorMessage = error;
-  // An incident's range narrows the period, never widens it.
   const range = periodRange(query, now);
   const since = latest(range.from, linkedDate(query.filter_since));
   if (since) filters.since = since;

@@ -30,6 +30,7 @@ function getRouteKey(method: string, uri: string): string {
  * Resolve the set of module ids considered "own": modules whose source is the
  * local project rather than a downloaded package. Routes registered by any
  * other module (or with no resolvable module) belong to the `modules` bucket.
+ * A module that vanished between the list and its info is not own.
  */
 export async function getOwnModuleIds(): Promise<Set<string>> {
   const ids = await ListModules();
@@ -39,9 +40,7 @@ export async function getOwnModuleIds(): Promise<Set<string>> {
       try {
         const info = await GetModuleInfo(id);
         if (info.source.type === "local") own.add(id);
-      } catch {
-        // Module vanished between list and info — treat as not own.
-      }
+      } catch {}
     }),
   );
   return own;
@@ -217,7 +216,7 @@ async function runSync(
 
   await Promise.all([
     ...idsToDelete.map((id) => routesModel.delete(id)),
-    ...routesToInsert.map((r) => routesModel.insert(r as Route)),
+    ...routesToInsert.map((r) => routesModel.insert(r)),
     ...routesToUpdate.map((r) => routesModel.update(r)),
   ]);
   await backdateToFirstCall(routesModel, stats);

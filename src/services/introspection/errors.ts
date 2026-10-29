@@ -18,12 +18,14 @@ export interface InferredErrorCode {
   source: "assert" | "HTTPResult";
 }
 
-// After the status, the reason: a string literal (group 2), or the `error`,
-// `message` or `reason` of an object literal (group 3), as in
-// `new HTTPResult(422, { error: "Insufficient stock" })`.
-//
-// `\)?\s*` between the symbol and the opening paren absorbs the
-// `(0, mod_1.assert)(...)` shape TypeScript emits for named imports.
+/**
+ * After the status, the reason: a string literal (group 2), or the `error`,
+ * `message` or `reason` of an object literal (group 3), as in
+ * `new HTTPResult(422, { error: "Insufficient stock" })`.
+ *
+ * `\)?\s*` between the symbol and the opening paren absorbs the
+ * `(0, mod_1.assert)(...)` shape TypeScript emits for named imports.
+ */
 const ASSERT_PATTERN =
   /\bassert\)?\s*\(\s*[^,)]+,\s*(\d{3})(?:\s*,\s*(?:['"`]([^'"`]*)['"`]|\{\s*(?:error|message|reason)\s*:\s*['"`]([^'"`]*)['"`]))?/g;
 

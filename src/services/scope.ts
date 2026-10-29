@@ -14,7 +14,7 @@ export type RouteScope = "own" | "modules" | "all";
 export const ROUTE_SCOPES: RouteScope[] = ["own", "modules", "all"];
 
 export function isRouteScope(value: unknown): value is RouteScope {
-  return ROUTE_SCOPES.includes(value as RouteScope);
+  return ROUTE_SCOPES.some((scope) => scope === value);
 }
 
 /**

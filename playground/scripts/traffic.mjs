@@ -1,6 +1,11 @@
-// Sends the storefront demo (src/shop.ts) a burst of realistic traffic, so
-// the API console has something to show: healthy calls, a slow route, client
-// errors and a failing webhook. Usage: node scripts/traffic.mjs [count]
+/**
+ * Sends the storefront demo (src/shop.ts) a burst of realistic traffic, so
+ * the API console has something to show: healthy calls, a slow route, client
+ * errors and a failing webhook. Usage: node scripts/traffic.mjs [count]
+ *
+ * @packageDocumentation
+ */
+
 const BASE_URL = process.env.API_URL ?? "http://127.0.0.1:5010";
 const COUNT = Number(process.argv[2] ?? 200);
 const CONCURRENCY = 8;

@@ -245,10 +245,7 @@ const calledErrorRate = (bucket: TrafficBucket) =>
  * Share of 4xx and 5xx over the window, and its change against the previous
  * window in points: from 2 % to 3 % is "+1 pt", not "+50 %".
  */
-function errorRateFigures(traffic: RouteTraffic): {
-  value: number;
-  delta: number | null;
-} {
+function errorRateFigures(traffic: RouteTraffic) {
   const value = errorRate(traffic.total);
   const previous = traffic.previous?.requests
     ? errorRate(traffic.previous)
@@ -285,14 +282,15 @@ function p95Detail(total: TrafficBucket, slowThreshold: number) {
  * threshold. Under a comparison each figure says its change against the
  * period compared with and what it was then ("+12 % vs. 1,020 previous
  * period", the error rate in points). A duration never measured (a request
- * turned away before any handler) counts as a call, not as a 0 ms one.
+ * turned away before any handler) counts as a call, not as a 0 ms one. No
+ * call over the period gives no figures, so the StatGroup shows its empty
+ * state.
  */
 export function routeSummary(
   traffic: RouteTraffic,
   slowThreshold: number,
 ): RouteSummaryPayload {
   const { total } = traffic;
-  // No call over the period: no figures, so the StatGroup shows its empty state.
   if (total.requests === 0) return { items: [] };
   const rate = errorRateFigures(traffic).value;
   const latency = p95Detail(total, slowThreshold);
@@ -480,7 +478,6 @@ export function latencyChart(
   slowThresholdMs: number = getConfig().requestSlownessThreshold,
 ): LatencyChartPayload | EmptyChartPayload {
   if (traffic.total.requests === 0) return EMPTY_CHART;
-  // A bucket without a measured duration is a gap, not a 0 ms point.
   const points = (pick: (bucket: TrafficBucket) => number | null) =>
     traffic.buckets.map((bucket) => {
       const value = bucket.timed > 0 ? pick(bucket) : null;

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import {
   bodyErrorMessage,
   dmsModuleOf,
@@ -9,22 +9,18 @@ import {
   resolveRequestRoute,
 } from "@/services/request-log/capture";
 import { captureBody, pickHeaders } from "@/services/request-log/util";
+import { registerRoutes, routeHandler } from "./helpers/routes";
 
-const handlers = vi.hoisted(() => [
-  { method: "get", location: "/api/orders/" },
-  { method: "post", location: "/api/orders/" },
-  { method: "get", location: "/api/orders/:id" },
-  { method: "any", location: "/webhooks/:provider" },
-]);
+let ids: string[] = [];
 
-vi.mock("@antelopejs/interface-api", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@antelopejs/interface-api")>()),
-  getRegisteredRouteHandlers: () =>
-    handlers.map((handler, index) => ({
-      id: String(index),
-      handler: { mode: "handler", ...handler },
-    })),
-}));
+beforeAll(() => {
+  ids = registerRoutes(
+    routeHandler("get", "/api/orders/"),
+    routeHandler("post", "/api/orders/"),
+    routeHandler("get", "/api/orders/:id"),
+    routeHandler("any", "/webhooks/:provider"),
+  );
+});
 
 describe("bodyErrorMessage", () => {
   it("reads `error` or `message` from a body object or its JSON", () => {
@@ -47,7 +43,7 @@ describe("resolveRequestRoute", () => {
     expect(resolveRequestRoute("GET", "/api/orders")).toMatchObject({
       uri: "/api/orders",
       routeMethod: undefined,
-      matched: { id: "0" },
+      matched: { id: ids[0] },
     });
   });
 
@@ -56,7 +52,7 @@ describe("resolveRequestRoute", () => {
       method: "HEAD",
       routeMethod: "GET",
       uri: "/api/orders/:id",
-      matched: { id: "2" },
+      matched: { id: ids[2] },
     });
   });
 
@@ -232,15 +228,17 @@ describe("captureBody", () => {
       body: '{"sku',
       truncated: true,
       redacted: 0,
-      // The whole body's bytes, for "5 B of 14 B".
+      /** The whole body's bytes, for "5 B of 14 B". */
       size: 14,
     });
   });
 
   it("cuts a multi-byte body at the limit in bytes, between characters", () => {
-    // `{"n":"` is 6 bytes, each "é" 2: 9 bytes end inside the second one.
     const captured = captureBody('{"n":"ééééé"}', "application/json", 9);
-    expect(captured.body).toBe('{"n":"é');
+    expect(
+      captured.body,
+      '`{"n":"` is 6 bytes, each "é" 2: 9 bytes end inside the second one.',
+    ).toBe('{"n":"é');
     expect(Buffer.byteLength(captured.body ?? "")).toBeLessThanOrEqual(9);
     expect(captured).toMatchObject({ truncated: true, size: 18 });
   });

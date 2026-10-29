@@ -37,7 +37,11 @@ import {
   toSettingsUpdate,
   validateSettings,
 } from "@/services/settings-form";
-import { CRITICAL_ERROR_RATE, ELEVATED_ERROR_RATE } from "@/types";
+import {
+  CRITICAL_ERROR_RATE,
+  ELEVATED_ERROR_RATE,
+  type JsonBody,
+} from "@/types";
 
 const HTTP_BAD_REQUEST = 400;
 
@@ -55,8 +59,8 @@ function settingsValues() {
   };
 }
 
-function isRetentionField(value: unknown): value is RetentionField {
-  return RETENTION_FIELDS.includes(value as RetentionField);
+function isRetentionField(value: string): value is RetentionField {
+  return RETENTION_FIELDS.some((field) => field === value);
 }
 
 /**
@@ -75,7 +79,7 @@ export class SettingsController extends Controller("/api/monitoring/settings") {
   @Post("")
   async submitSettings(
     @AuthUserWithPermission(SettingsPage.form) _user: User,
-    @JSONBody() body: unknown,
+    @JSONBody() body: JsonBody,
   ) {
     const result = validateSettings(body, isSensitiveHeader);
     if (!result.ok) throw new HTTPResult(HTTP_BAD_REQUEST, result.error);

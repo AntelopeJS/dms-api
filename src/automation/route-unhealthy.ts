@@ -68,6 +68,14 @@ export const routeUnhealthyTrigger: TriggerType<
       requestsLast24h: { type: "number" },
     },
   },
+  /**
+   * Polls the watch list every interval and emits a route whose flag changed
+   * to a monitored one. The first poll seeds the baseline without emitting,
+   * so (re)activation does not re-alert for routes that were already
+   * unhealthy. The whole list is read (Infinity): transitions are tracked
+   * here, never a truncated top-N. A route gone from the list recovered: it is
+   * forgotten, so a relapse fires. A failing poll never kills the interval.
+   */
   async activate(config, emit) {
     const intervalMs =
       Math.max(
@@ -78,8 +86,6 @@ export const routeUnhealthyTrigger: TriggerType<
       config.flags?.length ? config.flags : DEFAULT_FLAGS,
     );
     const previousFlags = new Map<string, Flag>();
-    // The first poll seeds the baseline without emitting, so (re)activation
-    // does not re-alert for routes that were already unhealthy.
     let seeded = false;
     let polling = false;
     const handle: RouteUnhealthyHandle = {
@@ -92,7 +98,6 @@ export const routeUnhealthyTrigger: TriggerType<
       polling = true;
       try {
         const keys = await activeScopeKeys();
-        // Infinity: transitions are tracked here, never a truncated top-N.
         const items = await getWatchList(
           GetModel(RequestLogModel),
           Number.POSITIVE_INFINITY,
@@ -112,13 +117,11 @@ export const routeUnhealthyTrigger: TriggerType<
             emit(item);
           }
         }
-        // Routes gone from the list recovered; forget them so a relapse fires.
         for (const key of previousFlags.keys()) {
           if (!seen.has(key)) previousFlags.delete(key);
         }
         seeded = true;
       } catch (err) {
-        // Never let a failing poll kill the interval.
         Logging.Error("[dms-api] route-unhealthy poll failed:", err);
       } finally {
         polling = false;
