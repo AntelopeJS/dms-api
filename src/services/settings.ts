@@ -145,6 +145,11 @@ function buildNextSettings(
   };
 }
 
+/**
+ * Writes `next` over the settings row. Without a row it reads the singleton
+ * again before inserting, to guard against a concurrent first save that would
+ * create a duplicate singleton row.
+ */
 async function persistSettings(
   model: ApiSettingsModel,
   next: SettingsDocument,
@@ -155,8 +160,6 @@ async function persistSettings(
     await model.update(existing);
     return;
   }
-  // Re-fetch to guard against a concurrent first-save race that would
-  // create a duplicate singleton row.
   const raceCheck = await model.getSingleton();
   if (raceCheck) {
     Object.assign(raceCheck, next);

@@ -42,11 +42,11 @@ class FakeStatisticsModel implements RouteStatisticsStore {
     return [...this.rows.values()].map((row) => structuredClone(row));
   }
 
+  /** The writer inserts one complete row at a time. */
   async insert(
     obj: Parameters<RouteStatisticsStore["insert"]>[0],
   ): Promise<string[]> {
     await tick();
-    // The writer inserts one complete row at a time.
     const doc = structuredClone(obj) as RouteStatistics;
     if (this.rows.has(doc._id)) throw new Error("E11000 duplicate key error");
     this.rows.set(doc._id, doc);
@@ -120,7 +120,6 @@ describe("addRequestStatistics", () => {
     const model = new FakeStatisticsModel();
     await addRequestStatistics(model, request());
     const writes: Promise<void>[] = [];
-    // Three waves, each landing while the previous one is being written.
     for (let wave = 0; wave < 3; wave++) {
       for (let i = 0; i < 10; i++) {
         writes.push(addRequestStatistics(model, request(500, 9)));
@@ -130,12 +129,17 @@ describe("addRequestStatistics", () => {
 
     await Promise.all(writes);
 
-    expect(todayOf(model)).toMatchObject({
+    expect(
+      todayOf(model),
+      "Three waves, each landing while the previous one is being written.",
+    ).toMatchObject({
       requestsCount: 31,
       serverErrorsCount: 30,
     });
-    // One write per wave at most, never one per request.
-    expect(model.replaceCalls).toBeLessThanOrEqual(3);
+    expect(
+      model.replaceCalls,
+      "One write per wave at most, never one per request.",
+    ).toBeLessThanOrEqual(3);
   });
 
   it("updates a row written before the revision field existed", async () => {

@@ -109,15 +109,15 @@ function literal(expression: string): string | null {
 
 /**
  * A decorator expression's name and arguments: `(0, mod_1.Parameter)("id")`,
- * `mod_1.Parameter("id")`, `Parameter("id")` or a bare `JSONBody`.
+ * `mod_1.Parameter("id")`, `Parameter("id")` or a bare `JSONBody`. The
+ * argument list is the group that closes on the last character; one opening
+ * the expression is the `(0, mod_1.Name)` sequence, not a call.
  */
 function decoratorCall(
   expression: string,
 ): { name: string; args: string[] } | undefined {
   let callee = expression.trim();
   let args: string[] = [];
-  // The argument list is the group that closes on the last character; one
-  // opening the expression is the `(0, mod_1.Name)` sequence, not a call.
   let start = callee.indexOf("(");
   while (start >= 0 && closingOf(callee, start) !== callee.length - 1) {
     start = callee.indexOf("(", start + 1);
@@ -217,7 +217,10 @@ function exportsOf(exported: unknown): unknown[] {
   }
 }
 
-/** The file of a loaded module that exports `ctor` and defines it. */
+/**
+ * The file of a loaded module that exports `ctor` and defines it. A module
+ * without a readable file (built in, virtual) is not ours.
+ */
 function definingSource(ctor: { name: string }): string | undefined {
   const cache = typeof require === "undefined" ? undefined : require.cache;
   const definition = new RegExp(`\\bclass ${ctor.name}\\b`);
@@ -226,9 +229,7 @@ function definingSource(ctor: { name: string }): string | undefined {
     try {
       const source = readFileSync(loaded.filename, "utf8");
       if (definition.test(source)) return source;
-    } catch {
-      // A module without a readable file (built in, virtual): not ours.
-    }
+    } catch {}
   }
   return undefined;
 }

@@ -1,3 +1,10 @@
+/**
+ * What a route's traffic says about its contract, for the Documentation tab:
+ * statuses with their volume and messages, bodies, parameters with examples,
+ * the response a successful call gets.
+ *
+ * @packageDocumentation
+ */
 import type { RequestLogModel } from "@/db";
 import type { RequestLogSample } from "@/db/models/request_log.model";
 import type { RequestLog } from "@/db/tables/request_log.table";
@@ -5,10 +12,6 @@ import { normalizeRoutePath } from "@/db/tables/routes_statistics.table";
 import { MS_PER_DAY } from "@/types";
 import type { RouteInspection } from "./introspection";
 import { exactQuantile } from "./statistics-utils";
-
-// What a route's traffic says about its contract, for the Documentation tab:
-// statuses with their volume and messages, bodies, parameters with examples,
-// the response a successful call gets.
 
 /** A field seen in the logged bodies of a route. */
 export interface InferredField {
@@ -258,7 +261,6 @@ export async function loadContractTraffic(
   now: Date = new Date(),
 ): Promise<ContractTraffic> {
   const since = new Date(now.getTime() - CONTRACT_WINDOW_DAYS * MS_PER_DAY);
-  // Stored paths are canonical (see `normalizeRoutePath`).
   const filters = {
     method,
     since,

@@ -223,7 +223,10 @@ export interface SanitizedBody {
   redacted: number;
 }
 
-/** Omits unstructured or malformed bodies that cannot be safely key-redacted. */
+/**
+ * Omits unstructured or malformed bodies that cannot be safely key-redacted. A
+ * JSON scalar has no key to redact by: a bare string may be a token.
+ */
 export function sanitizeBody(
   body: unknown,
   contentType: string,
@@ -246,7 +249,6 @@ export function sanitizeBody(
       return { text: value.toString(), redacted };
     }
     const parsed: unknown = typeof text === "string" ? JSON.parse(text) : text;
-    // A JSON scalar has no key to redact by: a bare string may be a token.
     if (parsed === null || typeof parsed !== "object") {
       return { omitted: "not-json", redacted: 0 };
     }

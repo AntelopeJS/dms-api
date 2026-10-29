@@ -227,7 +227,6 @@ describe("authentication", () => {
   });
 
   it("recognises the guard providers, the DMS's and hand-written ones", () => {
-    // interface-auth's CreateAuthDecorator provider, as compiled.
     const internal = {
       CheckAuthentication: (..._args: unknown[]) => undefined,
     };
@@ -241,6 +240,7 @@ describe("authentication", () => {
           internal.CheckAuthentication(context.rawRequest, context.rawResponse),
         ),
       ).source,
+      "interface-auth's CreateAuthDecorator provider, as compiled.",
     ).toBe("auth");
     expect(
       probeProvider(provider((ctx) => ctx.rawRequest.headers.authorization))
@@ -320,9 +320,11 @@ describe("error codes from the handler", () => {
         throw new HTTPResult(422, { error: "Insufficient stock" });
       }
     }
-    // What the runtime hands out across modules: unreadable source, same name.
     const callback = new Proxy(OrdersController.prototype.create, {});
-    expect(Function.prototype.toString.call(callback)).toContain("native code");
+    expect(
+      Function.prototype.toString.call(callback),
+      "What the runtime hands out across modules: unreadable source, same name.",
+    ).toContain("native code");
     const method = handlerMethod({
       callback,
       proto: OrdersController.prototype,

@@ -56,9 +56,11 @@ export interface RequestLogRedactions {
 
 @RegisterTable(requestLogTableName, SCHEMA_NAME)
 export class RequestLog extends Table {
-  // Leading field of the `timestamp_id` index, which also serves the plain
-  // `timestamp` range filters (since/until, retention prune): no separate
-  // single-field index.
+  /**
+   * Leading field of the `timestamp_id` index, which also serves the plain
+   * `timestamp` range filters (since/until, retention prune): no separate
+   * single-field index.
+   */
   @Index({ group: REQUEST_LOG_ORDER_INDEX })
   @Field("date")
   declare timestamp: Date;

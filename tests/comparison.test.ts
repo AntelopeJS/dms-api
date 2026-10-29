@@ -181,8 +181,10 @@ describe("comparison texts", () => {
       "previous-period",
     );
     expect(shownComparison(windowFor("none"))).toBeNull();
-    // A compared range past the 30 days of logs is not kept.
-    expect(shownComparison(unkeptWindow())).toBeNull();
+    expect(
+      shownComparison(unkeptWindow()),
+      "A compared range past the 30 days of logs is not kept.",
+    ).toBeNull();
     expect(comparisonSeriesName("previous-period")).toBe(
       "$api.compare.series.previous_period",
     );
@@ -207,10 +209,10 @@ describe("Overview comparisons", () => {
       name: "$api.compare.series.previous_period",
       type: "line",
     });
-    // On the window's own x, two calls an hour then.
-    expect(line?.data.map((point) => point.x)).toEqual(
-      chart.series[0]?.data.map((point) => point.x),
-    );
+    expect(
+      line?.data.map((point) => point.x),
+      "On the window's own x, two calls an hour then.",
+    ).toEqual(chart.series[0]?.data.map((point) => point.x));
     expect(line?.data.filter((point) => point.y === 2)).toHaveLength(24);
   });
 
@@ -261,8 +263,10 @@ describe("Overview comparisons", () => {
         },
       },
     });
-    // No 5xx the day before: "none over the previous period".
-    expect(server?.description).toMatchObject({
+    expect(
+      server?.description,
+      'No 5xx the day before: "none over the previous period".',
+    ).toMatchObject({
       params: { versus: text("compare.from_zero.previous_period") },
     });
     const plain = await getStatusClasses(

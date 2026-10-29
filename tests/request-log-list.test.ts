@@ -77,7 +77,6 @@ describe("filtersFromQuery", () => {
     expect(
       filtersFromQuery({ search: "orders", liveHeldAt: held }, NOW).until,
     ).toEqual(new Date(held));
-    // A range ending earlier, an incident's, keeps its own end.
     expect(
       filtersFromQuery(
         {
@@ -88,6 +87,7 @@ describe("filtersFromQuery", () => {
         },
         NOW,
       ).until,
+      "A range ending earlier, an incident's, keeps its own end.",
     ).toEqual(new Date("2026-10-07T14:00:00.000Z"));
     expect(filtersFromQuery({ liveHeldAt: "soon" }, NOW).until).toBeUndefined();
   });
@@ -281,7 +281,7 @@ describe("toRow, unmeasured and Tester requests", () => {
       errorTone: null,
       source: "tester",
       requestId: "6f1c",
-      // The status pill's tone, by its class.
+      /** The status pill's tone, by its class. */
       statusTone: "warning",
     });
   });
@@ -438,8 +438,10 @@ describe("getRouteLatency", () => {
     );
     expect(latency?.windowDays).toBe(7);
     expect(latency?.slow).toBe(2);
-    // 19 calls of 20 ms and one of 1.2 s: the older day is left out.
-    expect(latency?.p50).toBeGreaterThanOrEqual(20);
+    expect(
+      latency?.p50,
+      "19 calls of 20 ms and one of 1.2 s: the older day is left out.",
+    ).toBeGreaterThanOrEqual(20);
     expect(latency?.p50).toBeLessThan(25);
     expect(latency?.p95).toBeLessThanOrEqual(25);
     expect(getByRoute).toHaveBeenCalledWith("GET", "/api/latency-a");

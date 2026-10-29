@@ -102,11 +102,10 @@ describe("getActivity", () => {
       new Date(NOW - (129.2 - 15) * MS_PER_MINUTE).toISOString(),
     );
     const link = new URL(closed.to ?? "", "http://console");
-    // Whole minutes from the first 5xx to the last, the route's 5xx only:
-    // a linked filter, the page's period left as the user chose it.
-    expect(link.searchParams.get("since")).toBe(
-      new Date(NOW - 131 * MS_PER_MINUTE).toISOString(),
-    );
+    expect(
+      link.searchParams.get("since"),
+      "Whole minutes from the first 5xx to the last, the route's 5xx only: a linked filter, the page's period left as the user chose it.",
+    ).toBe(new Date(NOW - 131 * MS_PER_MINUTE).toISOString());
     expect(link.searchParams.get("until")).toBe(
       new Date(NOW - 129 * MS_PER_MINUTE).toISOString(),
     );

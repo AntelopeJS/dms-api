@@ -228,15 +228,17 @@ describe("captureBody", () => {
       body: '{"sku',
       truncated: true,
       redacted: 0,
-      // The whole body's bytes, for "5 B of 14 B".
+      /** The whole body's bytes, for "5 B of 14 B". */
       size: 14,
     });
   });
 
   it("cuts a multi-byte body at the limit in bytes, between characters", () => {
-    // `{"n":"` is 6 bytes, each "é" 2: 9 bytes end inside the second one.
     const captured = captureBody('{"n":"ééééé"}', "application/json", 9);
-    expect(captured.body).toBe('{"n":"é');
+    expect(
+      captured.body,
+      '`{"n":"` is 6 bytes, each "é" 2: 9 bytes end inside the second one.',
+    ).toBe('{"n":"é');
     expect(Buffer.byteLength(captured.body ?? "")).toBeLessThanOrEqual(9);
     expect(captured).toMatchObject({ truncated: true, size: 18 });
   });

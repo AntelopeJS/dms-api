@@ -78,10 +78,9 @@ describe("OverviewPage", () => {
   });
 
   it("keeps the first row one height while what needs a look loads", () => {
-    // The routes to check fill their cell and scroll inside it: their
-    // wrapped rows, taller than the skeleton's, never grow the row.
     expect(
       child(child(dashboard, "health"), "attention").options,
+      "The routes to check fill their cell and scroll inside it: their wrapped rows, taller than the skeleton's, never grow the row.",
     ).toMatchObject({
       wrap: true,
       fillHeight: true,
@@ -94,8 +93,10 @@ describe("OverviewPage", () => {
     const info = GetMetadata(OverviewPage, PageMetadata).pageInfo as {
       live?: unknown;
     };
-    // One Direct / Pause choice for the module's pages, slower over a week.
-    expect(info.live).toEqual({
+    expect(
+      info.live,
+      "One Direct / Pause choice for the module's pages, slower over a week.",
+    ).toEqual({
       maxRate: 10,
       slowRateAfter: { period: "7d", maxRate: 60 },
       rememberKey: "api",

@@ -187,8 +187,6 @@ describe("the last day, as the clock moves", () => {
     await loadTraffic(m, presetRange("last-24h", pinnedNow()), "hour", null);
     expect(logs.scans).toBe(1);
 
-    // Stored after the first scan: one timestamped just before its end, one
-    // after it.
     const late = (at: number): RequestLogSample => ({
       timestamp: new Date(at),
       method: "GET",
@@ -200,7 +198,10 @@ describe("the last day, as the clock moves", () => {
     vi.setSystemTime(start + 10_000);
     const range = presetRange("last-24h", pinnedNow());
     const buckets = await loadTraffic(m, range, "hour", null);
-    expect(logs.scans).toBe(2);
+    expect(
+      logs.scans,
+      "Stored after the first scan: one timestamped just before its end, one after it.",
+    ).toBe(2);
     expect(logs.lastFilters?.since).toEqual(new Date(start - 30_000));
     expect(sumBuckets(buckets).requests).toBe(
       countIn(rows, range.from, range.to),
@@ -262,10 +263,12 @@ describe("the last day, as the clock moves", () => {
       ).length,
     );
 
-    // A window in the past is scanned whole, and extends nothing.
     const past = presetRange("last-7-days", new Date(start - MS_PER_DAY));
     await loadErrorSamples(logs, past, null, 500);
-    expect(logs.lastFilters?.since).toEqual(past.from);
+    expect(
+      logs.lastFilters?.since,
+      "A window in the past is scanned whole, and extends nothing.",
+    ).toEqual(past.from);
   });
 });
 
@@ -298,9 +301,11 @@ describe("one p95 per route and window", () => {
     for (let ms = 2000; ms <= 2313; ms += 1) {
       histogram[latencyBucketIndex(ms)] += 1;
     }
-    // The bucket [2000, 3000) alone would put it near 2,950 ms.
     const p95 = histogramQuantile(histogram, 0.95, { min: 2000, max: 2313 });
-    expect(p95).toBeGreaterThan(2000);
+    expect(
+      p95,
+      "The bucket [2000, 3000) alone would put it near 2,950 ms.",
+    ).toBeGreaterThan(2000);
     expect(p95).toBeLessThanOrEqual(2313);
     const open = emptyHistogram();
     open[open.length - 1] = 10;

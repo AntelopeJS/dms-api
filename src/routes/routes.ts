@@ -208,7 +208,9 @@ export class RoutesController extends Controller("/api/monitoring/routes") {
       lastCallAt:
         state.lastCallAt ?? (await lastCallBefore(detail.method, detail.path)),
       inScope: !keys || keys.has(scopeRouteKey(detail.method, detail.path)),
-      // The console's own routes are never logged: no Captured tab for them.
+      /**
+       * The console's own routes are never logged: no Captured tab for them.
+       */
       captured: !isInternalTraffic(detail.path),
       requests24h: requests,
       healthWindowMinutes: HEALTH_THRESHOLDS.lookbackMinutes,

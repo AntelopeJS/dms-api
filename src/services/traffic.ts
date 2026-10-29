@@ -215,10 +215,6 @@ export function clientErrorShare(bucket: TrafficBucket): number {
   return bucket.requests > 0 ? bucket.clientErrors / bucket.requests : 0;
 }
 
-// ---------------------------------------------------------------------------
-// Bucketed traffic, per route
-// ---------------------------------------------------------------------------
-
 /** Per-route traffic over a window, every route bucketed on the same starts. */
 export interface WindowTraffic {
   starts: number[];
@@ -312,10 +308,6 @@ function dayProfile(
     PROFILE_TTL_MS,
   );
 }
-
-// ---------------------------------------------------------------------------
-// Calls per minute, over long windows
-// ---------------------------------------------------------------------------
 
 /** The calls of one route in one minute, by outcome. */
 export interface MinuteCount {

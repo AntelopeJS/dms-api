@@ -1,6 +1,5 @@
 {
   "rules": {
-    "antelopejs/no-comments": 318,
     "anti-slop/no-known-value-widening": 18,
     "anti-slop/no-runtime-typeof": 31,
     "anti-slop/no-shape-in-symbol-names": 5,
@@ -16,6 +15,6 @@
     "frontend-vue/app/components/blocks/RouteTester.vue": 61443,
     "frontend-vue/app/components/blocks/RouteTree.vue": 22123,
     "frontend-vue/app/utils/testerRequest.ts": 20844,
-    "src/services/request-log/capture.ts": 21038
+    "src/services/request-log/capture.ts": 20950
   }
 }

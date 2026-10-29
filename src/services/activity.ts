@@ -285,6 +285,8 @@ async function registeredItems(
 /**
  * The incident journal of the last 7 days: one entry per incident (start,
  * end, peak, top error), and the routes registered meanwhile, newest first.
+ * Only the newest incidents can make the journal, however many a trickle of
+ * 5xx made over the week.
  */
 export async function getActivity(
   models: ActivityModels,
@@ -297,8 +299,6 @@ export async function getActivity(
   const range: TimeRange = presetRange(ACTIVITY_WINDOW, pinnedNow(now));
   const at = range.to.getTime();
   const errors = await loadErrorSamples(models.logs, range, keys, 500);
-  // Newest first: only the first ones can make the journal, however many
-  // incidents a trickle of 5xx made over the week.
   const items = [
     ...findIncidents(errors, at).slice(0, ACTIVITY_LIMIT).map(incidentItem),
     ...(await registeredItems(models, keys, range.from)),

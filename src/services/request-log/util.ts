@@ -52,6 +52,10 @@ function isEmptyBody(body: unknown): boolean {
   return Buffer.isBuffer(body) && body.length === 0;
 }
 
+/**
+ * The body to store, redacted and cut at `maxBytes`, or why it is not stored.
+ * JSON and forms only: what the redaction can read by key.
+ */
 export function captureBody(
   body: unknown,
   contentType: string | undefined,
@@ -59,7 +63,6 @@ export function captureBody(
 ): CapturedBody {
   if (isEmptyBody(body)) return omittedBody("empty");
   if (maxBytes <= 0) return omittedBody("disabled");
-  // JSON and forms only: what the redaction can read by key.
   const sanitized = sanitizeBody(body, contentType ?? "");
   if (sanitized.text === undefined) {
     return omittedBody(sanitized.omitted ?? "not-json");
@@ -77,11 +80,13 @@ export function captureBody(
   return { body: text, truncated: false, redacted };
 }
 
-/** The first `maxBytes` bytes of UTF-8 text, without a character cut in two. */
+/**
+ * The first `maxBytes` bytes of UTF-8 text, without a character cut in two: a
+ * continuation byte (10xxxxxx) at the cut belongs to the character before it,
+ * so the cut moves before that character's first byte.
+ */
 function utf8Prefix(bytes: Buffer, maxBytes: number): string {
   let end = maxBytes;
-  // A continuation byte (10xxxxxx) at the cut belongs to the character
-  // before it: cut before that character's first byte.
   while (end > 0 && (bytes[end] & 0xc0) === 0x80) end--;
   return bytes.subarray(0, end).toString("utf8");
 }
@@ -101,6 +106,11 @@ export function queryToRecord(url: URL): {
   return { query, redacted };
 }
 
+/**
+ * The status of a response or a thrown HTTPResult: its `getStatus()`, falling
+ * through to `statusCode` then `status` when that throws or is missing, 200
+ * otherwise.
+ */
 export function extractStatusCode(value: unknown): number {
   if (!value || typeof value !== "object") return HTTP_STATUS_OK;
   const v = value as {
@@ -111,9 +121,7 @@ export function extractStatusCode(value: unknown): number {
   if (typeof v.getStatus === "function") {
     try {
       return v.getStatus();
-    } catch {
-      // fall through
-    }
+    } catch {}
   }
   if (typeof v.statusCode === "number") return v.statusCode;
   if (typeof v.status === "number") return v.status;

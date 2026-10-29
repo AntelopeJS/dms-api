@@ -81,7 +81,7 @@ const REQUEST_COLUMNS: Record<string, TableViewSourceColumn> = {
   responseTimeMs: {
     name: "$api.logs.columns.duration",
     type: new DefaultDataTypes.NumberType(),
-    // "2 149 ms" on every row, orange when slow (`durationTone`).
+    /** "2 149 ms" on every row, orange when slow (`durationTone`). */
     display: new DefaultDisplays.DurationDisplay({
       format: "ms",
       toneField: "durationTone",
@@ -101,21 +101,23 @@ const REQUEST_COLUMNS: Record<string, TableViewSourceColumn> = {
   path: {
     name: "$api.logs.columns.path",
     type: new DefaultDataTypes.StringType(),
-    // "Tester" beside the path of a request the Tester sent.
+    /** "Tester" beside the path of a request the Tester sent. */
     display: new PathDisplay(),
     filterable: false,
     size: 160,
     order: 5,
   },
-  // The message is what a 4xx or a 5xx is about: shown, and searched. Keyed
-  // `message`, not `error`: the table preferences of earlier versions kept
-  // the `error` column hidden, and the DMS keeps a column's visibility once
-  // seen, so the column under a new key shows for everyone. `?error=` needs
-  // no column: the URL filter goes to the route as it is.
+  /**
+   * The message is what a 4xx or a 5xx is about: shown, and searched. Keyed
+   * `message`, not `error`: the table preferences of earlier versions kept
+   * the `error` column hidden, and the DMS keeps a column's visibility once
+   * seen, so the column under a new key shows for everyone. `?error=` needs
+   * no column: the URL filter goes to the route as it is.
+   */
   message: {
     name: "$api.logs.columns.error",
     type: new DefaultDataTypes.StringType(),
-    // In red (`errorTone`), like the error of the request panel.
+    /** In red (`errorTone`), like the error of the request panel. */
     display: new DefaultDisplays.TextDisplay({ toneField: "errorTone" }),
     filterable: false,
     size: 140,
@@ -203,7 +205,7 @@ function requestPanelAction(page: RequestTablePage): CustomRowAction {
  */
 const REQUEST_DRAWER: DrawerTargetOptions = {
   rowTitle: "$api.request.heading",
-  // On by default for a side panel, off for a drawer.
+  /** On by default for a side panel, off for a drawer. */
   deepLink: true,
   notFound: {
     title: "$api.request.not_found_title",
@@ -241,7 +243,9 @@ type RequestTableOptions = Omit<
  * pages, searches, sorts and filters on the server; a row opens its request
  * in a drawer. `?route=`,
  * `?error=` and `?slow=` in the page URL filter it on arrival, so another
- * page can link to "the 5xx of this route".
+ * page can link to "the 5xx of this route". A page's columns come in its
+ * order (status and duration first on a narrow card), the ones it hides
+ * after them.
  */
 export function requestTable(
   options: RequestTableOptions,
@@ -261,8 +265,6 @@ export function requestTable(
         ([key]) => !columns || columns.includes(key) || FILTER_COLUMNS.has(key),
       )
       .map(([key, column]) => {
-        // A page's columns come in its order (status and duration first on
-        // a narrow card), the ones it hides after them.
         const index = columns?.indexOf(key) ?? -1;
         const order = columns
           ? index >= 0
@@ -285,24 +287,26 @@ export function requestTable(
     columns: picked,
     fetchUrl,
     rowIdKey: "_id",
-    // Read again on the live feed, and held while the page is paused ("12
-    // new requests · Show"): the route lists the rows as they stood
-    // (`liveHeldAt`).
-    // A request open holds the table alone, the page staying live; the
-    // request logs also hold it while scrolled down.
+    /**
+     * Read again on the live feed, and held while the page is paused ("12
+     * new requests · Show"): the route lists the rows as they stood
+     * (`liveHeldAt`).
+     * A request open holds the table alone, the page staying live; the
+     * request logs also hold it while scrolled down.
+     */
     realtimeTopic: LIVE_REQUESTS_TOPIC,
     liveHold: liveHold ?? {
       whileRowOpen: true,
       missedLabel: "$api.live_mode.new_requests",
     },
     rowClick: "single",
-    // A `?record=` beyond the rows listed (a link, an older request).
+    /** A `?record=` beyond the rows listed (a link, an older request). */
     fetchRowUrl: `${DETAIL_URLS[page]}/{{row.id}}`,
     capabilities: { search: true, sort: true, paginate: true, filter: true },
-    // The page's period, as its charts read it (`preset`, `from`, `to`).
+    /** The page's period, as its charts read it (`preset`, `from`, `to`). */
     periodScope: PERIOD_SCOPE,
     rowActions: { custom: [requestPanelAction(page)] },
-    // How a link narrows the table: `?route=` sends `filter_route=is:…`.
+    /** How a link narrows the table: `?route=` sends `filter_route=is:…`. */
     queryParamFilters,
   });
 }

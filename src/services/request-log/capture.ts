@@ -277,6 +277,13 @@ function announcesBody(headers: IncomingHttpHeaders): boolean {
   );
 }
 
+/**
+ * The request's kept headers and body. interface-api's ReadBody caches a
+ * pending Promise<Buffer> on `context.body`, typed `unknown`, never the
+ * buffer: it is awaited, as the promise would stringify to "{}". ReadBody
+ * refuses a body over its limit with a 413. Unread by every handler, the body
+ * stays undefined: the stream may never emit `end` after the response.
+ */
 async function captureRequest(
   context: CaptureContext,
   config: DmsApiConfig,
@@ -288,19 +295,10 @@ async function captureRequest(
     config.requestLogCaptureHeaders,
     droppedHeaders,
   );
-  // interface-api's ReadBody caches a pending Promise<Buffer> on
-  // `context.body` (it never swaps in the resolved buffer), so await it —
-  // stringifying the promise itself would capture "{}". Stays undefined when
-  // no handler consumed the body: reading the request stream after the
-  // response is sent isn't safe (it may never emit `end`).
   let raw: unknown;
   try {
-    // Typed on the way in rather than suppressed: interface-api caches a
-    // pending Promise<Buffer> on `context.body`, which its own `unknown` does
-    // not say, and the await is what resolves it.
     raw = await (context.body as Promise<unknown> | undefined);
   } catch (err) {
-    // ReadBody refuses a body over its limit with a 413 HTTPResult.
     const tooLarge = extractStatusCode(err) === PAYLOAD_TOO_LARGE;
     return { headers, body: omittedBody(tooLarge ? "too-large" : "not-read") };
   }
@@ -454,6 +452,12 @@ export function resolveRequestRoute(
   };
 }
 
+/**
+ * Logs a request the API answered. A matched request always has a start: the
+ * capture prefix runs first on every path a handler answers. The Tester's
+ * requests are logged, not counted, or each test would weigh in the health
+ * and the incidents. Live pages hear of it once stored, to read it back.
+ */
 async function persistLog(context: CaptureContext): Promise<void> {
   const config = getConfig();
   const responseTimeMs = elapsedMs(context.__dmsApiCaptureStart);
@@ -466,9 +470,6 @@ async function persistLog(context: CaptureContext): Promise<void> {
   const statusCode = extractStatusCode(context.response);
   const source = requestSource(context.rawRequest.headers);
 
-  // A matched request always has a start: the capture prefix runs first on
-  // every path a handler answers. The Tester's requests are logged but not
-  // counted, or each test would weigh in the health and the incidents.
   if (route.matched && responseTimeMs !== null && !source) {
     recordRouteStatistics(
       route.routeMethod ?? method,
@@ -493,7 +494,6 @@ async function persistLog(context: CaptureContext): Promise<void> {
     droppedHeaders,
   });
   await GetModel(RequestLogModel).insert(log as RequestLog);
-  // Once stored: a page told about it reads it back.
   recordLiveRequest({
     timestamp: log.timestamp,
     statusCode,
@@ -593,6 +593,16 @@ function responseError(
   return message ? { message } : undefined;
 }
 
+/**
+ * What a thrown value says went wrong: an Error's message and stack; a thrown
+ * HTTPResult's body message, its status otherwise; anything else as
+ * `String(err)`, not its JSON form. A thrown HTTPResult is not an Error, so
+ * JSON would serialise its whole own-property graph -- body and headers
+ * included -- into a column this module otherwise fills through an allowlist,
+ * unbounded, and render it to anyone who can open Monitoring. It also throws
+ * on a cycle or a BigInt, where this path has to be total, and prints "{}" for
+ * an object whose message lives in its `toString`.
+ */
 function formatError(
   err: unknown,
 ): { message: string; stack?: string } | undefined {
@@ -600,21 +610,14 @@ function formatError(
   if (err instanceof Error) {
     return { message: err.message, stack: err.stack };
   }
-  // A thrown HTTPResult: its body says what went wrong, its status otherwise.
   if (typeof (err as { getStatus?: unknown }).getStatus === "function") {
     return {
       message:
         bodyErrorMessage(extractBody(err)) ?? `HTTP ${extractStatusCode(err)}`,
     };
   }
-  // `String(err)`, not its JSON form. A thrown HTTPResult is not an Error, so
-  // JSON would serialise its whole own-property graph -- body and headers
-  // included -- into a column this module otherwise fills through an allowlist,
-  // unbounded, and render it to anyone who can open Monitoring. It also throws
-  // on a cycle or a BigInt, where this path has to be total, and prints "{}" for
-  // an object whose message lives in its `toString`.
   try {
-    // oxlint-disable-next-line typescript/no-base-to-string
+    // oxlint-disable-next-line typescript/no-base-to-string -- the string form, not the JSON one (see the TSDoc above)
     return { message: String(err) };
   } catch {
     return { message: "unknown error" };

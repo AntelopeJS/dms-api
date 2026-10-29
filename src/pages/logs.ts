@@ -52,13 +52,15 @@ export class LogsPage extends PageController(
     module: "api",
     category: monitorCategory,
     order: 1,
-    // Direct / Pause over the live feed, each block read at most every 5 s.
+    /** Direct / Pause over the live feed, each block read at most every 5 s. */
     live: liveMode(5),
   },
   DefaultLayout(),
 ) {
-  // The toolbar of every monitoring page (`monitoringToolbar`): the scope,
-  // then the DMS Direct / Pause toggle and the period, with its "All time".
+  /**
+   * The toolbar of every monitoring page (`monitoringToolbar`): the scope,
+   * then the DMS Direct / Pause toggle and the period, with its "All time".
+   */
   static toolbar = monitoringToolbar({
     leading: { scope: scopeChip() },
     allTime: true,
@@ -84,20 +86,22 @@ export class LogsPage extends PageController(
     slowThresholdMs: getConfig().requestSlownessThreshold,
   }));
 
-  // Named like `LOGS_TABLE_KEY`: links put the table's tab under this key.
+  /** Named like `LOGS_TABLE_KEY`: links put the table's tab under this key. */
   static requests = requestTable({
     page: "logs",
     searchPlaceholder: "$api.logs.search",
-    // "/" opens the search, in place of the DMS default ⇧F.
+    /** "/" opens the search, in place of the DMS default ⇧F. */
     searchShortcut: "/",
     pageSize: LOGS_PAGE_SIZE,
     pagination: "loadMore",
     density: "compact",
-    // Held while a request is open, the rows are read further down, a search
-    // narrows them or they are sorted otherwise than newest first: new ones
-    // would push them away or land anywhere. The strip says why ("Table on
-    // hold · search active"), and paused, what came in ("40 new requests ·
-    // 2 in 5xx", the breakdown `useLiveMissedErrors` gives the page).
+    /**
+     * Held while a request is open, the rows are read further down, a search
+     * narrows them or they are sorted otherwise than newest first: new ones
+     * would push them away or land anywhere. The strip says why ("Table on
+     * hold · search active"), and paused, what came in ("40 new requests ·
+     * 2 in 5xx", the breakdown `useLiveMissedErrors` gives the page).
+     */
     liveHold: {
       whileRowOpen: true,
       whileScrolled: true,

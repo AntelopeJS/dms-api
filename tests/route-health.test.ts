@@ -99,9 +99,11 @@ describe("evaluateHealth", () => {
       ...steady("/a", 600, 0, 0.1),
       ...steady("/a", 10, minutesAgo, 0.1, { statusCode: 500 }),
     ];
-    // The burst leaves the 15-minute window 15 minutes after it ended.
     const recovered = evaluateHealth(burst(20), LOOKBACK, SLOW_MS, true);
-    expect(recovered.verdict).toBe("recovered");
+    expect(
+      recovered.verdict,
+      "The burst leaves the 15-minute window 15 minutes after it ended.",
+    ).toBe("recovered");
     expect(recovered.incident?.end).not.toBeNull();
     expect(evaluateHealth(burst(45), LOOKBACK, SLOW_MS, true).verdict).toBe(
       "operational",
@@ -202,8 +204,10 @@ describe("evaluateRoutes and routesNeedingAttention", () => {
     const routes = evaluateRoutes(samples, LOOKBACK, SLOW_MS);
     expect(routes.get("GET:/old")?.state).toBe("recovered");
     expect(routes.get("GET:/fine")?.state).toBe("healthy");
-    // One call is no volume: 100 % of 4xx on it is not a finding.
-    expect(routes.get("GET:/rare")?.state).toBe("healthy");
+    expect(
+      routes.get("GET:/rare")?.state,
+      "One call is no volume: 100 % of 4xx on it is not a finding.",
+    ).toBe("healthy");
     expect(
       routesNeedingAttention(routes.values()).map((route) => route.uri),
     ).toEqual(["/hook", "/old", "/slow", "/client"]);
@@ -233,8 +237,10 @@ describe("a route called a few times an hour", () => {
     const route = recovered.get("GET:/refund");
     expect(route?.state).toBe("recovered");
     expect(route?.verdict).toBe("recovered");
-    // Back the minute the last 5xx left the 15-minute span.
-    expect(route?.incident?.end).toEqual(ago(20 - 15));
+    expect(
+      route?.incident?.end,
+      "Back the minute the last 5xx left the 15-minute span.",
+    ).toEqual(ago(20 - 15));
 
     const healthy = evaluateRoutes(trickleAfterBurst(35), LOOKBACK, SLOW_MS);
     expect(healthy.get("GET:/refund")?.state).toBe("healthy");
@@ -249,8 +255,10 @@ describe("a route called a few times an hour", () => {
     const windows = route?.windows;
     expect(windows?.down.to).toEqual(NOW);
     expect(windows?.down.serverErrors).toBe(60);
-    // Under 20 calls in 5 minutes: both windows reach back for volume.
-    expect(windows?.down.requests).toBeGreaterThanOrEqual(20);
+    expect(
+      windows?.down.requests,
+      "Under 20 calls in 5 minutes: both windows reach back for volume.",
+    ).toBeGreaterThanOrEqual(20);
     expect(windows?.degraded.from.getTime()).toBeLessThanOrEqual(
       windows?.down.from.getTime() ?? 0,
     );

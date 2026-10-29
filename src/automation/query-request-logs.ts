@@ -44,8 +44,10 @@ export const queryRequestLogsAction: ActionType<
       },
       statusMin: { type: "number" },
       statusMax: { type: "number" },
-      // Declared, not silent: the model clamps a page to MAX_LIMIT. Ask for
-      // more rows than that by following `nextCursor`.
+      /**
+       * Declared, not silent: the model clamps a page to MAX_LIMIT. Ask for
+       * more rows than that by following `nextCursor`.
+       */
       limit: { type: "number", default: 50, maximum: REQUEST_LOG_MAX_LIMIT },
     },
   },

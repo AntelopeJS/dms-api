@@ -141,6 +141,11 @@ export function statisticsRetryDelay(attempt: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, Math.random() * ceiling));
 }
 
+/**
+ * Creates the route's rollup from `requests`. False when the row was created
+ * between the read and the insert, which the database reports as a duplicate
+ * key.
+ */
 async function insertRouteStats(
   model: RouteStatisticsStore,
   id: string,
@@ -160,7 +165,6 @@ async function insertRouteStats(
     } as RouteStatistics);
     return true;
   } catch (error) {
-    // Race condition: document was created between get and insert
     if (isDuplicateKeyError(error)) return false;
     throw error;
   }
@@ -216,6 +220,7 @@ const lastWrites = new Map<string, Promise<void>>();
  * burst on a hot route costs a few writes instead of one conflicting attempt
  * per request, which could exhaust their retries and drop requests. The
  * revision guard still settles the races with other instances and the prune.
+ * A batch closes as its write starts: later requests open the next batch.
  */
 export function addRequestStatistics(
   model: RouteStatisticsStore,
@@ -230,7 +235,6 @@ export function addRequestStatistics(
   const requests = [request];
   const previous = lastWrites.get(id) ?? Promise.resolve();
   const written = previous.then(() => {
-    // Closed as its write starts: later requests open the next batch.
     openBatches.delete(id);
     return writeRequestStatistics(model, id, requests);
   });

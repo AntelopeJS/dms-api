@@ -64,8 +64,6 @@ function detailOf(item: { meta?: unknown[] } | undefined) {
 
 describe("getAttention", () => {
   it("gives a failing route's rate over the window its state was judged on", async () => {
-    // A busy day with a few 5xx, under 1 % over 24 h; 3 of the last 15
-    // minutes' 60 calls fail.
     const rows = [
       ...Array.from({ length: 1400 }, (_, index) => call(15.5 + index)),
       ...Array.from({ length: 57 }, (_, index) => call(0.1 + index * 0.25)),
@@ -75,7 +73,10 @@ describe("getAttention", () => {
     ];
     const { items } = await getAttention(modelsOf(rows), null, 8, NOW);
     const [route] = items;
-    expect(route?.state).toBe("failing");
+    expect(
+      route?.state,
+      "A busy day with a few 5xx, under 1 % over 24 h; 3 of the last 15 minutes' 60 calls fail.",
+    ).toBe("failing");
     expect(route?.metrics.serverErrorRate).toBe(0.2);
     expect(route?.stateWindow).toMatchObject({
       minutes: 15,
@@ -83,8 +84,10 @@ describe("getAttention", () => {
       serverErrors: 3,
       serverErrorRate: 5,
     });
-    // The feed says it in the reader's language: rate, window and calls.
-    expect(detailOf(route)).toEqual({
+    expect(
+      detailOf(route),
+      "The feed says it in the reader's language: rate, window and calls.",
+    ).toEqual({
       key: "api.overview.attention.window_detail",
       params: {
         calls: { type: "count", value: 60 },
@@ -93,8 +96,10 @@ describe("getAttention", () => {
         serverErrors: { type: "number", value: 3 },
       },
     });
-    // Its top error on the feed's third line, not among the details.
-    expect(route?.detail).toEqual({
+    expect(
+      route?.detail,
+      "Its top error on the feed's third line, not among the details.",
+    ).toEqual({
       key: "api.overview.attention.top_status",
       params: { status: "500", count: { type: "number", value: 3 } },
     });
@@ -102,7 +107,6 @@ describe("getAttention", () => {
   });
 
   it("gives a recovered route its last 5xx, the burst left behind", async () => {
-    // A burst of 5xx on a route called rarely, 20 minutes ago, then calm.
     const rows = [
       ...Array.from({ length: 30 }, (_, index) => call(20 + index * 0.02, 500)),
       call(10),
@@ -110,7 +114,10 @@ describe("getAttention", () => {
     ];
     const { items } = await getAttention(modelsOf(rows), null, 8, NOW);
     const [route] = items;
-    expect(route?.state).toBe("recovered");
+    expect(
+      route?.state,
+      "A burst of 5xx on a route called rarely, 20 minutes ago, then calm.",
+    ).toBe("recovered");
     const last = new Date(NOW.getTime() - 20 * MS_PER_MINUTE).toISOString();
     expect(route?.lastServerError).toBe(last);
     expect(detailOf(route)).toMatchObject({
@@ -121,8 +128,6 @@ describe("getAttention", () => {
 
   it("puts the registered routes first and marks the stray paths", async () => {
     registerRoutes(routeHandler("post", "/orders"));
-    // A stray path failing outright, a registered route with 4xx only: the
-    // route keeps its place within the cap.
     const rows = [
       ...Array.from({ length: 30 }, (_, index) =>
         call(index * 0.3, 500, "/.env"),
@@ -130,7 +135,10 @@ describe("getAttention", () => {
       ...Array.from({ length: 30 }, (_, index) => call(index * 0.3, 404)),
     ];
     const { items, count } = await getAttention(modelsOf(rows), null, 1, NOW);
-    expect(count).toBe(2);
+    expect(
+      count,
+      "A stray path failing outright, a registered route with 4xx only: the route keeps its place within the cap.",
+    ).toBe(2);
     expect(items.map(({ route, known }) => ({ route, known }))).toEqual([
       { route: "POST /orders", known: true },
     ]);

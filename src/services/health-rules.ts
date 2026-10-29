@@ -99,10 +99,6 @@ export function isSlowShare(slowCalls: number, timed: number): boolean {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Minute-by-minute evaluation
-// ---------------------------------------------------------------------------
-
 const OK = 0;
 const DEGRADED = 1;
 const DOWN = 2;
@@ -169,7 +165,8 @@ function between(sums: number[], from: number, to: number): number {
 
 /**
  * First minute of the window ending at minute `at`: `span` minutes back,
- * then further until it holds `minRequests` calls, never before `floor`.
+ * then further until it holds `minRequests` calls, never before `floor`: the
+ * latest start that holds enough calls, found by binary search.
  */
 function windowStart(
   series: MinuteSeries,
@@ -181,7 +178,6 @@ function windowStart(
   if (between(series.requests, from, at) >= HEALTH_THRESHOLDS.minRequests) {
     return from;
   }
-  // Binary search for the latest start that holds enough calls.
   let low = floor;
   let high = from;
   while (low < high) {
@@ -307,7 +303,6 @@ export function evaluateHealth(
   const last = series.minutes - 1;
   const current = states[last];
   const windows = windowsAt(series, last, lookback.to);
-  // The last run of bad minutes: [runStart, runEnd].
   let runEnd = last;
   while (runEnd >= 0 && states[runEnd] === OK) runEnd--;
   if (runEnd < 0) {
