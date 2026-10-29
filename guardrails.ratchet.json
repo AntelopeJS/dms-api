@@ -8,7 +8,6 @@
     "anti-slop/require-safety-comment-for-type-assertion": 19
   },
   "oversizeFiles": {
-    "frontend-vue/app/components/blocks/RequestDetail.vue": 24082,
     "frontend-vue/app/components/blocks/RouteTester.vue": 61443
   }
 }
