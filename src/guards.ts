@@ -1,3 +1,5 @@
+import type { JsonValue } from "@antelopejs/interface-dms/base/types/json";
+
 /** Whether `value` is a string. */
 export function isString(value: unknown): value is string {
   return typeof value === "string";
@@ -41,5 +43,15 @@ export function hasStatusGetter(
     value !== null &&
     "getStatus" in value &&
     typeof value.getStatus === "function"
+  );
+}
+
+/** Whether `value` is JSON data, checked all the way down: what `JSON.parse` returns. */
+export function isJsonValue(value: unknown): value is JsonValue {
+  if (value === null || isString(value) || isNumber(value)) return true;
+  if (typeof value === "boolean") return true;
+  if (Array.isArray(value)) return value.every((item) => isJsonValue(item));
+  return (
+    isObject(value) && Object.values(value).every((item) => isJsonValue(item))
   );
 }
