@@ -25,6 +25,13 @@ export function isMessageBody(
   return typeof value === "object" && value !== null;
 }
 
+/** An object other than `null`, its `getBody` and `body`, present or not, read as `unknown`. */
+export function isBodyCarrier(
+  value: unknown,
+): value is { getBody?: unknown; body?: unknown } {
+  return typeof value === "object" && value !== null;
+}
+
 /** Whether a thrown value has a `getStatus` method, as an HTTPResult does. */
 export function hasStatusGetter(
   value: unknown,

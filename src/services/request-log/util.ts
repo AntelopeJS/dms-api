@@ -1,7 +1,7 @@
 import type { HTTPResult } from "@antelopejs/interface-api";
 import type { IncomingHttpHeaders } from "node:http";
 import type { RequestLogBodyOmission } from "@/db/tables/request_log.table";
-import { isNumber, isObject } from "@/guards";
+import { isBodyCarrier, isFunction, isNumber, isObject } from "@/guards";
 import { HTTP_STATUS_OK } from "@/types/constants";
 import {
   isSensitiveHeader,
@@ -128,38 +128,29 @@ export function extractStatusCode(value: unknown): number {
 }
 
 export function extractBody(value: unknown): unknown {
-  if (!isObject(value)) return undefined;
-  const v = value as { getBody?: () => unknown; body?: unknown };
-  if (typeof v.getBody === "function") {
+  if (!isBodyCarrier(value)) return undefined;
+  if (isFunction(value.getBody)) {
     try {
-      return v.getBody();
+      return value.getBody();
     } catch {
       return undefined;
     }
   }
-  return v.body;
+  return value.body;
 }
 
 export function extractContentType(value: HTTPResult): string | undefined {
-  if (!isObject(value)) return undefined;
-  if (typeof value.getContentType === "function") {
-    try {
-      return value.getContentType();
-    } catch {
-      return undefined;
-    }
+  try {
+    return value.getContentType();
+  } catch {
+    return undefined;
   }
-  return undefined;
 }
 
 export function extractHeaders(value: HTTPResult): Record<string, string> {
-  if (!isObject(value)) return {};
-  if (typeof value.getHeaders === "function") {
-    try {
-      return value.getHeaders();
-    } catch {
-      return {};
-    }
+  try {
+    return value.getHeaders();
+  } catch {
+    return {};
   }
-  return {};
 }

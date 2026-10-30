@@ -86,14 +86,10 @@ function mergeDayStats(
 /**
  * Check if error is a duplicate key error
  */
-function isDuplicateKeyError(error: unknown): boolean {
-  if (error instanceof Error) {
-    return (
-      error.message.includes("duplicate key") ||
-      error.message.includes("E11000")
-    );
-  }
-  return false;
+function isDuplicateKeyError(error: Error): boolean {
+  return (
+    error.message.includes("duplicate key") || error.message.includes("E11000")
+  );
 }
 
 /**
@@ -166,7 +162,7 @@ async function insertRouteStats(
     });
     return true;
   } catch (error) {
-    if (isDuplicateKeyError(error)) return false;
+    if (error instanceof Error && isDuplicateKeyError(error)) return false;
     throw error;
   }
 }
