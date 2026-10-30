@@ -76,11 +76,10 @@ const WINDOW_QUERY_KEYS = [
 export function windowQueryFrom(
   params: URLSearchParams | Record<string, string | undefined>,
 ): WindowQuery {
-  const read = (key: string) =>
-    params instanceof URLSearchParams ? params.get(key) : params[key];
   const query: WindowQuery = {};
   for (const key of WINDOW_QUERY_KEYS) {
-    const value = read(key);
+    const value =
+      params instanceof URLSearchParams ? params.get(key) : params[key];
     if (value) query[key] = value;
   }
   return query;

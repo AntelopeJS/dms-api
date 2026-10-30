@@ -56,7 +56,7 @@ export function isJsonValue(value: unknown): value is JsonValue {
   if (typeof value === "boolean") return true;
   if (Array.isArray(value)) return value.every((item) => isJsonValue(item));
   if (!isObject(value)) return false;
-  const prototype = Object.getPrototypeOf(value);
+  const prototype: unknown = Object.getPrototypeOf(value);
   if (prototype !== Object.prototype && prototype !== null) return false;
   return Object.values(value).every((item) => isJsonValue(item));
 }
