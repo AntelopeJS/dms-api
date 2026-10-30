@@ -87,9 +87,10 @@ export class RequestLogCapture extends Controller("/") {
 
   @Monitor("any", "/", HandlerPriority.LOWEST)
   capture(@Context() context: CaptureContext) {
-    void persistLog(context).catch((err) => {
-      Logging.Error("[dms-api] request log capture failed:", err);
-    });
+    void logRejection(
+      persistLog(context),
+      "[dms-api] request log capture failed:",
+    );
   }
 }
 
@@ -128,14 +129,26 @@ function recordRouteStatistics(
   statusCode: number,
   responseTimeMs: number,
 ): void {
-  void addRequestStatistics(GetModel(RouteStatisticsModel), {
-    responseTime: responseTimeMs,
-    method,
-    uri,
-    statusCode,
-  }).catch((err) => {
-    Logging.Error("[dms-api] route statistics write failed:", err);
-  });
+  void logRejection(
+    addRequestStatistics(GetModel(RouteStatisticsModel), {
+      responseTime: responseTimeMs,
+      method,
+      uri,
+      statusCode,
+    }),
+    "[dms-api] route statistics write failed:",
+  );
+}
+
+async function logRejection(
+  work: Promise<void>,
+  message: string,
+): Promise<void> {
+  try {
+    await work;
+  } catch (err) {
+    Logging.Error(message, err);
+  }
 }
 
 interface BodyCapture {
