@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
-import { isObject } from "@/guards";
+import type { RouteHandler } from "@antelopejs/interface-api";
+import { isFunction, isObject } from "@/guards";
 
 /**
  * Decorators read back from the compiled source of a controller.
@@ -213,13 +214,15 @@ export function parseControllerDecorators(
 
 const parsed = new WeakMap<object, ControllerDecorators | null>();
 
-function exportsOf(exported: unknown): unknown[] {
-  if (typeof exported === "function") return [exported];
-  if (!isObject(exported)) return [];
+/** Whether a loaded module exports `ctor`: as the module itself, or as one of its exports. */
+function exportsClass(loaded: NodeModule, ctor: Function): boolean {
+  const exported: unknown = loaded.exports;
+  if (isFunction(exported)) return exported === ctor;
+  if (!isObject(exported)) return false;
   try {
-    return Object.values(exported);
+    return Object.values(exported).includes(ctor);
   } catch {
-    return [];
+    return false;
   }
 }
 
@@ -227,11 +230,11 @@ function exportsOf(exported: unknown): unknown[] {
  * The file of a loaded module that exports `ctor` and defines it. A module
  * without a readable file (built in, virtual) is not ours.
  */
-function definingSource(ctor: { name: string }): string | undefined {
+function definingSource(ctor: Function): string | undefined {
   const cache = typeof require === "undefined" ? undefined : require.cache;
   const definition = new RegExp(`\\bclass ${ctor.name}\\b`);
   for (const loaded of Object.values(cache ?? {})) {
-    if (!loaded || !exportsOf(loaded.exports).includes(ctor)) continue;
+    if (!loaded || !exportsClass(loaded, ctor)) continue;
     try {
       const source = readFileSync(loaded.filename, "utf8");
       if (definition.test(source)) return source;
@@ -240,16 +243,24 @@ function definingSource(ctor: { name: string }): string | undefined {
   return undefined;
 }
 
+/** The class a route handler was declared on: its controller prototype's constructor. */
+export function controllerClass(
+  handler: Pick<RouteHandler, "proto">,
+): Function | undefined {
+  const ctor: unknown = handler.proto?.constructor;
+  return isFunction(ctor) ? ctor : undefined;
+}
+
 /**
- * The decorators of the controller whose prototype is `proto`, read once per
- * class. Undefined when the class cannot be traced back to its source.
+ * The decorators of the controller a route handler was declared on, read
+ * once per class. Undefined when the class cannot be traced back to its
+ * source.
  */
 export function controllerDecorators(
-  proto: unknown,
+  handler: Pick<RouteHandler, "proto">,
 ): ControllerDecorators | undefined {
-  const ctor = (proto as { constructor?: unknown } | undefined)?.constructor;
-  if (typeof ctor !== "function" || !IDENTIFIER.test(ctor.name))
-    return undefined;
+  const ctor = controllerClass(handler);
+  if (!ctor || !IDENTIFIER.test(ctor.name)) return undefined;
   if (!parsed.has(ctor)) {
     const source = definingSource(ctor);
     parsed.set(

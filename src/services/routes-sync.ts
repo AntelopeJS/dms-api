@@ -13,13 +13,13 @@ import { MONITORING_API_PREFIX } from "@/types";
 type RegisteredRoute = ReturnType<typeof getRegisteredRoutes>[number];
 
 /** The routes table, as a sync reads and writes it. */
-type RoutesStore = Pick<
+export type RoutesStore = Pick<
   RouteModel,
   "getAll" | "insert" | "update" | "delete" | "setCreatedAt"
 >;
 
 /** The statistics a sync reads the first day a route was called from. */
-type StatisticsSource = Pick<RouteStatisticsModel, "getAll">;
+export type StatisticsSource = Pick<RouteStatisticsModel, "getAll">;
 
 /** `METHOD:path`, canonical: `/api/orders/` and `/api/orders` are one route. */
 function getRouteKey(method: string, uri: string): string {

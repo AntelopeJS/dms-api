@@ -32,7 +32,7 @@ const ASSERT_PATTERN =
 const HTTP_RESULT_PATTERN =
   /\b(?:new\s+)?(?:[A-Za-z_$][\w$]*\.)?HTTPResult\)?\s*\(\s*(\d{3})(?:\s*,\s*(?:['"`]([^'"`]*)['"`]|\{\s*(?:error|message|reason)\s*:\s*['"`]([^'"`]*)['"`]))?/g;
 
-export function probeHandlerErrors(handler: unknown): InferredErrorCode[] {
+export function probeHandlerErrors(handler: Function): InferredErrorCode[] {
   const source = handlerSource(handler);
   if (!source) return [];
 
@@ -65,8 +65,7 @@ export function probeHandlerErrors(handler: unknown): InferredErrorCode[] {
   return [...found.values()].sort((a, b) => a.status - b.status);
 }
 
-function handlerSource(fn: unknown): string {
-  if (typeof fn !== "function") return "";
+function handlerSource(fn: Function): string {
   try {
     return Function.prototype.toString.call(fn);
   } catch {

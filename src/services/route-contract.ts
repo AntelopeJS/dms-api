@@ -5,10 +5,12 @@
  *
  * @packageDocumentation
  */
+import type { JsonValue } from "@antelopejs/interface-dms/base/types/json";
 import type { RequestLogModel } from "@/db";
 import type { RequestLogSample } from "@/db/models/request_log.model";
 import type { RequestLog } from "@/db/tables/request_log.table";
 import { normalizeRoutePath } from "@/db/tables/routes_statistics.table";
+import { isJsonValue } from "@/guards";
 import { MS_PER_DAY } from "@/types";
 import type { RouteInspection } from "./introspection";
 import { exactQuantile } from "./statistics-utils";
@@ -81,16 +83,20 @@ const CONTRACT_SAMPLE = 200;
 export const RESPONSE_EXAMPLE_CHARS = 16_384;
 const STATUS_MESSAGES = 10;
 
-function parseJson(text: string | undefined): unknown {
+/** A JSON object, as a parsed body holds it. */
+type JsonObject = { [key: string]: JsonValue };
+
+function parseJson(text: string | undefined): JsonValue | undefined {
   if (!text) return undefined;
   try {
-    return JSON.parse(text);
+    const parsed: unknown = JSON.parse(text);
+    return isJsonValue(parsed) ? parsed : undefined;
   } catch {
     return undefined;
   }
 }
 
-function typeName(value: unknown): string {
+function typeName(value: JsonValue): string {
   if (value === null) return "null";
   if (Array.isArray(value)) return "array";
   return typeof value;
@@ -103,12 +109,10 @@ function isScalar(value: unknown): value is string | number | boolean | null {
 }
 
 /** The fields of `bodies`, most recent first, with their types and an example. */
-export function inferBodyFields(
-  bodies: Record<string, unknown>[],
-): InferredField[] {
+export function inferBodyFields(bodies: JsonObject[]): InferredField[] {
   const fields = new Map<
     string,
-    { types: Set<string>; seen: number; example: unknown }
+    { types: Set<string>; seen: number; example: JsonValue }
   >();
   for (const body of bodies) {
     for (const [name, value] of Object.entries(body)) {
@@ -133,7 +137,7 @@ export function inferBodyFields(
   });
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+function isRecord(value: JsonValue | undefined): value is JsonObject {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 

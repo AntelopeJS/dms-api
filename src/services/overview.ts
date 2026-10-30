@@ -39,6 +39,7 @@ import {
   serverErrorShare,
   sumBuckets,
   type TrafficBucket,
+  type TrafficModels,
   windowTraffic,
 } from "./traffic";
 import {
@@ -359,7 +360,7 @@ export async function getHealth(
 
 /** The window's traffic in scope, and the previous period's if compared. */
 export async function scopedWindowTraffic(
-  models: OverviewModels,
+  models: TrafficModels,
   window: TimeWindow,
   keys: ScopeKeys,
 ) {
@@ -413,7 +414,7 @@ function comparisonLine(
  * period compared with still kept, no comparison at all.
  */
 export async function getTrafficChart(
-  models: OverviewModels,
+  models: TrafficModels,
   window: TimeWindow,
   keys: ScopeKeys,
 ): Promise<ChartCardPayload> {
@@ -467,7 +468,7 @@ function shareOrGap(part: number, bucket: TrafficBucket): number | null {
  * height the stacked columns had then.
  */
 export async function getErrorShareChart(
-  models: OverviewModels,
+  models: TrafficModels,
   window: TimeWindow,
   keys: ScopeKeys,
 ): Promise<ChartCardPayload> {

@@ -16,7 +16,6 @@ import {
 } from "./comparison";
 import { count, percent, text } from "./composed-text";
 import { logsLink, testerLink } from "./links";
-import type { CatalogModels } from "./route-catalog";
 import { computeRouteHealth } from "./route-health";
 import { scopeRouteKey } from "./scope";
 import {
@@ -27,6 +26,7 @@ import {
   p95Latency,
   sumBuckets,
   type TrafficBucket,
+  type TrafficModels,
   windowTraffic,
 } from "./traffic";
 import {
@@ -129,7 +129,7 @@ export interface RouteTraffic {
  * saying it is gone, rather than an error each.
  */
 export async function loadRouteTraffic(
-  models: CatalogModels,
+  models: TrafficModels,
   route: RouteKey | undefined,
   window: TimeWindow,
 ): Promise<RouteTraffic> {
@@ -527,7 +527,7 @@ export function latencyChart(
  * count of a pruned period would read "none").
  */
 async function previousErrorCounts(
-  models: CatalogModels,
+  models: TrafficModels,
   window: TimeWindow,
   key: string,
 ): Promise<Map<string, number> | null> {
@@ -554,7 +554,7 @@ function errorId(group: { status: number; message: string | null }): string {
  * 4 previous period").
  */
 export async function routeTopErrors(
-  models: CatalogModels,
+  models: TrafficModels,
   route: RouteKey | undefined,
   window: TimeWindow,
   ref: string,
