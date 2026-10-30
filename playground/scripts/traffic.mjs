@@ -20,6 +20,7 @@ const order = () => ({
   notes: null,
 });
 
+/** @type {Array<[number, () => [string, string, object?]]>} */
 const CALLS = [
   [30, () => ["GET", "/api/orders"]],
   [20, () => ["POST", "/api/orders", order()]],
@@ -81,6 +82,7 @@ async function send() {
   return response.status;
 }
 
+/** @type {Record<string, number>} */
 const statuses = {};
 let sent = 0;
 async function worker() {
