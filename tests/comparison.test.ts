@@ -80,9 +80,6 @@ function fakeModels(): TrafficModels {
   return { logs, stats: { getAll: async () => [] } };
 }
 
-const overviewModels = fakeModels;
-const catalogModels = fakeModels;
-
 function windowFor(comparison: WindowComparison) {
   return resolveWindow({ preset: "last-24h", comparison }, "last-24h", now);
 }
@@ -189,7 +186,7 @@ describe("comparison texts", () => {
 describe("Overview comparisons", () => {
   it("draws the calls of the period before as a dashed line over the traffic columns", async () => {
     const chart = await getTrafficChart(
-      overviewModels(),
+      fakeModels(),
       windowFor("previous-period"),
       null,
     );
@@ -213,7 +210,7 @@ describe("Overview comparisons", () => {
 
   it("draws the error share of the period before as a dashed line, its delta in points", async () => {
     const chart = await getErrorShareChart(
-      overviewModels(),
+      fakeModels(),
       windowFor("previous-period"),
       null,
     );
@@ -231,8 +228,8 @@ describe("Overview comparisons", () => {
   it("drops the series, the delta and the vs figure without a comparison", async () => {
     for (const window of [windowFor("none"), unkeptWindow()]) {
       for (const chart of [
-        await getTrafficChart(overviewModels(), window, null),
-        await getErrorShareChart(overviewModels(), window, null),
+        await getTrafficChart(fakeModels(), window, null),
+        await getErrorShareChart(fakeModels(), window, null),
       ]) {
         expect(chart).not.toHaveProperty("comparisonSeries");
         expect(chart).not.toHaveProperty("previousValue");
@@ -243,7 +240,7 @@ describe("Overview comparisons", () => {
 
   it("says each status class against the period before", async () => {
     const { items } = await getStatusClasses(
-      overviewModels(),
+      fakeModels(),
       windowFor("previous-period"),
       null,
     );
@@ -264,11 +261,7 @@ describe("Overview comparisons", () => {
     ).toMatchObject({
       params: { versus: text("compare.from_zero.previous_period") },
     });
-    const plain = await getStatusClasses(
-      overviewModels(),
-      windowFor("none"),
-      null,
-    );
+    const plain = await getStatusClasses(fakeModels(), windowFor("none"), null);
     expect(plain.items[0]?.description).toMatchObject({
       key: "api.overview.classes.share",
     });
@@ -276,7 +269,7 @@ describe("Overview comparisons", () => {
 
   it("says each slow route's average against the period before", async () => {
     const { items } = await getSlowestRoutes(
-      overviewModels(),
+      fakeModels(),
       windowFor("previous-period"),
       null,
     );
@@ -293,11 +286,7 @@ describe("Overview comparisons", () => {
         },
       },
     });
-    const plain = await getSlowestRoutes(
-      overviewModels(),
-      windowFor("none"),
-      null,
-    );
+    const plain = await getSlowestRoutes(fakeModels(), windowFor("none"), null);
     expect(plain.items[0]?.description).toMatchObject({
       key: "api.overview.slowest.detail",
     });
@@ -308,7 +297,7 @@ describe("Routes comparisons", () => {
   const route = { method: "GET", path: "/a" };
 
   async function trafficFor(comparison: WindowComparison) {
-    return loadRouteTraffic(catalogModels(), route, windowFor(comparison));
+    return loadRouteTraffic(fakeModels(), route, windowFor(comparison));
   }
 
   it("says every figure of the summary against the period before", async () => {
@@ -365,7 +354,7 @@ describe("Routes comparisons", () => {
 
   it("says a compared range no longer kept rather than comparing with zeros", async () => {
     const [requests, latency] = routeSummary(
-      await loadRouteTraffic(catalogModels(), route, unkeptWindow()),
+      await loadRouteTraffic(fakeModels(), route, unkeptWindow()),
       1000,
     ).items;
     expect(requests).toMatchObject({
@@ -421,7 +410,7 @@ describe("Routes top errors comparison", () => {
 
   it("counts each top error against the period before", async () => {
     const { items } = await routeTopErrors(
-      catalogModels(),
+      fakeModels(),
       route,
       windowFor("previous-period"),
       "GET /a",
@@ -432,7 +421,7 @@ describe("Routes top errors comparison", () => {
       params: { versus: text("compare.from_zero.previous_period") },
     });
     const plain = await routeTopErrors(
-      catalogModels(),
+      fakeModels(),
       route,
       windowFor("none"),
       "GET /a",
