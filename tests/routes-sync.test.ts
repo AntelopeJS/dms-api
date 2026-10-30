@@ -14,9 +14,21 @@ import {
   it,
   vi,
 } from "vitest";
+import type { DeepPartial } from "@antelopejs/interface-database-decorators";
 import type { Route } from "@/db/tables/routes.table";
-import { routesStatisticsTableName } from "@/db/tables/routes_statistics.table";
-import { ensureRoutesSynced, syncRoutes } from "@/services/routes-sync";
+import {
+  getRouteStatsKey,
+  routesStatisticsTableName,
+} from "@/db/tables/routes_statistics.table";
+import {
+  ensureRoutesSynced,
+  type RoutesStore,
+  type StatisticsSource,
+  syncRoutes,
+} from "@/services/routes-sync";
+import { isString } from "@/guards";
+import { emptyHistogram } from "@/services/statistics-utils";
+import type { DayStatistics } from "@/types";
 import { serveTable } from "./helpers/database";
 import {
   registerRoutes,
@@ -72,7 +84,7 @@ const SHOP_ROUTES = [
 const DAY = 86_400_000;
 const NOW = Date.now();
 
-class FakeRoutes {
+class FakeRoutes implements RoutesStore {
   rows = new Map<string, Route>();
   private next = 0;
 
@@ -82,17 +94,31 @@ class FakeRoutes {
     );
   }
   insert(route: Partial<Route>) {
+    const { uri, method, module, own, updatedAt } = route;
+    if (
+      uri === undefined ||
+      method === undefined ||
+      module === undefined ||
+      own === undefined ||
+      updatedAt === undefined
+    ) {
+      throw new Error("The sync inserts complete routes.");
+    }
     const _id = `r${this.next++}`;
-    this.rows.set(
+    this.rows.set(_id, {
       _id,
-      Object.assign(structuredClone(route), {
-        _id,
-        createdAt: new Date(NOW),
-      }) as Route,
-    );
+      uri,
+      method,
+      module,
+      own,
+      createdAt: new Date(NOW),
+      updatedAt: new Date(updatedAt),
+    });
     return Promise.resolve([_id]);
   }
-  update(route: Partial<Route>) {
+  update(route: string | DeepPartial<Route>) {
+    if (isString(route))
+      throw new Error("The sync updates a route by its row.");
     const row = route._id ? this.rows.get(route._id) : undefined;
     if (row)
       Object.assign(row, {
@@ -113,25 +139,46 @@ class FakeRoutes {
   }
 }
 
-function stats(rows: Array<{ method: string; uri: string; days: number[] }>) {
+/** A day of one call, all that the sync reads being its `day`. */
+function oneCall(day: number): DayStatistics {
+  return {
+    day,
+    requestsCount: 1,
+    averageResponseTime: 10,
+    minResponseTime: 10,
+    maxResponseTime: 10,
+    totalResponseTime: 10,
+    clientErrorsCount: 0,
+    serverErrorsCount: 0,
+    timedRequestsCount: 1,
+    latencyHistogram: emptyHistogram(),
+  };
+}
+
+function stats(
+  rows: Array<{ method: string; uri: string; days: number[] }>,
+): StatisticsSource {
   return {
     getAll: () =>
       Promise.resolve(
         rows.map((row) => ({
-          ...row,
-          statistics: row.days.map((day) => ({ day })),
+          _id: getRouteStatsKey(row.method, row.uri),
+          method: row.method,
+          uri: row.uri,
+          statistics: row.days.map(oneCall),
+          revision: "r1",
         })),
       ),
-  } as never;
+  };
 }
 
 let routes: FakeRoutes;
 /** The fake, as the sync takes it. */
-let store: Parameters<typeof syncRoutes>[0];
+let store: RoutesStore;
 
 beforeEach(() => {
   routes = new FakeRoutes();
-  store = routes as never;
+  store = routes;
 });
 
 describe("syncRoutes", () => {

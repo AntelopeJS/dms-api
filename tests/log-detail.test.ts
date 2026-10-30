@@ -1,5 +1,6 @@
 import { ImplementInterface } from "@antelopejs/interface-core";
 import { GetApiBaseUrl } from "@antelopejs/interface-dms/api-base-url";
+import { User } from "@antelopejs/interface-dms/auth/db";
 import { beforeAll, describe, expect, it } from "vitest";
 import { requestLogTableName } from "@/db/tables/request_log.table";
 import { LogsController } from "@/routes/logs";
@@ -25,7 +26,7 @@ beforeAll(() =>
 
 describe("a request opened by its id", () => {
   it("holds the path the panel's title reads, as a listed row does", async () => {
-    const detail = await new LogsController().getLog(undefined as never, "r1");
+    const detail = await new LogsController().getLog(new User(), "r1");
     expect(detail).toMatchObject({
       method: "GET",
       path: "/api/orders/42",
