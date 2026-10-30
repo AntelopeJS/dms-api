@@ -12,13 +12,8 @@ import {
   withVersus,
 } from "@/services/comparison";
 import { count, milliseconds, percent, text } from "@/services/composed-text";
-import {
-  getErrorShareChart,
-  getTrafficChart,
-  type OverviewModels,
-} from "@/services/overview";
+import { getErrorShareChart, getTrafficChart } from "@/services/overview";
 import { getSlowestRoutes, getStatusClasses } from "@/services/overview-lists";
-import type { CatalogModels } from "@/services/route-catalog";
 import {
   errorRateChart,
   latencyChart,
@@ -26,7 +21,7 @@ import {
   routeSummary,
   routeTopErrors,
 } from "@/services/route-statistics";
-import { forgetRecentScan } from "@/services/traffic";
+import { forgetRecentScan, type TrafficModels } from "@/services/traffic";
 import {
   pinnedNow,
   resolveWindow,
@@ -80,9 +75,9 @@ function history(now: number): RequestLogSample[] {
 let now: Date;
 let logs: FakeLogs;
 
-/** The models the Overview and Routes read: only the logs hold rows. */
-function fakeModels(): OverviewModels & CatalogModels {
-  return { logs, stats: { getAll: async () => [] }, routes: {} } as never;
+/** The models the traffic reads: only the logs hold rows. */
+function fakeModels(): TrafficModels {
+  return { logs, stats: { getAll: async () => [] } };
 }
 
 const overviewModels = fakeModels;

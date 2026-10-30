@@ -3,7 +3,6 @@ import { shownComparison, versusText, withVersus } from "./comparison";
 import { count, milliseconds, percent, text } from "./composed-text";
 import { logsLink, routeLink, routeRef } from "./links";
 import {
-  type OverviewModels,
   roundPercent,
   scopedWindowTraffic,
   type TopListItemPayload,
@@ -14,6 +13,7 @@ import {
   type ScopeKeys,
   sumBuckets,
   type TrafficBucket,
+  type TrafficModels,
   type WindowTraffic,
   windowTraffic,
 } from "./traffic";
@@ -64,7 +64,7 @@ export interface StatusClassItem extends TopListItemPayload {
  * calls · +8 % vs. 1,020 previous period").
  */
 export async function getStatusClasses(
-  models: OverviewModels,
+  models: TrafficModels,
   window: TimeWindow,
   keys: ScopeKeys,
 ): Promise<{ items: StatusClassItem[]; total: number; window: WindowInfo }> {
@@ -155,7 +155,7 @@ function slowRouteVersus(
  * its average over the period compared with when there is one.
  */
 export async function getSlowestRoutes(
-  models: OverviewModels,
+  models: TrafficModels,
   window: TimeWindow,
   keys: ScopeKeys,
 ): Promise<{ items: SlowRouteItem[]; window: WindowInfo }> {
