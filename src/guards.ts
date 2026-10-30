@@ -8,6 +8,11 @@ export function isNumber(value: unknown): value is number {
   return typeof value === "number";
 }
 
+/** Whether `value` is a function. */
+export function isFunction(value: unknown): value is Function {
+  return typeof value === "function";
+}
+
 /** Whether `value` is an object other than `null`: arrays included, functions not. */
 export function isObject(value: unknown): value is object {
   return typeof value === "object" && value !== null;

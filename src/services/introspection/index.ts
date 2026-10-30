@@ -18,8 +18,10 @@ import {
   type RouteHandler,
   type RouteHandlerMode,
 } from "@antelopejs/interface-api";
+import { isFunction } from "@/guards";
 import { isAuthMiddleware } from "./auth";
 import {
+  controllerClass,
   type ControllerDecorators,
   controllerDecorators,
   type DecoratedParameter,
@@ -296,9 +298,7 @@ function comparePriorityThenMode(
 }
 
 function controllerNameOf(handler: RouteHandler): string | null {
-  const name = (
-    handler.proto as { constructor?: { name?: string } } | undefined
-  )?.constructor?.name;
+  const name = controllerClass(handler)?.name;
   return name && name !== "Object" ? name : null;
 }
 
@@ -309,12 +309,10 @@ function controllerNameOf(handler: RouteHandler): string | null {
  */
 export function handlerMethod(
   handler: Pick<RouteHandler, "callback" | "proto">,
-): unknown {
+): Function {
   const name = handler.callback.name;
-  const method = name
-    ? (handler.proto as Record<string, unknown> | undefined)?.[name]
-    : undefined;
-  return typeof method === "function" ? method : handler.callback;
+  const method: unknown = name ? handler.proto?.[name] : undefined;
+  return isFunction(method) ? method : handler.callback;
 }
 
 function authGuardsOf(
@@ -344,9 +342,7 @@ function authGuardsOf(
 function inspectHandler(id: string, handler: RouteHandler): RouteInspection {
   const isHandler = handler.mode === "handler";
   const callbackName = handler.callback.name || "anonymous";
-  const decorators = isHandler
-    ? controllerDecorators(handler.proto)
-    : undefined;
+  const decorators = isHandler ? controllerDecorators(handler) : undefined;
   const decorated = decorators?.methods[callbackName] ?? [];
   const parameters = handler.parameters.map((param, index) =>
     inspectParameter(
