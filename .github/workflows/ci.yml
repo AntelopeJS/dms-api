@@ -19,7 +19,7 @@ concurrency:
 
 jobs:
   ci:
-    uses: AntelopeJS/.github/.github/workflows/ci-node.yml@v1
+    uses: AntelopeJS/.github/.github/workflows/ci-node.yml@v1-campaign
     with:
       # `pnpm run checks` typechecks without emitting; the build also checks
       # the declaration output that gets published.
