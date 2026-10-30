@@ -32,7 +32,8 @@ describe("bodyErrorMessage", () => {
   });
 
   it("finds nothing in a body without one", () => {
-    expect(bodyErrorMessage({ id: 1 })).toBeUndefined();
+    expect(bodyErrorMessage({})).toBeUndefined();
+    expect(bodyErrorMessage({ message: 1 })).toBeUndefined();
     expect(bodyErrorMessage("<html>")).toBeUndefined();
     expect(bodyErrorMessage(undefined)).toBeUndefined();
   });

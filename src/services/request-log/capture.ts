@@ -19,7 +19,13 @@ import { recordLiveRequest } from "@/services/live-feed";
 import { requestSource } from "@/services/tester-source";
 import { addRequestStatistics } from "@/services/statistics-write";
 import { NS_TO_MS, REQUEST_ID_HEADER, REQUEST_ID_MAX_LENGTH } from "@/types";
-import { hasStatusGetter, isMessageBody, isString } from "@/guards";
+import {
+  hasStatusGetter,
+  isMessageBody,
+  isErrorBody,
+  isString,
+  isTextOrBuffer,
+} from "@/guards";
 import {
   type CapturedBody,
   captureBody,
@@ -193,14 +199,14 @@ async function captureRequest(
 function sentHeaders(
   response: HTTPResult,
   contentType: string | undefined,
-  body: unknown,
+  body: string | Buffer | undefined,
 ) {
   const headers: Record<string, string> = {};
   for (const [name, value] of Object.entries(extractHeaders(response))) {
     headers[name.toLowerCase()] = value;
   }
   if (contentType) headers["content-type"] ??= contentType;
-  if (isString(body) || Buffer.isBuffer(body)) {
+  if (body !== undefined) {
     headers["content-length"] ??= String(Buffer.byteLength(body));
   }
   return headers;
@@ -212,7 +218,11 @@ function captureResponse(
   droppedHeaders: string[],
 ): BodyCapture {
   const body = extractBody(response);
-  const headers = sentHeaders(response, extractContentType(response), body);
+  const headers = sentHeaders(
+    response,
+    extractContentType(response),
+    isTextOrBuffer(body) ? body : undefined,
+  );
   return {
     headers: pickHeaders(
       headers,
@@ -436,8 +446,10 @@ const BODY_MESSAGE_KEYS = ["error", "message"] as const;
  * shape `HTTPResult` bodies and `assert` use. Read from the body object, or
  * from its JSON text.
  */
-export function bodyErrorMessage(body: unknown): string | undefined {
-  let value = body;
+export function bodyErrorMessage(
+  body: string | Buffer | { error?: unknown; message?: unknown } | undefined,
+): string | undefined {
+  let value: unknown = body;
   if (Buffer.isBuffer(value)) value = value.toString("utf8");
   if (isString(value)) {
     try {
@@ -459,7 +471,8 @@ function responseError(
   response: HTTPResult,
 ): { message: string } | undefined {
   if (statusCode < ERROR_STATUS_MIN) return undefined;
-  const message = bodyErrorMessage(extractBody(response));
+  const body = extractBody(response);
+  const message = bodyErrorMessage(isErrorBody(body) ? body : undefined);
   return message ? { message } : undefined;
 }
 
@@ -481,9 +494,11 @@ function formatError(
     return { message: err.message, stack: err.stack };
   }
   if (hasStatusGetter(err)) {
+    const body = extractBody(err);
     return {
       message:
-        bodyErrorMessage(extractBody(err)) ?? `HTTP ${extractStatusCode(err)}`,
+        bodyErrorMessage(isErrorBody(body) ? body : undefined) ??
+        `HTTP ${extractStatusCode(err)}`,
     };
   }
   try {

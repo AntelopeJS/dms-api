@@ -60,3 +60,15 @@ export function isJsonValue(value: unknown): value is JsonValue {
   if (prototype !== Object.prototype && prototype !== null) return false;
   return Object.values(value).every((item) => isJsonValue(item));
 }
+
+/** Whether `value` is a string or a Buffer: a body that is sent as bytes. */
+export function isTextOrBuffer(value: unknown): value is string | Buffer {
+  return typeof value === "string" || Buffer.isBuffer(value);
+}
+
+/** A body that can carry an error message: text, bytes, or an object with `error` or `message`. */
+export function isErrorBody(
+  value: unknown,
+): value is string | Buffer | { error?: unknown; message?: unknown } {
+  return isTextOrBuffer(value) || isMessageBody(value);
+}
