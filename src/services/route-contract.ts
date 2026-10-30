@@ -10,7 +10,7 @@ import type { RequestLogModel } from "@/db";
 import type { RequestLogSample } from "@/db/models/request_log.model";
 import type { RequestLog } from "@/db/tables/request_log.table";
 import { normalizeRoutePath } from "@/db/tables/routes_statistics.table";
-import { isJsonValue } from "@/guards";
+import { isJsonValue, isNumber, isObject, isString } from "@/guards";
 import { MS_PER_DAY } from "@/types";
 import type { RouteInspection } from "./introspection";
 import { exactQuantile } from "./statistics-utils";
@@ -99,7 +99,10 @@ function parseJson(text: string | undefined): JsonValue | undefined {
 function typeName(value: JsonValue): string {
   if (value === null) return "null";
   if (Array.isArray(value)) return "array";
-  return typeof value;
+  if (isString(value)) return "string";
+  if (isNumber(value)) return "number";
+  if (isObject(value)) return "object";
+  return "boolean";
 }
 
 function isScalar(value: unknown): value is string | number | boolean | null {
