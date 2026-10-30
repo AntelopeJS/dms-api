@@ -46,12 +46,17 @@ export function hasStatusGetter(
   );
 }
 
-/** Whether `value` is JSON data, checked all the way down: what `JSON.parse` returns. */
+/**
+ * Whether `value` is JSON data, checked all the way down: what `JSON.parse`
+ * returns. Only arrays and plain objects pass, so a `Date`, a `Map` or a class
+ * instance does not.
+ */
 export function isJsonValue(value: unknown): value is JsonValue {
   if (value === null || isString(value) || isNumber(value)) return true;
   if (typeof value === "boolean") return true;
   if (Array.isArray(value)) return value.every((item) => isJsonValue(item));
-  return (
-    isObject(value) && Object.values(value).every((item) => isJsonValue(item))
-  );
+  if (!isObject(value)) return false;
+  const prototype = Object.getPrototypeOf(value);
+  if (prototype !== Object.prototype && prototype !== null) return false;
+  return Object.values(value).every((item) => isJsonValue(item));
 }
