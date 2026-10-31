@@ -123,6 +123,11 @@ const DECLARED_TYPES: Record<string, InferredType> = {
   Buffer: "buffer",
 };
 
+/** The type a decorated parameter declares by its class name; a string when unknown. */
+export function inferredTypeOf(typeName: string | null): InferredType {
+  return DECLARED_TYPES[typeName ?? ""] ?? "string";
+}
+
 /**
  * What its decorator says about a parameter, over what its provider showed:
  * the stock @Parameter keeps its name in a closure, and a provider crossing a
@@ -151,9 +156,7 @@ function declaredParameter(
     name,
     source,
     multi,
-    inferredType: multi
-      ? "object"
-      : (DECLARED_TYPES[decorated.type ?? ""] ?? "string"),
+    inferredType: multi ? "object" : inferredTypeOf(decorated.type),
   };
 }
 
