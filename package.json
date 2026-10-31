@@ -80,9 +80,14 @@
     "vitest": "^3.2.4"
   },
   "optionalDependencies": {
-    "@antelopejs/interface-dms-automation": ">=0.2.1 <1.0.0"
+    "@antelopejs/interface-dms-automation": "file:.campaign/tgz/antelopejs-interface-dms-automation-1a00d5d.tgz"
   },
   "packageManager": "pnpm@10.6.5",
+  "pnpm": {
+    "overrides": {
+      "@antelopejs/interface-dms-automation": "file:.campaign/tgz/antelopejs-interface-dms-automation-1a00d5d.tgz"
+    }
+  },
   "antelopeJs": {
     "baseUrl": "dist",
     "paths": {
