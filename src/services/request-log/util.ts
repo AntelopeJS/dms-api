@@ -55,11 +55,6 @@ export function omittedBody(reason: RequestLogBodyOmission): CapturedBody {
   return { truncated: false, omitted: reason, redacted: 0 };
 }
 
-function isEmptyBody(body: unknown): boolean {
-  if (body === undefined || body === null || body === "") return true;
-  return Buffer.isBuffer(body) && body.length === 0;
-}
-
 /**
  * The body to store, redacted and cut at `maxBytes`, or why it is not stored.
  * JSON and forms only: what the redaction can read by key.
@@ -69,7 +64,10 @@ export function captureBody(
   contentType: string | undefined,
   maxBytes: number,
 ): CapturedBody {
-  if (isEmptyBody(body)) return omittedBody("empty");
+  if (body === undefined || body === null || body === "") {
+    return omittedBody("empty");
+  }
+  if (Buffer.isBuffer(body) && body.length === 0) return omittedBody("empty");
   if (maxBytes <= 0) return omittedBody("disabled");
   const sanitized = sanitizeBody(body, contentType ?? "");
   if (sanitized.text === undefined) {
