@@ -115,13 +115,18 @@ function isParameterSource(source: string): source is ParameterSource {
   );
 }
 
-const DECLARED_TYPES: Record<string, InferredType> = {
-  String: "string",
-  Number: "number",
-  Boolean: "boolean",
-  Object: "object",
-  Buffer: "buffer",
-};
+const DECLARED_TYPES = new Map<string, InferredType>([
+  ["String", "string"],
+  ["Number", "number"],
+  ["Boolean", "boolean"],
+  ["Object", "object"],
+  ["Buffer", "buffer"],
+]);
+
+/** The type a decorated parameter declares by its class name; a string when unknown. */
+export function inferredTypeOf(typeName: string | null): InferredType {
+  return DECLARED_TYPES.get(typeName ?? "") ?? "string";
+}
 
 /**
  * What its decorator says about a parameter, over what its provider showed:
@@ -151,9 +156,7 @@ function declaredParameter(
     name,
     source,
     multi,
-    inferredType: multi
-      ? "object"
-      : (DECLARED_TYPES[decorated.type ?? ""] ?? "string"),
+    inferredType: multi ? "object" : inferredTypeOf(decorated.type),
   };
 }
 

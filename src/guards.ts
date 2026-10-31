@@ -37,7 +37,7 @@ export function isBodyCarrier(
 /** Whether a thrown value has a `getStatus` method, as an HTTPResult does. */
 export function hasStatusGetter(
   value: unknown,
-): value is { getStatus: unknown } {
+): value is { getStatus: Function } {
   return (
     (typeof value === "object" || typeof value === "function") &&
     value !== null &&

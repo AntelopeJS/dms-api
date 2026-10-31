@@ -37,6 +37,14 @@ describe("filtersFromQuery", () => {
     expect(filters.since).toEqual(new Date(NOW.getTime() - MS_PER_HOUR));
   });
 
+  it("ignores a tab named like an Object member", () => {
+    for (const tab of ["constructor", "toString", "__proto__"]) {
+      expect(
+        filtersFromQuery({ filter_statusClass: `is:${tab}` }),
+      ).not.toHaveProperty("statusClass");
+    }
+  });
+
   it("narrows to a route named `METHOD /path`", () => {
     expect(
       filtersFromQuery({ filter_route: "is:POST /webhooks/stripe" }),
@@ -299,6 +307,22 @@ describe("listRequestLogs", () => {
     expect(model.list).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ limit: 5000 }),
+    );
+  });
+
+  it("sorts by a known key and ignores one named like an Object member", async () => {
+    const model = fakeModel();
+    await listRequestLogs(model, { sortKey: "status" }, null);
+    await listRequestLogs(model, { sortKey: "constructor" }, null);
+    expect(model.list).toHaveBeenNthCalledWith(
+      1,
+      expect.anything(),
+      expect.objectContaining({ sortKey: "statusCode" }),
+    );
+    expect(model.list).toHaveBeenNthCalledWith(
+      2,
+      expect.anything(),
+      expect.objectContaining({ sortKey: undefined }),
     );
   });
 

@@ -1,11 +1,27 @@
 import { randomUUID } from "node:crypto";
-import type { AtomicMutationOutcome } from "@antelopejs/interface-database/atomic";
+import type {
+  AtomicMutation,
+  AtomicMutationOutcome,
+} from "@antelopejs/interface-database/atomic";
 import { BasicDataModel } from "@antelopejs/interface-database-decorators";
 import {
   getRouteStatsKey,
   RouteStatistics,
   routesStatisticsTableName,
 } from "../tables/routes_statistics.table";
+
+/** The write of `doc.statistics`, guarded by the revision `doc` was read with. */
+export function statisticsMutation(
+  doc: RouteStatistics,
+): AtomicMutation<RouteStatistics> {
+  return {
+    type: "update",
+    revisionField: "revision",
+    expectedRevision: doc.revision ?? { kind: "missing" },
+    nextRevision: randomUUID(),
+    patch: { statistics: doc.statistics },
+  };
+}
 
 export class RouteStatisticsModel extends BasicDataModel(
   RouteStatistics,
@@ -31,14 +47,6 @@ export class RouteStatisticsModel extends BasicDataModel(
   async replaceStatistics(
     doc: RouteStatistics,
   ): Promise<AtomicMutationOutcome> {
-    return this.table
-      .atomicMutation(doc._id, {
-        type: "update",
-        revisionField: "revision",
-        expectedRevision: doc.revision,
-        nextRevision: randomUUID(),
-        patch: { statistics: doc.statistics },
-      })
-      .run();
+    return this.table.atomicMutation(doc._id, statisticsMutation(doc)).run();
   }
 }
