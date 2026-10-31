@@ -144,14 +144,17 @@ export class InvoicesController extends Controller("/api/invoices") {
 
 export class WebhooksController extends Controller("/webhooks") {
   /**
-   * Reads the customer's email without checking it: an invoice paid by a
-   * deleted customer makes the handler throw, which is the point.
+   * Fails for an invoice whose customer was deleted: the error traffic the
+   * playground shows.
    */
   @Post("stripe")
   async stripe(@JSONBody() event: StripeEvent) {
     await jitter(15, 40);
-    const customer = event?.data?.object?.customer as { email: string };
-    return { received: true, email: customer.email.toLowerCase() };
+    const email = event?.data?.object?.customer?.email;
+    if (email === undefined) {
+      throw new Error("The invoice's customer was deleted: it has no email");
+    }
+    return { received: true, email: email.toLowerCase() };
   }
 
   @Post("shippo")
