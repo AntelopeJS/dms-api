@@ -1,7 +1,11 @@
 import { randomUUID } from "node:crypto";
-import type { AtomicMutationOutcome } from "@antelopejs/interface-database/atomic";
+import {
+  type AtomicMutationOutcome,
+  ValidateAtomicMutation,
+} from "@antelopejs/interface-database/atomic";
 import type { DeepPartial } from "@antelopejs/interface-database-decorators";
 import { describe, expect, it } from "vitest";
+import { statisticsMutation } from "@/db/models/routes_statistics.model";
 import {
   getRouteStatsKey,
   type RouteStatistics,
@@ -25,7 +29,8 @@ const tick = () => new Promise<void>((resolve) => setImmediate(resolve));
  * In-memory stand-in for the table, with the driver semantics that matter
  * here: every call yields (so concurrent writers interleave between their
  * read and their write), inserts reject duplicate keys, and
- * `replaceStatistics` applies only when the stored revision still matches.
+ * `replaceStatistics` validates the mutation like the driver and applies it
+ * only when the stored revision still matches.
  */
 class FakeStatisticsModel implements RouteStatisticsStore {
   readonly rows = new Map<string, RouteStatistics>();
@@ -58,6 +63,7 @@ class FakeStatisticsModel implements RouteStatisticsStore {
     doc: RouteStatistics,
   ): Promise<AtomicMutationOutcome> {
     this.replaceCalls++;
+    ValidateAtomicMutation(doc._id, statisticsMutation(doc));
     await tick();
     if (this.forcedOutcome) return this.forcedOutcome;
     const stored = this.rows.get(doc._id);
