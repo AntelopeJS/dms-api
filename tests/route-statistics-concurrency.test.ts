@@ -223,7 +223,7 @@ describe("addRequestStatistics", () => {
       method: "GET",
       uri: "/api/items/:id",
       statistics: [dayStats(getTodayTimestamp(), 3)],
-    } as RouteStatistics);
+    });
 
     await addRequestStatistics(model, request());
 

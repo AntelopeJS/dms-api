@@ -17,7 +17,7 @@ export function statisticsMutation(
   return {
     type: "update",
     revisionField: "revision",
-    expectedRevision: doc.revision,
+    expectedRevision: doc.revision ?? { kind: "missing" },
     nextRevision: randomUUID(),
     patch: { statistics: doc.statistics },
   };
