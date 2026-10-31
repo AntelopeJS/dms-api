@@ -1,4 +1,5 @@
-import { isNumber, isObject, isString } from "@/guards";
+import type { JsonValue } from "@antelopejs/interface-dms/base/types/json";
+import { isJsonValue, isNumber, isObject, isString } from "@/guards";
 import { TESTER_SOURCE_HEADER } from "@/types/constants";
 
 const REDACTED = "[REDACTED]";
@@ -156,7 +157,7 @@ class Redactor {
     });
   }
 
-  value(value: unknown, depth = 0): unknown {
+  value(value: JsonValue, depth = 0): JsonValue {
     if (depth >= MAX_REDACTION_DEPTH) {
       this.count++;
       return REDACTED;
@@ -171,7 +172,7 @@ class Redactor {
     }
     if (!isObject(value)) return value;
     return Object.fromEntries(
-      Object.entries(value).map(([key, item]) => {
+      Object.entries(value).map(([key, item]): [string, JsonValue] => {
         if (!isSensitiveKey(key)) return [key, this.value(item, depth + 1)];
         this.count++;
         return [key, REDACTED];
@@ -206,7 +207,7 @@ function redactWith<T>(redact: (redactor: Redactor) => T): Redacted<T> {
  * Copies structured data without retaining values under credential keys, nor
  * card numbers under any key.
  */
-export function redactValue(value: unknown): Redacted<unknown> {
+export function redactValue(value: JsonValue): Redacted<JsonValue> {
   return redactWith((redactor) => redactor.value(value));
 }
 
@@ -226,7 +227,9 @@ export interface SanitizedBody {
 
 /**
  * Omits unstructured or malformed bodies that cannot be safely key-redacted. A
- * JSON scalar has no key to redact by: a bare string may be a token.
+ * JSON scalar has no key to redact by: a bare string may be a token. A body a
+ * handler set as an object is redacted in the JSON form a client receives, so a
+ * `Date` or a `toJSON` instance is stored as it was sent.
  */
 export function sanitizeBody(
   body: unknown,
@@ -248,8 +251,15 @@ export function sanitizeBody(
       const { value, redacted } = redactSearchParams(new URLSearchParams(text));
       return { text: value.toString(), redacted };
     }
-    const parsed: unknown = isString(text) ? JSON.parse(text) : text;
-    if (!isObject(parsed)) {
+    if (!isString(text) && !isObject(text)) {
+      return { omitted: "not-json", redacted: 0 };
+    }
+    const serialised: string | undefined = isString(text)
+      ? text
+      : JSON.stringify(text);
+    const parsed: unknown =
+      serialised === undefined ? undefined : JSON.parse(serialised);
+    if (!isJsonValue(parsed) || !isObject(parsed)) {
       return { omitted: "not-json", redacted: 0 };
     }
     const { value, redacted } = redactValue(parsed);

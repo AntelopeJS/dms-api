@@ -49,16 +49,25 @@ export function hasStatusGetter(
 /**
  * Whether `value` is JSON data, checked all the way down: what `JSON.parse`
  * returns. Only arrays and plain objects pass, so a `Date`, a `Map` or a class
- * instance does not.
+ * instance does not. The walk keeps its own stack, so a document nested deeper
+ * than the call stack allows is still answered.
  */
 export function isJsonValue(value: unknown): value is JsonValue {
-  if (value === null || isString(value) || isNumber(value)) return true;
-  if (typeof value === "boolean") return true;
-  if (Array.isArray(value)) return value.every((item) => isJsonValue(item));
-  if (!isObject(value)) return false;
-  const prototype: unknown = Object.getPrototypeOf(value);
-  if (prototype !== Object.prototype && prototype !== null) return false;
-  return Object.values(value).every((item) => isJsonValue(item));
+  const pending: unknown[] = [value];
+  while (pending.length > 0) {
+    const current = pending.pop();
+    if (current === null || isString(current) || isNumber(current)) continue;
+    if (typeof current === "boolean") continue;
+    if (Array.isArray(current)) {
+      for (const item of current) pending.push(item);
+      continue;
+    }
+    if (!isObject(current)) return false;
+    const prototype: unknown = Object.getPrototypeOf(current);
+    if (prototype !== Object.prototype && prototype !== null) return false;
+    for (const item of Object.values(current)) pending.push(item);
+  }
+  return true;
 }
 
 /** Whether `value` is a string or a Buffer: a body that is sent as bytes. */
