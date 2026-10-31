@@ -61,15 +61,12 @@ pnpm --dir playground traffic     # a few hundred demo requests
 
 <!-- antelopejs-docs-compat:end -->
 
-| Package | Version |
-| --- | --- |
-| `@antelopejs/dms` | `>=0.11.0 <1.0.0` |
-| `@antelopejs/interface-dms` | `>=0.9.0 <1.0.0` |
-| `@antelopejs/dms-frontend` (renderer) | `>=0.9.1 <0.10.0` |
-| API provider | `@antelopejs/api` |
-| Database | an `@antelopejs/interface-database` implementation, such as `@antelopejs/mongodb` |
+The module also needs a DMS backend in a release that implements the `@antelopejs/interface-dms` range above, and the `@antelopejs/dms-frontend` renderer in the range its frontend module declares in `engines["@antelopejs/dms-frontend"]` of `frontend-vue/package.json`; the `ajs dms` CLI refuses to build it with a renderer outside that range. It runs on these providers:
 
-On DMS 0.8, use `@antelopejs/dms-api` 0.3. Upgrading from 0.1? Read the [FAQ](https://dms.antelopejs.com/docs/modules/api/faq#upgrading-from-01).
+- API provider: `@antelopejs/api`.
+- Database: an `@antelopejs/interface-database` implementation, such as `@antelopejs/mongodb`.
+
+Upgrading from 0.1? Read the [FAQ](https://dms.antelopejs.com/docs/modules/api/faq#upgrading-from-01).
 
 ## Documentation
 
