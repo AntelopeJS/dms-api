@@ -30,7 +30,8 @@ const DEFAULT_FLAGS: Flag[] = ["broken", "slow"];
 
 export const routeUnhealthyTrigger: TriggerType<
   RouteUnhealthyConfig,
-  WatchListItem
+  WatchListItem,
+  RouteUnhealthyHandle
 > = {
   id: "api.route-unhealthy",
   name: "Route unhealthy",
@@ -133,9 +134,7 @@ export const routeUnhealthyTrigger: TriggerType<
     return handle;
   },
   async deactivate(handle) {
-    const h = handle as RouteUnhealthyHandle | undefined;
-    if (!h) return;
-    h.stopped = true;
-    clearInterval(h.timer);
+    handle.stopped = true;
+    clearInterval(handle.timer);
   },
 };
