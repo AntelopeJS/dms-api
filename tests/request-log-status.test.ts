@@ -28,4 +28,9 @@ describe("extractStatusCode", () => {
     );
     expect(extractStatusCode({ getStatus: () => undefined })).toBe(200);
   });
+
+  it("answers 200 for a value that is not an object", () => {
+    expect(extractStatusCode(undefined)).toBe(200);
+    expect(extractStatusCode("404")).toBe(200);
+  });
 });
