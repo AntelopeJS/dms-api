@@ -4,6 +4,9 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  '@antelopejs/interface-dms-automation': file:.campaign/tgz/antelopejs-interface-dms-automation-1a00d5d.tgz
+
 importers:
 
   .:
