@@ -24,7 +24,6 @@ export function routeHandler(
     parameters: [],
     properties: {},
     controller: routeController,
-    proto: {},
     ...fields,
   };
 }
