@@ -232,6 +232,7 @@ export interface SanitizedBody {
  * `Date` or a `toJSON` instance is stored as it was sent.
  */
 export function sanitizeBody(
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- this is the parse step for a response body of any shape: it narrows with Buffer.isBuffer, isString and isObject, serialises it as a client receives it, and parses the JSON before redacting; a named type would only relabel unknown
   body: unknown,
   contentType: string,
 ): SanitizedBody {

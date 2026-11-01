@@ -60,6 +60,7 @@ export function omittedBody(reason: RequestLogBodyOmission): CapturedBody {
  * JSON and forms only: what the redaction can read by key.
  */
 export function captureBody(
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- a response body is whatever a handler passed to HTTPResult (a string, a Buffer, any object, a value JSON cannot hold), and this function is where it is checked and parsed (sanitizeBody); a named type would only relabel unknown
   body: unknown,
   contentType: string | undefined,
   maxBytes: number,
@@ -114,6 +115,7 @@ export function queryToRecord(url: URL) {
  * through to `statusCode` then `status` when that throws or does not return a
  * number, 200 otherwise.
  */
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- value is a thrown value or a response of any shape, probed for getStatus, statusCode and status; HTTPResult cannot type it, as a thrown value may come from another copy of interface-api (tsc rejects HTTPResult for the capture.ts caller) and the tests feed non-objects
 export function extractStatusCode(value: unknown): number {
   if (!isObject(value)) return HTTP_STATUS_OK;
   if (hasStatusGetter(value)) {
@@ -129,6 +131,7 @@ export function extractStatusCode(value: unknown): number {
   return HTTP_STATUS_OK;
 }
 
+// oxlint-disable-next-line anti-slop/no-unknown-parameters, anti-slop/no-unknown-returns -- value is a thrown value or a response probed for getBody and body (typing it HTTPResult fails tsc at the thrown-value caller in capture.ts), and the body it answers is whatever the handler set, which captureBody parses
 export function extractBody(value: unknown): unknown {
   if (!isBodyCarrier(value)) return undefined;
   if (isFunction(value.getBody)) {

@@ -277,10 +277,40 @@ interface LogInputs {
  * The stored record. Small fields first: a search reads the path and the
  * error message of every row, and the database walks a document's fields in
  * order to reach them, so they come before the headers and bodies.
+ *
+ * The error is what a thrown value says went wrong: an Error's message and
+ * stack; a thrown HTTPResult's body message, its status otherwise; anything
+ * else as `String(err)`, not its JSON form. A thrown HTTPResult is not an
+ * Error, so JSON would serialise its whole own-property graph -- body and
+ * headers included -- into a column this module otherwise fills through an
+ * allowlist, unbounded, and render it to anyone who can open Monitoring. It
+ * also throws on a cycle or a BigInt, where this path has to be total, and
+ * prints "{}" for an object whose message lives in its `toString`.
  */
 function assembleLogRecord(input: LogInputs) {
   const { context, route, request, response } = input;
   const headers = context.rawRequest.headers;
+  const err = context.error;
+  let thrown: { message: string; stack?: string } | undefined;
+  if (!err) {
+    thrown = undefined;
+  } else if (err instanceof Error) {
+    thrown = { message: err.message, stack: err.stack };
+  } else if (hasStatusGetter(err)) {
+    const body = extractBody(err);
+    thrown = {
+      message:
+        bodyErrorMessage(isErrorBody(body) ? body : undefined) ??
+        `HTTP ${extractStatusCode(err)}`,
+    };
+  } else {
+    try {
+      // oxlint-disable-next-line typescript/no-base-to-string -- the string form, not the JSON one (see the TSDoc above)
+      thrown = { message: String(err) };
+    } catch {
+      thrown = { message: "unknown error" };
+    }
+  }
   return {
     timestamp: new Date(),
     method: route.method,
@@ -288,9 +318,7 @@ function assembleLogRecord(input: LogInputs) {
     rawPath: route.rawPath,
     statusCode: input.statusCode,
     responseTimeMs: input.responseTimeMs,
-    error:
-      formatError(context.error) ??
-      responseError(input.statusCode, context.response),
+    error: thrown ?? responseError(input.statusCode, context.response),
     routeId: route.matched?.id,
     routeMethod: route.routeMethod,
     source: input.source,
@@ -487,39 +515,6 @@ function responseError(
   const body = extractBody(response);
   const message = bodyErrorMessage(isErrorBody(body) ? body : undefined);
   return message ? { message } : undefined;
-}
-
-/**
- * What a thrown value says went wrong: an Error's message and stack; a thrown
- * HTTPResult's body message, its status otherwise; anything else as
- * `String(err)`, not its JSON form. A thrown HTTPResult is not an Error, so
- * JSON would serialise its whole own-property graph -- body and headers
- * included -- into a column this module otherwise fills through an allowlist,
- * unbounded, and render it to anyone who can open Monitoring. It also throws
- * on a cycle or a BigInt, where this path has to be total, and prints "{}" for
- * an object whose message lives in its `toString`.
- */
-function formatError(
-  err: unknown,
-): { message: string; stack?: string } | undefined {
-  if (!err) return undefined;
-  if (err instanceof Error) {
-    return { message: err.message, stack: err.stack };
-  }
-  if (hasStatusGetter(err)) {
-    const body = extractBody(err);
-    return {
-      message:
-        bodyErrorMessage(isErrorBody(body) ? body : undefined) ??
-        `HTTP ${extractStatusCode(err)}`,
-    };
-  }
-  try {
-    // oxlint-disable-next-line typescript/no-base-to-string -- the string form, not the JSON one (see the TSDoc above)
-    return { message: String(err) };
-  } catch {
-    return { message: "unknown error" };
-  }
 }
 
 function clientIp(context: CaptureContext): string | undefined {
