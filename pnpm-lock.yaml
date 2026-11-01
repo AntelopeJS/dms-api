@@ -5,7 +5,7 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  '@antelopejs/interface-dms-automation': file:.campaign/tgz/antelopejs-interface-dms-automation-1a00d5d.tgz
+  '@antelopejs/interface-dms-automation': file:.campaign/tgz/antelopejs-interface-dms-automation-dee4006.tgz
   '@antelopejs/interface-api': file:.campaign/tgz/antelopejs-interface-api-f206be7.tgz
   '@antelopejs/interface-api-util': file:.campaign/tgz/antelopejs-interface-api-util-cc740f8.tgz
   '@antelopejs/interface-database': file:.campaign/tgz/antelopejs-interface-database-8261536.tgz
@@ -86,8 +86,8 @@ importers:
         version: 3.2.7(@types/node@24.19.2)(jiti@2.7.0)(yaml@2.9.1)
     optionalDependencies:
       '@antelopejs/interface-dms-automation':
-        specifier: file:.campaign/tgz/antelopejs-interface-dms-automation-1a00d5d.tgz
-        version: file:.campaign/tgz/antelopejs-interface-dms-automation-1a00d5d.tgz(@antelopejs/interface-core@0.2.6)
+        specifier: file:.campaign/tgz/antelopejs-interface-dms-automation-dee4006.tgz
+        version: file:.campaign/tgz/antelopejs-interface-dms-automation-dee4006.tgz(@antelopejs/interface-core@0.2.6)
 
 packages:
 
@@ -136,8 +136,8 @@ packages:
     peerDependencies:
       '@antelopejs/interface-core': '>=0.2.4 <1.0.0'
 
-  '@antelopejs/interface-dms-automation@file:.campaign/tgz/antelopejs-interface-dms-automation-1a00d5d.tgz':
-    resolution: {tarball: file:.campaign/tgz/antelopejs-interface-dms-automation-1a00d5d.tgz}
+  '@antelopejs/interface-dms-automation@file:.campaign/tgz/antelopejs-interface-dms-automation-dee4006.tgz':
+    resolution: {tarball: file:.campaign/tgz/antelopejs-interface-dms-automation-dee4006.tgz}
     version: 0.6.0
     peerDependencies:
       '@antelopejs/interface-core': '>=0.2.4 <1.0.0'
@@ -2872,7 +2872,7 @@ snapshots:
     dependencies:
       '@antelopejs/interface-core': 0.2.6
 
-  '@antelopejs/interface-dms-automation@file:.campaign/tgz/antelopejs-interface-dms-automation-1a00d5d.tgz(@antelopejs/interface-core@0.2.6)':
+  '@antelopejs/interface-dms-automation@file:.campaign/tgz/antelopejs-interface-dms-automation-dee4006.tgz(@antelopejs/interface-core@0.2.6)':
     dependencies:
       '@antelopejs/interface-core': 0.2.6
     optional: true

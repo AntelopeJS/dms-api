@@ -27,3 +27,4 @@
 @antelopejs/interface-data-api	playground/package.json	pnpm.overrides	
 @antelopejs/interface-dms	playground/package.json	pnpm.overrides	
 @antelopejs/dms	playground/package.json	pnpm.overrides	
+@antelopejs/interface-dms-automation	playground/package.json	pnpm.overrides	
