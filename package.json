@@ -60,7 +60,7 @@
     "@antelopejs/interface-core": ">=0.2.4 <1.0.0",
     "@antelopejs/interface-database": "file:.campaign/tgz/antelopejs-interface-database-8261536.tgz",
     "@antelopejs/interface-database-decorators": "file:.campaign/tgz/antelopejs-interface-database-decorators-fcb0a29.tgz",
-    "@antelopejs/interface-dms": "file:.campaign/tgz/antelopejs-interface-dms-5720722.tgz",
+    "@antelopejs/interface-dms": "file:.campaign/tgz/antelopejs-interface-dms-36985f5.tgz",
     "node-cron": "^4.2.1",
     "zod": "^3.24.2"
   },
@@ -92,7 +92,7 @@
       "@antelopejs/interface-database": "file:.campaign/tgz/antelopejs-interface-database-8261536.tgz",
       "@antelopejs/interface-database-decorators": "file:.campaign/tgz/antelopejs-interface-database-decorators-fcb0a29.tgz",
       "@antelopejs/interface-data-api": "file:.campaign/tgz/antelopejs-interface-data-api-817f819.tgz",
-      "@antelopejs/interface-dms": "file:.campaign/tgz/antelopejs-interface-dms-5720722.tgz"
+      "@antelopejs/interface-dms": "file:.campaign/tgz/antelopejs-interface-dms-36985f5.tgz"
     }
   },
   "antelopeJs": {
