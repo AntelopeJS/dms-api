@@ -9,10 +9,10 @@ import { SCHEMA_NAME } from "../../types/constants";
 export const requestLogTableName = "request_log";
 export const REQUEST_LOG_ORDER_INDEX = "timestamp_id";
 
-export interface RequestLogError {
+export type RequestLogError = {
   message: string;
   stack?: string;
-}
+};
 
 /**
  * Why a body was not stored, so the console can say it instead of an empty
@@ -43,7 +43,7 @@ export type RequestLogBodyOmission =
 export type RequestLogSource = "tester";
 
 /** What the capture redacted from a request, section by section. */
-export interface RequestLogRedactions {
+export type RequestLogRedactions = {
   /** Query parameter values replaced by `[REDACTED]`. */
   query: number;
   /** Values replaced by `[REDACTED]` in the stored request body. */
@@ -52,7 +52,7 @@ export interface RequestLogRedactions {
   responseBody: number;
   /** Allow-listed headers left out because their name looks like a secret. */
   headers: string[];
-}
+};
 
 @RegisterTable(requestLogTableName, SCHEMA_NAME)
 export class RequestLog extends Table {
