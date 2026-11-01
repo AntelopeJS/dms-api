@@ -21,7 +21,6 @@ import {
 import { isFunction, isRecord } from "@/guards";
 import { isAuthMiddleware } from "./auth";
 import {
-  controllerClass,
   type ControllerDecorators,
   controllerDecorators,
   type DecoratedParameter,
@@ -301,8 +300,7 @@ function comparePriorityThenMode(
 }
 
 function controllerNameOf(handler: RouteHandler): string | null {
-  const name = controllerClass(handler)?.name;
-  return name && name !== "Object" ? name : null;
+  return handler.controller.name || null;
 }
 
 /**
@@ -311,10 +309,10 @@ function controllerNameOf(handler: RouteHandler): string | null {
  * holds the method itself.
  */
 export function handlerMethod(
-  handler: Pick<RouteHandler, "callback" | "proto">,
+  handler: Pick<RouteHandler, "callback" | "controller">,
 ): Function {
   const name = handler.callback.name;
-  const prototype: unknown = handler.proto;
+  const prototype: unknown = handler.controller.prototype;
   const method: unknown =
     name && isRecord(prototype) ? prototype[name] : undefined;
   return isFunction(method) ? method : handler.callback;

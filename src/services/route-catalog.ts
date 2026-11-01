@@ -9,7 +9,6 @@ import {
   type MiddlewareInfo,
   type RouteInspection,
 } from "./introspection";
-import { controllerClass } from "./introspection/decorators";
 import { routeRef } from "./links";
 import { isPageLayoutPath } from "./request-log/capture";
 import {
@@ -97,7 +96,7 @@ export function listRoutes(keys: ScopeKeys): RouteRow[] {
         method,
         path,
         folder: folderOf(path),
-        controller: controllerClass(handler)?.name ?? null,
+        controller: handler.controller.name,
         handler: handler.callback.name || "anonymous",
       };
     })

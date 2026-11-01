@@ -243,24 +243,16 @@ function definingSource(ctor: Function): string | undefined {
   return undefined;
 }
 
-/** The class a route handler was declared on: its controller prototype's constructor. */
-export function controllerClass(
-  handler: Pick<RouteHandler, "proto">,
-): Function | undefined {
-  const ctor: unknown = handler.proto?.constructor;
-  return isFunction(ctor) ? ctor : undefined;
-}
-
 /**
  * The decorators of the controller a route handler was declared on, read
  * once per class. Undefined when the class cannot be traced back to its
  * source.
  */
 export function controllerDecorators(
-  handler: Pick<RouteHandler, "proto">,
+  handler: Pick<RouteHandler, "controller">,
 ): ControllerDecorators | undefined {
-  const ctor = controllerClass(handler);
-  if (!ctor || !IDENTIFIER.test(ctor.name)) return undefined;
+  const ctor = handler.controller;
+  if (!IDENTIFIER.test(ctor.name)) return undefined;
   if (!parsed.has(ctor)) {
     const source = definingSource(ctor);
     parsed.set(
