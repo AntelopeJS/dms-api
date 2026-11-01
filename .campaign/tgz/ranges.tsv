@@ -28,3 +28,6 @@
 @antelopejs/interface-dms	playground/package.json	pnpm.overrides	
 @antelopejs/dms	playground/package.json	pnpm.overrides	
 @antelopejs/interface-dms-automation	playground/package.json	pnpm.overrides	
+@antelopejs/dms-frontend	playground/package.json	devDependencies	0.9.1
+@antelopejs/dms-frontend	playground/package.json	pnpm.overrides	
+@antelopejs/dms>@antelopejs/interface-core	playground/package.json	pnpm.overrides	
