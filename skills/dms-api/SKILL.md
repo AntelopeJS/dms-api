@@ -25,7 +25,7 @@ Monitors the project's own HTTP API: it captures each request of the routes in s
 - Its own calls, the DMS's calls and Tester calls are never counted in statistics or health.
 - cURL snippets use the DMS `apiBaseUrl`: set it to the public API origin.
 - The Tester forwards calls through the module's own frontend server route `POST /api/_dms-api/tester` (`frontend-vue/dms.server.ts`); dms-frontend 0.6 has no built-in tester route.
-- It needs `@antelopejs/dms` 0.11 (`interface-dms` 0.9) and `@antelopejs/dms-frontend` 0.9; 0.5.0 is the DMS 0.10 line.
+- It needs `@antelopejs/dms` 0.11 or later (`interface-dms` 0.9 or later) and `@antelopejs/dms-frontend` 0.9; 0.5.0 is the DMS 0.10 line.
 - A route reads "Auth unknown" when the check happens inside the handler; guard with the DMS auth decorators or name the middleware in `authMiddlewareCallbacks`.
 - Each block is its own permission (`@AuthUserWithPermission(<block>)`): grant roles the blocks they need.
 - Request logs can hold application data; secret-looking keys are always redacted.
