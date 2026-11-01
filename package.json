@@ -1,6 +1,6 @@
 {
   "name": "@antelopejs/dms-api",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "description": "API console for the AntelopeJS DMS: API health, request logs, per-route statistics, inferred contracts and a request tester.",
   "keywords": [
     "antelopejs",
