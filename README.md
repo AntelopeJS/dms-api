@@ -51,12 +51,12 @@ pnpm --dir playground traffic     # a few hundred demo requests
 
 | Package                                     | Supported                                                                 | Tested with                                                               |
 | ------------------------------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| `@antelopejs/interface-api`                 | `file:.campaign/tgz/antelopejs-interface-api-f206be7.tgz`                 | `file:.campaign/tgz/antelopejs-interface-api-f206be7.tgz`                 |
+| `@antelopejs/interface-api`                 | `file:.campaign/tgz/antelopejs-interface-api-11c035a.tgz`                 | `file:.campaign/tgz/antelopejs-interface-api-11c035a.tgz`                 |
 | `@antelopejs/interface-api-util`            | `file:.campaign/tgz/antelopejs-interface-api-util-cc740f8.tgz`            | `file:.campaign/tgz/antelopejs-interface-api-util-cc740f8.tgz`            |
 | `@antelopejs/interface-core`                | `>=0.2.4 <1.0.0`                                                          | `0.2.6`                                                                   |
 | `@antelopejs/interface-database`            | `file:.campaign/tgz/antelopejs-interface-database-8261536.tgz`            | `file:.campaign/tgz/antelopejs-interface-database-8261536.tgz`            |
 | `@antelopejs/interface-database-decorators` | `file:.campaign/tgz/antelopejs-interface-database-decorators-fcb0a29.tgz` | `file:.campaign/tgz/antelopejs-interface-database-decorators-fcb0a29.tgz` |
-| `@antelopejs/interface-dms`                 | `file:.campaign/tgz/antelopejs-interface-dms-50e3adc.tgz`                 | `file:.campaign/tgz/antelopejs-interface-dms-50e3adc.tgz`                 |
+| `@antelopejs/interface-dms`                 | `file:.campaign/tgz/antelopejs-interface-dms-d50c554.tgz`                 | `file:.campaign/tgz/antelopejs-interface-dms-d50c554.tgz`                 |
 | `@antelopejs/interface-dms-automation`      | `file:.campaign/tgz/antelopejs-interface-dms-automation-b4bc5d2.tgz`      | `file:.campaign/tgz/antelopejs-interface-dms-automation-b4bc5d2.tgz`      |
 
 <!-- antelopejs-docs-compat:end -->

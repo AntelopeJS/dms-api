@@ -1,4 +1,5 @@
 import {
+  Controller,
   RegisterRoute,
   type RouteHandler,
   UnregisterRoute,
@@ -6,6 +7,8 @@ import {
 
 /** The ids of the routes {@link registerRoutes} registered and nothing unregistered yet. */
 const registeredIds: number[] = [];
+
+const routeController = Controller("");
 
 /** A route handler as a controller method registers it, `fields` overriding its defaults. */
 export function routeHandler(
@@ -20,6 +23,7 @@ export function routeHandler(
     callback: function handle() {},
     parameters: [],
     properties: {},
+    controller: routeController,
     proto: {},
     ...fields,
   };
