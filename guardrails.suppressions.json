@@ -1,11 +1,13 @@
 {
   "rules": {
+    "anti-slop/no-unknown-parameters": 5,
+    "anti-slop/no-unknown-returns": 1,
     "import/no-duplicates": 2,
     "typescript/no-base-to-string": 1
   },
   "tsExpectError": 0,
   "tsIgnore": 0,
-  "safety": 0,
+  "safety": 1,
   "config": {
     "vue/multi-word-component-names for frontend-vue/**/*.vue": 1
   }

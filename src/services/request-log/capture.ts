@@ -500,6 +500,7 @@ function responseError(
  * an object whose message lives in its `toString`.
  */
 function formatError(
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- err is the value a handler threw (context.error), which can be anything: an Error, an HTTPResult, a string, null; the function reads what it says went wrong and falls back to String(err)
   err: unknown,
 ): { message: string; stack?: string } | undefined {
   if (!err) return undefined;
