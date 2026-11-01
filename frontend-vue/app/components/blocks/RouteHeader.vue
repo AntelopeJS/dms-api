@@ -64,7 +64,6 @@ const STATE_TONE = {
 const { t } = useI18n()
 const dateFormat = useDateFormat()
 const toast = useToast()
-const { presentError } = useApiErrorPresenter()
 const page = useDmsRoute()
 const recordLabel = usePageRecordLabel()
 const {
@@ -164,15 +163,18 @@ async function copyCurl() {
       hasRequestBody(route.value.method),
     ),
   )
-  try {
-    await navigator.clipboard.writeText(curl)
+  const copied = await navigator.clipboard.writeText(curl).then(
+    () => true,
+    () => false,
+  )
+  if (copied) {
     toast.add({
       title: t('api.request.curl_copied'),
       color: 'success',
       icon: 'i-ph-check',
     })
-  } catch (cause) {
-    presentError(cause, { fallbackKey: 'api.request.copy_failed' })
+  } else {
+    toast.add({ title: t('api.request.copy_failed'), color: 'warning' })
   }
 }
 </script>

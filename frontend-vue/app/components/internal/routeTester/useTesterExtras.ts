@@ -28,7 +28,6 @@ import type { useTesterState } from './useTesterState'
 export function useTesterExtras(
   tester: ReturnType<typeof useTesterState> & ReturnType<typeof useTesterFlow>,
 ) {
-  const { presentError } = useApiErrorPresenter()
   const {
     LOGS_PAGE,
     ERROR_ICONS,
@@ -126,15 +125,18 @@ export function useTesterExtras(
   }
 
   async function copyCurl() {
-    try {
-      await navigator.clipboard.writeText(curl())
+    const copied = await navigator.clipboard.writeText(curl()).then(
+      () => true,
+      () => false,
+    )
+    if (copied) {
       toast.add({
         title: t('api.request.curl_copied'),
         color: 'success',
         icon: 'i-ph-check',
       })
-    } catch (cause) {
-      presentError(cause, { fallbackKey: 'api.request.copy_failed' })
+    } else {
+      toast.add({ title: t('api.request.copy_failed'), color: 'warning' })
     }
   }
 

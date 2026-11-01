@@ -70,7 +70,6 @@ const {
   formatRelativeTime,
 } = useRegionalFormat({ locale: 'format' })
 const toast = useToast()
-const { presentError } = useApiErrorPresenter()
 // Read through the router, not `useDmsRoute()`: each call of it reassigns
 // the route's query, which the request tables watch for their filters.
 const router = useDmsRouter()
@@ -214,15 +213,18 @@ const curl = computed(() =>
 )
 
 async function copyCurl() {
-  try {
-    await navigator.clipboard.writeText(curl.value)
+  const copied = await navigator.clipboard.writeText(curl.value).then(
+    () => true,
+    () => false,
+  )
+  if (copied) {
     toast.add({
       title: t('api.request.curl_copied'),
       color: 'success',
       icon: 'i-ph-check',
     })
-  } catch (cause) {
-    presentError(cause, { fallbackKey: 'api.request.copy_failed' })
+  } else {
+    toast.add({ title: t('api.request.copy_failed'), color: 'warning' })
   }
 }
 
