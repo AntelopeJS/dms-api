@@ -1,4 +1,4 @@
 packages:
   - frontend-vue
 overrides:
-  "@antelopejs/interface-dms-automation": "file:.campaign/tgz/antelopejs-interface-dms-automation-1a00d5d.tgz"
+  "@antelopejs/interface-dms-automation": "file:.campaign/tgz/antelopejs-interface-dms-automation-b4bc5d2.tgz"
