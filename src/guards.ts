@@ -20,6 +20,11 @@ export function isObject(value: unknown): value is object {
   return typeof value === "object" && value !== null;
 }
 
+/** Whether `value` is an object other than `null`, read by name as `unknown` members. */
+export function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
 /** An object other than `null`, its `error` and `message`, present or not, read as `unknown`. */
 export function isMessageBody(
   value: unknown,

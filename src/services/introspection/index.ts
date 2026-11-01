@@ -18,7 +18,7 @@ import {
   type RouteHandler,
   type RouteHandlerMode,
 } from "@antelopejs/interface-api";
-import { isFunction } from "@/guards";
+import { isFunction, isRecord } from "@/guards";
 import { isAuthMiddleware } from "./auth";
 import {
   controllerClass,
@@ -314,7 +314,9 @@ export function handlerMethod(
   handler: Pick<RouteHandler, "callback" | "proto">,
 ): Function {
   const name = handler.callback.name;
-  const method: unknown = name ? handler.proto?.[name] : undefined;
+  const prototype: unknown = handler.proto;
+  const method: unknown =
+    name && isRecord(prototype) ? prototype[name] : undefined;
   return isFunction(method) ? method : handler.callback;
 }
 
