@@ -63,9 +63,9 @@ pnpm --dir playground traffic     # a few hundred demo requests
 
 | Package | Version |
 | --- | --- |
-| `@antelopejs/dms` | `>=0.11.0 <1.0.0` |
+| `@antelopejs/dms` | `>=0.12.1 <1.0.0` |
 | `@antelopejs/interface-dms` | `>=0.9.0 <1.0.0` |
-| `@antelopejs/dms-frontend` (renderer) | `>=0.9.1 <0.10.0` |
+| `@antelopejs/dms-frontend` (renderer) | `>=0.9.2 <0.10.0` |
 | API provider | `@antelopejs/api` |
 | Database | an `@antelopejs/interface-database` implementation, such as `@antelopejs/mongodb` |
 

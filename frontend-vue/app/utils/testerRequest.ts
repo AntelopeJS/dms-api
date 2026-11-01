@@ -502,10 +502,13 @@ export async function sendTesterRequest(
     if (!response.ok) {
       const payload = await readPayload(response)
       const code = proxyFailure(response.status, payload, Date.now() - started)
-      throw new TesterError(
-        code,
-        `API Tester request failed (${response.status})`,
-        response.status,
+      throw Object.assign(
+        new TesterError(
+          code,
+          `API Tester request failed (${response.status})`,
+          response.status,
+        ),
+        { response },
       )
     }
     return (await response.json()) as TesterResponse

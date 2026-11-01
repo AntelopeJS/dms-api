@@ -41,6 +41,7 @@ import type {
  * draft, a replay, sending and what the module captured of a call.
  */
 export function useTesterFlow(state: ReturnType<typeof useTesterState>) {
+  const consumeRefusal = useReadOnlyRefusal()
   const {
     ON_DEMAND,
     LOGS_API,
@@ -271,6 +272,7 @@ export function useTesterFlow(state: ReturnType<typeof useTesterState>) {
         icon: 'i-ph-arrow-counter-clockwise',
       })
     } catch (cause) {
+      if (consumeRefusal(cause)) return
       // A request pruned, outside the route scope or matching no route: the
       // logs do not open it.
       const missing = errorStatus(cause) === 404
@@ -387,7 +389,8 @@ export function useTesterFlow(state: ReturnType<typeof useTesterState>) {
     let source: string
     try {
       source = (await sourceTokens.get()).value
-    } catch {
+    } catch (cause) {
+      if (consumeRefusal(cause)) return
       toast.add({
         title: t('api.tester.source_failed'),
         color: 'error',
@@ -431,6 +434,7 @@ export function useTesterFlow(state: ReturnType<typeof useTesterState>) {
         ...common,
       }
     } catch (cause) {
+      if (consumeRefusal(cause)) return
       outcome = {
         status: 0,
         durationMs: Math.round(performance.now() - started),
@@ -440,10 +444,11 @@ export function useTesterFlow(state: ReturnType<typeof useTesterState>) {
         message: cause instanceof Error ? cause.message : String(cause),
         ...common,
       }
-    }
-    if (session.inFlight?.controller === controller) {
-      session.inFlight = null
-      sending.value = false
+    } finally {
+      if (session.inFlight?.controller === controller) {
+        session.inFlight = null
+        sending.value = false
+      }
     }
     // An answer already in hand when the route changed is filed as it came.
     if (controller.signal.reason === ROUTE_CHANGED && outcome.error)
