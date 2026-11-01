@@ -10,8 +10,8 @@ overrides:
   '@antelopejs/interface-api-util': file:.campaign/tgz/antelopejs-interface-api-util-cc740f8.tgz
   '@antelopejs/interface-database': file:.campaign/tgz/antelopejs-interface-database-02e0360.tgz
   '@antelopejs/interface-database-decorators': file:.campaign/tgz/antelopejs-interface-database-decorators-e79a62b.tgz
-  '@antelopejs/interface-data-api': file:.campaign/tgz/antelopejs-interface-data-api-e070b68.tgz
-  '@antelopejs/interface-dms': file:.campaign/tgz/antelopejs-interface-dms-d50c554.tgz
+  '@antelopejs/interface-data-api': file:.campaign/tgz/antelopejs-interface-data-api-26c36e9.tgz
+  '@antelopejs/interface-dms': file:.campaign/tgz/antelopejs-interface-dms-3eb021e.tgz
 
 importers:
 
@@ -33,8 +33,8 @@ importers:
         specifier: file:.campaign/tgz/antelopejs-interface-database-decorators-e79a62b.tgz
         version: file:.campaign/tgz/antelopejs-interface-database-decorators-e79a62b.tgz(@antelopejs/interface-api@file:.campaign/tgz/antelopejs-interface-api-11c035a.tgz(@antelopejs/interface-core@0.2.6))(@antelopejs/interface-core@0.2.6)(@antelopejs/interface-database@file:.campaign/tgz/antelopejs-interface-database-02e0360.tgz(@antelopejs/interface-core@0.2.6))
       '@antelopejs/interface-dms':
-        specifier: file:.campaign/tgz/antelopejs-interface-dms-d50c554.tgz
-        version: file:.campaign/tgz/antelopejs-interface-dms-d50c554.tgz(84effd5d82eddd82f760c6e35a41dbc6)
+        specifier: file:.campaign/tgz/antelopejs-interface-dms-3eb021e.tgz
+        version: file:.campaign/tgz/antelopejs-interface-dms-3eb021e.tgz(5476f7f7391b95855cd991a44d44defc)
       node-cron:
         specifier: ^4.2.1
         version: 4.6.0
@@ -46,8 +46,8 @@ importers:
         specifier: 1.17.1
         version: 1.17.1
       '@antelopejs/interface-data-api':
-        specifier: file:.campaign/tgz/antelopejs-interface-data-api-e070b68.tgz
-        version: file:.campaign/tgz/antelopejs-interface-data-api-e070b68.tgz(@antelopejs/interface-api-util@file:.campaign/tgz/antelopejs-interface-api-util-cc740f8.tgz(@antelopejs/interface-api@file:.campaign/tgz/antelopejs-interface-api-11c035a.tgz(@antelopejs/interface-core@0.2.6))(@antelopejs/interface-core@0.2.6))(@antelopejs/interface-api@file:.campaign/tgz/antelopejs-interface-api-11c035a.tgz(@antelopejs/interface-core@0.2.6))(@antelopejs/interface-core@0.2.6)(@antelopejs/interface-database-decorators@file:.campaign/tgz/antelopejs-interface-database-decorators-e79a62b.tgz(@antelopejs/interface-api@file:.campaign/tgz/antelopejs-interface-api-11c035a.tgz(@antelopejs/interface-core@0.2.6))(@antelopejs/interface-core@0.2.6)(@antelopejs/interface-database@file:.campaign/tgz/antelopejs-interface-database-02e0360.tgz(@antelopejs/interface-core@0.2.6)))(@antelopejs/interface-database@file:.campaign/tgz/antelopejs-interface-database-02e0360.tgz(@antelopejs/interface-core@0.2.6))
+        specifier: file:.campaign/tgz/antelopejs-interface-data-api-26c36e9.tgz
+        version: file:.campaign/tgz/antelopejs-interface-data-api-26c36e9.tgz(@antelopejs/interface-api-util@file:.campaign/tgz/antelopejs-interface-api-util-cc740f8.tgz(@antelopejs/interface-api@file:.campaign/tgz/antelopejs-interface-api-11c035a.tgz(@antelopejs/interface-core@0.2.6))(@antelopejs/interface-core@0.2.6))(@antelopejs/interface-api@file:.campaign/tgz/antelopejs-interface-api-11c035a.tgz(@antelopejs/interface-core@0.2.6))(@antelopejs/interface-core@0.2.6)(@antelopejs/interface-database-decorators@file:.campaign/tgz/antelopejs-interface-database-decorators-e79a62b.tgz(@antelopejs/interface-api@file:.campaign/tgz/antelopejs-interface-api-11c035a.tgz(@antelopejs/interface-core@0.2.6))(@antelopejs/interface-core@0.2.6)(@antelopejs/interface-database@file:.campaign/tgz/antelopejs-interface-database-02e0360.tgz(@antelopejs/interface-core@0.2.6)))(@antelopejs/interface-database@file:.campaign/tgz/antelopejs-interface-database-02e0360.tgz(@antelopejs/interface-core@0.2.6))
       '@antelopejs/tooling-configs':
         specifier: ^0.2.17
         version: 0.2.17(knip@6.41.0)(oxfmt@0.66.0)(oxlint@1.81.0(oxlint-tsgolint@7.0.2004))
@@ -112,9 +112,9 @@ packages:
   '@antelopejs/interface-core@0.2.6':
     resolution: {integrity: sha512-PJp58D1snKLVEmpfn9Yj2htuohZhUxHqyyec3xtkPPy61mtACs0YznnhcgbYQNhIy/q8J+lSwDICPZIsKjhAIA==}
 
-  '@antelopejs/interface-data-api@file:.campaign/tgz/antelopejs-interface-data-api-e070b68.tgz':
-    resolution: {tarball: file:.campaign/tgz/antelopejs-interface-data-api-e070b68.tgz}
-    version: 0.6.0
+  '@antelopejs/interface-data-api@file:.campaign/tgz/antelopejs-interface-data-api-26c36e9.tgz':
+    resolution: {tarball: file:.campaign/tgz/antelopejs-interface-data-api-26c36e9.tgz}
+    version: 0.7.0
     peerDependencies:
       '@antelopejs/interface-api': '>=0.0.15 <1.0.0'
       '@antelopejs/interface-api-util': '>=0.1.3 <1.0.0'
@@ -142,9 +142,9 @@ packages:
     peerDependencies:
       '@antelopejs/interface-core': '>=0.2.4 <1.0.0'
 
-  '@antelopejs/interface-dms@file:.campaign/tgz/antelopejs-interface-dms-d50c554.tgz':
-    resolution: {tarball: file:.campaign/tgz/antelopejs-interface-dms-d50c554.tgz}
-    version: 0.11.0
+  '@antelopejs/interface-dms@file:.campaign/tgz/antelopejs-interface-dms-3eb021e.tgz':
+    resolution: {tarball: file:.campaign/tgz/antelopejs-interface-dms-3eb021e.tgz}
+    version: 0.12.0
     peerDependencies:
       '@antelopejs/interface-api': '>=0.0.15 <1.0.0'
       '@antelopejs/interface-api-util': '>=0.1.3 <1.0.0'
@@ -2852,7 +2852,7 @@ snapshots:
     dependencies:
       reflect-metadata: 0.2.2
 
-  '@antelopejs/interface-data-api@file:.campaign/tgz/antelopejs-interface-data-api-e070b68.tgz(@antelopejs/interface-api-util@file:.campaign/tgz/antelopejs-interface-api-util-cc740f8.tgz(@antelopejs/interface-api@file:.campaign/tgz/antelopejs-interface-api-11c035a.tgz(@antelopejs/interface-core@0.2.6))(@antelopejs/interface-core@0.2.6))(@antelopejs/interface-api@file:.campaign/tgz/antelopejs-interface-api-11c035a.tgz(@antelopejs/interface-core@0.2.6))(@antelopejs/interface-core@0.2.6)(@antelopejs/interface-database-decorators@file:.campaign/tgz/antelopejs-interface-database-decorators-e79a62b.tgz(@antelopejs/interface-api@file:.campaign/tgz/antelopejs-interface-api-11c035a.tgz(@antelopejs/interface-core@0.2.6))(@antelopejs/interface-core@0.2.6)(@antelopejs/interface-database@file:.campaign/tgz/antelopejs-interface-database-02e0360.tgz(@antelopejs/interface-core@0.2.6)))(@antelopejs/interface-database@file:.campaign/tgz/antelopejs-interface-database-02e0360.tgz(@antelopejs/interface-core@0.2.6))':
+  '@antelopejs/interface-data-api@file:.campaign/tgz/antelopejs-interface-data-api-26c36e9.tgz(@antelopejs/interface-api-util@file:.campaign/tgz/antelopejs-interface-api-util-cc740f8.tgz(@antelopejs/interface-api@file:.campaign/tgz/antelopejs-interface-api-11c035a.tgz(@antelopejs/interface-core@0.2.6))(@antelopejs/interface-core@0.2.6))(@antelopejs/interface-api@file:.campaign/tgz/antelopejs-interface-api-11c035a.tgz(@antelopejs/interface-core@0.2.6))(@antelopejs/interface-core@0.2.6)(@antelopejs/interface-database-decorators@file:.campaign/tgz/antelopejs-interface-database-decorators-e79a62b.tgz(@antelopejs/interface-api@file:.campaign/tgz/antelopejs-interface-api-11c035a.tgz(@antelopejs/interface-core@0.2.6))(@antelopejs/interface-core@0.2.6)(@antelopejs/interface-database@file:.campaign/tgz/antelopejs-interface-database-02e0360.tgz(@antelopejs/interface-core@0.2.6)))(@antelopejs/interface-database@file:.campaign/tgz/antelopejs-interface-database-02e0360.tgz(@antelopejs/interface-core@0.2.6))':
     dependencies:
       '@antelopejs/interface-api': file:.campaign/tgz/antelopejs-interface-api-11c035a.tgz(@antelopejs/interface-core@0.2.6)
       '@antelopejs/interface-api-util': file:.campaign/tgz/antelopejs-interface-api-util-cc740f8.tgz(@antelopejs/interface-api@file:.campaign/tgz/antelopejs-interface-api-11c035a.tgz(@antelopejs/interface-core@0.2.6))(@antelopejs/interface-core@0.2.6)
@@ -2877,12 +2877,12 @@ snapshots:
       '@antelopejs/interface-core': 0.2.6
     optional: true
 
-  '@antelopejs/interface-dms@file:.campaign/tgz/antelopejs-interface-dms-d50c554.tgz(84effd5d82eddd82f760c6e35a41dbc6)':
+  '@antelopejs/interface-dms@file:.campaign/tgz/antelopejs-interface-dms-3eb021e.tgz(5476f7f7391b95855cd991a44d44defc)':
     dependencies:
       '@antelopejs/interface-api': file:.campaign/tgz/antelopejs-interface-api-11c035a.tgz(@antelopejs/interface-core@0.2.6)
       '@antelopejs/interface-api-util': file:.campaign/tgz/antelopejs-interface-api-util-cc740f8.tgz(@antelopejs/interface-api@file:.campaign/tgz/antelopejs-interface-api-11c035a.tgz(@antelopejs/interface-core@0.2.6))(@antelopejs/interface-core@0.2.6)
       '@antelopejs/interface-core': 0.2.6
-      '@antelopejs/interface-data-api': file:.campaign/tgz/antelopejs-interface-data-api-e070b68.tgz(@antelopejs/interface-api-util@file:.campaign/tgz/antelopejs-interface-api-util-cc740f8.tgz(@antelopejs/interface-api@file:.campaign/tgz/antelopejs-interface-api-11c035a.tgz(@antelopejs/interface-core@0.2.6))(@antelopejs/interface-core@0.2.6))(@antelopejs/interface-api@file:.campaign/tgz/antelopejs-interface-api-11c035a.tgz(@antelopejs/interface-core@0.2.6))(@antelopejs/interface-core@0.2.6)(@antelopejs/interface-database-decorators@file:.campaign/tgz/antelopejs-interface-database-decorators-e79a62b.tgz(@antelopejs/interface-api@file:.campaign/tgz/antelopejs-interface-api-11c035a.tgz(@antelopejs/interface-core@0.2.6))(@antelopejs/interface-core@0.2.6)(@antelopejs/interface-database@file:.campaign/tgz/antelopejs-interface-database-02e0360.tgz(@antelopejs/interface-core@0.2.6)))(@antelopejs/interface-database@file:.campaign/tgz/antelopejs-interface-database-02e0360.tgz(@antelopejs/interface-core@0.2.6))
+      '@antelopejs/interface-data-api': file:.campaign/tgz/antelopejs-interface-data-api-26c36e9.tgz(@antelopejs/interface-api-util@file:.campaign/tgz/antelopejs-interface-api-util-cc740f8.tgz(@antelopejs/interface-api@file:.campaign/tgz/antelopejs-interface-api-11c035a.tgz(@antelopejs/interface-core@0.2.6))(@antelopejs/interface-core@0.2.6))(@antelopejs/interface-api@file:.campaign/tgz/antelopejs-interface-api-11c035a.tgz(@antelopejs/interface-core@0.2.6))(@antelopejs/interface-core@0.2.6)(@antelopejs/interface-database-decorators@file:.campaign/tgz/antelopejs-interface-database-decorators-e79a62b.tgz(@antelopejs/interface-api@file:.campaign/tgz/antelopejs-interface-api-11c035a.tgz(@antelopejs/interface-core@0.2.6))(@antelopejs/interface-core@0.2.6)(@antelopejs/interface-database@file:.campaign/tgz/antelopejs-interface-database-02e0360.tgz(@antelopejs/interface-core@0.2.6)))(@antelopejs/interface-database@file:.campaign/tgz/antelopejs-interface-database-02e0360.tgz(@antelopejs/interface-core@0.2.6))
       '@antelopejs/interface-database': file:.campaign/tgz/antelopejs-interface-database-02e0360.tgz(@antelopejs/interface-core@0.2.6)
       '@antelopejs/interface-database-decorators': file:.campaign/tgz/antelopejs-interface-database-decorators-e79a62b.tgz(@antelopejs/interface-api@file:.campaign/tgz/antelopejs-interface-api-11c035a.tgz(@antelopejs/interface-core@0.2.6))(@antelopejs/interface-core@0.2.6)(@antelopejs/interface-database@file:.campaign/tgz/antelopejs-interface-database-02e0360.tgz(@antelopejs/interface-core@0.2.6))
       '@antelopejs/interface-file-storage': 0.1.4(@antelopejs/interface-core@0.2.6)
