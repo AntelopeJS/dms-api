@@ -126,6 +126,17 @@ describe('sending through the proxy', () => {
     })
   })
 
+  it('preserves a refusal response for the error presenter', async () => {
+    const response = new Response('{}', {
+      status: 403,
+      headers: { 'x-dms-readonly': '1' },
+    })
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response))
+    await expect(
+      sendTesterRequest('/api/private', 'https://dms.example', GET),
+    ).rejects.toMatchObject({ response })
+  })
+
   it('tells a cancelled call from an unreachable server', async () => {
     vi.stubGlobal(
       'fetch',
