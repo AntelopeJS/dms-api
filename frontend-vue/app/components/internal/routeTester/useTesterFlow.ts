@@ -41,6 +41,7 @@ import type {
  * draft, a replay, sending and what the module captured of a call.
  */
 export function useTesterFlow(state: ReturnType<typeof useTesterState>) {
+  const { presentError } = useApiErrorPresenter()
   const {
     ON_DEMAND,
     LOGS_API,
@@ -271,15 +272,11 @@ export function useTesterFlow(state: ReturnType<typeof useTesterState>) {
         icon: 'i-ph-arrow-counter-clockwise',
       })
     } catch (cause) {
-      // A request pruned, outside the route scope or matching no route: the
-      // logs do not open it.
-      const missing = errorStatus(cause) === 404
-      toast.add({
-        title: t(
-          missing ? 'api.tester.replay_not_found' : 'api.tester.replay_failed',
-        ),
-        color: missing ? 'warning' : 'error',
-        icon: 'i-ph-warning',
+      presentError(cause, {
+        fallbackKey:
+          errorStatus(cause) === 404
+            ? 'api.tester.replay_not_found'
+            : 'api.tester.replay_failed',
       })
     }
   }
@@ -387,12 +384,8 @@ export function useTesterFlow(state: ReturnType<typeof useTesterState>) {
     let source: string
     try {
       source = (await sourceTokens.get()).value
-    } catch {
-      toast.add({
-        title: t('api.tester.source_failed'),
-        color: 'error',
-        icon: 'i-ph-warning',
-      })
+    } catch (cause) {
+      presentError(cause, { fallbackKey: 'api.tester.source_failed' })
       return
     }
     if (session.activeRef !== ref || sending.value) return
@@ -431,6 +424,12 @@ export function useTesterFlow(state: ReturnType<typeof useTesterState>) {
         ...common,
       }
     } catch (cause) {
+      if (cause instanceof TesterError && cause.response) {
+        presentError(cause, {
+          fallbackKey: `api.tester.errors.${cause.code}.title`,
+        })
+        return
+      }
       outcome = {
         status: 0,
         durationMs: Math.round(performance.now() - started),
@@ -440,10 +439,11 @@ export function useTesterFlow(state: ReturnType<typeof useTesterState>) {
         message: cause instanceof Error ? cause.message : String(cause),
         ...common,
       }
-    }
-    if (session.inFlight?.controller === controller) {
-      session.inFlight = null
-      sending.value = false
+    } finally {
+      if (session.inFlight?.controller === controller) {
+        session.inFlight = null
+        sending.value = false
+      }
     }
     // An answer already in hand when the route changed is filed as it came.
     if (controller.signal.reason === ROUTE_CHANGED && outcome.error)

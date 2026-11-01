@@ -213,19 +213,18 @@ const curl = computed(() =>
 )
 
 async function copyCurl() {
-  try {
-    await navigator.clipboard.writeText(curl.value)
+  const copied = await navigator.clipboard.writeText(curl.value).then(
+    () => true,
+    () => false,
+  )
+  if (copied) {
     toast.add({
       title: t('api.request.curl_copied'),
       color: 'success',
       icon: 'i-ph-check',
     })
-  } catch {
-    toast.add({
-      title: t('api.request.copy_failed'),
-      color: 'error',
-      icon: 'i-ph-warning',
-    })
+  } else {
+    toast.add({ title: t('api.request.copy_failed'), color: 'warning' })
   }
 }
 
