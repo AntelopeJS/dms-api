@@ -1,5 +1,7 @@
+import type { HTTPResult } from "@antelopejs/interface-api";
 import type { IncomingHttpHeaders } from "node:http";
 import type { RequestLogBodyOmission } from "@/db/tables/request_log.table";
+import { isBodyCarrier, isFunction, isNumber, isObject } from "@/guards";
 import { HTTP_STATUS_OK } from "@/types/constants";
 import {
   isSensitiveHeader,
@@ -16,7 +18,7 @@ export function pickHeaders(
   headers: IncomingHttpHeaders | Record<string, string | string[] | undefined>,
   allowList: ReadonlyArray<string>,
   dropped?: string[],
-): Record<string, string> {
+) {
   const out: Record<string, string> = {};
   const allow = new Set(allowList.map((h) => h.toLowerCase()));
   for (const [name, value] of Object.entries(headers)) {
@@ -52,6 +54,10 @@ function isEmptyBody(body: unknown): boolean {
   return Buffer.isBuffer(body) && body.length === 0;
 }
 
+/**
+ * The body to store, redacted and cut at `maxBytes`, or why it is not stored.
+ * JSON and forms only: what the redaction can read by key.
+ */
 export function captureBody(
   body: unknown,
   contentType: string | undefined,
@@ -59,7 +65,6 @@ export function captureBody(
 ): CapturedBody {
   if (isEmptyBody(body)) return omittedBody("empty");
   if (maxBytes <= 0) return omittedBody("disabled");
-  // JSON and forms only: what the redaction can read by key.
   const sanitized = sanitizeBody(body, contentType ?? "");
   if (sanitized.text === undefined) {
     return omittedBody(sanitized.omitted ?? "not-json");
@@ -77,20 +82,19 @@ export function captureBody(
   return { body: text, truncated: false, redacted };
 }
 
-/** The first `maxBytes` bytes of UTF-8 text, without a character cut in two. */
+/**
+ * The first `maxBytes` bytes of UTF-8 text, without a character cut in two: a
+ * continuation byte (10xxxxxx) at the cut belongs to the character before it,
+ * so the cut moves before that character's first byte.
+ */
 function utf8Prefix(bytes: Buffer, maxBytes: number): string {
   let end = maxBytes;
-  // A continuation byte (10xxxxxx) at the cut belongs to the character
-  // before it: cut before that character's first byte.
   while (end > 0 && (bytes[end] & 0xc0) === 0x80) end--;
   return bytes.subarray(0, end).toString("utf8");
 }
 
 /** The query of `url` as a record, redacted, and how many values were. */
-export function queryToRecord(url: URL): {
-  query: Record<string, string | string[]>;
-  redacted: number;
-} {
+export function queryToRecord(url: URL) {
   const { value: params, redacted } = redactSearchParams(url.searchParams);
   const query = Object.fromEntries(
     [...new Set(params.keys())].map((key) => {
@@ -101,8 +105,13 @@ export function queryToRecord(url: URL): {
   return { query, redacted };
 }
 
+/**
+ * The status of a response or a thrown HTTPResult: its `getStatus()`, falling
+ * through to `statusCode` then `status` when that throws or is missing, 200
+ * otherwise.
+ */
 export function extractStatusCode(value: unknown): number {
-  if (!value || typeof value !== "object") return HTTP_STATUS_OK;
+  if (!isObject(value)) return HTTP_STATUS_OK;
   const v = value as {
     getStatus?: () => number;
     statusCode?: number;
@@ -111,50 +120,37 @@ export function extractStatusCode(value: unknown): number {
   if (typeof v.getStatus === "function") {
     try {
       return v.getStatus();
-    } catch {
-      // fall through
-    }
+    } catch {}
   }
-  if (typeof v.statusCode === "number") return v.statusCode;
-  if (typeof v.status === "number") return v.status;
+  if (isNumber(v.statusCode)) return v.statusCode;
+  if (isNumber(v.status)) return v.status;
   return HTTP_STATUS_OK;
 }
 
 export function extractBody(value: unknown): unknown {
-  if (!value || typeof value !== "object") return undefined;
-  const v = value as { getBody?: () => unknown; body?: unknown };
-  if (typeof v.getBody === "function") {
+  if (!isBodyCarrier(value)) return undefined;
+  if (isFunction(value.getBody)) {
     try {
-      return v.getBody();
+      return value.getBody();
     } catch {
       return undefined;
     }
   }
-  return v.body;
+  return value.body;
 }
 
-export function extractContentType(value: unknown): string | undefined {
-  if (!value || typeof value !== "object") return undefined;
-  const v = value as { getContentType?: () => string };
-  if (typeof v.getContentType === "function") {
-    try {
-      return v.getContentType();
-    } catch {
-      return undefined;
-    }
+export function extractContentType(value: HTTPResult): string | undefined {
+  try {
+    return value.getContentType();
+  } catch {
+    return undefined;
   }
-  return undefined;
 }
 
-export function extractHeaders(value: unknown): Record<string, string> {
-  if (!value || typeof value !== "object") return {};
-  const v = value as { getHeaders?: () => Record<string, string> };
-  if (typeof v.getHeaders === "function") {
-    try {
-      return v.getHeaders();
-    } catch {
-      return {};
-    }
+export function extractHeaders(value: HTTPResult): Record<string, string> {
+  try {
+    return value.getHeaders();
+  } catch {
+    return {};
   }
-  return {};
 }

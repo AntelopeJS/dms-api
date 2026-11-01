@@ -3,18 +3,25 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { formatCount } from '../../utils/format'
 import {
   bySeverity,
+  KEYBOARD_SETTLE_MS,
+  METHOD_FILTERS,
+  REVEAL_MARGIN_PX,
   groupRoutes,
   initialRoute,
   listedFolders,
   needsAttention,
   optionId,
+  type RouteRow,
   type RouteState,
+  STATE_DOT,
+  STATE_ICON,
   stepFrom,
   windowParts,
 } from '../../utils/routeExplorer'
 import { closestMatch } from '../../utils/search'
 import ApiMethodBadge from '../internal/ApiMethodBadge.vue'
 import ApiPath from '../internal/ApiPath.vue'
+import RouteTreeFooter from '../internal/RouteTreeFooter.vue'
 
 // Every route in scope, grouped by folder, with its traffic and health over
 // the health window the list states. The selection is the page's `?route=`,
@@ -38,41 +45,6 @@ const props = withDefaults(
     queryKey: 'route',
   },
 )
-
-interface RouteRow {
-  ref: string
-  method: string
-  path: string
-  folder: string
-  controller: string | null
-  handler: string
-  requests: number
-  state: RouteState
-}
-
-const METHOD_FILTERS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']
-/** A shape per issue, so slow and a high 4xx rate never read alike. */
-const STATE_ICON: Partial<Record<RouteState, { name: string; class: string }>> =
-  {
-    failing: { name: 'i-ph-x-circle-fill', class: 'text-error' },
-    slow: { name: 'i-ph-timer-bold', class: 'text-warning' },
-    'client-errors': { name: 'i-ph-warning-fill', class: 'text-warning' },
-    recovered: {
-      name: 'i-ph-arrow-counter-clockwise-bold',
-      class: 'text-info',
-    },
-  }
-const STATE_DOT: Record<RouteState, string> = {
-  failing: 'bg-error',
-  slow: 'bg-warning',
-  'client-errors': 'bg-warning',
-  recovered: 'bg-info',
-  healthy: 'bg-success',
-  idle: 'bg-(--ui-border-accented)',
-}
-/** Rest after the last ↑ / ↓ before the page loads the route reached. */
-const KEYBOARD_SETTLE_MS = 150
-const REVEAL_MARGIN_PX = 8
 
 const { t } = useI18n()
 const { formatLocale: locale, formatNumber } = useRegionalFormat({
@@ -624,52 +596,15 @@ const count = (value: number) =>
         </div>
       </div>
 
-      <div
-        class="border-default text-dimmed flex items-center gap-2 border-t px-3 py-2 font-mono text-[11px]"
-      >
-        <!-- The count wraps rather than being cut: the toggle beside it is an
-             icon, its name in a tooltip, so the line usually holds it all. -->
-        <span class="min-w-0">
-          {{
-            t(
-              flatMode
-                ? 'api.routes.tree.footer_flat'
-                : 'api.routes.tree.footer',
-              {
-                shown: formatCount(visible.length, locale),
-                total: formatCount(routes.length, locale),
-                folders: folders.length,
-              },
-            )
-          }}
-        </span>
-        <span class="grow" />
-        <UTooltip
-          v-if="!flatMode && folders.length > 1"
-          :text="
-            allCollapsed
-              ? t('api.routes.tree.expand_all')
-              : t('api.routes.tree.collapse_all')
-          "
-        >
-          <UButton
-            size="xs"
-            color="neutral"
-            variant="ghost"
-            square
-            class="shrink-0"
-            :icon="allCollapsed ? 'i-ph-caret-up-down' : 'i-ph-caret-line-up'"
-            :aria-label="
-              allCollapsed
-                ? t('api.routes.tree.expand_all')
-                : t('api.routes.tree.collapse_all')
-            "
-            @click="toggleAll"
-          />
-        </UTooltip>
-        <UKbd value="↑" size="sm" class="@max-5xl:hidden shrink-0" />
-        <UKbd value="↓" size="sm" class="@max-5xl:hidden shrink-0" />
-      </div>
+      <RouteTreeFooter
+        :visible="visible"
+        :routes="routes"
+        :folders="folders"
+        :flat-mode="flatMode"
+        :all-collapsed="allCollapsed"
+        :locale="locale"
+        :toggle-all="toggleAll"
+      />
     </div>
   </DmsCard>
 </template>

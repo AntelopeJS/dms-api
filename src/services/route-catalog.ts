@@ -9,6 +9,7 @@ import {
   type MiddlewareInfo,
   type RouteInspection,
 } from "./introspection";
+import { controllerClass } from "./introspection/decorators";
 import { routeRef } from "./links";
 import { isPageLayoutPath } from "./request-log/capture";
 import {
@@ -96,9 +97,7 @@ export function listRoutes(keys: ScopeKeys): RouteRow[] {
         method,
         path,
         folder: folderOf(path),
-        controller:
-          (handler.proto as { constructor?: { name?: string } } | undefined)
-            ?.constructor?.name ?? null,
+        controller: controllerClass(handler)?.name ?? null,
         handler: handler.callback.name || "anonymous",
       };
     })
@@ -162,16 +161,17 @@ const MIDDLEWARE_STAGE: Record<MiddlewareInfo["mode"], number> = {
 
 /** Middleware and handler of a route, in the order a request meets them. */
 export function pipelineOf(inspection: RouteInspection): PipelineStep[] {
-  const steps = inspection.applicableMiddleware.map((middleware) => ({
-    stage: MIDDLEWARE_STAGE[middleware.mode],
-    step: {
-      kind: middleware.mode,
-      name: middleware.callbackName,
-      location: middleware.location,
-      priority: middleware.priority,
-      isAuth: middleware.isAuth,
-    } as PipelineStep,
-  }));
+  const steps: Array<{ stage: number; step: PipelineStep }> =
+    inspection.applicableMiddleware.map((middleware) => ({
+      stage: MIDDLEWARE_STAGE[middleware.mode],
+      step: {
+        kind: middleware.mode,
+        name: middleware.callbackName,
+        location: middleware.location,
+        priority: middleware.priority,
+        isAuth: middleware.isAuth,
+      },
+    }));
   steps.push({
     stage: 1,
     step: {

@@ -4,10 +4,10 @@
 
 <a href="https://www.npmjs.com/package/@antelopejs/dms-api"><img alt="npm" src="https://img.shields.io/npm/v/@antelopejs/dms-api?style=for-the-badge&labelColor=000000&color=000000"></a>
 <a href="./LICENSE"><img alt="License" src="https://img.shields.io/npm/l/@antelopejs/dms-api?style=for-the-badge&labelColor=000000&color=000000"></a>
-<a href="https://discord.gg/sjK28QHrA7"><img alt="Discord" src="https://img.shields.io/badge/Discord-18181B?logo=discord&style=for-the-badge&color=000000"></a>
+<a href="https://discord.gg/g4pFt6eXqu"><img alt="Discord" src="https://img.shields.io/badge/Discord-18181B?logo=discord&style=for-the-badge&color=000000"></a>
 <a href="https://dms.antelopejs.com/docs/modules/api"><img alt="Documentation" src="https://img.shields.io/badge/Docs-18181B?style=for-the-badge&color=000000"></a>
 
-The API console of the AntelopeJS DMS: health, request logs, route statistics and a tester.
+The API console of the [AntelopeJS DMS](https://github.com/AntelopeJS/dms): health, request logs, route statistics and a tester.
 
 </div>
 
@@ -47,11 +47,25 @@ pnpm --dir playground traffic     # a few hundred demo requests
 
 ## Compatibility
 
+<!-- antelopejs-docs-compat:start -->
+
+| Package                                     | Supported         | Tested with |
+| ------------------------------------------- | ----------------- | ----------- |
+| `@antelopejs/interface-api`                 | `>=0.0.15 <1.0.0` | `0.0.15`    |
+| `@antelopejs/interface-api-util`            | `>=0.1.3 <1.0.0`  | `0.1.3`     |
+| `@antelopejs/interface-core`                | `>=0.2.4 <1.0.0`  | `0.2.4`     |
+| `@antelopejs/interface-database`            | `>=0.1.11 <1.0.0` | `0.1.11`    |
+| `@antelopejs/interface-database-decorators` | `>=0.1.10 <1.0.0` | `0.1.10`    |
+| `@antelopejs/interface-dms`                 | `>=0.9.0 <1.0.0`  | `0.9.0`     |
+| `@antelopejs/interface-dms-automation`      | `>=0.2.1 <1.0.0`  | `0.2.1`     |
+
+<!-- antelopejs-docs-compat:end -->
+
 | Package | Version |
 | --- | --- |
 | `@antelopejs/dms` | `>=0.11.0 <1.0.0` |
 | `@antelopejs/interface-dms` | `>=0.9.0 <1.0.0` |
-| `@antelopejs/dms-frontend` (renderer) | `>=0.9.0 <0.10.0` |
+| `@antelopejs/dms-frontend` (renderer) | `>=0.9.1 <0.10.0` |
 | API provider | `@antelopejs/api` |
 | Database | an `@antelopejs/interface-database` implementation, such as `@antelopejs/mongodb` |
 

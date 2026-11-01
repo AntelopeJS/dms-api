@@ -255,3 +255,52 @@ export function requestPivots(log: {
     })
   return pivots
 }
+
+/** One captured request, as the logs' detail route answers it. */
+export interface RequestLog {
+  _id: string
+  timestamp: string
+  method: string
+  uri: string
+  rawPath: string
+  route: string
+  routeRegistered: boolean
+  statusCode: number
+  /** Null when the request never reached a handler. */
+  responseTimeMs: number | null
+  slowThresholdMs: number
+  /** How the route behaves lately; null for a route not registered. */
+  routeLatency?: RouteLatency | null
+  /** The method of the handler that answered (GET for a HEAD it served). */
+  routeMethod?: string | null
+  /** What the capture masked, section by section. */
+  redactions: Redactions
+  /** `tester` for a request the console's tester sent. */
+  source?: string | null
+  /** Where the API answers, for the URL and the cURL; null while unknown. */
+  apiOrigin?: string | null
+  /** The `x-request-id` it came with, when it is not its id. */
+  requestId?: string | null
+  ip?: string
+  userAgent?: string
+  pathParams?: Record<string, string>
+  query?: Record<string, string | string[]>
+  requestHeaders?: Record<string, string>
+  requestBody?: string
+  requestBodyTruncated?: boolean
+  requestBodyOmitted?: string | null
+  requestBodySize?: number | null
+  responseHeaders?: Record<string, string>
+  responseBody?: string
+  responseBodyTruncated?: boolean
+  responseBodyOmitted?: string | null
+  responseBodySize?: number | null
+  error?: { message: string; stack?: string }
+  links: {
+    route: string | null
+    tester: string | null
+    sameError: string | null
+    sameRoute: string
+    samePath?: string | null
+  }
+}

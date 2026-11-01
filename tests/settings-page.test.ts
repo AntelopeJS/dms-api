@@ -1,19 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { SettingsPage } from "@/pages/settings";
 
-interface SerializedField {
-  id: string;
-  component?: { componentName: string; options?: Record<string, unknown> };
-}
-
-const form = SettingsPage.form.serializeSync() as {
-  options: { fields: SerializedField[] };
-};
+const form = SettingsPage.form.serializeSync();
 
 function inputOf(id: string) {
-  const field = form.options.fields.find((entry) => entry.id === id);
+  const field = form.options?.fields.find((entry) => entry.id === id);
   if (!field) throw new Error(`no field ${id}`);
-  return field.component;
+  return "component" in field ? field.component : undefined;
 }
 
 describe("SettingsPage", () => {

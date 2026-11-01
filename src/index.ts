@@ -1,6 +1,4 @@
-// Evaluated here on purpose, ahead of the named import below: the module has
-// to be initialised before anything that reaches into it.
-// oxlint-disable-next-line import/no-duplicates
+// oxlint-disable-next-line import/no-duplicates -- evaluated here on purpose, ahead of the named import below: the module has to be initialised before anything that reaches into it
 import "./db";
 import "./routes";
 import "./services/request-log/capture";
@@ -38,9 +36,12 @@ import { frontendModule } from "./frontend-module";
 
 let pruneTask: ScheduledTask | null = null;
 
+/**
+ * Applies the module configuration, and refuses at start a value the
+ * Settings form could not save back.
+ */
 export async function construct(config?: Partial<DmsApiConfig>): Promise<void> {
   setConfig(config);
-  // The Settings form could not save such a value back: refuse it at start.
   const errors = configErrors(getBaseConfig(), isSensitiveHeader);
   if (errors.length) {
     throw new Error(`[dms-api] invalid configuration: ${errors.join("; ")}`);
@@ -49,6 +50,12 @@ export async function construct(config?: Partial<DmsApiConfig>): Promise<void> {
   await AddFrontendModule(frontendModule());
 }
 
+/**
+ * Binds the schema, loads the settings, syncs the routes table, schedules the
+ * hourly retention pass (it prunes both the aggregated statistics and the
+ * per-request logs), registers the automation nodes, and has the live mode of
+ * the monitoring pages hear of new requests.
+ */
 export async function start(): Promise<void> {
   await RegisterSchema(SCHEMA_NAME);
   await loadSettings(GetModel(ApiSettingsModel));
@@ -58,14 +65,12 @@ export async function start(): Promise<void> {
   const statsModel = GetModel(RouteStatisticsModel);
   const logModel = GetModel(RequestLogModel);
 
-  // Hourly retention pass: prune both aggregated statistics and per-request logs.
   pruneTask = cron.schedule("0 * * * *", () => {
     void pruneAllStatistics(statsModel);
     void pruneRequestLogs(logModel);
   });
 
   registerAutomationNodes();
-  // The live mode of the monitoring pages hears of new requests.
   registerLiveTopics();
 }
 

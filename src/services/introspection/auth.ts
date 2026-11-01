@@ -25,6 +25,11 @@ export interface AuthMiddlewareInput {
 let cached: CompiledMatcher | null = null;
 let cachedSig = "";
 
+/**
+ * The auth patterns and callbacks of the configuration, compiled once per
+ * configuration. A pattern that is not a valid regex is skipped silently, so
+ * a single typo doesn't break introspection for every other middleware.
+ */
 function matcher(): CompiledMatcher {
   const cfg = getConfig();
   const sig = `${cfg.authMiddlewareNamePatterns.join("|")}::${cfg.authMiddlewareCallbacks.join("|")}`;
@@ -34,10 +39,7 @@ function matcher(): CompiledMatcher {
   for (const raw of cfg.authMiddlewareNamePatterns) {
     try {
       patterns.push(new RegExp(raw));
-    } catch {
-      // Bad config entry — skip silently so a single typo doesn't break
-      // introspection for every other middleware.
-    }
+    } catch {}
   }
   cached = {
     patterns,

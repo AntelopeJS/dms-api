@@ -122,10 +122,12 @@ export function issueOf(
   return null;
 }
 
-/** Whether a bucket's histogram puts its p95 at or above the threshold. */
+/**
+ * Whether a bucket's histogram puts its p95 at or above the threshold. The
+ * slow calls are those of the buckets starting at or above the threshold:
+ * exact when the threshold is one of the bounds, an undercount otherwise.
+ */
 function slowShareOf(traffic: TrafficBucket, slowThresholdMs: number): boolean {
-  // The calls of the buckets starting at or above the threshold: exact when
-  // the threshold is one of the bounds, an undercount otherwise.
   let slowCalls = 0;
   let counted = 0;
   traffic.histogram.forEach((count, index) => {
@@ -223,7 +225,8 @@ function routeStateOf(
  * Every route of `samples` judged by the health rules at the end of
  * `lookback`: whether it fails now or recovered lately (minute by minute,
  * on its 5xx), and over the whole lookback whether it is slow (p95) or
- * answers many 4xx.
+ * answers many 4xx. Without a single 5xx a route can be neither failing nor
+ * recovered: it skips the minute-by-minute pass.
  */
 export function evaluateRoutes(
   samples: RequestLogSample[],
@@ -233,8 +236,6 @@ export function evaluateRoutes(
   const routes = new Map<string, RouteHealthState>();
   for (const [key, route] of groupByRoute(samples)) {
     const summary = summarizeRoute(route);
-    // Without a single 5xx a route can be neither failing nor recovered:
-    // skip the minute-by-minute pass.
     const health: HealthEvaluation =
       summary.traffic.serverErrors > 0
         ? evaluateHealth(route.samples, lookback, slowThresholdMs, false)
@@ -292,16 +293,24 @@ function impact(route: RouteHealthState): number {
   }
 }
 
+/** A route state "Needs attention" lists: every one but healthy and idle. */
+type AttentionState = Exclude<RouteState, "healthy" | "idle">;
+
+/** Whether `route` is in a state "Needs attention" lists. */
+function needsAttention(
+  route: RouteHealthState,
+): route is RouteHealthState & { state: AttentionState } {
+  return route.state !== "healthy" && route.state !== "idle";
+}
+
 /**
  * Routes that need a look, worst first: failing (down before degraded, then
  * by how many 5xx), recovered (the latest first), slow (by p95), then those
  * answering many 4xx.
  */
-export function routesNeedingAttention(
-  health: Iterable<RouteHealthState>,
-): RouteHealthState[] {
+export function routesNeedingAttention(health: Iterable<RouteHealthState>) {
   return [...health]
-    .filter((route) => STATE_RANK[route.state] < STATE_RANK.healthy)
+    .filter(needsAttention)
     .sort(
       (a, b) =>
         STATE_RANK[a.state] - STATE_RANK[b.state] || impact(b) - impact(a),

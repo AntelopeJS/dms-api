@@ -24,7 +24,7 @@ function bucket(start: number, fields: Partial<TrafficBucket>): TrafficBucket {
     minLatency: 0,
     histogram: emptyHistogram(),
     ...fields,
-    // Every call timed, unless told otherwise.
+    /** Every call timed, unless told otherwise. */
     timed: fields.timed ?? fields.requests ?? 0,
   };
 }
@@ -76,8 +76,10 @@ describe("route statistics", () => {
       params: { delta: { params: { sign: "+", value: { value: 1 } } } },
     });
     expect(latency?.value).toMatchObject({ params: { value: { value: 90 } } });
-    // The p95 under the average, not the minimum.
-    expect(latency?.detail).toMatchObject({
+    expect(
+      latency?.detail,
+      "The p95 under the average, not the minimum.",
+    ).toMatchObject({
       params: { detail: { key: "api.routes.statistics.p95_detail" } },
     });
     expect(errors?.value).toMatchObject({
@@ -134,7 +136,6 @@ describe("route statistics", () => {
       { x: 3, y: 50 },
     ]);
     expect(chart).toMatchObject({ slowThresholdMs: 1000 });
-    // Every p95 point within its bucket's max.
     expect(chart.series[2]?.data[0]?.y).toBeLessThanOrEqual(300);
   });
 
@@ -158,7 +159,6 @@ describe("route statistics", () => {
       previous: null,
     };
     expect(routeSummary(empty, 250).items).toEqual([]);
-    // No series: the charts show their empty state, not 0 %.
     expect(errorRateChart(empty)).toEqual({ series: [] });
     expect(latencyChart(empty, 1000)).toEqual({ series: [] });
   });
@@ -211,8 +211,10 @@ describe("route statistics comparisons", () => {
       detail: { key: "api.compare.versus.previous_period" },
       detailTone: "success",
     });
-    // A previous period no longer kept: said, never compared with zeros.
-    expect(comparedWith("previous-period", false)).toMatchObject({
+    expect(
+      comparedWith("previous-period", false),
+      "A previous period no longer kept: said, never compared with zeros.",
+    ).toMatchObject({
       detail: "$api.compare.no_baseline.previous_period",
       detailTone: "neutral",
     });

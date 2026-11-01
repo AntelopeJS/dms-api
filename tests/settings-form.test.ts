@@ -14,6 +14,7 @@ import {
   validateSettings,
 } from "@/services/settings-form";
 import type { ApiSettingsPayload } from "@/services/settings";
+import type { JsonValue } from "@antelopejs/interface-dms/base/types/json";
 import { type DayStatistics, MS_PER_DAY } from "@/types";
 
 const settings: ApiSettingsPayload = {
@@ -29,7 +30,7 @@ const current = editableValues(settings);
 const neverSensitive = (_name: string) => false;
 
 /** What the form sends: every field, the read-only ones included. */
-function formBody(changes: Record<string, unknown>) {
+function formBody(changes: Record<string, JsonValue>) {
   return {
     ...current,
     [SETTINGS_FIELDS.redacted]: ["password"],
@@ -39,7 +40,7 @@ function formBody(changes: Record<string, unknown>) {
 }
 
 function validate(
-  changes: Record<string, unknown>,
+  changes: Record<string, JsonValue>,
   sensitive: (name: string) => boolean = neverSensitive,
 ) {
   return validateSettings(changes, sensitive);
@@ -161,9 +162,8 @@ describe("validateSettings", () => {
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(Array.isArray(result.error)).toBe(true);
-    expect((result.error as Array<{ path: unknown[] }>)[0]?.path).toEqual([
-      SETTINGS_FIELDS.logRetention,
-    ]);
+    if (!Array.isArray(result.error)) return;
+    expect(result.error[0]?.path).toEqual([SETTINGS_FIELDS.logRetention]);
   });
 });
 

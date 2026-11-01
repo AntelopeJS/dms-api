@@ -1,14 +1,19 @@
+/**
+ * What a route's traffic says about its contract, for the Documentation tab:
+ * statuses with their volume and messages, bodies, parameters with examples,
+ * the response a successful call gets.
+ *
+ * @packageDocumentation
+ */
+import type { JsonValue } from "@antelopejs/interface-dms/base/types/json";
 import type { RequestLogModel } from "@/db";
 import type { RequestLogSample } from "@/db/models/request_log.model";
 import type { RequestLog } from "@/db/tables/request_log.table";
 import { normalizeRoutePath } from "@/db/tables/routes_statistics.table";
+import { isJsonValue } from "@/guards";
 import { MS_PER_DAY } from "@/types";
 import type { RouteInspection } from "./introspection";
 import { exactQuantile } from "./statistics-utils";
-
-// What a route's traffic says about its contract, for the Documentation tab:
-// statuses with their volume and messages, bodies, parameters with examples,
-// the response a successful call gets.
 
 /** A field seen in the logged bodies of a route. */
 export interface InferredField {
@@ -78,16 +83,20 @@ const CONTRACT_SAMPLE = 200;
 export const RESPONSE_EXAMPLE_CHARS = 16_384;
 const STATUS_MESSAGES = 10;
 
-function parseJson(text: string | undefined): unknown {
+/** A JSON object, as a parsed body holds it. */
+type JsonObject = { [key: string]: JsonValue };
+
+function parseJson(text: string | undefined): JsonValue | undefined {
   if (!text) return undefined;
   try {
-    return JSON.parse(text);
+    const parsed: unknown = JSON.parse(text);
+    return isJsonValue(parsed) ? parsed : undefined;
   } catch {
     return undefined;
   }
 }
 
-function typeName(value: unknown): string {
+function typeName(value: JsonValue): string {
   if (value === null) return "null";
   if (Array.isArray(value)) return "array";
   return typeof value;
@@ -100,12 +109,10 @@ function isScalar(value: unknown): value is string | number | boolean | null {
 }
 
 /** The fields of `bodies`, most recent first, with their types and an example. */
-export function inferBodyFields(
-  bodies: Record<string, unknown>[],
-): InferredField[] {
+export function inferBodyFields(bodies: JsonObject[]): InferredField[] {
   const fields = new Map<
     string,
-    { types: Set<string>; seen: number; example: unknown }
+    { types: Set<string>; seen: number; example: JsonValue }
   >();
   for (const body of bodies) {
     for (const [name, value] of Object.entries(body)) {
@@ -130,7 +137,7 @@ export function inferBodyFields(
   });
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+function isRecord(value: JsonValue | undefined): value is JsonObject {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
@@ -200,7 +207,7 @@ function exampleResponse(log: RequestLog | undefined): ObservedResponse | null {
   };
 }
 
-function responseShape(
+function responseFieldsOf(
   logs: RequestLog[],
 ): Pick<ObservedContract, "responseKind" | "responseFields"> {
   const bodies = logs.map((log) => parseJson(log.responseBody));
@@ -258,7 +265,6 @@ export async function loadContractTraffic(
   now: Date = new Date(),
 ): Promise<ContractTraffic> {
   const since = new Date(now.getTime() - CONTRACT_WINDOW_DAYS * MS_PER_DAY);
-  // Stored paths are canonical (see `normalizeRoutePath`).
   const filters = {
     method,
     since,
@@ -311,7 +317,7 @@ export function contractOf({
     examplePath: last?.pathParams ?? {},
     exampleQuery: last?.query ?? {},
     exampleResponse: exampleResponse(last),
-    ...responseShape(successful),
+    ...responseFieldsOf(successful),
     latency: latencyOf(samples),
   };
 }
@@ -388,20 +394,21 @@ export function documentParameters(
       .map((segment) => ({ in: "path" as const, name: segment.slice(1) })),
     ...[
       ...new Set([
-        ...inspection.parameters
-          .filter((parameter) => parameter.source === "query" && parameter.name)
-          .map((parameter) => parameter.name as string),
+        ...inspection.parameters.flatMap((parameter) =>
+          parameter.source === "query" && parameter.name
+            ? [parameter.name]
+            : [],
+        ),
         ...queryParams,
       ]),
     ]
       .sort()
       .map((name) => ({ in: "query" as const, name })),
-    ...inspection.parameters
-      .filter((parameter) => parameter.source === "header" && parameter.name)
-      .map((parameter) => ({
-        in: "header" as const,
-        name: parameter.name as string,
-      })),
+    ...inspection.parameters.flatMap((parameter) =>
+      parameter.source === "header" && parameter.name
+        ? [{ in: "header" as const, name: parameter.name }]
+        : [],
+    ),
   ];
   return entries.map((entry) => {
     const source = entry.in === "path" ? "param" : entry.in;

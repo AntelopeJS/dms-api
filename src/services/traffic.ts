@@ -2,6 +2,7 @@ import type { RouteStatisticsModel } from "@/db";
 import type { RequestLogSample } from "@/db/models/request_log.model";
 import type { RouteStatistics } from "@/db/tables/routes_statistics.table";
 import { createMemo } from "@/memo";
+import { isNumber } from "@/guards";
 import type { DayStatistics } from "@/types";
 import { cached } from "./aggregate-cache";
 import { scopeRouteKey } from "./scope";
@@ -95,8 +96,8 @@ function addLatency(bucket: TrafficBucket, min: number, max: number): void {
 export function durationOf(
   sample: Pick<RequestLogSample, "responseTimeMs">,
 ): number | null {
-  const ms = sample.responseTimeMs as number | null | undefined;
-  return typeof ms === "number" && Number.isFinite(ms) ? ms : null;
+  const ms = sample.responseTimeMs;
+  return isNumber(ms) && Number.isFinite(ms) ? ms : null;
 }
 
 /** Fold one logged request into its bucket. */
@@ -215,10 +216,6 @@ export function clientErrorShare(bucket: TrafficBucket): number {
   return bucket.requests > 0 ? bucket.clientErrors / bucket.requests : 0;
 }
 
-// ---------------------------------------------------------------------------
-// Bucketed traffic, per route
-// ---------------------------------------------------------------------------
-
 /** Per-route traffic over a window, every route bucketed on the same starts. */
 export interface WindowTraffic {
   starts: number[];
@@ -312,10 +309,6 @@ function dayProfile(
     PROFILE_TTL_MS,
   );
 }
-
-// ---------------------------------------------------------------------------
-// Calls per minute, over long windows
-// ---------------------------------------------------------------------------
 
 /** The calls of one route in one minute, by outcome. */
 export interface MinuteCount {

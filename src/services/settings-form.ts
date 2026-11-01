@@ -1,6 +1,12 @@
+import type { FormFieldSerialized } from "@antelopejs/interface-dms/base/form";
 import { z } from "zod";
 import { getBaseConfig, STATISTICS_LIFETIME_DAY_CHOICES } from "@/config";
-import { BYTES_PER_KB, type DayStatistics, MS_PER_DAY } from "@/types";
+import {
+  BYTES_PER_KB,
+  type DayStatistics,
+  type JsonBody,
+  MS_PER_DAY,
+} from "@/types";
 import { isRouteScope, ROUTE_SCOPES } from "./scope";
 import type { ApiSettingsPayload, ApiSettingsUpdate } from "./settings";
 import { getTodayTimestamp } from "./statistics-utils";
@@ -38,7 +44,10 @@ export const SETTINGS_BOUNDS = {
 
 /** What the settings form learns per request, by field id. */
 export interface SettingsFormContext {
-  patches: Record<string, Record<string, unknown>>;
+  patches: Record<
+    string,
+    Pick<FormFieldSerialized, "defaultValue" | "offersDefault">
+  >;
 }
 
 export function msToDays(ms: number): number {
@@ -110,8 +119,7 @@ const optionalNumber = (bounds: { min: number; max: number }) =>
 const statisticsLifetimeDays = z
   .number()
   .refine(
-    (days) =>
-      (STATISTICS_LIFETIME_DAY_CHOICES as readonly number[]).includes(days),
+    (days) => STATISTICS_LIFETIME_DAY_CHOICES.some((choice) => choice === days),
     { message: "$api.settings.retention.statistics_choice" },
   )
   .nullable()
@@ -171,7 +179,7 @@ export type SettingsValidation =
  * form puts under their fields.
  */
 export function validateSettings(
-  body: unknown,
+  body: JsonBody,
   isSensitiveHeader: (name: string) => boolean,
 ): SettingsValidation {
   const parsed = settingsBody.safeParse(body);
@@ -233,10 +241,10 @@ export function configErrors(
  * An override equal to the module default is no override: storing it would
  * pin the value if the default changes later.
  */
-function override<T>(
+function override<T, Stored>(
   value: T | null | undefined,
   moduleDefault: T,
-  toStored: (value: T) => number | string[],
+  toStored: (value: T) => Stored,
 ) {
   if (value === undefined) return undefined;
   if (value === null) return null;
@@ -251,32 +259,32 @@ export function toSettingsUpdate(body: SettingsBody): ApiSettingsUpdate {
   const defaults = moduleDefaults();
   const headers = body[SETTINGS_FIELDS.headers];
   return {
-    scope: body[SETTINGS_FIELDS.scope] as ApiSettingsUpdate["scope"],
+    scope: body[SETTINGS_FIELDS.scope],
     requestLogRetention: override(
       body[SETTINGS_FIELDS.logRetention],
       defaults[SETTINGS_FIELDS.logRetention],
       days,
-    ) as number | null | undefined,
+    ),
     statisticsLifetime: override(
       body[SETTINGS_FIELDS.statsRetention],
       defaults[SETTINGS_FIELDS.statsRetention],
       days,
-    ) as number | null | undefined,
+    ),
     requestLogMaxBodySize: override(
       body[SETTINGS_FIELDS.maxBody],
       defaults[SETTINGS_FIELDS.maxBody],
       (kb) => kb * BYTES_PER_KB,
-    ) as number | null | undefined,
+    ),
     requestSlownessThreshold: override(
       body[SETTINGS_FIELDS.slowThreshold],
       defaults[SETTINGS_FIELDS.slowThreshold],
       (ms) => ms,
-    ) as number | null | undefined,
+    ),
     requestLogCaptureHeaders: override(
       headers ? [...new Set(headers)] : headers,
       defaults[SETTINGS_FIELDS.headers],
       (list) => list,
-    ) as string[] | null | undefined,
+    ),
   };
 }
 

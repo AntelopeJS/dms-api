@@ -1,0 +1,12 @@
+{
+  "rules": {
+    "import/no-duplicates": 2,
+    "typescript/no-base-to-string": 1
+  },
+  "tsExpectError": 0,
+  "tsIgnore": 0,
+  "safety": 0,
+  "config": {
+    "vue/multi-word-component-names for frontend-vue/**/*.vue": 1
+  }
+}

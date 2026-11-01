@@ -1,5 +1,6 @@
 import type { ComponentInfoSerialized } from "@antelopejs/interface-dms/component";
 import { describe, expect, it } from "vitest";
+import { isObject } from "@/guards";
 import { RoutesPage, thresholdLabel } from "@/pages/routes";
 
 /** The block under `ids`, child by child. */
@@ -125,9 +126,11 @@ describe("thresholdLabel", () => {
 
 describe("RoutesPage live mode", () => {
   const explorer = RoutesPage.explorer.serializeSync();
-  const topicOf = (ids: string[]) =>
-    (blockAt(explorer, ids).options as { realtimeTopic?: string })
-      .realtimeTopic;
+  const topicOf = (ids: string[]) => {
+    const { options } = blockAt(explorer, ids);
+    if (!isObject(options)) throw new Error(`no options at ${ids.join(".")}`);
+    return "realtimeTopic" in options ? options.realtimeTopic : undefined;
+  };
   const statistics = ["tabs", "statistics"];
   const grid = [...statistics, "grid"];
 
@@ -148,12 +151,10 @@ describe("RoutesPage live mode", () => {
 
   it("holds the recent requests while paused, counting what it missed", () => {
     expect(
-      (
-        blockAt(explorer, [...grid, "recent", "requests", "table"]).options as {
-          liveHold?: unknown;
-        }
-      ).liveHold,
-    ).toMatchObject({ missedLabel: "$api.live_mode.new_requests" });
+      blockAt(explorer, [...grid, "recent", "requests", "table"]).options,
+    ).toMatchObject({
+      liveHold: { missedLabel: "$api.live_mode.new_requests" },
+    });
   });
 
   it("leaves the contract and the tester still: they do not follow the feed", () => {

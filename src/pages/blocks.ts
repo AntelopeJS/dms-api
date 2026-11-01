@@ -1,5 +1,4 @@
-import type { ComponentBuilder } from "@antelopejs/interface-dms/component";
-import { CustomComponent } from "@antelopejs/interface-dms/base/custom";
+import { ComponentBuilder } from "@antelopejs/interface-dms/component";
 
 /**
  * The console's own blocks: the parts of its pages no DMS block draws. Each
@@ -42,12 +41,9 @@ function i18nSegment(block: ApiBlock): string {
 }
 
 /** One of the console's blocks, named and described for the roles editor. */
-export function apiBlock<T = Record<string, unknown>>(
-  block: ApiBlock,
-  options?: T,
-): ComponentBuilder<T> {
+export function apiBlock<T>(block: ApiBlock, options?: T): ComponentBuilder<T> {
   const key = `$api.blocks.${i18nSegment(block)}`;
-  const builder = CustomComponent(`DmsApi${block}`) as ComponentBuilder<T>;
+  const builder = new ComponentBuilder<T>(`DmsApi${block}`);
   return builder.options(options).meta({
     name: `${key}.name`,
     description: `${key}.description`,

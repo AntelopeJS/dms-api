@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { AtomicMutationOutcome } from "@antelopejs/interface-database/atomic";
+import type { DeepPartial } from "@antelopejs/interface-database-decorators";
 import { describe, expect, it } from "vitest";
 import {
   getRouteStatsKey,
@@ -42,12 +43,12 @@ class FakeStatisticsModel implements RouteStatisticsStore {
     return [...this.rows.values()].map((row) => structuredClone(row));
   }
 
+  /** The writer inserts one complete row at a time. */
   async insert(
-    obj: Parameters<RouteStatisticsStore["insert"]>[0],
+    obj: DeepPartial<RouteStatistics> | DeepPartial<RouteStatistics>[],
   ): Promise<string[]> {
     await tick();
-    // The writer inserts one complete row at a time.
-    const doc = structuredClone(obj) as RouteStatistics;
+    const doc = completeRow(obj);
     if (this.rows.has(doc._id)) throw new Error("E11000 duplicate key error");
     this.rows.set(doc._id, doc);
     return [doc._id];
@@ -65,6 +66,73 @@ class FakeStatisticsModel implements RouteStatisticsStore {
     stored.revision = randomUUID();
     return "applied";
   }
+}
+
+const INCOMPLETE = "The writer inserts one complete row at a time.";
+
+function completeDay(day: DeepPartial<DayStatistics>): DayStatistics {
+  const {
+    day: at,
+    requestsCount,
+    averageResponseTime,
+    minResponseTime,
+    maxResponseTime,
+    totalResponseTime,
+    clientErrorsCount,
+    serverErrorsCount,
+    timedRequestsCount,
+    latencyHistogram,
+  } = day;
+  if (
+    at === undefined ||
+    requestsCount === undefined ||
+    averageResponseTime === undefined ||
+    minResponseTime === undefined ||
+    maxResponseTime === undefined ||
+    totalResponseTime === undefined ||
+    clientErrorsCount === undefined ||
+    serverErrorsCount === undefined ||
+    timedRequestsCount === undefined ||
+    latencyHistogram === undefined
+  ) {
+    throw new Error(INCOMPLETE);
+  }
+  return {
+    day: at,
+    requestsCount,
+    averageResponseTime,
+    minResponseTime,
+    maxResponseTime,
+    totalResponseTime,
+    clientErrorsCount,
+    serverErrorsCount,
+    timedRequestsCount,
+    latencyHistogram: [...latencyHistogram],
+  };
+}
+
+/** The row an insert stores: a copy, refused unless every field is there. */
+function completeRow(
+  obj: DeepPartial<RouteStatistics> | DeepPartial<RouteStatistics>[],
+): RouteStatistics {
+  if (Array.isArray(obj)) throw new Error(INCOMPLETE);
+  const { _id, method, uri, statistics, revision } = obj;
+  if (
+    _id === undefined ||
+    method === undefined ||
+    uri === undefined ||
+    statistics === undefined ||
+    revision === undefined
+  ) {
+    throw new Error(INCOMPLETE);
+  }
+  return {
+    _id,
+    method,
+    uri,
+    statistics: statistics.map(completeDay),
+    revision,
+  };
 }
 
 function request(statusCode = 200, responseTime = 10): RequestStatistics {
@@ -120,7 +188,6 @@ describe("addRequestStatistics", () => {
     const model = new FakeStatisticsModel();
     await addRequestStatistics(model, request());
     const writes: Promise<void>[] = [];
-    // Three waves, each landing while the previous one is being written.
     for (let wave = 0; wave < 3; wave++) {
       for (let i = 0; i < 10; i++) {
         writes.push(addRequestStatistics(model, request(500, 9)));
@@ -130,12 +197,17 @@ describe("addRequestStatistics", () => {
 
     await Promise.all(writes);
 
-    expect(todayOf(model)).toMatchObject({
+    expect(
+      todayOf(model),
+      "Three waves, each landing while the previous one is being written.",
+    ).toMatchObject({
       requestsCount: 31,
       serverErrorsCount: 30,
     });
-    // One write per wave at most, never one per request.
-    expect(model.replaceCalls).toBeLessThanOrEqual(3);
+    expect(
+      model.replaceCalls,
+      "One write per wave at most, never one per request.",
+    ).toBeLessThanOrEqual(3);
   });
 
   it("updates a row written before the revision field existed", async () => {
@@ -203,7 +275,7 @@ describe("pruneAllStatistics", () => {
       uri: "/api/items/:id",
       statistics: [dayStats(expired, 7), dayStats(today, 2)],
       revision: randomUUID(),
-    } as RouteStatistics);
+    });
 
     const [pruned] = await Promise.all([
       pruneAllStatistics(model),

@@ -8,11 +8,10 @@ import {
   isRequestId,
   NO_REDACTIONS,
   originalBodySize,
-  type Redactions,
+  type RequestLog,
   type RequestPivot,
   requestPivots,
   requestUrl,
-  type RouteLatency,
   thresholdRatio,
   withParam,
 } from '../../utils/requestDrawer'
@@ -21,6 +20,8 @@ import ApiBody from '../internal/ApiBody.vue'
 import ApiKeyValues from '../internal/ApiKeyValues.vue'
 import ApiStatusBadge from '../internal/ApiStatusBadge.vue'
 import ApiTesterBadge from '../internal/ApiTesterBadge.vue'
+import RequestGeneral from '../internal/RequestGeneral.vue'
+import RequestTiming from '../internal/RequestTiming.vue'
 
 // One captured request, in the DMS drawer on the right, which a request
 // table's row opens (a `drawer` row action, `src/pages/request-table.ts`).
@@ -35,54 +36,6 @@ import ApiTesterBadge from '../internal/ApiTesterBadge.vue'
 // The drawer's body scrolls and pads, as for every row drawer (dms#375):
 // the top sticks under the drawer's header, both at its 16px inset with an
 // inset divider, and the content lays out by the drawer's width.
-
-interface RequestLog {
-  _id: string
-  timestamp: string
-  method: string
-  uri: string
-  rawPath: string
-  route: string
-  routeRegistered: boolean
-  statusCode: number
-  /** Null when the request never reached a handler. */
-  responseTimeMs: number | null
-  slowThresholdMs: number
-  /** How the route behaves lately; null for a route not registered. */
-  routeLatency?: RouteLatency | null
-  /** The method of the handler that answered (GET for a HEAD it served). */
-  routeMethod?: string | null
-  /** What the capture masked, section by section. */
-  redactions: Redactions
-  /** `tester` for a request the console's tester sent. */
-  source?: string | null
-  /** Where the API answers, for the URL and the cURL; null while unknown. */
-  apiOrigin?: string | null
-  /** The `x-request-id` it came with, when it is not its id. */
-  requestId?: string | null
-  ip?: string
-  userAgent?: string
-  pathParams?: Record<string, string>
-  query?: Record<string, string | string[]>
-  requestHeaders?: Record<string, string>
-  requestBody?: string
-  requestBodyTruncated?: boolean
-  requestBodyOmitted?: string | null
-  requestBodySize?: number | null
-  responseHeaders?: Record<string, string>
-  responseBody?: string
-  responseBodyTruncated?: boolean
-  responseBodyOmitted?: string | null
-  responseBodySize?: number | null
-  error?: { message: string; stack?: string }
-  links: {
-    route: string | null
-    tester: string | null
-    sameError: string | null
-    sameRoute: string
-    samePath?: string | null
-  }
-}
 
 /** Where the console's pages are: the page on screen names its own links. */
 const MODULE_BASE = '/modules/api'
@@ -513,102 +466,15 @@ const dateFormat = useDateFormat()
           />
         </section>
 
-        <section class="flex flex-col gap-2">
-          <DmsEyebrow :label="t('api.request.general')" />
-          <dl
-            class="grid grid-cols-[max-content_minmax(0,1fr)] gap-x-4 gap-y-1.5 text-[12.5px]"
-          >
-            <template v-for="row in general" :key="row.key">
-              <dt class="text-muted">{{ row.label }}</dt>
-              <dd class="text-default flex min-w-0 items-start gap-1">
-                <bdi
-                  class="min-w-0 font-mono text-[12px] [overflow-wrap:anywhere]"
-                >
-                  {{ row.value }}
-                </bdi>
-                <DmsCopyButton
-                  v-if="row.copy"
-                  :value="row.value"
-                  class="-my-1.5"
-                />
-              </dd>
-            </template>
-            <template v-if="isTester">
-              <dt class="text-muted">{{ t('api.request.fields.source') }}</dt>
-              <dd class="text-default">{{ t('api.request.source_tester') }}</dd>
-            </template>
-          </dl>
-        </section>
+        <RequestGeneral :general="general" :is-tester="isTester" />
 
-        <section class="flex flex-col gap-2">
-          <DmsEyebrow :label="t('api.request.timing')" />
-          <template v-if="timing">
-            <div class="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-              <span class="text-highlighted font-mono text-xl font-semibold">
-                {{ ms(log.responseTimeMs ?? 0) }}
-              </span>
-              <span
-                class="text-xs"
-                :class="
-                  timing.slow ? 'text-warning font-semibold' : 'text-dimmed'
-                "
-              >
-                {{
-                  timing.slow
-                    ? t('api.request.slow_ratio', { ratio })
-                    : t('api.request.threshold_ratio', { ratio })
-                }}
-              </span>
-            </div>
-            <div
-              class="bg-elevated relative my-1 h-2 rounded-full"
-              role="meter"
-              :aria-label="t('api.request.meter_label')"
-              aria-valuemin="0"
-              :aria-valuemax="Math.round(timing.max)"
-              :aria-valuenow="Math.round(log.responseTimeMs ?? 0)"
-              :aria-valuetext="ms(log.responseTimeMs ?? 0)"
-            >
-              <div
-                class="h-full rounded-full"
-                :class="timing.slow ? 'bg-warning' : 'bg-primary'"
-                :style="{ width: `${timing.share}%` }"
-              />
-              <div
-                class="bg-inverted/60 absolute -inset-y-1 w-0.5 rounded-full"
-                :style="{ left: `${timing.threshold}%` }"
-                aria-hidden="true"
-              />
-            </div>
-            <!-- The threshold, then how the route does lately: each its own
-              line, at every width. -->
-            <div class="text-dimmed flex flex-col gap-1 text-xs">
-              <p>
-                {{
-                  t('api.request.threshold', {
-                    threshold: ms(log.slowThresholdMs),
-                  })
-                }}
-              </p>
-              <p v-if="log.routeLatency" class="font-mono tabular-nums">
-                {{
-                  t(
-                    'api.request.route_latency',
-                    {
-                      days: count(log.routeLatency.windowDays),
-                      p50: ms(log.routeLatency.p50),
-                      p95: ms(log.routeLatency.p95),
-                    },
-                    log.routeLatency.windowDays,
-                  )
-                }}
-              </p>
-            </div>
-          </template>
-          <p v-else class="text-dimmed text-sm">
-            {{ t('api.request.not_measured_hint') }}
-          </p>
-        </section>
+        <RequestTiming
+          :log="log"
+          :timing="timing"
+          :ratio="ratio"
+          :ms="ms"
+          :count="count"
+        />
 
         <section class="flex flex-col gap-2">
           <DmsEyebrow :label="t('api.request.path_params')" />

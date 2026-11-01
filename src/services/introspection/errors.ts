@@ -18,19 +18,21 @@ export interface InferredErrorCode {
   source: "assert" | "HTTPResult";
 }
 
-// After the status, the reason: a string literal (group 2), or the `error`,
-// `message` or `reason` of an object literal (group 3), as in
-// `new HTTPResult(422, { error: "Insufficient stock" })`.
-//
-// `\)?\s*` between the symbol and the opening paren absorbs the
-// `(0, mod_1.assert)(...)` shape TypeScript emits for named imports.
+/**
+ * After the status, the reason: a string literal (group 2), or the `error`,
+ * `message` or `reason` of an object literal (group 3), as in
+ * `new HTTPResult(422, { error: "Insufficient stock" })`.
+ *
+ * `\)?\s*` between the symbol and the opening paren absorbs the
+ * `(0, mod_1.assert)(...)` shape TypeScript emits for named imports.
+ */
 const ASSERT_PATTERN =
   /\bassert\)?\s*\(\s*[^,)]+,\s*(\d{3})(?:\s*,\s*(?:['"`]([^'"`]*)['"`]|\{\s*(?:error|message|reason)\s*:\s*['"`]([^'"`]*)['"`]))?/g;
 
 const HTTP_RESULT_PATTERN =
   /\b(?:new\s+)?(?:[A-Za-z_$][\w$]*\.)?HTTPResult\)?\s*\(\s*(\d{3})(?:\s*,\s*(?:['"`]([^'"`]*)['"`]|\{\s*(?:error|message|reason)\s*:\s*['"`]([^'"`]*)['"`]))?/g;
 
-export function probeHandlerErrors(handler: unknown): InferredErrorCode[] {
+export function probeHandlerErrors(handler: Function): InferredErrorCode[] {
   const source = handlerSource(handler);
   if (!source) return [];
 
@@ -63,8 +65,7 @@ export function probeHandlerErrors(handler: unknown): InferredErrorCode[] {
   return [...found.values()].sort((a, b) => a.status - b.status);
 }
 
-function handlerSource(fn: unknown): string {
-  if (typeof fn !== "function") return "";
+function handlerSource(fn: Function): string {
   try {
     return Function.prototype.toString.call(fn);
   } catch {

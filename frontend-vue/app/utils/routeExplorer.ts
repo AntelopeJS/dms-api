@@ -23,10 +23,44 @@ export interface ExplorerRoute {
   state: RouteState
 }
 
+/** A route as the Routes page lists it. */
+export interface RouteRow extends ExplorerRoute {
+  controller: string | null
+  handler: string
+}
+
 export interface RouteFolder<T extends ExplorerRoute = ExplorerRoute> {
   path: string
   routes: T[]
   worst: RouteState
+}
+
+/** The methods the route list filters on, beside "all". */
+export const METHOD_FILTERS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']
+/** Rest after the last ↑ / ↓ before the page loads the route reached. */
+export const KEYBOARD_SETTLE_MS = 150
+/** Room kept above or below the active route as the list scrolls to it. */
+export const REVEAL_MARGIN_PX = 8
+
+/** A shape per issue, so slow and a high 4xx rate never read alike. */
+export const STATE_ICON: Partial<
+  Record<RouteState, { name: string; class: string }>
+> = {
+  failing: { name: 'i-ph-x-circle-fill', class: 'text-error' },
+  slow: { name: 'i-ph-timer-bold', class: 'text-warning' },
+  'client-errors': { name: 'i-ph-warning-fill', class: 'text-warning' },
+  recovered: {
+    name: 'i-ph-arrow-counter-clockwise-bold',
+    class: 'text-info',
+  },
+}
+export const STATE_DOT: Record<RouteState, string> = {
+  failing: 'bg-error',
+  slow: 'bg-warning',
+  'client-errors': 'bg-warning',
+  recovered: 'bg-info',
+  healthy: 'bg-success',
+  idle: 'bg-(--ui-border-accented)',
 }
 
 /**

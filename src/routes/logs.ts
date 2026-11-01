@@ -81,7 +81,10 @@ const routesTable = RoutesPage.explorer.targetChild(
   "table",
 );
 
-/** One request in full, as its drawer shows it. */
+/**
+ * One request in full, as its drawer shows it. A request out of reach is a
+ * 404, not a 403: it is not told apart from a missing one.
+ */
 async function logDetail(id: string, table: LogTable) {
   const model = GetModel(RequestLogModel);
   const log = await getRequestLog(model, id);
@@ -89,7 +92,6 @@ async function logDetail(id: string, table: LogTable) {
   const method = log.routeMethod ?? log.method;
   const ref = routeRef(method, log.uri);
   const route = findRoute(ref);
-  // Not 403: a request out of reach is not told apart from a missing one.
   const keys = table === "logs" ? null : await scopeKeys();
   assert(
     canReadLog(table, log, route !== undefined, keys),
@@ -103,8 +105,10 @@ async function logDetail(id: string, table: LogTable) {
     method: log.method,
     routeMethod: log.routeMethod ?? null,
     uri: log.uri,
-    // As a listed row has it: the panel's title of a request opened by a
-    // link (`?record=`) reads it, the request not being among the rows.
+    /**
+     * As a listed row has it: the panel's title of a request opened by a
+     * link (`?record=`) reads it, the request not being among the rows.
+     */
     path: log.rawPath,
     rawPath: log.rawPath,
     statusCode: log.statusCode,
@@ -118,9 +122,9 @@ async function logDetail(id: string, table: LogTable) {
     requestHeaders: log.requestHeaders,
     requestBody: log.requestBody,
     requestBodyTruncated: log.requestBodyTruncated,
-    // Null when the body is stored.
+    /** Null when the body is stored. */
     requestBodyOmitted: log.requestBodyOmitted ?? null,
-    // The whole body's bytes when only its start is stored.
+    /** The whole body's bytes when only its start is stored. */
     requestBodySize: log.requestBodySize ?? null,
     responseHeaders: log.responseHeaders,
     responseBody: log.responseBody,
@@ -132,7 +136,7 @@ async function logDetail(id: string, table: LogTable) {
     route: ref,
     routeRegistered: route !== undefined,
     slowThresholdMs,
-    // What the duration compares to: the route's usual, over its last days.
+    /** What the duration compares to: the route's usual, over its last days. */
     routeLatency: route
       ? await getRouteLatency(
           { stats: GetModel(RouteStatisticsModel), logs: model },
@@ -140,7 +144,7 @@ async function logDetail(id: string, table: LogTable) {
           slowThresholdMs,
         )
       : null,
-    // Where the cURL of the panel sends the request: the real API.
+    /** Where the cURL of the panel sends the request: the real API. */
     apiOrigin: await apiOrigin(),
     links: {
       route: route ? routeLink(ref) : null,
@@ -148,10 +152,12 @@ async function logDetail(id: string, table: LogTable) {
       sameError: log.error?.message
         ? logsLink({ route: ref, error: log.error.message })
         : null,
-      // A path no route answers has no route to list the requests of.
+      /** A path no route answers has no route to list the requests of. */
       sameRoute: route ? logsLink({ route: ref }) : null,
-      // One resource of a route with parameters (`/api/orders/42`); the
-      // route itself otherwise, which `sameRoute` already lists.
+      /**
+       * One resource of a route with parameters (`/api/orders/42`); the
+       * route itself otherwise, which `sameRoute` already lists.
+       */
       samePath:
         normalizeRoutePath(log.rawPath) !== log.uri
           ? logsLink({ path: log.rawPath })

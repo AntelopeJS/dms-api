@@ -1,20 +1,31 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { ImplementInterface } from "@antelopejs/interface-core";
+import {
+  PublishMessage,
+  type PublishMessageOptions,
+} from "@antelopejs/interface-dms/realtime";
+import { beforeEach, describe, expect, it } from "vitest";
+import { recordLiveRequest } from "@/services/live-feed";
+import { LIVE_REQUESTS_TOPIC } from "@/types";
 
-const published = vi.hoisted(
-  () => [] as Array<{ topic: string; type: string; payload: unknown }>,
-);
+const published: Array<{
+  topic: string;
+  type: string;
+  payload: PublishMessageOptions["payload"];
+}> = [];
 
-vi.mock("@antelopejs/interface-dms/realtime", () => ({
-  PublishMessage: vi.fn(
-    (topic: string, type: string, options?: { payload?: unknown }) => {
+ImplementInterface(
+  { PublishMessage },
+  {
+    PublishMessage: (
+      topic: string,
+      type: string,
+      options?: PublishMessageOptions,
+    ) => {
       published.push({ topic, type, payload: options?.payload });
       return Promise.resolve();
     },
-  ),
-}));
-
-import { recordLiveRequest } from "@/services/live-feed";
-import { LIVE_REQUESTS_TOPIC } from "@/types";
+  },
+);
 
 const at = (seconds: number) => new Date(Date.UTC(2026, 9, 10, 12, 0, seconds));
 

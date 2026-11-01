@@ -29,6 +29,11 @@ const UNBOUNDED_SCAN_FLOOR_MS = 30 * MS_PER_DAY;
  * scan at a fixed number of pages, so a scope holding a small share of the
  * traffic came back short — or empty with a non-null cursor, which the Logs
  * page renders as "no logs" with no way to page further.
+ *
+ * A scope with no routes matches nothing by definition, and is answered
+ * without a query: the predicate is an `$expr`, so the database cannot use an
+ * index to prove the emptiness — it would read the whole table to find the
+ * zero rows it was always going to return.
  */
 export function queryRequestLogsScoped(
   model: RequestLogModel,
@@ -36,18 +41,16 @@ export function queryRequestLogsScoped(
   keys: Set<string> | null | undefined,
 ): Promise<RequestLogPage> {
   if (!keys) return model.query(filters);
-  // A scope with no routes matches nothing by definition. Answering it without
-  // a query matters: the predicate is an `$expr`, so the database cannot use an
-  // index to prove the emptiness — it would read the whole table to find the
-  // zero rows it was always going to return.
   if (keys.size === 0)
     return Promise.resolve({ results: [], nextCursor: null });
   return model.query({
-    // Same reason the empty case short-circuits: the scope predicate is not
-    // indexable, so a query that cannot fill its page reads until the log runs
-    // out. A caller naming no window would scan the whole retention to answer
-    // "the last 10", which on a sparse scope means every row. The floor keeps
-    // that proportional to recent traffic; callers wanting more say so.
+    /**
+     * Same reason the empty case short-circuits: the scope predicate is not
+     * indexable, so a query that cannot fill its page reads until the log runs
+     * out. A caller naming no window would scan the whole retention to answer
+     * "the last 10", which on a sparse scope means every row. The floor keeps
+     * that proportional to recent traffic; callers wanting more say so.
+     */
     since: new Date(Date.now() - UNBOUNDED_SCAN_FLOOR_MS),
     ...filters,
     routeKeys: [...keys],

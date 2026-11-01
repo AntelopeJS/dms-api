@@ -9,6 +9,7 @@ on:
   # secret scanner ran.
   pull_request:
 
+  workflow_dispatch: null
 permissions:
   contents: read
 
@@ -17,43 +18,32 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  ubuntu:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    env:
-      COREPACK_DEFAULT_TO_LATEST: 0
-    steps:
-      - uses: actions/checkout@v4
+  ci:
+    uses: AntelopeJS/.github/.github/workflows/ci-node.yml@v1
+    with:
+      # `pnpm run checks` typechecks without emitting; the build also checks
+      # the declaration output that gets published.
+      extra-commands: pnpm build
+      docs-files: |
+        README.md
+        docs
+      renovate-sync: false
+    permissions:
+      contents: read
 
-      - uses: actions/setup-node@v4
-        with:
-          # .nvmrc is the version of record. oxlint needs at least 22.18 to
-          # read a TypeScript config, which every value there clears.
-          node-version-file: .nvmrc
-      # Node's bundled corepack predates the pnpm version pinned in
-      # packageManager. Pinned so a corepack release cannot break every
-      # build at once.
-      - run: npm i -g --force corepack@0.34.0 && corepack enable
-      # setup-node's own `cache: pnpm` needs pnpm before setup-node runs, and
-      # pnpm only exists once corepack is enabled above. One store serves
-      # both lockfiles.
-      - id: pnpm-store
-        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
-      - uses: actions/cache@v4
-        with:
-          path: ${{ steps.pnpm-store.outputs.path }}
-          key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml', 'frontend-vue/pnpm-lock.yaml') }}
-          restore-keys: pnpm-store-${{ runner.os }}-
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm lint
-      # oxlint's type-aware pass degrades to `any` on a broken tsconfig
-      # without failing, so the typecheck is what catches it. It checks
-      # tests/ and src/ in one pass: tests/tsconfig.json includes src/.
-      - run: pnpm typecheck
-      # Unused dependencies only. `pnpm knip:all` also reports dead files and
-      # exports, which need a human to confirm, so they stay out of the gate.
-      - run: pnpm knip
-      - run: pnpm build
-      - run: pnpm test
-      # `pnpm --dir frontend-vue typecheck` is left out: it needs a running DMS
-      # backend for `ajs dms prepare` to generate the complete Inertia workspace.
+  # Branch protection requires the `ubuntu` check.
+  ubuntu:
+    if: always()
+    needs: [ci]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || contains(needs.*.result, 'skipped')
+        run: exit 1
+  renovate-sync:
+    if: >-
+      github.event_name == 'pull_request' && startsWith(github.head_ref, 'renovate/') && github.event.pull_request.head.repo.full_name == github.repository
+    permissions:
+      contents: write
+      actions: write
+    uses: AntelopeJS/.github/.github/workflows/ci-renovate-sync.yml@v1

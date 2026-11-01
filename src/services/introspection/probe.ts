@@ -1,4 +1,7 @@
-import type { ComputedParameter } from "@antelopejs/interface-api";
+import type {
+  ComputedParameter,
+  ParameterProvider,
+} from "@antelopejs/interface-api";
 
 /**
  * Source-text inspection for ComputedParameter providers.
@@ -54,86 +57,88 @@ export interface ProbedParameter {
 export const AUTH_PROVIDER =
   /authori[sz]ation|AuthUser|AuthRawUser|authenticat/i;
 
+/**
+ * The provider shapes recognised, in order; the first match wins:
+ * - `auth`: an authentication guard. interface-auth's CreateAuthDecorator
+ *   providers call CheckAuthentication, the DMS tenant guards authenticate
+ *   the request, hand-written ones read the authorization header. First,
+ *   because the header and stream patterns below would claim them.
+ * - `param`: route-param access with a literal name, `routeParameters["x"]` /
+ *   `routeParameters.x` (hand-written providers; not the stock @Parameter).
+ * - `query`, multi: `searchParams.getAll("x")` (hand-written providers; not
+ *   the stock @MultiParameter).
+ * - `query`: `searchParams.get("x")` (hand-written providers; not the stock
+ *   @Parameter), then the less common indexed access `searchParams["x"]`.
+ * - `header`: `headers["x"]` / `headers.x` (hand-written providers; not the
+ *   stock @Parameter).
+ * - `body`: @JSONBody(), JSON.parse over the body.
+ * - `raw`: @RawBody, which returns context.body directly (Buffer).
+ * - `stream`: hand-written stream providers (rawResponse / writeHead /
+ *   WriteStream). The stock @WriteStream provider compiles to
+ *   `context.response.getWriteStream(type)`, which this pattern does not
+ *   match (no word boundary inside `getWriteStream`); it is classified by
+ *   the `result` pattern instead.
+ * - `connection`: @Connection, the websocket connection.
+ * - `result`: @Result, the HTTPResult / response object.
+ * - `context`: @Context, the bare context object.
+ */
 const PROVIDER_PATTERNS: Array<{
   source: ParameterSource;
   multi?: boolean;
   match: RegExp;
   nameGroup?: number;
 }> = [
-  // An authentication guard: interface-auth's CreateAuthDecorator providers
-  // call CheckAuthentication, the DMS tenant guards authenticate the request,
-  // hand-written ones read the authorization header. First, because the
-  // header and stream patterns below would claim them.
   {
     source: "auth",
     match: AUTH_PROVIDER,
   },
-  // Route-param access with a literal name: routeParameters["x"] /
-  // routeParameters.x (hand-written providers; not the stock @Parameter)
   {
     source: "param",
     match:
       /routeParameters\s*(?:\[\s*['"]([^'"]+)['"]\s*\]|\.([A-Za-z_$][\w$]*))/,
     nameGroup: 1,
   },
-  // Multi query access with a literal name: searchParams.getAll("x")
-  // (hand-written providers; not the stock @MultiParameter)
   {
     source: "query",
     multi: true,
     match: /searchParams\s*\.\s*getAll\s*\(\s*['"]([^'"]+)['"]\s*\)/,
     nameGroup: 1,
   },
-  // Query access with a literal name: searchParams.get("x")
-  // (hand-written providers; not the stock @Parameter)
   {
     source: "query",
     match: /searchParams\s*\.\s*get\s*\(\s*['"]([^'"]+)['"]\s*\)/,
     nameGroup: 1,
   },
-  // Less common: searchParams indexed access
   {
     source: "query",
     match: /searchParams\s*\[\s*['"]([^'"]+)['"]\s*\]/,
     nameGroup: 1,
   },
-  // Header access with a literal name: headers["x"] / headers.x
-  // (hand-written providers; not the stock @Parameter)
   {
     source: "header",
     match: /headers\s*(?:\[\s*['"]([^'"]+)['"]\s*\]|\.([A-Za-z_$][\w$]*))/,
     nameGroup: 1,
   },
-  // @JSONBody() -> JSON.parse over the body
   {
     source: "body",
     match: /JSON\s*\.\s*parse\b/,
   },
-  // @RawBody -> returns context.body directly (Buffer)
   {
     source: "raw",
     match: /\bcontext\b\s*\.\s*body\b/,
   },
-  // Hand-written stream providers (rawResponse / writeHead / WriteStream).
-  // The stock @WriteStream provider compiles to
-  // `context.response.getWriteStream(type)`, which this pattern does not
-  // match (no word boundary inside `getWriteStream`); it is classified by
-  // the `result` pattern below instead.
   {
     source: "stream",
     match: /\b(?:rawResponse|writeHead|WriteStream)\b/,
   },
-  // @Connection -> websocket connection
   {
     source: "connection",
     match: /\bconnection\b/,
   },
-  // @Result -> the HTTPResult / response object
   {
     source: "result",
     match: /\bcontext\b\s*\.\s*response\b/,
   },
-  // @Context -> the bare context object
   {
     source: "context",
     match:
@@ -187,7 +192,7 @@ export function probeProvider(
   };
 }
 
-function providerSource(fn: unknown): string {
+function providerSource(fn: ParameterProvider): string {
   try {
     return Function.prototype.toString.call(fn);
   } catch {
@@ -271,7 +276,10 @@ export interface ProbedProperty {
 
 /**
  * Try to identify the decorator that produced a class-property's
- * ComputedParameter. Returns the bare provider source for fall-through.
+ * ComputedParameter: an authentication guard, @Model(...) from
+ * interface-database-decorators (it reaches into GetModel), or a generic
+ * "Injected" / DI-style marker. Returns the bare provider source for
+ * fall-through.
  */
 export function probeProperty(param: ComputedParameter): ProbedProperty {
   if (!param.provider) {
@@ -282,11 +290,9 @@ export function probeProperty(param: ComputedParameter): ProbedProperty {
   if (AUTH_PROVIDER.test(source)) {
     return { decorator: "Auth" };
   }
-  // @Model(...) from interface-database-decorators reaches into GetModel
   if (/\bGetModel\b/.test(source)) {
     return { decorator: "Model" };
   }
-  // Generic "Injected" / DI-style markers — extend over time
   if (/\bgetInstance\b|\bcontainer\b/.test(source)) {
     return { decorator: "Injected" };
   }

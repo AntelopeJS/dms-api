@@ -28,6 +28,10 @@ import { normalizeRoutePath } from "../tables/routes_statistics.table";
 
 export interface RequestLogFilters {
   routeId?: string;
+  /**
+   * The route's path. Stored paths are canonical: a handler location with its
+   * trailing slash names the same route.
+   */
   uri?: string;
   /** The path exactly as requested: one resource of a route. */
   rawPath?: string;
@@ -188,7 +192,9 @@ export class RequestLogModel extends BasicDataModel(
   /**
    * One page of the rows matching `filters`, by offset, with their total:
    * what a table view over the logs pages through, and counts its tabs with. The DMS table loads more rows by asking for a larger page from
-   * the first row, so the page goes up to `REQUEST_LOG_LIST_MAX_ROWS`.
+   * the first row, so the page goes up to `REQUEST_LOG_LIST_MAX_ROWS`. A
+   * limit of 0 asks for the total alone: a slice of 0 rows would read as "no
+   * limit" to the database.
    */
   async list(
     filters: RequestLogFilters,
@@ -206,17 +212,18 @@ export class RequestLogModel extends BasicDataModel(
       filters,
     );
     const [results, total] = await Promise.all([
-      // A limit of 0 asks for the total alone: a slice of 0 rows would read
-      // as "no limit" to the database.
       limit > 0 ? this.listItems(ordered.slice(offset, offset + limit)) : [],
       this.applyFilters(this.table, filters).count().run(),
     ]);
     return { results, total };
   }
 
-  /** Every row matching `filters`, reduced to the fields aggregations read. */
+  /**
+   * Every row matching `filters`, reduced to the fields aggregations read. The
+   * Tester's requests are left out: they are logged, not counted (see
+   * RequestLogSource).
+   */
   async samples(filters: RequestLogFilters): Promise<RequestLogSample[]> {
-    // The Tester's requests are logged, not counted (see RequestLogSource).
     return this.applyFilters(this.table, { ...filters, apiTrafficOnly: true })
       .map((doc) => ({
         timestamp: doc.key("timestamp"),
@@ -226,7 +233,7 @@ export class RequestLogModel extends BasicDataModel(
         responseTimeMs: doc.key("responseTimeMs"),
         errorMessage: doc.key("error").default(null).key("message"),
       }))
-      .run() as Promise<RequestLogSample[]>;
+      .run();
   }
 
   private listItems(rows: this["table"]): Promise<RequestLogListItem[]> {
@@ -245,7 +252,7 @@ export class RequestLogModel extends BasicDataModel(
         source: doc.key("source"),
         requestId: doc.key("requestId"),
       }))
-      .run() as Promise<RequestLogListItem[]>;
+      .run();
   }
 
   private applyFilters(
@@ -258,6 +265,14 @@ export class RequestLogModel extends BasicDataModel(
     );
   }
 
+  /**
+   * `filters` other than the search and the status, as query predicates. The
+   * scope rebuilds the `METHOD:uri` key inside the query so the scope is a
+   * database predicate, not a post-filter: pagination then counts scoped rows,
+   * and a page can never come back short (or empty with a cursor) because
+   * unscoped traffic crowded the raw window out. The method is the route's: a
+   * HEAD served by the GET handler is in the GET route's scope.
+   */
   private applyScalarFilters(
     q: this["table"],
     filters: RequestLogFilters,
@@ -295,8 +310,6 @@ export class RequestLogModel extends BasicDataModel(
       q = q.filter((doc) => doc.key("routeId").eq(routeId));
     }
     if (filters.uri) {
-      // Stored paths are canonical: a handler location with its trailing
-      // slash names the same route.
       const uri = normalizeRoutePath(filters.uri);
       q = q.filter((doc) => doc.key("uri").eq(uri));
     }
@@ -337,12 +350,6 @@ export class RequestLogModel extends BasicDataModel(
     }
     const routeKeys = filters.routeKeys;
     if (routeKeys) {
-      // Rebuild the `METHOD:uri` scope key inside the query so the scope is a
-      // database predicate, not a post-filter: pagination then counts scoped
-      // rows, and a page can never come back short (or empty with a cursor)
-      // because unscoped traffic crowded the raw window out. The method is
-      // the route's: a HEAD served by the GET handler is in the GET route's
-      // scope.
       q = q.filter((doc) =>
         ValueProxy.constant(routeKeys).includes(
           doc

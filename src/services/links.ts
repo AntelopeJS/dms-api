@@ -100,10 +100,10 @@ export function routeLink(
   tab?: string,
   period?: WindowPreset | null,
 ): string {
-  const query: Record<string, string> = { route };
-  if (tab) query.tab = tab;
-  if (period) query[PERIOD_QUERY_KEY] = period;
-  return withQuery(`${MODULE_BASE}/routes`, query);
+  const query = new URLSearchParams({ route });
+  if (tab) query.set("tab", tab);
+  if (period) query.set(PERIOD_QUERY_KEY, period);
+  return `${MODULE_BASE}/routes?${query}`;
 }
 
 /**

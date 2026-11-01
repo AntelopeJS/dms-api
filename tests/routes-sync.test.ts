@@ -1,35 +1,90 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { getRegisteredRoutes } from "@antelopejs/interface-api";
+import { ImplementInterface } from "@antelopejs/interface-core";
+import {
+  GetModuleInfo,
+  ListModules,
+  type ModuleInfo,
+} from "@antelopejs/interface-core/modules";
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
+import type { DeepPartial } from "@antelopejs/interface-database-decorators";
 import type { Route } from "@/db/tables/routes.table";
-import { ensureRoutesSynced, syncRoutes } from "@/services/routes-sync";
+import {
+  getRouteStatsKey,
+  routesStatisticsTableName,
+} from "@/db/tables/routes_statistics.table";
+import {
+  ensureRoutesSynced,
+  type RoutesStore,
+  type StatisticsSource,
+  syncRoutes,
+} from "@/services/routes-sync";
+import { isString } from "@/guards";
+import { emptyHistogram } from "@/services/statistics-utils";
+import type { DayStatistics } from "@/types";
+import { serveTable } from "./helpers/database";
+import {
+  registerRoutes,
+  routeHandler,
+  unregisterRoutes,
+} from "./helpers/routes";
 
-const registered = vi.hoisted(() => ({
-  routes: [] as Array<{ method: string; location: string; module?: string }>,
-}));
+/** The shop module, loaded from the project itself. */
+const SHOP_MODULE: ModuleInfo = {
+  source: { type: "local" },
+  config: {},
+  importOverrides: {},
+  disabledExports: [],
+  status: "active",
+  localPath: "/shop",
+};
 
-vi.mock("@antelopejs/interface-api", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@antelopejs/interface-api")>()),
-  getRegisteredRoutes: () => registered.routes,
-}));
-
-vi.mock(
-  "@antelopejs/interface-database-decorators",
-  async (importOriginal) => ({
-    ...(await importOriginal<
-      typeof import("@antelopejs/interface-database-decorators")
-    >()),
-    GetModel: () => ({ getAll: () => Promise.resolve([]) }),
-  }),
+ImplementInterface(
+  { ListModules, GetModuleInfo },
+  {
+    ListModules: () => Promise.resolve(["shop"]),
+    GetModuleInfo: () => Promise.resolve(SHOP_MODULE),
+  },
 );
 
-vi.mock("@antelopejs/interface-core/modules", () => ({
-  ListModules: () => Promise.resolve(["shop"]),
-  GetModuleInfo: () => Promise.resolve({ source: { type: "local" } }),
-}));
+beforeAll(() => serveTable(routesStatisticsTableName, []));
+
+afterEach(unregisterRoutes);
+
+/** A route of the shop module, as `getRegisteredRoutes` lists it. */
+function shopRoute(
+  id: string,
+  method: string,
+  location: string,
+): ReturnType<typeof getRegisteredRoutes>[number] {
+  return {
+    id,
+    method,
+    location,
+    callbackName: "handle",
+    parameters: [],
+    properties: {},
+    module: "shop",
+  };
+}
+
+/** The routes the shop module registers, as the sync takes them. */
+const SHOP_ROUTES = [
+  shopRoute("0", "get", "/api/orders/"),
+  shopRoute("1", "post", "/api/orders/"),
+];
 
 const DAY = 86_400_000;
 const NOW = Date.now();
 
-class FakeRoutes {
+class FakeRoutes implements RoutesStore {
   rows = new Map<string, Route>();
   private next = 0;
 
@@ -39,17 +94,31 @@ class FakeRoutes {
     );
   }
   insert(route: Partial<Route>) {
+    const { uri, method, module, own, updatedAt } = route;
+    if (
+      uri === undefined ||
+      method === undefined ||
+      module === undefined ||
+      own === undefined ||
+      updatedAt === undefined
+    ) {
+      throw new Error("The sync inserts complete routes.");
+    }
     const _id = `r${this.next++}`;
-    this.rows.set(
+    this.rows.set(_id, {
       _id,
-      Object.assign(structuredClone(route), {
-        _id,
-        createdAt: new Date(NOW),
-      }) as Route,
-    );
+      uri,
+      method,
+      module,
+      own,
+      createdAt: new Date(NOW),
+      updatedAt: new Date(updatedAt),
+    });
     return Promise.resolve([_id]);
   }
-  update(route: Partial<Route>) {
+  update(route: string | DeepPartial<Route>) {
+    if (isString(route))
+      throw new Error("The sync updates a route by its row.");
     const row = route._id ? this.rows.get(route._id) : undefined;
     if (row)
       Object.assign(row, {
@@ -70,34 +139,51 @@ class FakeRoutes {
   }
 }
 
-function stats(rows: Array<{ method: string; uri: string; days: number[] }>) {
+/** A day of one call, all that the sync reads being its `day`. */
+function oneCall(day: number): DayStatistics {
+  return {
+    day,
+    requestsCount: 1,
+    averageResponseTime: 10,
+    minResponseTime: 10,
+    maxResponseTime: 10,
+    totalResponseTime: 10,
+    clientErrorsCount: 0,
+    serverErrorsCount: 0,
+    timedRequestsCount: 1,
+    latencyHistogram: emptyHistogram(),
+  };
+}
+
+function stats(
+  rows: Array<{ method: string; uri: string; days: number[] }>,
+): StatisticsSource {
   return {
     getAll: () =>
       Promise.resolve(
         rows.map((row) => ({
-          ...row,
-          statistics: row.days.map((day) => ({ day })),
+          _id: getRouteStatsKey(row.method, row.uri),
+          method: row.method,
+          uri: row.uri,
+          statistics: row.days.map(oneCall),
+          revision: "r1",
         })),
       ),
-  } as never;
+  };
 }
 
 let routes: FakeRoutes;
 /** The fake, as the sync takes it. */
-let store: Parameters<typeof syncRoutes>[0];
+let store: RoutesStore;
 
 beforeEach(() => {
   routes = new FakeRoutes();
-  store = routes as never;
-  registered.routes = [
-    { method: "get", location: "/api/orders/", module: "shop" },
-    { method: "post", location: "/api/orders/", module: "shop" },
-  ];
+  store = routes;
 });
 
 describe("syncRoutes", () => {
   it("stores routes under their canonical path", async () => {
-    await syncRoutes(store, registered.routes as never, stats([]));
+    await syncRoutes(store, SHOP_ROUTES, stats([]));
     expect(
       [...routes.rows.values()].map((r) => `${r.method} ${r.uri}`),
     ).toEqual(["GET /api/orders", "POST /api/orders"]);
@@ -107,7 +193,7 @@ describe("syncRoutes", () => {
     const firstCall = NOW - 60 * DAY;
     await syncRoutes(
       store,
-      registered.routes as never,
+      SHOP_ROUTES,
       stats([
         { method: "GET", uri: "/api/orders/", days: [NOW - DAY, firstCall] },
       ]),
@@ -121,15 +207,16 @@ describe("syncRoutes", () => {
 
 describe("ensureRoutesSynced", () => {
   it("syncs again only when the registered routes changed", async () => {
-    await syncRoutes(store, registered.routes as never, stats([]));
+    registerRoutes(
+      routeHandler("get", "/api/orders/"),
+      routeHandler("post", "/api/orders/"),
+    );
+    await syncRoutes(store, getRegisteredRoutes(), stats([]));
     const getAll = vi.spyOn(routes, "getAll");
     await ensureRoutesSynced(store);
     expect(getAll).not.toHaveBeenCalled();
 
-    registered.routes = [
-      ...registered.routes,
-      { method: "get", location: "/api/customers", module: "shop" },
-    ];
+    registerRoutes(routeHandler("get", "/api/customers"));
     await ensureRoutesSynced(store);
     expect([...routes.rows.values()].map((r) => r.uri)).toContain(
       "/api/customers",

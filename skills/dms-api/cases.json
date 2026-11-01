@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "id": "api-slow-routes",
+      "area": "modules",
+      "style": "clean",
+      "prompt": "Which API routes are the slowest, and why does this one fail?",
+      "expect": {
+        "skills": ["dms-api"],
+        "acceptable": ["dms", "api-interface"]
+      }
+    },
+    {
+      "id": "dms-api-route-500-casual",
+      "area": "modules",
+      "style": "casual",
+      "prompt": "one route keeps failing in prod, where are the request logs with the body",
+      "expect": {
+        "skills": ["dms-api"],
+        "acceptable": ["dms", "api-interface"]
+      }
+    },
+    {
+      "id": "dms-api-retention-slowness",
+      "area": "modules",
+      "style": "clean",
+      "prompt": "Keep the request logs for 14 days and flag requests slower than 800 ms in the API console. What do I set?",
+      "expect": {
+        "skills": ["dms-api"],
+        "acceptable": ["dms", "dms-project"],
+        "mustMention": ["requestLogRetention", "requestSlownessThreshold"]
+      }
+    },
+    {
+      "id": "dms-api-not-controller",
+      "area": "modules",
+      "style": "clean",
+      "prompt": "Write a controller with a POST /orders route that reads the JSON body and returns a 201 result.",
+      "expect": {
+        "skills": ["api-interface"],
+        "acceptable": ["core-interface"],
+        "avoid": ["dms-api"]
+      }
+    }
+  ]
+}

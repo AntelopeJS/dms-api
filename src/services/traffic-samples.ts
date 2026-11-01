@@ -24,10 +24,6 @@ function inScope(keys: ScopeKeys, method: string, uri: string): boolean {
   return !keys || keys.has(scopeRouteKey(method, uri));
 }
 
-// ---------------------------------------------------------------------------
-// Logged requests
-// ---------------------------------------------------------------------------
-
 /**
  * Health, "Needs attention", the routes tree and the 24h charts all read the
  * last day of requests: it is loaded once and the others slice it.
@@ -172,7 +168,9 @@ export function forgetRecentScan(): void {
 /**
  * Every logged request of `range`, every route, sorted by time. A range
  * inside the last day is sliced out of the shared recent scan; any other is
- * scanned once and cached under its bounds.
+ * scanned once and cached under its bounds. A caller with its own clock asks
+ * up to a few seconds past the pinned "now": those requests are left for the
+ * next tick.
  */
 export async function samplesIn(
   model: SampleSource,
@@ -183,8 +181,6 @@ export async function samplesIn(
     from: new Date(now.getTime() - RECENT_SPAN_MS),
     to: now,
   };
-  // A caller with its own clock asks up to a few seconds past the pinned
-  // "now": those requests are left for the next tick.
   if (
     range.from >= recent.from &&
     range.to.getTime() <= now.getTime() + CACHE_QUANTUM_MS

@@ -46,50 +46,60 @@ export class OverviewPage extends PageController(
     module: "api",
     category: monitorCategory,
     order: 0,
-    // Direct / Pause over the live feed, each block read at most every 10 s,
-    // every minute over a week or a month.
+    /**
+     * Direct / Pause over the live feed, each block read at most every 10 s,
+     * every minute over a week or a month.
+     */
     live: liveMode(10, 60),
   },
   DefaultLayout(),
 ) {
-  // The toolbar of every monitoring page. The period selector keeps its
-  // period in the URL (`?api.period=last-24h`), and its comparison: the
-  // period before or none. A chart with nothing to compare
-  // with shows no "vs" line, the same under "none" as when it is not kept.
+  /**
+   * The toolbar of every monitoring page. The period selector keeps its
+   * period in the URL (`?api.period=last-24h`), and its comparison: the
+   * period before or none. A chart with nothing to compare
+   * with shows no "vs" line, the same under "none" as when it is not kept.
+   */
   static toolbar = monitoringToolbar({
     leading: {
       scope: scopeChip(),
-      // Still in beta: a pill beside the scope, its meaning in a tooltip.
+      /** Still in beta: a pill beside the scope, its meaning in a tooltip. */
       beta: apiBlock("BetaBadge"),
     },
     compare: true,
   }).meta({ name: "$api.overview.toolbar", icon: "i-ph-sliders-horizontal" });
 
-  // The verdict, since when and why, with the figures it rests on: a DMS
-  // Banner and StatGroup cannot give the "since" its tooltip, tell a change
-  // of verdict, say the figures are stale, nor mark the browser tab.
+  /**
+   * The verdict, since when and why, with the figures it rests on: a DMS
+   * Banner and StatGroup cannot give the "since" its tooltip, tell a change
+   * of verdict, say the figures are stale, nor mark the browser tab.
+   */
   static health = apiBlock("HealthHero", {
     fetchUrl: `${OVERVIEW_API}/health`,
     realtimeTopic: LIVE_REQUESTS_TOPIC,
   });
 
-  // The rows keep their ids whatever their order: the endpoints check their
-  // permission by them (`src/routes/overview.ts`).
+  /**
+   * The rows keep their ids whatever their order: the endpoints check their
+   * permission by them (`src/routes/overview.ts`).
+   *
+   * The head of `attention` counts every route to check (the route's `count`,
+   * more than the rows shown when capped) and says the window it covers; each
+   * row's top error is its third line. Every row is read whole (`wrap`) and
+   * the list folds past the first five. It fills its cell (`fillHeight`) and
+   * scrolls inside it: the slowest routes beside it set the row's height, the
+   * same while loading and whatever the routes to check, so the rows below
+   * never move when they arrive or change (its wrapped rows are taller than
+   * its skeleton's). `slowest` shows the average with its unit: "1,931 ms".
+   * `activity` is grouped by day, each incident at its time: an absolute time
+   * does not go stale the way "Just now" did.
+   */
   static dashboard = Grid({ gap: "1rem", minColumnWidth: "300px" })
     .child(
       "health",
       GridRow()
         .child(
           "attention",
-          // Its head counts every route to check (the route's `count`, more
-          // than the rows shown when capped) and says the window it covers;
-          // each row's top error is its third line. Every row is read whole
-          // (`wrap`) and the list folds past the first five. It fills its
-          // cell (`fillHeight`) and scrolls inside it: the slowest routes
-          // beside it set the row's height, the same while loading and
-          // whatever the routes to check, so the rows below never move
-          // when they arrive or change (its wrapped rows are taller than its
-          // skeleton's).
           ActivityFeed({
             title: "$api.overview.attention.title",
             badge: "$api.overview.attention.badge",
@@ -119,7 +129,6 @@ export class OverviewPage extends PageController(
         )
         .child(
           "slowest",
-          // The average with its unit: "1,931 ms".
           TopListCard({
             title: "$api.overview.slowest.title",
             description: "$api.overview.slowest.description",
@@ -146,13 +155,17 @@ export class OverviewPage extends PageController(
             realtimeTopic: LIVE_REQUESTS_TOPIC,
             valueFormat: "percent",
             valuePrecision: 1,
-            // The DMS badge reads a delta as a relative change, good when up:
-            // a rate's change in points, bad when up, would read wrong. The
-            // "vs" figure stays (DMS-12).
+            /**
+             * The DMS badge reads a delta as a relative change, good when up:
+             * a rate's change in points, bad when up, would read wrong. The
+             * "vs" figure stays (DMS-12).
+             */
             showDelta: false,
             showLegend: false,
-            // Names the 4xx and the 5xx columns, and the dashed line of the
-            // error share over the period compared with.
+            /**
+             * Names the 4xx and the 5xx columns, and the dashed line of the
+             * error share over the period compared with.
+             */
             showSeriesLegend: true,
             chart: ChartColumn({
               height: "220px",
@@ -177,12 +190,14 @@ export class OverviewPage extends PageController(
             realtimeTopic: LIVE_REQUESTS_TOPIC,
             valueFormat: "compact",
             showLegend: false,
-            // Names the 2xx, 4xx and 5xx parts of each column.
+            /** Names the 2xx, 4xx and 5xx parts of each column. */
             showSeriesLegend: true,
-            // 2xx, 4xx and 5xx stacked on one axis: the height of a column
-            // is the traffic, its red part the server errors. Under a
-            // comparison, the calls of the period compared with are a dashed
-            // line over the columns.
+            /**
+             * 2xx, 4xx and 5xx stacked on one axis: the height of a column
+             * is the traffic, its red part the server errors. Under a
+             * comparison, the calls of the period compared with are a dashed
+             * line over the columns.
+             */
             chart: ChartColumn({
               height: "260px",
               xaxisType: "datetime",
@@ -235,8 +250,10 @@ export class OverviewPage extends PageController(
               requestTable({
                 page: "overview",
                 fetchUrl: "/api/monitoring/logs/recent",
-                // Status and duration before the path, the time last: on a
-                // phone the row shows what answered and how fast first.
+                /**
+                 * Status and duration before the path, the time last: on a
+                 * phone the row shows what answered and how fast first.
+                 */
                 columns: [
                   "status",
                   "responseTimeMs",
@@ -275,8 +292,6 @@ export class OverviewPage extends PageController(
         )
         .child(
           "activity",
-          // Grouped by day, each incident at its time: an absolute time does
-          // not go stale the way "Just now" did.
           ActivityFeed({
             title: "$api.overview.activity.title",
             fetchUrl: `${OVERVIEW_API}/activity`,

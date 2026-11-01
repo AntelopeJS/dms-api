@@ -1,16 +1,8 @@
-// =============================================================================
-// Database Configuration
-// =============================================================================
-
 /** Prefix of the console's own HTTP routes. */
 export const MONITORING_API_PREFIX = "/api/monitoring";
 
 /** Database schema name for dms-api tables */
 export const SCHEMA_NAME = "dms-api";
-
-// =============================================================================
-// Statistics Settings
-// =============================================================================
 
 /** Milliseconds in one minute. */
 export const MS_PER_MINUTE = 60_000;
@@ -41,10 +33,6 @@ export const NS_TO_MS = 1_000_000;
 
 /** Default HTTP status code when status cannot be determined */
 export const HTTP_STATUS_OK = 200;
-
-// =============================================================================
-// Request Log Settings
-// =============================================================================
 
 /** Bytes in one kilobyte, the unit the settings show body sizes in. */
 export const BYTES_PER_KB = 1024;

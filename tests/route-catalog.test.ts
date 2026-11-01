@@ -2,7 +2,9 @@ import type {
   ComputedParameter,
   ParameterProvider,
 } from "@antelopejs/interface-api";
-import { describe, expect, it, vi } from "vitest";
+import { ImplementInterface } from "@antelopejs/interface-core";
+import { GetApiBaseUrl } from "@antelopejs/interface-dms/api-base-url";
+import { afterEach, describe, expect, it } from "vitest";
 import type { RequestLogSample } from "@/db/models/request_log.model";
 import type { RequestLog } from "@/db/tables/request_log.table";
 import { apiOrigin } from "@/services/api-origin";
@@ -24,21 +26,19 @@ import {
   documentParameters,
   valueType,
 } from "@/services/route-contract";
+import {
+  registerRoutes,
+  routeHandler,
+  unregisterRoutes,
+} from "./helpers/routes";
 
-const registered = vi.hoisted(() => ({
-  handlers: [] as Array<{ id: string; handler: Record<string, unknown> }>,
-}));
+/** What the DMS answers for its public API origin. */
+let apiBaseUrl: string | undefined;
 
-const apiBase = vi.hoisted(() => ({ url: undefined as string | undefined }));
-
-vi.mock("@antelopejs/interface-dms/api-base-url", () => ({
-  GetApiBaseUrl: () => Promise.resolve(apiBase.url),
-}));
-
-vi.mock("@antelopejs/interface-api", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@antelopejs/interface-api")>()),
-  getRegisteredRouteHandlers: () => registered.handlers,
-}));
+ImplementInterface(
+  { GetApiBaseUrl },
+  { GetApiBaseUrl: () => Promise.resolve(apiBaseUrl) },
+);
 
 function inspection(overrides: Partial<RouteInspection> = {}): RouteInspection {
   return {
@@ -73,8 +73,9 @@ function log(overrides: Partial<RequestLog> = {}): RequestLog {
     responseTimeMs: 40,
     responseHeaders: {},
     responseBodyTruncated: false,
+    redactions: { query: 0, requestBody: 0, responseBody: 0, headers: [] },
     ...overrides,
-  } as RequestLog;
+  };
 }
 
 function sample(
@@ -113,22 +114,14 @@ describe("parseRouteRef", () => {
 });
 
 describe("listRoutes", () => {
-  const handler = (method: string, location: string) => ({
-    id: `${method} ${location}`,
-    handler: {
-      mode: "handler",
-      method,
-      location,
-      callback: function list() {},
-    },
-  });
+  afterEach(unregisterRoutes);
 
   it("lists the canonical path, without the controller's trailing slash", () => {
-    registered.handlers = [
-      handler("get", "/api/orders/"),
-      handler("get", "/"),
-      handler("post", "/api/orders/:id/refund"),
-    ];
+    registerRoutes(
+      routeHandler("get", "/api/orders/"),
+      routeHandler("get", "/"),
+      routeHandler("post", "/api/orders/:id/refund"),
+    );
     expect(
       listRoutes(null).map(({ ref, path, folder }) => ({ ref, path, folder })),
     ).toEqual([
@@ -143,12 +136,12 @@ describe("listRoutes", () => {
   });
 
   it("leaves out the DMS page layouts, from the list and the count", () => {
-    registered.handlers = [
-      handler("get", "/home/pagelayout"),
-      handler("get", "/notes/pagelayout/"),
-      handler("get", "/api/orders"),
-      handler("get", "/api/pagelayouts"),
-    ];
+    registerRoutes(
+      routeHandler("get", "/home/pagelayout"),
+      routeHandler("get", "/notes/pagelayout/"),
+      routeHandler("get", "/api/orders"),
+      routeHandler("get", "/api/pagelayouts"),
+    );
     expect(listRoutes(null).map(({ ref }) => ref)).toEqual([
       "GET /api/orders",
       "GET /api/pagelayouts",
@@ -235,7 +228,6 @@ describe("authentication", () => {
   });
 
   it("recognises the guard providers, the DMS's and hand-written ones", () => {
-    // interface-auth's CreateAuthDecorator provider, as compiled.
     const internal = {
       CheckAuthentication: (..._args: unknown[]) => undefined,
     };
@@ -249,6 +241,7 @@ describe("authentication", () => {
           internal.CheckAuthentication(context.rawRequest, context.rawResponse),
         ),
       ).source,
+      "interface-auth's CreateAuthDecorator provider, as compiled.",
     ).toBe("auth");
     expect(
       probeProvider(provider((ctx) => ctx.rawRequest.headers.authorization))
@@ -328,9 +321,11 @@ describe("error codes from the handler", () => {
         throw new HTTPResult(422, { error: "Insufficient stock" });
       }
     }
-    // What the runtime hands out across modules: unreadable source, same name.
     const callback = new Proxy(OrdersController.prototype.create, {});
-    expect(Function.prototype.toString.call(callback)).toContain("native code");
+    expect(
+      Function.prototype.toString.call(callback),
+      "What the runtime hands out across modules: unreadable source, same name.",
+    ).toContain("native code");
     const method = handlerMethod({
       callback,
       proto: OrdersController.prototype,
@@ -345,7 +340,7 @@ describe("error codes from the handler", () => {
 class HTTPResult {
   constructor(
     readonly status: number,
-    readonly body: unknown,
+    readonly body: { error: string },
   ) {}
 }
 
@@ -499,12 +494,12 @@ describe("documentParameters", () => {
 
 describe("apiOrigin", () => {
   it("is the DMS API origin, without a trailing slash", async () => {
-    apiBase.url = "https://api.example.com/";
+    apiBaseUrl = "https://api.example.com/";
     expect(await apiOrigin()).toBe("https://api.example.com");
   });
 
   it("is null when the DMS configuration clears it", async () => {
-    apiBase.url = undefined;
+    apiBaseUrl = undefined;
     expect(await apiOrigin()).toBeNull();
   });
 });

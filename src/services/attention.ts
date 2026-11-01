@@ -244,9 +244,17 @@ function incidentOf(route: RouteHealthState) {
   };
 }
 
-function attentionItem(route: RouteHealthState, known: boolean): AttentionItem {
+/**
+ * The attention row of `route`. A path no route answers (a scanner's
+ * `GET /.env`) says so first; the evidence is on a third line:
+ * `500 "Cart is empty" × 16`.
+ */
+function attentionItem(
+  route: ReturnType<typeof routesNeedingAttention>[number],
+  known: boolean,
+): AttentionItem {
   const { traffic } = route;
-  const state = route.state as keyof typeof ATTENTION_FEED;
+  const { state } = route;
   const key = state.replace("-", "_");
   const top = topErrorOf(route);
   const serverErrorRate = roundPercent(serverErrorShare(traffic));
@@ -260,7 +268,6 @@ function attentionItem(route: RouteHealthState, known: boolean): AttentionItem {
     `$api.overview.attention.${key}`,
     stateDetail(route, stateWindow, lastServerErrorAt),
   ];
-  // A path no route answers (a scanner's `GET /.env`) says so first.
   if (!known) meta.unshift("$api.overview.attention.stray");
   const date =
     state === "recovered" ? route.incident?.end : route.incident?.start;
@@ -269,7 +276,6 @@ function attentionItem(route: RouteHealthState, known: boolean): AttentionItem {
     ...ATTENTION_FEED[state],
     title: routeRef(route.method, route.uri),
     meta,
-    // The evidence, on a third line: `500 "Cart is empty" × 16`.
     ...(top && { detail: topErrorText(top) }),
     date: date?.toISOString(),
     to: attentionLink(route),
