@@ -37,6 +37,7 @@ import {
   toSettingsUpdate,
   validateSettings,
 } from "@/services/settings-form";
+import { zodIssuesJson } from "@/services/zod-json";
 import {
   CRITICAL_ERROR_RATE,
   ELEVATED_ERROR_RATE,
@@ -82,7 +83,13 @@ export class SettingsController extends Controller("/api/monitoring/settings") {
     @JSONBody() body: JsonBody,
   ) {
     const result = validateSettings(body, isSensitiveHeader);
-    if (!result.ok) throw new HTTPResult(HTTP_BAD_REQUEST, result.error);
+    if (!result.ok) {
+      const { error } = result;
+      throw new HTTPResult(
+        HTTP_BAD_REQUEST,
+        Array.isArray(error) ? zodIssuesJson(error) : error,
+      );
+    }
     await updateSettings(
       GetModel(ApiSettingsModel),
       toSettingsUpdate(result.data),
