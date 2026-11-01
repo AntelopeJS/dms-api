@@ -161,12 +161,12 @@ const settingsBody = z.object({
 export type SettingsBody = z.infer<typeof settingsBody>;
 
 /** A refused save, as the DMS form shows it under the field it names. */
-export interface SettingsFieldError {
+export type SettingsFieldError = {
   field: string;
   message: string;
   /** The items of a list field refused (the header names to fix). */
   values?: string[];
-}
+};
 
 export type SettingsValidation =
   | { ok: true; data: SettingsBody }
