@@ -6,7 +6,7 @@ import {
   Parameter,
   Post,
 } from "@antelopejs/interface-api";
-import { assert } from "@antelopejs/interface-api-util";
+import { assert, zodIssuesJson } from "@antelopejs/interface-api-util";
 import { GetModel } from "@antelopejs/interface-database-decorators";
 import { AuthOwnerOnly } from "@antelopejs/interface-dms/auth";
 import type { User } from "@antelopejs/interface-dms/auth/db";
@@ -37,7 +37,6 @@ import {
   toSettingsUpdate,
   validateSettings,
 } from "@/services/settings-form";
-import { zodIssuesJson } from "@/services/zod-json";
 import {
   CRITICAL_ERROR_RATE,
   ELEVATED_ERROR_RATE,
