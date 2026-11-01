@@ -28,6 +28,7 @@ import type { useTesterState } from './useTesterState'
 export function useTesterExtras(
   tester: ReturnType<typeof useTesterState> & ReturnType<typeof useTesterFlow>,
 ) {
+  const { presentError } = useApiErrorPresenter()
   const {
     LOGS_PAGE,
     ERROR_ICONS,
@@ -132,12 +133,8 @@ export function useTesterExtras(
         color: 'success',
         icon: 'i-ph-check',
       })
-    } catch {
-      toast.add({
-        title: t('api.request.copy_failed'),
-        color: 'error',
-        icon: 'i-ph-warning',
-      })
+    } catch (cause) {
+      presentError(cause, { fallbackKey: 'api.request.copy_failed' })
     }
   }
 

@@ -63,13 +63,11 @@ pnpm --dir playground traffic     # a few hundred demo requests
 
 | Package | Version |
 | --- | --- |
-| `@antelopejs/dms` | `>=0.13.0 <1.0.0` |
+| `@antelopejs/dms` | `>=0.13.1 <1.0.0` |
 | `@antelopejs/interface-dms` | `>=0.9.0 <1.0.0` |
 | `@antelopejs/dms-frontend` (renderer) | `>=0.9.2 <0.10.0` |
 | API provider | `@antelopejs/api` |
 | Database | an `@antelopejs/interface-database` implementation, such as `@antelopejs/mongodb` |
-
-On DMS 0.8, use `@antelopejs/dms-api` 0.3. Upgrading from 0.1? Read the [FAQ](https://dms.antelopejs.com/docs/modules/api/faq#upgrading-from-01).
 
 ## Documentation
 

@@ -70,6 +70,7 @@ const {
   formatRelativeTime,
 } = useRegionalFormat({ locale: 'format' })
 const toast = useToast()
+const { presentError } = useApiErrorPresenter()
 // Read through the router, not `useDmsRoute()`: each call of it reassigns
 // the route's query, which the request tables watch for their filters.
 const router = useDmsRouter()
@@ -220,12 +221,8 @@ async function copyCurl() {
       color: 'success',
       icon: 'i-ph-check',
     })
-  } catch {
-    toast.add({
-      title: t('api.request.copy_failed'),
-      color: 'error',
-      icon: 'i-ph-warning',
-    })
+  } catch (cause) {
+    presentError(cause, { fallbackKey: 'api.request.copy_failed' })
   }
 }
 
