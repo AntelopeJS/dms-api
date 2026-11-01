@@ -126,6 +126,20 @@ describe('sending through the proxy', () => {
     })
   })
 
+  it('retains a failed Response and its JSON reason for the core presenter', async () => {
+    const response = new Response(
+      JSON.stringify({ message: 'error.read_only_demo', severity: 'warning' }),
+      { status: 403, headers: { 'content-type': 'application/json' } },
+    )
+    vi.stubGlobal('fetch', async () => response)
+    await expect(
+      sendTesterRequest('/api/private', 'https://dms.example', GET),
+    ).rejects.toMatchObject({
+      response,
+      data: { message: 'error.read_only_demo', severity: 'warning' },
+    })
+  })
+
   it('tells a cancelled call from an unreachable server', async () => {
     vi.stubGlobal(
       'fetch',
