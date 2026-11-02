@@ -1,5 +1,48 @@
 # Changelog
 
+## v0.6.0
+
+[compare changes](https://github.com/AntelopeJS/dms-api/compare/v0.5.1...v0.6.0)
+
+### 🚀 Enhancements
+
+- **frontend:** Enforce the backend boundary in production builds ([#61](https://github.com/AntelopeJS/dms-api/pull/61))
+
+### 🩹 Fixes
+
+- **frontend:** Present API failures through the core presenter ([#92](https://github.com/AntelopeJS/dms-api/pull/92))
+
+### 💅 Refactors
+
+- Clean up the tests, comments, types and oversize files ([#59](https://github.com/AntelopeJS/dms-api/pull/59))
+- Clear the residual ratchet findings ([#62](https://github.com/AntelopeJS/dms-api/pull/62))
+- **amp:** Narrow the forwarded location header with a JSDoc type guard ([#65](https://github.com/AntelopeJS/dms-api/pull/65))
+
+### 📖 Documentation
+
+- **changelog:** Breaking changes of dms-api 0.5.1 ([#54](https://github.com/AntelopeJS/dms-api/pull/54))
+- **readme:** Link the DMS in the opening line ([#80](https://github.com/AntelopeJS/dms-api/pull/80))
+- **readme:** Use one Discord invite ([#77](https://github.com/AntelopeJS/dms-api/pull/77))
+- Name DMS 0.11 and renderer 0.9, and ignore the playground's frontend build ([#55](https://github.com/AntelopeJS/dms-api/pull/55))
+
+### 📦 Build
+
+- **deps:** Bump @antelopejs/tooling-configs to 0.2.17 ([#66](https://github.com/AntelopeJS/dms-api/pull/66))
+
+### 🏡 Chore
+
+- Adopt the guardrail pack from tooling-configs 0.2.0 ([#56](https://github.com/AntelopeJS/dms-api/pull/56))
+- Configure Renovate with the shared preset ([#57](https://github.com/AntelopeJS/dms-api/pull/57))
+
+### ✅ Tests
+
+- **skills:** Add eval cases for dms-api skills ([#58](https://github.com/AntelopeJS/dms-api/pull/58))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli ([@Upd4ting](http://github.com/Upd4ting))
+- Alessandro Aloisio ([@alessaloisio](http://github.com/alessaloisio))
+
 ## v0.5.1
 
 [compare changes](https://github.com/AntelopeJS/dms-api/compare/v0.5.0...v0.5.1)

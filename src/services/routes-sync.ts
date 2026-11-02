@@ -15,7 +15,7 @@ type RegisteredRoute = ReturnType<typeof getRegisteredRoutes>[number];
 /** The routes table, as a sync reads and writes it. */
 export type RoutesStore = Pick<
   RouteModel,
-  "getAll" | "insert" | "update" | "delete" | "setCreatedAt"
+  "get" | "getAll" | "insert" | "update" | "delete" | "setCreatedAt"
 >;
 
 /** The statistics a sync reads the first day a route was called from. */
@@ -78,13 +78,29 @@ function computeInserts(
 ) {
   return [...registeredByKey.entries()]
     .filter(([key]) => !existingByKey.has(key))
-    .map(([, r]) => ({
+    .map(([key, r]) => ({
+      _id: key,
       uri: normalizeRoutePath(r.location),
       method: normalizeRouteMethod(r.method),
       ...ownershipOf(r, ownModules),
       createdAt: now,
       updatedAt: now,
     }));
+}
+
+/**
+ * A new route's row is keyed by the route, so replicas syncing the same routes
+ * write one row between them. The one that loses the insert finds the row.
+ */
+async function insertRoute(
+  routesModel: RoutesStore,
+  route: ReturnType<typeof computeInserts>[number],
+): Promise<void> {
+  try {
+    await routesModel.insert(route);
+  } catch (error) {
+    if (!(await routesModel.get(route._id))) throw error;
+  }
 }
 
 /** Existing rows whose module, or its own/module flag, changed. */
@@ -216,7 +232,7 @@ async function runSync(
 
   await Promise.all([
     ...idsToDelete.map((id) => routesModel.delete(id)),
-    ...routesToInsert.map((r) => routesModel.insert(r)),
+    ...routesToInsert.map((r) => insertRoute(routesModel, r)),
     ...routesToUpdate.map((r) => routesModel.update(r)),
   ]);
   await backdateToFirstCall(routesModel, stats);
