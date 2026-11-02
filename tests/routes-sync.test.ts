@@ -88,6 +88,10 @@ class FakeRoutes implements RoutesStore {
   rows = new Map<string, Route>();
   private next = 0;
 
+  get(id: string) {
+    const row = this.rows.get(id);
+    return Promise.resolve(row && structuredClone(row));
+  }
   getAll() {
     return Promise.resolve(
       [...this.rows.values()].map((row) => structuredClone(row)),
@@ -104,7 +108,10 @@ class FakeRoutes implements RoutesStore {
     ) {
       throw new Error("The sync inserts complete routes.");
     }
-    const _id = `r${this.next++}`;
+    const _id = route._id ?? `r${this.next++}`;
+    if (this.rows.has(_id)) {
+      return Promise.reject(new Error("Duplicate key"));
+    }
     this.rows.set(_id, {
       _id,
       uri,
@@ -187,6 +194,23 @@ describe("syncRoutes", () => {
     expect(
       [...routes.rows.values()].map((r) => `${r.method} ${r.uri}`),
     ).toEqual(["GET /api/orders", "POST /api/orders"]);
+  });
+
+  it("writes one row per route when two replicas sync on an empty table", async () => {
+    await Promise.all([
+      syncRoutes(store, SHOP_ROUTES, stats([])),
+      syncRoutes(store, SHOP_ROUTES, stats([])),
+    ]);
+    expect(
+      [...routes.rows.values()].map((r) => `${r.method} ${r.uri}`),
+    ).toEqual(["GET /api/orders", "POST /api/orders"]);
+  });
+
+  it("still reports an insert that failed for another reason", async () => {
+    routes.insert = () => Promise.reject(new Error("storage failed"));
+    await expect(syncRoutes(store, SHOP_ROUTES, stats([]))).rejects.toThrow(
+      "storage failed",
+    );
   });
 
   it("dates a route from its first recorded call", async () => {
