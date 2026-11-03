@@ -8,11 +8,11 @@ import {
   Prefix,
 } from "@antelopejs/interface-api";
 
-interface OrderBody {
+type OrderBody = {
   sku: string;
   quantity: number;
   gift?: boolean;
-}
+};
 
 /** Routes behind a middleware whose name matches the default auth pattern `^auth_`. */
 export class GuardedController extends Controller("/fx/guarded") {
