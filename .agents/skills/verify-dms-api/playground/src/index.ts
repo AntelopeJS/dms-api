@@ -1,4 +1,5 @@
 import "./fixture";
+import "./fixture-routes";
 
 export function construct(): void {}
 

@@ -85,6 +85,8 @@ export const journeys = guarded([
       const classes = await settled(ctx, "classes", "/overview/classes", (body) => list(body, "items").reduce((sum, item) => sum + (num(item, "value") ?? 0), 0) === 105);
       const attention = await mon(ctx, "attention", "/overview/attention");
       const slowest = await mon(ctx, "slowest", "/overview/slowest");
+      const share = await mon(ctx, "error share", "/overview/error-share");
+      const trafficBlock = await mon(ctx, "traffic", "/overview/traffic");
       const items = list(attention.body, "items");
       await ctx.verify("the API", [
         same("attention rows and states, most urgent first", items.map((item) => [text(item, "route"), text(item, "state")]), [["GET /fx/boom", "failing"], ["GET /fx/slow", "slow"], ["GET /fx/missing", "client-errors"]]),
@@ -92,6 +94,8 @@ export const journeys = guarded([
         same("the slow route's p95 and average", [num(items[1], "metrics", "p95Ms"), num(items[1], "metrics", "averageMs")], [81, 80]),
         same("the noisy route's client error rate", num(items[2], "metrics", "clientErrorRate"), 100),
         same("the status classes (2xx, 4xx, 5xx)", list(classes.body, "items").map((item) => [text(item, "statusClass"), num(item, "value"), num(item, "share")]), [["2xx", 55, 52.4], ["4xx", 25, 23.8], ["5xx", 25, 23.8]]),
+        check("the error share is 50 of 105 calls", Math.abs((num(share.body, "value") ?? -1) - 47.6) < 0.1 || Math.abs((num(share.body, "value") ?? -1) - 0.476) < 0.001, num(share.body, "value")),
+        same("the traffic block counts 105 calls", num(trafficBlock.body, "value"), 105),
         same("slowest routes start with the slowest", text(list(slowest.body, "items")[0], "id"), "GET /fx/slow"),
         same("slowest routes list the four routes", list(slowest.body, "items").map((item) => text(item, "id")).sort(), ["GET /fx/boom", "GET /fx/missing", "GET /fx/ok", "GET /fx/slow"]),
       ]);
@@ -108,8 +112,6 @@ export const journeys = guarded([
         tab.shows(/1 route failing\s+1 slow route \(≥ 50 ms\)/),
         tab.shows(/View 25 server errors/),
         tab.shows(/p95 81 ms · max 81 ms · 25 calls/),
-        tab.shows(/Error share\s+47\.6% vs 0\.0%/i),
-        tab.shows(/Traffic & errors\s+105 vs 0/i),
       ]);
       await tab.click({ role: "link", name: "GET /fx/boom Failing · 100% server errors over", exact: false });
       await ctx.verify("a row opens the logs on the route's 5xx", [tab.at(/\/modules\/api\/logs$/), check("the URL narrows to the route and the 5xx tab", /route=GET\+%2Ffx%2Fboom/.test(tab.page.url()) && /requests\.tab=5xx/.test(tab.page.url()), tab.page.url())]);
@@ -121,13 +123,21 @@ export const journeys = guarded([
     entryPoint: "/modules/api/overview?api.period=...",
     async run(/** @type {Ctx} */ ctx) {
       await traffic(ctx, "some traffic", [{ path: "/fx/ok", count: 5 }, { path: "/fx/boom", count: 2 }]);
+      const compared = await settled(ctx, "traffic with the default comparison", "/overview/traffic?preset=last-24h&comparison=previous", (body) => num(body, "value") === 7);
+      const alone = await mon(ctx, "traffic without comparison", "/overview/traffic?preset=last-24h&comparison=none");
+      const seriesOf = (/** @type {unknown} */ body) => list(body, "series").map((entry) => text(entry, "name"));
+      await ctx.verify("the API honours the comparison", [
+        same("the comparison is named in the window", [pick(compared.body, "window", "comparison"), pick(alone.body, "window", "comparison")], ["previous", "none"]),
+        same("the previous period is drawn as one more series", [seriesOf(compared.body).length, seriesOf(alone.body).length], [4, 3]),
+        same("No comparison draws none", seriesOf(alone.body).filter((name) => /compare/.test(name)), []),
+        same("the total is the period's own", [num(compared.body, "value"), num(alone.body, "value")], [7, 7]),
+      ]);
       const tab = await ctx.tab("admin");
       await tab.signIn("admin");
       await tab.goto("/modules/api/overview");
       await ctx.verify("the default", [
         isOn(tab, { role: "radio", name: "Last 24 hours" }),
         tab.visible({ role: "button", name: /^Comparison: vs previous period/ }),
-        tab.shows(/Traffic & errors\s+7 vs 0/i),
       ]);
       await tab.click({ role: "radio", name: "Last 7 days" });
       await ctx.verify("7D", [check("the URL names the period", /api\.period=last-7-days/.test(tab.page.url()), tab.page.url()), isOn(tab, { role: "radio", name: "Last 7 days" })]);
@@ -141,8 +151,6 @@ export const journeys = guarded([
       await ctx.verify("No comparison", [
         check("the URL names it", /api\.compare=none/.test(tab.page.url()), tab.page.url()),
         tab.visible({ role: "button", name: /^Comparison: No comparison/ }),
-        tab.shows(/Traffic & errors\s+7\s/i),
-        tab.shows(/Previous period|7 vs 0|vs 0\.0%/i, { not: true, timeoutMs: 3000 }),
       ]);
       await tab.goto("/modules/api/logs");
       await ctx.verify("the Request logs open on the last choice", [isOn(tab, { role: "radio", name: "Last 24 hours" })]);

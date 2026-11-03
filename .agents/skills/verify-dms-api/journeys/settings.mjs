@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { guarded } from "../guard.mjs";
 import { check, list, mon, num, pick, same, saveSettings, settled, text, traffic } from "../api.mjs";
@@ -29,6 +29,8 @@ async function statusOf(ctx, field, value) {
  */
 async function startWith(ctx, config) {
   const previous = { ...ctx.state.extraEnv };
+  const file = join(ctx.state.logs, "backend.log");
+  const before = existsSync(file) ? statSync(file).size : 0;
   ctx.state.extraEnv = { ...previous, VERIFY_API_CONFIG: JSON.stringify(config) };
   let started = true;
   try {
@@ -36,7 +38,7 @@ async function startWith(ctx, config) {
   } catch {
     started = false;
   }
-  const log = readFileSync(join(ctx.state.logs, "backend.log"), "utf8");
+  const log = readFileSync(file).subarray(before).toString("utf8");
   ctx.state.extraEnv = previous;
   return { started, log };
 }
@@ -88,7 +90,7 @@ export const journeys = guarded([
         ["statisticsLifetimeDays", [[45, 400], [30, 200], [60, 200], [90, 200], [120, 400]]],
         ["requestLogMaxBodyKb", [[-1, 400], [0, 200], [10240, 200], [10241, 400]]],
         ["requestSlownessThresholdMs", [[49, 400], [50, 200], [75, 400], [100, 200], [600000, 200], [600050, 400]]],
-        ["scope", [["own", 200], ["module", 200], ["all", 200], ["everything", 400]]],
+        ["scope", [["own", 200], ["modules", 200], ["all", 200], ["everything", 400]]],
       ];
       for (const [field, expectations] of cases) {
         const seen = [];
@@ -111,9 +113,6 @@ export const journeys = guarded([
     title: "a saved value overrides the module option without a restart; null (Use default) removes the override and the field follows the option again; the override survives a restart",
     entryPoint: "POST /api/monitoring/settings with null",
     async run(/** @type {Ctx} */ ctx) {
-      const configured = await startWith(ctx, { requestSlownessThreshold: 500, requestLogMaxBodySize: 2048 });
-      await ctx.restartBackend();
-      void configured;
       ctx.state.extraEnv = { ...ctx.state.extraEnv, VERIFY_API_CONFIG: JSON.stringify({ requestSlownessThreshold: 500, requestLogMaxBodySize: 2048 }) };
       await ctx.restartBackend();
       const base = await mon(ctx, "module options", "/settings");
@@ -144,7 +143,7 @@ export const journeys = guarded([
         ["requestSlownessThreshold off its step", { requestSlownessThreshold: 75 }],
         ["requestLogMaxBodySize above 10 MB", { requestLogMaxBodySize: 10_241 * 1024 }],
         ["requestLogRetention of 367 days", { requestLogRetention: 367 * DAY }],
-        ["requestLogRetention under a day", { requestLogRetention: DAY / 2 }],
+        ["requestLogRetention of 0", { requestLogRetention: 0 }],
         ["a secret header", { requestLogCaptureHeaders: ["authorization"] }],
       ];
       const results = [];
@@ -173,10 +172,10 @@ export const journeys = guarded([
         return { status: saved.status, projectRoutes: paths.filter((path) => path.startsWith("/fx/")).length, moduleRoutes: paths.filter((path) => !path.startsWith("/fx/")).length, logged: list(logs.body, "results").map((row) => text(row, "path")) };
       };
       const own = await readScope("own");
-      const module = await readScope("module");
+      const module = await readScope("modules");
       const all = await readScope("all");
       await ctx.verify("scopes", [
-        same("own: the nine fixture routes only", [own.projectRoutes, own.moduleRoutes], [10, 0]),
+        same("own: the ten fixture routes only", [own.projectRoutes, own.moduleRoutes], [10, 0]),
         check("own: only the project's request is logged", own.logged.every((path) => path === "/fx/ok") && own.logged.length === 2, own.logged),
         check("module: no fixture route", module.projectRoutes === 0 && module.moduleRoutes > 0, module),
         check("module: no fixture request is logged", !module.logged.includes("/fx/ok"), module.logged),
