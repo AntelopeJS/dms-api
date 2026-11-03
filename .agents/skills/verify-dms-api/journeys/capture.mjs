@@ -158,7 +158,7 @@ export const journeys = guarded([
     title: "keys such as clientSecret, x-api-key, accessToken, userPin, creditCard and card_cvc2 are redacted, short look-alikes such as spin, footprint, company and cardBrand are not, and a payment card number is redacted whatever its key",
     entryPoint: "POST /fx/echo with keys and values",
     async run(/** @type {Ctx} */ ctx) {
-      const secret = ["clientSecret", "x-api-key", "accessToken", "access_token", "userPin", "creditCard", "card_cvc2", "myPassword", "iban", "totp", "X-Authorization"];
+      const secret = ["clientSecret", "x-api-key", "accessToken", "access_token", "accesstoken", "refreshtoken", "userPin", "creditCard", "card_cvc2", "myPassword", "iban", "totp", "X-Authorization"];
       const plain = ["spin", "footprint", "isNotPaid", "company", "cardBrand", "tokenizer", "pinned", "panda", "cvcs"];
       const body = { ...Object.fromEntries(secret.map((key) => [key, "v-" + key])), ...Object.fromEntries(plain.map((key) => [key, "v-" + key])), memo: "4111 1111 1111 1111", ref: "4111111111111111", short: "411111111111", note: "order 12345" };
       const sent = await sendAndRead(ctx, "keys", { method: "POST", path: "/fx/echo", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
