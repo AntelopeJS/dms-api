@@ -3,6 +3,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
+import { isRow, pick } from "./api.mjs";
 
 /** @typedef {import("./api.mjs").Ctx} Ctx */
 
@@ -10,16 +11,34 @@ const MS_PER_DAY = 86_400_000;
 const require = createRequire(fileURLToPath(import.meta.url));
 
 /**
+ * @typedef {{ insertMany: (rows: object[]) => Promise<unknown>, insertOne: (row: object) => Promise<unknown>, findOne: (filter: object) => Promise<unknown>, updateOne: (filter: object, update: object) => Promise<unknown>, find: (filter: object) => { toArray: () => Promise<unknown[]> } }} Collection
+ * @typedef {{ collection: (name: string) => Collection }} Database
+ * @typedef {{ connect: () => Promise<unknown>, close: () => Promise<unknown>, db: (name: string) => Database }} Client
+ */
+
+/**
+ * @param {unknown} value Anything
+ * @returns {value is Client} Whether it is a MongoDB client
+ */
+function isClient(value) {
+  return isRow(value) && value.connect instanceof Function && value.close instanceof Function && value.db instanceof Function;
+}
+
+/**
  * The run's database through the MongoDB driver that mongodb-memory-server-core brings.
  *
+ * @template T
  * @param {Ctx} ctx The journey
- * @param {(db: import("mongodb").Db) => Promise<unknown>} body What to do with the database
- * @returns {Promise<unknown>} What `body` returned
+ * @param {(db: Database) => Promise<T>} body What to do with the database
+ * @returns {Promise<T>} What `body` returned
  */
 async function withDatabase(ctx, body) {
-  const server = require.resolve("mongodb-memory-server-core");
-  const { MongoClient } = createRequire(server)("mongodb");
-  const client = new MongoClient(ctx.state.mongoUrl);
+  /** @type {unknown} */
+  const driver = createRequire(require.resolve("mongodb-memory-server-core"))("mongodb");
+  const MongoClient = pick(driver, "MongoClient");
+  /** @type {unknown} */
+  const client = MongoClient instanceof Function ? Reflect.construct(MongoClient, [ctx.state.mongoUrl]) : undefined;
+  if (!isClient(client)) throw new Error("the MongoDB driver has no MongoClient");
   await client.connect();
   try {
     return await body(client.db(ctx.state.database));
@@ -127,5 +146,5 @@ export async function seedStatistics(ctx, label, day) {
  */
 export async function readDocuments(ctx, collection, filter = {}) {
   const found = await withDatabase(ctx, (db) => db.collection(collection).find(filter).toArray());
-  return Array.isArray(found) ? found : [];
+  return found.filter(isRow);
 }

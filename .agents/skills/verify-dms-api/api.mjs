@@ -326,12 +326,13 @@ export async function sendAndRead(ctx, label, request) {
  */
 export async function isOn(tab, target, expected = true) {
   const element = tab.locator(target).first();
-  await element.waitFor({ state: "visible", timeout: 15_000 }).catch(() => undefined);
+  await element.waitFor({ state: "visible", timeout: 15_000 }).then(() => undefined, () => undefined);
   const deadline = Date.now() + 8_000;
   let on = !expected;
   while (Date.now() < deadline && on !== expected) {
-    const pressed = await element.getAttribute("aria-pressed").catch(() => null);
-    on = (await element.isChecked().catch(() => false)) || pressed === "true";
+    on = await element
+      .evaluate((node) => (node instanceof HTMLInputElement && node.checked) || ["aria-checked", "aria-pressed", "aria-selected"].some((name) => node.getAttribute(name) === "true") || node.getAttribute("data-state") === "on" || node.getAttribute("data-state") === "checked", undefined)
+      .then((value) => value === true, () => false);
     if (on !== expected) await new Promise((resolve) => setTimeout(resolve, 250));
   }
   return check(`${target.role} "${String(target.name)}" is ${expected ? "on" : "off"}`, on === expected, tab.page.url());

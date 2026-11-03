@@ -96,7 +96,7 @@ export const journeys = guarded([
       for (const [field, expectations] of cases) {
         const seen = [];
         for (const [value, expected] of expectations) seen.push([value, await statusOf(ctx, String(field), value), expected]);
-        await ctx.verify(String(field), seen.map(([value, got, expected]) => same(`${field} = ${value}`, got, expected)));
+        await ctx.verify(String(field), seen.map(([value, got, expected]) => same(`${String(field)} = ${String(value)}`, got, expected)));
       }
       const fifty = Array.from({ length: 50 }, (_, index) => `x-h${index}`);
       await ctx.verify("the header list", [
@@ -140,15 +140,15 @@ export const journeys = guarded([
     async run(/** @type {Ctx} */ ctx) {
       const DAY = 86_400_000;
       const refused = [
-        ["statisticsLifetime", { statisticsLifetime: 45 * DAY }],
-        ["requestSlownessThreshold off its step", { requestSlownessThreshold: 75 }],
-        ["requestLogMaxBodySize above 10 MB", { requestLogMaxBodySize: 10_241 * 1024 }],
-        ["requestLogRetention of 367 days", { requestLogRetention: 367 * DAY }],
-                ["a secret header", { requestLogCaptureHeaders: ["authorization"] }],
+        { name: "statisticsLifetime", config: { statisticsLifetime: 45 * DAY } },
+        { name: "requestSlownessThreshold off its step", config: { requestSlownessThreshold: 75 } },
+        { name: "requestLogMaxBodySize above 10 MB", config: { requestLogMaxBodySize: 10_241 * 1024 } },
+        { name: "requestLogRetention of 367 days", config: { requestLogRetention: 367 * DAY } },
+        { name: "a secret header", config: { requestLogCaptureHeaders: ["authorization"] } },
       ];
       const results = [];
-      for (const [name, config] of refused) {
-        const outcome = await startWith(ctx, /** @type {Record<string, unknown>} */ (config));
+      for (const { name, config } of refused) {
+        const outcome = await startWith(ctx, config);
         results.push({ name, started: outcome.started, said: /\[dms-api\] invalid configuration/.test(outcome.log) });
         await ctx.restartBackend();
       }
@@ -249,9 +249,10 @@ export const journeys = guarded([
         ctx.state.extraEnv = previous;
       }
       const logs = await seeded();
-      const ages = logs.map((row) => Math.round((Date.now() - new Date(String(row.timestamp)).getTime()) / 86_400_000)).sort((a, b) => a - b);
+      const ages = logs.map((row) => Math.round((Date.now() - new Date(String(row.timestamp)).getTime()) / 86_400_000)).toSorted((left, right) => left - right);
       const stats = await readDocuments(ctx, "dms-api__routes_statistics", { _id: "GET:/fx/ok" });
-      const days = (Array.isArray(stats[0]?.statistics) ? stats[0].statistics : []).map((entry) => entry.day).sort();
+      const kept = stats[0]?.statistics;
+      const days = (Array.isArray(kept) ? list(kept) : []).map((entry) => num(entry, "day") ?? 0).toSorted((left, right) => left - right);
       await ctx.verify("the prune", [
         check("the impact said 5 requests before", num(impact.body, "requests") === 5 || JSON.stringify(impact.body).includes("5"), impact.body),
         same("the logs before", before, 10),

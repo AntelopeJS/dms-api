@@ -1,5 +1,5 @@
 import { guarded } from "../guard.mjs";
-import { check, list, mon, num, same, settled, text, traffic, openPage } from "../api.mjs";
+import { check, list, num, same, settled, text, traffic, openPage } from "../api.mjs";
 
 /** @typedef {import("../api.mjs").Ctx} Ctx */
 

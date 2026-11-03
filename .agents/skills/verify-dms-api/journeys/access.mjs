@@ -1,5 +1,5 @@
 import { guarded } from "../guard.mjs";
-import { check, member, mon, same, text, traffic } from "../api.mjs";
+import { check, isText, member, mon, same, text, traffic } from "../api.mjs";
 
 /** @typedef {import("../api.mjs").Ctx} Ctx */
 
@@ -23,7 +23,7 @@ async function sweep(ctx, as) {
   for (const [method, path] of ROUTES) {
     const answer = await mon(ctx, `${method} ${path} as ${as}`, path, { method, as, body: method === "POST" ? {} : undefined });
     const body = answer.body;
-    seen.push({ route: `${method} ${path.split("?")[0]}`, status: answer.status, message: typeof body === "string" ? body : text(body, "message") || text(body, "error") });
+    seen.push({ route: `${method} ${path.split("?")[0]}`, status: answer.status, message: isText(body) ? body : text(body, "message") || text(body, "error") });
   }
   return seen;
 }
@@ -55,7 +55,7 @@ export const journeys = guarded([
       const needed = (/** @type {string} */ route) => /missing permission ([\w.-]+)/.exec(refused.find((entry) => entry.route === route)?.message ?? "")?.[1] ?? "";
       const logsPermission = needed("GET /logs");
       const testerPermission = needed("GET /tester/source");
-      await ctx.verify("the permissions the refusals name", [check("the logs table has its own permission", /^modules\.api\./.test(logsPermission), logsPermission), check("the Tester has its own permission", /^modules\.api\./.test(testerPermission) && testerPermission !== logsPermission, testerPermission)]);
+      await ctx.verify("the permissions the refusals name", [check("the logs table has its own permission", logsPermission.startsWith("modules.api."), logsPermission), check("the Tester has its own permission", testerPermission.startsWith("modules.api.") && testerPermission !== logsPermission, testerPermission)]);
       await member(ctx, "reader", [logsPermission]);
       await member(ctx, "tester", [testerPermission]);
       const reader = await sweep(ctx, "reader");

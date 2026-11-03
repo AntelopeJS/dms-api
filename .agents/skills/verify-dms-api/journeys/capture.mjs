@@ -1,5 +1,5 @@
 import { guarded } from "../guard.mjs";
-import { check, list, mon, num, pick, raw, same, saveSettings, sendAndRead, settled, text, traffic } from "../api.mjs";
+import { check, list, mon, num, parseJson, pick, same, saveSettings, sendAndRead, settled, text, traffic } from "../api.mjs";
 
 /** @typedef {import("../api.mjs").Ctx} Ctx */
 
@@ -111,17 +111,18 @@ export const journeys = guarded([
     async run(/** @type {Ctx} */ ctx) {
       const settings = await mon(ctx, "the fixed list", "/settings");
       const words = Array.isArray(pick(settings.body, "redactedKeys")) ? /** @type {string[]} */ (pick(settings.body, "redactedKeys")) : [];
-      const body = Object.fromEntries([...words.map((word) => [word, `value-of-${word}`]), ["name", "plain"], ["nested", { token: "deep", keep: "kept" }]]);
+      const fields = new Map([...words.map((word) => /** @type {const} */ ([word, `value-of-${word}`])), /** @type {const} */ (["name", "plain"])]);
+      const body = { ...Object.fromEntries(fields), nested: { token: "deep", keep: "kept" } };
       const query = words.map((word) => `${word}=q-${word}`).join("&");
       const sent = await sendAndRead(ctx, "all the words", { method: "POST", path: `/fx/echo?${query}&page=2`, headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
-      const stored = JSON.parse(text(sent.log, "requestBody") || "{}");
-      const echoed = JSON.parse(text(sent.log, "responseBody") || "{}");
+      const stored = parseJson(text(sent.log, "requestBody") || "{}");
+      const echoed = parseJson(text(sent.log, "responseBody") || "{}");
       await ctx.verify("the list", [same("it is the 23 words the settings page shows", words, REDACTED_WORDS)]);
       await ctx.verify("request body", [
-        ...words.map((word) => same(`${word} in the request body`, stored[word], "[REDACTED]")),
-        same("a plain key keeps its value", stored.name, "plain"),
-        same("a nested secret is redacted and its sibling kept", stored.nested, { token: "[REDACTED]", keep: "kept" }),
-        same("the response body echoes it redacted too", echoed.password, "[REDACTED]"),
+        ...words.map((word) => same(`${word} in the request body`, pick(stored, word), "[REDACTED]")),
+        same("a plain key keeps its value", pick(stored, "name"), "plain"),
+        same("a nested secret is redacted and its sibling kept", pick(stored, "nested"), { token: "[REDACTED]", keep: "kept" }),
+        same("the response body echoes it redacted too", pick(echoed, "password"), "[REDACTED]"),
       ]);
       await ctx.verify("query string", [
         ...words.map((word) => same(`${word} in the query`, pick(sent.log, "query", word), "[REDACTED]")),
@@ -161,14 +162,14 @@ export const journeys = guarded([
       const plain = ["spin", "footprint", "isNotPaid", "company", "cardBrand", "tokenizer", "pinned", "panda", "cvcs"];
       const body = { ...Object.fromEntries(secret.map((key) => [key, "v-" + key])), ...Object.fromEntries(plain.map((key) => [key, "v-" + key])), memo: "4111 1111 1111 1111", ref: "4111111111111111", short: "411111111111", note: "order 12345" };
       const sent = await sendAndRead(ctx, "keys", { method: "POST", path: "/fx/echo", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
-      const stored = JSON.parse(text(sent.log, "requestBody") || "{}");
-      await ctx.verify("secret keys", secret.map((key) => same(`${key} is redacted`, stored[key], "[REDACTED]")));
-      await ctx.verify("look-alikes", plain.map((key) => same(`${key} keeps its value`, stored[key], "v-" + key)));
+      const stored = parseJson(text(sent.log, "requestBody") || "{}");
+      await ctx.verify("secret keys", secret.map((key) => same(`${key} is redacted`, pick(stored, key), "[REDACTED]")));
+      await ctx.verify("look-alikes", plain.map((key) => same(`${key} keeps its value`, pick(stored, key), "v-" + key)));
       await ctx.verify("card numbers", [
-        same("a spaced card number is redacted whatever its key", stored.memo, "[REDACTED]"),
-        same("a plain card number is redacted", stored.ref, "[REDACTED]"),
-        same("twelve digits are not a card number", stored.short, "411111111111"),
-        same("other text is kept", stored.note, "order 12345"),
+        same("a spaced card number is redacted whatever its key", pick(stored, "memo"), "[REDACTED]"),
+        same("a plain card number is redacted", pick(stored, "ref"), "[REDACTED]"),
+        same("twelve digits are not a card number", pick(stored, "short"), "411111111111"),
+        same("other text is kept", pick(stored, "note"), "order 12345"),
       ]);
     },
   },

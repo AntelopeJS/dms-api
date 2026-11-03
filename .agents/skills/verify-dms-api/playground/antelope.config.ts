@@ -1,18 +1,30 @@
 import { realpathSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { defineConfig } from "@antelopejs/interface-core/config";
+import { z } from "zod";
 
 const preferredApiPort = process.env.PORT ?? "5010";
 const dmsClientUrl = process.env.DMS_CLIENT_BASE_URL;
+
+const apiOptions = z.object({
+  statisticsLifetime: z.number().optional(),
+  requestLogRetention: z.number().optional(),
+  requestSlownessThreshold: z.number().optional(),
+  requestLogMaxBodySize: z.number().optional(),
+  requestLogCaptureHeaders: z.array(z.string()).optional(),
+  authMiddlewareNamePatterns: z.array(z.string()).optional(),
+  authMiddlewareCallbacks: z.array(z.string()).optional(),
+  testerSourceSecret: z.string().optional(),
+});
 
 /**
  * The module's options as JSON in `VERIFY_API_CONFIG`, set by a journey in
  * the run's environment before it restarts the backend. Unset, the module
  * runs its own defaults.
  */
-function apiConfig(): Record<string, unknown> {
+function apiConfig(): z.infer<typeof apiOptions> {
   const text = process.env.VERIFY_API_CONFIG;
-  return text ? JSON.parse(text) : {};
+  return apiOptions.parse(text ? JSON.parse(text) : {});
 }
 
 /**

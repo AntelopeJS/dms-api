@@ -3,6 +3,7 @@ const RealDate = Date;
 
 /** A `Date` whose "now" runs `VERIFY_API_CLOCK_OFFSET_MS` ahead of the machine's, so an hourly job fires within seconds. */
 class ShiftedDate extends RealDate {
+  /** @param {ConstructorParameters<typeof Date>} args What `new Date(...)` was given */
   constructor(...args) {
     if (args.length === 0) super(RealDate.now() + offset);
     else super(...args);
