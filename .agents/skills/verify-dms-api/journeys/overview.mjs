@@ -128,7 +128,7 @@ export const journeys = guarded([
       const seriesOf = (/** @type {unknown} */ body) => list(body, "series").map((entry) => text(entry, "name"));
       await ctx.verify("the API honours the comparison", [
         same("the comparison is named in the window", [pick(compared.body, "window", "comparison"), pick(alone.body, "window", "comparison")], ["previous-period", "none"]),
-        same("the previous period is drawn as one more series", [seriesOf(compared.body).length, seriesOf(alone.body).length], [4, 3]),
+        same("the previous period is named, or none", [pick(compared.body, "window", "previous") !== null, pick(alone.body, "window", "previous")], [true, null]),
         same("No comparison draws none", seriesOf(alone.body).filter((name) => /compare/.test(name)), []),
         same("the total is the period's own", [num(compared.body, "value"), num(alone.body, "value")], [7, 7]),
       ]);

@@ -62,7 +62,7 @@ export const journeys = guarded([
         check("the frontend module is packed", files.includes("dist/frontend-module.js"), files.length),
         check("the Vue layer is packed", files.includes("frontend-vue/dms.frontend.ts") && files.includes("frontend-vue/package.json"), files.length),
         check("the skill is packed", files.includes("skills/dms-api/SKILL.md") && files.includes("skills/dms-api/cases.json"), files.length),
-        same("nothing else but the manifest, licence and readme", files.filter((path) => !/^(dist|frontend-vue|skills)\//.test(path)).toSorted((left, right) => left.localeCompare(right)), ["LICENSE", "README.md", "package.json"]),
+        same("nothing else but the manifest, licence and readme", files.filter((path) => !/^(dist|frontend-vue|skills)\//.test(path)).toSorted((left, right) => left.localeCompare(right)), ["LICENSE", "README.md", "package.json"].toSorted((left, right) => left.localeCompare(right))),
         same("no source, test or playground file is packed", files.filter((path) => /^(src|tests|playground|\.agents|docs)\//.test(path)), []),
         same("no installed dependency is packed", files.filter((path) => path.includes("node_modules/")), []),
       ]);
