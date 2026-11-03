@@ -91,6 +91,9 @@ export const journeys = guarded([
       ]);
       const refusedList = await saveSettings(ctx, "a secret header in the list", { requestLogCaptureHeaders: ["x-webhook-signature", "authorization"] });
       await ctx.verify("a secret header is refused", [same("HTTP 400", refusedList.status, 400)]);
+      const refusals = [];
+      for (const header of ["cookie", "set-cookie", "x-api-key", "proxy-authorization", "x-antelopejs-api-source"]) refusals.push([header, (await saveSettings(ctx, `${header} in the list`, { requestLogCaptureHeaders: [header] })).status]);
+      await ctx.verify("every credential header is refused", refusals.map(([header, status]) => same(`${String(header)} is refused`, status, 400)));
       const saved = await saveSettings(ctx, "add the webhook signature, in capitals", { requestLogCaptureHeaders: ["X-Webhook-Signature", "x-webhook-signature", "user-agent"] });
       await ctx.verify("stored lower case without repeats", [same("HTTP 200", saved.status, 200), same("the list", pick(saved.body, "requestLogCaptureHeaders"), ["x-webhook-signature", "user-agent"])]);
       const after = await sendAndRead(ctx, "custom list", { path: "/fx/ok", headers: JSON_HEADERS });
