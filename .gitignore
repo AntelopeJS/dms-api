@@ -371,4 +371,7 @@ $RECYCLE.BIN/
 .dms-frontend
 
 # pnpm store
-.pnpm-store
+.pnpm-store/.agents/skills/verify-dms-api/playground/dist
+/.agents/skills/verify-dms-api/node_modules
+/.agents/skills/verify-dms-api/api-module
+/.agents/skills/verify-dms-api/dist
