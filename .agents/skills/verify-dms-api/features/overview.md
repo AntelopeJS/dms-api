@@ -45,6 +45,8 @@ The Overview: the health verdict and why, the attention list, the slowest routes
 
 ## Sub-features
 
+- `the-blocks-rank-the-routes-by-what-is-wrong-with-them`
+- `the-period-and-the-comparison-are-kept-in-the-url-and-shared-by-the-pages`
 - the verdict ladder: `with-no-traffic-the-verdict-is-idle`, `nineteen-failing-calls-are-too-few-to-judge`, `one-failing-call-in-a-hundred-is-degraded`, `one-failing-call-in-a-hundred-and-one-is-operational`, `a-fifth-of-the-calls-failing-is-down`, `nineteen-percent-failing-is-degraded-not-down`
 
 ## How to get to it (user POV)

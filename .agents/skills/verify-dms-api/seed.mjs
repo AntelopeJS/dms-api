@@ -116,3 +116,16 @@ export async function seedStatistics(ctx, label, day) {
     else await db.collection("dms-api__routes_statistics").insertOne({ _id: id, method: day.method, uri: day.uri, statistics: [entry], revision: randomUUID(), _instance: null });
   });
 }
+
+/**
+ * Reads the run's database with the MongoDB driver.
+ *
+ * @param {Ctx} ctx The journey
+ * @param {string} collection The collection
+ * @param {Record<string, unknown>} filter The filter
+ * @returns {Promise<Record<string, unknown>[]>} The documents
+ */
+export async function readDocuments(ctx, collection, filter = {}) {
+  const found = await withDatabase(ctx, (db) => db.collection(collection).find(filter).toArray());
+  return Array.isArray(found) ? found : [];
+}

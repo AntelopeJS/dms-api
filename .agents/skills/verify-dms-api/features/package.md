@@ -1,5 +1,6 @@
 ---
 covers:
+  - package.json
   - skills/**
   - frontend-vue/i18n/**
   - frontend-vue/build/**

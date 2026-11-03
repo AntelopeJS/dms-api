@@ -2,7 +2,8 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { guarded } from "../guard.mjs";
 import { check, list, mon, num, pick, same, saveSettings, settled, text, traffic, withConfig } from "../api.mjs";
-import { seedLogs, seedStatistics } from "../seed.mjs";
+import { fileURLToPath } from "node:url";
+import { readDocuments, seedLogs, seedStatistics, dayStart } from "../seed.mjs";
 
 /** @typedef {import("../api.mjs").Ctx} Ctx */
 
@@ -213,6 +214,49 @@ export const journeys = guarded([
         check("statistics older than 60 days include only the 70 day old entry", JSON.stringify(stats60.body) !== JSON.stringify(stats30.body), stats60.body),
         same("an unknown field is refused", unknown.status, 400),
         same("0 days is refused", zero.status, 400),
+      ]);
+    },
+  },
+  {
+    id: "the-hourly-prune-deletes-what-the-retention-passed",
+    title: "at the turn of the hour the prune deletes the request logs older than the log retention and the days of statistics older than the statistics retention, and keeps everything newer",
+    entryPoint: "the hourly job of the module",
+    async run(/** @type {Ctx} */ ctx) {
+      await saveSettings(ctx, "keep logs 20 days and statistics 30 days", { requestLogRetentionDays: 20, statisticsLifetimeDays: 30 });
+      await seedLogs(ctx, "40 days old", { daysAgo: 40, count: 3 });
+      await seedLogs(ctx, "25 days old", { daysAgo: 25, count: 2, uri: "/fx/boom", statusCode: 500 });
+      await seedLogs(ctx, "10 days old", { daysAgo: 10, count: 4 });
+      await seedLogs(ctx, "an hour old", { daysAgo: 1 / 24, count: 1 });
+      await seedStatistics(ctx, "100 days old", { method: "GET", uri: "/fx/ok", daysAgo: 100, requests: 4 });
+      await seedStatistics(ctx, "40 days old", { method: "GET", uri: "/fx/ok", daysAgo: 40, requests: 6 });
+      await seedStatistics(ctx, "10 days old", { method: "GET", uri: "/fx/ok", daysAgo: 10, requests: 8 });
+      const impact = await mon(ctx, "what the next prune deletes", "/settings/retention-impact?field=requestLogRetentionDays&days=20");
+      const before = (await readDocuments(ctx, "dms-api__request_log")).length;
+      const toNextHour = 3_600_000 - (Date.now() % 3_600_000);
+      const offset = (toNextHour > 20_000 ? toNextHour : toNextHour + 3_600_000) - 12_000;
+      const previous = { ...ctx.state.extraEnv };
+      ctx.state.extraEnv = { ...previous, NODE_OPTIONS: `--require ${fileURLToPath(new URL("../clock.cjs", import.meta.url))}`, VERIFY_API_CLOCK_OFFSET_MS: String(offset) };
+      try {
+        await ctx.restartBackend();
+        const deadline = Date.now() + 90_000;
+        let after = before;
+        while (Date.now() < deadline && after === before) {
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+          after = (await readDocuments(ctx, "dms-api__request_log")).length;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+      } finally {
+        ctx.state.extraEnv = previous;
+      }
+      const logs = await readDocuments(ctx, "dms-api__request_log");
+      const ages = logs.map((row) => Math.round((Date.now() - new Date(String(row.timestamp)).getTime()) / 86_400_000)).sort((a, b) => a - b);
+      const stats = await readDocuments(ctx, "dms-api__routes_statistics", { _id: "GET:/fx/ok" });
+      const days = (Array.isArray(stats[0]?.statistics) ? stats[0].statistics : []).map((entry) => entry.day).sort();
+      await ctx.verify("the prune", [
+        check("the impact said 5 requests before", num(impact.body, "requests") === 5 || JSON.stringify(impact.body).includes("5"), impact.body),
+        same("the logs before", before, 10),
+        same("the logs left are the 10 days old, the hour old", ages, [0, 10, 10, 10, 10]),
+        same("the statistics left are the 10 days old and the 40 days old are gone with the 100 days old", days, [dayStart(10)]),
       ]);
     },
   },

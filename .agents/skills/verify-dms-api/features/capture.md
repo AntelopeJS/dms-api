@@ -10,6 +10,8 @@ covers:
   - src/services/aggregate-cache.ts
   - src/services/traffic-samples.ts
   - src/memo.ts
+  - src/services/index.ts
+  - src/services/zod-json.ts
 docs:
   - docs/1.introduction.md
   - docs/3.configuration.md

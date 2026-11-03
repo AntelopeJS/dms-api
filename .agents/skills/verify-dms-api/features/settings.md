@@ -28,6 +28,7 @@ The API settings page and the module options it overrides: scope, retentions, ca
 - `the-module-refuses-to-start-with-a-value-the-form-would-refuse`
 - `the-scope-decides-which-routes-and-requests-every-page-watches`
 - `lowering-a-retention-tells-what-the-next-prune-deletes`
+- `the-hourly-prune-deletes-what-the-retention-passed`
 
 ## How to get to it (user POV)
 

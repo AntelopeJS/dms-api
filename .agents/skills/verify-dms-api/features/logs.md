@@ -3,6 +3,11 @@ covers:
   - src/routes/logs.ts
   - src/pages/logs.ts
   - src/pages/request-table.ts
+  - src/services/request-log/list.ts
+  - src/services/request-log/read.ts
+  - src/services/request-log/access.ts
+  - src/services/live.ts
+  - src/services/live-feed.ts
   - frontend-vue/app/components/blocks/LogsFilters.vue
   - frontend-vue/app/components/blocks/LogsEmptyState.vue
   - frontend-vue/app/components/blocks/RequestDetail.vue

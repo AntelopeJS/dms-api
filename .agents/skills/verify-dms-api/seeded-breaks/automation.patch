@@ -1,0 +1,12 @@
+diff --git a/src/automation/index.ts b/src/automation/index.ts
+index e940e9f..b541ab9 100644
+--- a/src/automation/index.ts
++++ b/src/automation/index.ts
+@@ -14,6 +14,7 @@ import { routeUnhealthyTrigger } from "./route-unhealthy";
+  * registrations are inert no-ops and dms-api keeps working.
+  */
+ export function registerAutomationNodes(): void {
++  throw new Error("dms-api automation nodes need @antelopejs/dms-automation");
+   RegisterTriggerType(routeUnhealthyTrigger);
+   RegisterActionType(queryRequestLogsAction);
+   RegisterActionType(getApiHealthAction);
