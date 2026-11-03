@@ -92,6 +92,7 @@ $C doors "$PWD/.agents/skills/verify-dms-api/seeded-doors/data.patch"
 
 - Every dashboard page renders on the server and hydrates after `load`; `tab.signIn` waits for the sign-in form to hydrate.
 - The Routes page keeps its tree and filters behind the button that names the open route; the journeys open it before they filter.
+- `mongod` comes from `DMS_CONTROL_MONGOD`, `PATH`, or the mongodb-memory-server cache (`~/.cache/mongodb-binaries`); a verifier with a bare environment passes `DMS_CONTROL_MONGOD` along.
 - Known findings, each a failing journey with an issue draft under `~/.cache/campaign/issues/`:
   - `routes` and every page that lists routes answer 500 against the published `@antelopejs/api`, which builds `proto` route handlers while the module reads `controller` (`dms-api-controller-vs-published-api`); the fixture patches a copy of the package, so no journey fails on it;
   - `settings/a-log-retention-of-no-day-is-refused-at-start`: `requestLogRetention: 0` starts the module, the form shows 1 day, and the hourly prune uses a cutoff of now (`dms-api-log-retention-zero-accepted-at-start`);

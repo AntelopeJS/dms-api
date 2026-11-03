@@ -1,6 +1,5 @@
 ---
 covers:
-  - src/routes/tester.ts
   - src/services/tester-source.ts
   - frontend-vue/server/tester.ts
   - frontend-vue/dms.server.ts

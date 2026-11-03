@@ -1,21 +1,20 @@
-diff --git a/src/routes/settings.ts b/src/routes/settings.ts
-index 2bfdeb2..4cd9c35 100644
---- a/src/routes/settings.ts
-+++ b/src/routes/settings.ts
-@@ -8,7 +8,6 @@ import {
- } from "@antelopejs/interface-api";
- import { assert } from "@antelopejs/interface-api-util";
- import { GetModel } from "@antelopejs/interface-database-decorators";
--import { AuthOwnerOnly } from "@antelopejs/interface-dms/auth";
- import type { User } from "@antelopejs/interface-dms/auth/db";
- import { AuthUserWithPermission } from "@antelopejs/interface-dms/guards";
- import {
-@@ -130,7 +129,7 @@ export class SettingsController extends Controller("/api/monitoring/settings") {
-    * opens the console (module pages are owner-only), unlike the form.
+diff --git a/src/routes/tester.ts b/src/routes/tester.ts
+index 6a02f01..0c39c39 100644
+--- a/src/routes/tester.ts
++++ b/src/routes/tester.ts
+@@ -1,6 +1,4 @@
+ import { Controller, Get } from "@antelopejs/interface-api";
+-import type { User } from "@antelopejs/interface-dms/auth/db";
+-import { AuthUserWithPermission } from "@antelopejs/interface-dms/guards";
+ import { RoutesPage } from "@/pages/routes";
+ import { issueTesterSourceToken } from "@/services/tester-source";
+ 
+@@ -14,7 +12,7 @@ export class TesterController extends Controller("/api/monitoring/tester") {
+    * of the statistics and the health. Valid 15 minutes; ask before each call.
     */
-   @Get("summary")
--  async getSummary(@AuthOwnerOnly() _user: User) {
-+  async getSummary() {
-     const settings = getEffectiveSettings();
-     const keys = await getScopedRouteKeys(GetModel(RouteModel), settings.scope);
-     return settingsSummary(settings, countRoutes(keys));
+   @Get("source")
+-  getSourceToken(@AuthUserWithPermission(testerBlock) _user: User) {
++  getSourceToken() {
+     return issueTesterSourceToken();
+   }
+ }
