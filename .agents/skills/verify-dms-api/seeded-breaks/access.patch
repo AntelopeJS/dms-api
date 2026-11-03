@@ -1,9 +1,13 @@
-diff --git a/src/routes/index.ts b/src/routes/index.ts
-index b113be1..89b0141 100644
---- a/src/routes/index.ts
-+++ b/src/routes/index.ts
-@@ -2,4 +2,3 @@ export * from "./logs";
- export * from "./overview";
- export * from "./routes";
- export * from "./settings";
--export * from "./tester";
+diff --git a/src/routes/settings.ts b/src/routes/settings.ts
+index 2bfdeb2..156a344 100644
+--- a/src/routes/settings.ts
++++ b/src/routes/settings.ts
+@@ -130,7 +130,7 @@ export class SettingsController extends Controller("/api/monitoring/settings") {
+    * opens the console (module pages are owner-only), unlike the form.
+    */
+   @Get("summary")
+-  async getSummary(@AuthOwnerOnly() _user: User) {
++  async getSummary() {
+     const settings = getEffectiveSettings();
+     const keys = await getScopedRouteKeys(GetModel(RouteModel), settings.scope);
+     return settingsSummary(settings, countRoutes(keys));
