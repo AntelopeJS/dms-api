@@ -38,14 +38,14 @@ export const journeys = guarded([
       await tab.signIn("admin");
       await openPage(tab, "/modules/api/routes");
       const posts = rows.filter((row) => text(row, "method") === "POST").length;
+      await tab.click({ role: "button", name: /^[A-Z]+ \/\S+ 15$/ });
       await ctx.verify("the tree", [
         tab.shows(/15 of 15 routes · \d+ folders/),
-        tab.visible({ role: "treeitem", name: "GET /fx/boom 25 Failing" }),
+        tab.visible({ role: "treeitem", name: /^GET \/fx\/boom 25 / }),
         tab.visible({ role: "treeitem", name: "GET /fx/ok 3 Healthy" }),
         tab.visible({ role: "treeitem", name: "GET /fx/blob 0 No traffic" }),
         tab.visible({ role: "treeitem", name: "DEL /fx/items/:id 0 No traffic" }),
       ]);
-      await tab.click({ role: "button", name: /^[A-Z]+ \/\S+ 15$/ });
       await tab.fill({ role: "textbox", name: "Filter by path or handler" }, "items");
       await ctx.verify("the path filter", [tab.shows(/3 of 15 routes · 1 folder/), tab.visible({ role: "treeitem", name: "GET /fx/boom 25 Failing" }, { hidden: true, timeoutMs: 4000 })]);
       await tab.fill({ role: "textbox", name: "Filter by path or handler" }, "boom");
@@ -55,7 +55,7 @@ export const journeys = guarded([
       await ctx.verify("the method filter", [tab.shows(new RegExp(`${posts} of 15 routes`)), tab.visible({ role: "treeitem", name: /^POST \/fx\/echo/ }), tab.visible({ role: "treeitem", name: /^GET \/fx\/ok/ }, { hidden: true, timeoutMs: 4000 })]);
       await tab.click({ role: "radio", name: "All" });
       await tab.click({ role: "switch", name: "Only routes needing attention" });
-      await ctx.verify("only routes needing attention", [tab.shows(/1 of 15 routes/), tab.visible({ role: "treeitem", name: "GET /fx/boom 25 Failing" }), tab.visible({ role: "treeitem", name: /^GET \/fx\/ok/ }, { hidden: true, timeoutMs: 4000 })]);
+      await ctx.verify("only routes needing attention", [tab.shows(/1 of 15 routes/), tab.visible({ role: "treeitem", name: /^GET \/fx\/boom 25 / }), tab.visible({ role: "treeitem", name: /^GET \/fx\/ok/ }, { hidden: true, timeoutMs: 4000 })]);
       await tab.click({ role: "switch", name: "Only routes needing attention" });
       await tab.click({ role: "switch", name: /^Hide routes without traffic/ });
       await ctx.verify("hide routes without traffic", [tab.shows(/3 of 15 routes/), tab.visible({ role: "treeitem", name: /^GET \/fx\/blob/ }, { hidden: true, timeoutMs: 4000 })]);

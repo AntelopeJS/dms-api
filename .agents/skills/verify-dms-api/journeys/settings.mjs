@@ -260,4 +260,17 @@ export const journeys = guarded([
       ]);
     },
   },
+  {
+    id: "a-log-retention-of-no-day-is-refused-at-start",
+    title: "a requestLogRetention of 0 is out of the 1 to 366 days the settings page accepts, so the module refuses to start with it",
+    entryPoint: "the dms-api entry of antelope.config.ts",
+    async run(/** @type {Ctx} */ ctx) {
+      const outcome = await startWith(ctx, { requestLogRetention: 0 });
+      const form = outcome.started ? await mon(ctx, "the form's retention", "/settings") : undefined;
+      if (outcome.started) await ctx.restartBackend();
+      await ctx.verify("a retention of 0", [
+        check("the module stops and says so", !outcome.started && /\[dms-api\] invalid configuration/.test(outcome.log), { started: outcome.started, form: form?.body }),
+      ]);
+    },
+  },
 ]);

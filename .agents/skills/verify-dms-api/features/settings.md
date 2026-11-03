@@ -26,6 +26,7 @@ The API settings page and the module options it overrides: scope, retentions, ca
 - `every-bound-of-the-form-is-enforced-on-its-edge`
 - `use-default-returns-a-field-to-the-module-option`
 - `the-module-refuses-to-start-with-a-value-the-form-would-refuse`
+- `a-log-retention-of-no-day-is-refused-at-start`
 - `the-scope-decides-which-routes-and-requests-every-page-watches`
 - `lowering-a-retention-tells-what-the-next-prune-deletes`
 - `the-hourly-prune-deletes-what-the-retention-passed`
