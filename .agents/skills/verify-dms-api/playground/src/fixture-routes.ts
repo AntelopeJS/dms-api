@@ -16,7 +16,7 @@ type OrderBody = {
 
 /** Routes behind a middleware whose name matches the default auth pattern `^auth_`. */
 export class GuardedController extends Controller("/fx/guarded") {
-  @Prefix("get", "*")
+  @Prefix("get", "secret")
   auth_check(@Parameter("authorization", "header") authorization?: string) {
     if (authorization !== "Bearer letmein") {
       return new HTTPResult(401, { error: "sign in first" });
@@ -32,7 +32,7 @@ export class GuardedController extends Controller("/fx/guarded") {
 
 /** Routes behind a middleware the default patterns do not match: `authMiddlewareCallbacks` names it. */
 export class NamedController extends Controller("/fx/named") {
-  @Prefix("get", "*")
+  @Prefix("get", "page")
   checkTicket(@Parameter("x-ticket", "header") ticket?: string) {
     if (ticket !== "t-1") return new HTTPResult(403, { error: "ticket needed" });
     return undefined;

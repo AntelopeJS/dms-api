@@ -336,3 +336,23 @@ export async function isOn(tab, target, expected = true) {
   }
   return check(`${target.role} "${String(target.name)}" is ${expected ? "on" : "off"}`, on === expected, tab.page.url());
 }
+
+/**
+ * Restarts the backend with the module configured, runs `body`, then restarts it again with the module's own defaults.
+ *
+ * @param {Ctx} ctx The journey
+ * @param {Record<string, unknown>} config The module options (`VERIFY_API_CONFIG`)
+ * @param {() => Promise<void>} body What to do under that configuration
+ * @returns {Promise<void>}
+ */
+export async function withConfig(ctx, config, body) {
+  const previous = { ...ctx.state.extraEnv };
+  ctx.state.extraEnv = { ...previous, VERIFY_API_CONFIG: JSON.stringify(config) };
+  try {
+    await ctx.restartBackend();
+    await body();
+  } finally {
+    ctx.state.extraEnv = previous;
+    await ctx.restartBackend();
+  }
+}

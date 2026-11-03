@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { guarded } from "../guard.mjs";
-import { check, list, mon, num, pick, same, saveSettings, settled, text, traffic } from "../api.mjs";
+import { check, list, mon, num, pick, same, saveSettings, settled, text, traffic, withConfig } from "../api.mjs";
 import { seedLogs, seedStatistics } from "../seed.mjs";
 
 /** @typedef {import("../api.mjs").Ctx} Ctx */
@@ -113,23 +113,23 @@ export const journeys = guarded([
     title: "a saved value overrides the module option without a restart; null (Use default) removes the override and the field follows the option again; the override survives a restart",
     entryPoint: "POST /api/monitoring/settings with null",
     async run(/** @type {Ctx} */ ctx) {
-      ctx.state.extraEnv = { ...ctx.state.extraEnv, VERIFY_API_CONFIG: JSON.stringify({ requestSlownessThreshold: 500, requestLogMaxBodySize: 2048 }) };
-      await ctx.restartBackend();
-      const base = await mon(ctx, "module options", "/settings");
-      await saveSettings(ctx, "override the slow threshold", { requestSlownessThresholdMs: 250 });
-      const overridden = await mon(ctx, "after the override", "/settings");
-      await ctx.restartBackend();
-      const restarted = await mon(ctx, "after a restart", "/settings");
-      await saveSettings(ctx, "use default", { requestSlownessThresholdMs: null });
-      const back = await mon(ctx, "after Use default", "/settings");
-      await ctx.verify("overrides", [
-        same("the module options are read: slow", pick(base.body, "requestSlownessThresholdMs"), 500),
-        same("the module options are read: body cap in KB", pick(base.body, "requestLogMaxBodyKb"), 2),
-        same("the override wins at once", pick(overridden.body, "requestSlownessThresholdMs"), 250),
-        same("the override survives a restart", pick(restarted.body, "requestSlownessThresholdMs"), 250),
-        same("Use default follows the module option again", pick(back.body, "requestSlownessThresholdMs"), 500),
-        same("the other field was never overridden", pick(back.body, "requestLogMaxBodyKb"), 2),
-      ]);
+      await withConfig(ctx, { requestSlownessThreshold: 500, requestLogMaxBodySize: 2048 }, async () => {
+        const base = await mon(ctx, "module options", "/settings");
+        await saveSettings(ctx, "override the slow threshold", { requestSlownessThresholdMs: 250 });
+        const overridden = await mon(ctx, "after the override", "/settings");
+        await ctx.restartBackend();
+        const restarted = await mon(ctx, "after a restart", "/settings");
+        await saveSettings(ctx, "use default", { requestSlownessThresholdMs: null });
+        const back = await mon(ctx, "after Use default", "/settings");
+        await ctx.verify("overrides", [
+          same("the module options are read: slow", pick(base.body, "requestSlownessThresholdMs"), 500),
+          same("the module options are read: body cap in KB", pick(base.body, "requestLogMaxBodyKb"), 2),
+          same("the override wins at once", pick(overridden.body, "requestSlownessThresholdMs"), 250),
+          same("the override survives a restart", pick(restarted.body, "requestSlownessThresholdMs"), 250),
+          same("Use default follows the module option again", pick(back.body, "requestSlownessThresholdMs"), 500),
+          same("the other field was never overridden", pick(back.body, "requestLogMaxBodyKb"), 2),
+        ]);
+      });
     },
   },
   {
