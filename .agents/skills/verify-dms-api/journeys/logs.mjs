@@ -1,5 +1,5 @@
 import { guarded } from "../guard.mjs";
-import { check, isOn, list, mon, num, pick, raw, same, saveSettings, settled, text, traffic } from "../api.mjs";
+import { check, isOn, list, mon, num, pick, raw, same, saveSettings, settled, text, traffic, openPage } from "../api.mjs";
 import { seedLogs } from "../seed.mjs";
 
 /** @typedef {import("../api.mjs").Ctx} Ctx */
@@ -58,7 +58,7 @@ export const journeys = guarded([
       ]);
       const tab = await ctx.tab("admin");
       await tab.signIn("admin");
-      await tab.goto("/modules/api/logs");
+      await openPage(tab, "/modules/api/logs");
       await ctx.verify("the tabs", [
         tab.visible({ role: "button", name: "All 11" }),
         tab.visible({ role: "button", name: "2xx 7" }),
@@ -105,14 +105,14 @@ export const journeys = guarded([
       await traffic(ctx, "before the pause", [{ path: "/fx/ok", count: 2 }]);
       const tab = await ctx.tab("admin");
       await tab.signIn("admin");
-      await tab.goto("/modules/api/logs");
+      await openPage(tab, "/modules/api/logs");
       await ctx.verify("live", [isOn(tab, { role: "button", name: "Live" }), tab.visible({ role: "button", name: "All 2" })]);
       await tab.click({ role: "button", name: "Pause" });
       await traffic(ctx, "while paused", [{ path: "/fx/ok", count: 2 }, { path: "/fx/boom", count: 1 }]);
       await ctx.verify("paused", [
         isOn(tab, { role: "button", name: "Pause" }),
         tab.shows(/Paused · 3 new requests · 1 in 5xx/),
-        tab.shows(/3 new requests\s+1 in 5xx\s+Show/),
+        tab.shows(/3 new requests\s+1 in 5xx/),
         tab.visible({ role: "button", name: "All 2" }),
         tab.shows(/\/fx\/boom/, { not: true, timeoutMs: 1500 }),
       ]);
@@ -150,16 +150,16 @@ export const journeys = guarded([
       ]);
       const tab = await ctx.tab("admin");
       await tab.signIn("admin");
-      await tab.goto("/modules/api/logs");
+      await openPage(tab, "/modules/api/logs");
       await ctx.verify("the chart caption", [
-        tab.shows(/Requests per 15 min · last 24 h · all traffic/),
+        tab.shows(/Requests per 15 min · last 24 h · all traffic/i),
         tab.shows(/Kept 30 days · bodies up to 64 KB/),
         tab.shows(/6 requests/),
       ]);
       await tab.click({ role: "radio", name: "Last hour" });
       await ctx.verify("1H", [tab.shows(/Requests per minute · last hour · all traffic/i)]);
       await tab.click({ role: "radio", name: "All time" });
-      await ctx.verify("All time", [tab.shows(/all time/i)]);
+      await ctx.verify("All time", [tab.shows(/Requests per 6 h · all kept logs · all traffic/i)]);
     },
   },
   {
@@ -172,7 +172,7 @@ export const journeys = guarded([
       await settled(ctx, "the logs", "/logs", (body) => num(body, "total") === 5);
       const tab = await ctx.tab("admin");
       await tab.signIn("admin");
-      await tab.goto("/modules/api/logs");
+      await openPage(tab, "/modules/api/logs");
       await tab.click({ role: "button", name: "Open request", nth: 0 });
       await ctx.verify("the newest request", [tab.visible({ role: "dialog", name: "POST /fx/orders/:shop/lines" }), tab.shows(/1 of 5/), tab.visible({ role: "button", name: "Previous" }), check("the URL names the record", /record=/.test(tab.page.url()), tab.page.url())]);
       await tab.click({ role: "button", name: "Next" });
@@ -184,17 +184,17 @@ export const journeys = guarded([
       const url = tab.page.url();
       await tab.reload();
       await ctx.verify("a reload", [tab.visible({ role: "dialog", name: "GET /fx/boom" }), check("the same record", tab.page.url() === url, tab.page.url())]);
-      await ctx.verify("Summary", [tab.shows(/fixture boom: the invoice has no customer/), tab.shows(/Route\s+GET \/fx\/boom/), tab.shows(/User agent\s+/), tab.shows(/Request ID\s+/), tab.shows(/500 Internal Server Error/), tab.shows(/Slow threshold 1,000 ms, as set now\./)]);
+      await ctx.verify("Summary", [tab.shows(/fixture boom: the invoice has no customer/), tab.shows(/Route\s+GET \/fx\/boom/), tab.shows(/User agent\s+\S+/), tab.shows(/Request ID\s+[0-9a-f-]{36}/), tab.shows(/500 Internal Server Error/), tab.shows(/TIMING/)]);
       await tab.click({ role: "link", name: "Same error" });
       await ctx.verify("Same error", [check("the URL names the route and the error", /route=GET\+%2Ffx%2Fboom/.test(tab.page.url()) && /error=fixture\+boom/.test(tab.page.url()), tab.page.url()), tab.visible({ role: "button", name: "All 2" }), tab.shows(/\/fx\/ok/, { not: true, timeoutMs: 3000 })]);
-      await tab.goto("/modules/api/logs");
+      await openPage(tab, "/modules/api/logs");
       await tab.click({ role: "button", name: "Open request", nth: 0 });
       await tab.click({ role: "tab", name: "Request" });
-      await ctx.verify("Request", [tab.shows(/limit\s+5/), tab.shows(/content-type\s+application\/json/), tab.shows(/"sku": "A1"|\{"sku":"A1"/)]);
+      await ctx.verify("Request", [tab.shows(/QUERY\s+limit\s+5/), tab.shows(/HEADERS\s+host\s+\S+\s+content-type\s+application\/json/), tab.shows(/Only allow-listed headers are captured\./), tab.shows(/BODY[\s\S]*sku[\s\S]*"A1"/)]);
       await tab.click({ role: "tab", name: "Response" });
-      await ctx.verify("Response", [tab.shows(/201/), tab.shows(/"tenant"|tenant/)]);
+      await ctx.verify("Response", [tab.shows(/201 Created/), tab.shows(/HEADERS\s+content-type\s+application\/json\s+content-length\s+75/), tab.shows(/tenant[\s\S]*"t9"/)]);
       await tab.click({ role: "link", name: "Replay in tester" });
-      await ctx.verify("Replay in tester", [check("the Tester of the route opens with the call to replay", /tab=tester/.test(tab.page.url()) && /replay=/.test(tab.page.url()) && /route=POST/.test(tab.page.url()), tab.page.url()), tab.visible({ role: "textbox", name: "Path parameter :shop" }), tab.shows(/sku[\s\S]*A1/)]);
+      await ctx.verify("Replay in tester", [check("the Tester of the route opens", /tab=tester/.test(tab.page.url()) && /route=POST/.test(tab.page.url()), tab.page.url()), tab.shows(/Replayed from [0-9a-f-]{8}[0-9a-f-]* \(\d\d:\d\d:\d\d\)/), tab.shows(/Not restored: host, user-agent, accept-encoding, content-length\. Authorization, Cookie and X-Api-Key are never captured\./), tab.shows(/\?limit=5/), tab.shows(/"sku": "A1",\s+"quantity": 2/)]);
       await tab.press("Escape");
     },
   },

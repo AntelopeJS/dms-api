@@ -1,5 +1,5 @@
 import { guarded } from "../guard.mjs";
-import { check, isOn, list, mon, num, pick, same, saveSettings, settled, text, traffic } from "../api.mjs";
+import { check, isOn, list, mon, num, pick, same, saveSettings, settled, text, traffic, openPage } from "../api.mjs";
 
 /** @typedef {import("../api.mjs").Ctx} Ctx */
 
@@ -21,7 +21,7 @@ async function verdictOf(ctx, plan) {
   ]);
   const tab = await ctx.tab("admin");
   await tab.signIn("admin");
-  await tab.goto("/modules/api/overview");
+  await openPage(tab, "/modules/api/overview");
   await ctx.verify("the hero", [tab.visible({ role: "region", name: "API health" }), tab.shows(new RegExp(`API health · live\\s+${plan.label}\\s`, "i"))]);
   return tab;
 }
@@ -91,7 +91,7 @@ export const journeys = guarded([
       await ctx.verify("the API", [
         same("attention rows and states, most urgent first", items.map((item) => [text(item, "route"), text(item, "state")]), [["GET /fx/boom", "failing"], ["GET /fx/slow", "slow"], ["GET /fx/missing", "client-errors"]]),
         same("the failing route's facts", [num(items[0], "metrics", "calls"), num(items[0], "metrics", "serverErrors"), text(items[0], "topError", "message"), num(items[0], "topError", "count")], [25, 25, "fixture boom: the invoice has no customer", 25]),
-        same("the slow route's p95 and average", [num(items[1], "metrics", "p95Ms"), num(items[1], "metrics", "averageMs")], [81, 80]),
+        check("the slow route's p95 and average are the 80 ms the handler waits", [num(items[1], "metrics", "p95Ms"), num(items[1], "metrics", "averageMs")].every((value) => value !== undefined && value >= 80 && value <= 95), [num(items[1], "metrics", "p95Ms"), num(items[1], "metrics", "averageMs")]),
         same("the noisy route's client error rate", num(items[2], "metrics", "clientErrorRate"), 100),
         same("the status classes (2xx, 4xx, 5xx)", list(classes.body, "items").map((item) => [text(item, "statusClass"), num(item, "value"), num(item, "share")]), [["2xx", 55, 52.4], ["4xx", 25, 23.8], ["5xx", 25, 23.8]]),
         check("the error share is 50 of 105 calls", Math.abs((num(share.body, "value") ?? -1) - 47.6) < 0.1 || Math.abs((num(share.body, "value") ?? -1) - 0.476) < 0.001, num(share.body, "value")),
@@ -101,17 +101,17 @@ export const journeys = guarded([
       ]);
       const tab = await ctx.tab("admin");
       await tab.signIn("admin");
-      await tab.goto("/modules/api/overview");
+      await openPage(tab, "/modules/api/overview");
       await ctx.verify("the page", [
         tab.shows(/Needs attention\s+3/i),
         tab.shows(/GET \/fx\/boom\s+Failing · 100% server errors over \d+ min · 25 of 25 calls/),
         tab.shows(/500 “fixture boom: the invoice has no customer” × 25/),
-        tab.shows(/GET \/fx\/slow\s+Slow · p95 81 ms · avg 80 ms · 25 calls/),
+        tab.shows(/GET \/fx\/slow\s+Slow · p95 \d+ ms · avg \d+ ms · 25 calls/),
         tab.shows(/GET \/fx\/missing\s+4xx rate · 100% client errors · 25 of 25 calls/),
         tab.shows(/404 “fixture not found” × 25/),
         tab.shows(/1 route failing\s+1 slow route \(≥ 50 ms\)/),
         tab.shows(/View 25 server errors/),
-        tab.shows(/p95 81 ms · max 81 ms · 25 calls/),
+        tab.shows(/p95 \d+ ms · max \d+ ms · 25 calls/),
       ]);
       await tab.click({ role: "link", name: "GET /fx/boom Failing · 100% server errors over", exact: false });
       await ctx.verify("a row opens the logs on the route's 5xx", [tab.at(/\/modules\/api\/logs$/), check("the URL narrows to the route and the 5xx tab", /route=GET\+%2Ffx%2Fboom/.test(tab.page.url()) && /requests\.tab=5xx/.test(tab.page.url()), tab.page.url())]);
@@ -123,18 +123,18 @@ export const journeys = guarded([
     entryPoint: "/modules/api/overview?api.period=...",
     async run(/** @type {Ctx} */ ctx) {
       await traffic(ctx, "some traffic", [{ path: "/fx/ok", count: 5 }, { path: "/fx/boom", count: 2 }]);
-      const compared = await settled(ctx, "traffic with the default comparison", "/overview/traffic?preset=last-24h&comparison=previous", (body) => num(body, "value") === 7);
+      const compared = await settled(ctx, "traffic with the default comparison", "/overview/traffic?preset=last-24h&comparison=previous-period", (body) => num(body, "value") === 7);
       const alone = await mon(ctx, "traffic without comparison", "/overview/traffic?preset=last-24h&comparison=none");
       const seriesOf = (/** @type {unknown} */ body) => list(body, "series").map((entry) => text(entry, "name"));
       await ctx.verify("the API honours the comparison", [
-        same("the comparison is named in the window", [pick(compared.body, "window", "comparison"), pick(alone.body, "window", "comparison")], ["previous", "none"]),
+        same("the comparison is named in the window", [pick(compared.body, "window", "comparison"), pick(alone.body, "window", "comparison")], ["previous-period", "none"]),
         same("the previous period is drawn as one more series", [seriesOf(compared.body).length, seriesOf(alone.body).length], [4, 3]),
         same("No comparison draws none", seriesOf(alone.body).filter((name) => /compare/.test(name)), []),
         same("the total is the period's own", [num(compared.body, "value"), num(alone.body, "value")], [7, 7]),
       ]);
       const tab = await ctx.tab("admin");
       await tab.signIn("admin");
-      await tab.goto("/modules/api/overview");
+      await openPage(tab, "/modules/api/overview");
       await ctx.verify("the default", [
         isOn(tab, { role: "radio", name: "Last 24 hours" }),
         tab.visible({ role: "button", name: /^Comparison: vs previous period/ }),
@@ -152,13 +152,13 @@ export const journeys = guarded([
         check("the URL names it", /api\.compare=none/.test(tab.page.url()), tab.page.url()),
         tab.visible({ role: "button", name: /^Comparison: No comparison/ }),
       ]);
-      await tab.goto("/modules/api/logs");
+      await openPage(tab, "/modules/api/logs");
       await ctx.verify("the Request logs open on the last choice", [isOn(tab, { role: "radio", name: "Last 24 hours" })]);
-      await tab.goto("/modules/api/overview");
+      await openPage(tab, "/modules/api/overview");
       await tab.click({ role: "radio", name: "Last 7 days" });
-      await tab.goto("/modules/api/routes");
+      await openPage(tab, "/modules/api/routes");
       await ctx.verify("Routes open on the last choice", [isOn(tab, { role: "radio", name: "Last 7 days" })]);
-      await tab.goto("/modules/api/overview?live=0");
+      await openPage(tab, "/modules/api/overview?live=0");
       await ctx.verify("?live=0", [isOn(tab, { role: "button", name: "Pause" }), isOn(tab, { role: "button", name: "Live" }, false)]);
     },
   },

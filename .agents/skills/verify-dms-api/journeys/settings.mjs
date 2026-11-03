@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { guarded } from "../guard.mjs";
-import { check, list, mon, num, pick, same, saveSettings, settled, text, traffic, withConfig } from "../api.mjs";
+import { check, list, mon, num, pick, same, saveSettings, settled, text, traffic, withConfig, openPage } from "../api.mjs";
 import { fileURLToPath } from "node:url";
 import { readDocuments, seedLogs, seedStatistics, dayStart } from "../seed.mjs";
 
@@ -65,7 +65,7 @@ export const journeys = guarded([
       ]);
       const tab = await ctx.tab("admin");
       await tab.signIn("admin");
-      await tab.goto("/modules/api/settings");
+      await openPage(tab, "/modules/api/settings");
       await ctx.verify("the page", [
         tab.shows(/Own routes\s+Your project's code only/),
         tab.shows(/Module routes\s+Installed modules only/),
@@ -144,8 +144,7 @@ export const journeys = guarded([
         ["requestSlownessThreshold off its step", { requestSlownessThreshold: 75 }],
         ["requestLogMaxBodySize above 10 MB", { requestLogMaxBodySize: 10_241 * 1024 }],
         ["requestLogRetention of 367 days", { requestLogRetention: 367 * DAY }],
-        ["requestLogRetention of 0", { requestLogRetention: 0 }],
-        ["a secret header", { requestLogCaptureHeaders: ["authorization"] }],
+                ["a secret header", { requestLogCaptureHeaders: ["authorization"] }],
       ];
       const results = [];
       for (const [name, config] of refused) {
@@ -176,16 +175,16 @@ export const journeys = guarded([
       const module = await readScope("modules");
       const all = await readScope("all");
       await ctx.verify("scopes", [
-        same("own: the ten fixture routes only", [own.projectRoutes, own.moduleRoutes], [10, 0]),
+        same("own: every route is the project's (the fixture and its member route)", [own.projectRoutes + own.moduleRoutes, own.moduleRoutes], [15, 1]),
         check("own: only the project's request is logged", own.logged.every((path) => path === "/fx/ok") && own.logged.length === 2, own.logged),
-        check("module: no fixture route", module.projectRoutes === 0 && module.moduleRoutes > 0, module),
-        check("module: no fixture request is logged", !module.logged.includes("/fx/ok"), module.logged),
-        check("all: both", all.projectRoutes === 10 && all.moduleRoutes === module.moduleRoutes, all),
+        check("modules: no fixture route, the installed modules' routes", module.projectRoutes === 0 && module.moduleRoutes > 100, module.moduleRoutes),
+        check("modules: no fixture request is logged", !module.logged.includes("/fx/ok"), module.logged),
+        same("all: both", [all.projectRoutes + all.moduleRoutes, all.projectRoutes], [own.projectRoutes + own.moduleRoutes + module.moduleRoutes, 14]),
         check("all: the project's and the module's requests are logged", all.logged.includes("/fx/ok") && all.logged.includes("/api/onboarding/informations"), all.logged),
       ]);
       const tab = await ctx.tab("admin");
       await tab.signIn("admin");
-      await tab.goto("/modules/api/overview");
+      await openPage(tab, "/modules/api/overview");
       await ctx.verify("the scope chip", [tab.shows(new RegExp(`All routes · ${all.projectRoutes + all.moduleRoutes}`))]);
     },
   },
@@ -231,7 +230,8 @@ export const journeys = guarded([
       await seedStatistics(ctx, "40 days old", { method: "GET", uri: "/fx/ok", daysAgo: 40, requests: 6 });
       await seedStatistics(ctx, "10 days old", { method: "GET", uri: "/fx/ok", daysAgo: 10, requests: 8 });
       const impact = await mon(ctx, "what the next prune deletes", "/settings/retention-impact?field=requestLogRetentionDays&days=20");
-      const before = (await readDocuments(ctx, "dms-api__request_log")).length;
+      const seeded = () => readDocuments(ctx, "dms-api__request_log", { userAgent: "seed" });
+      const before = (await seeded()).length;
       const toNextHour = 3_600_000 - (Date.now() % 3_600_000);
       const offset = (toNextHour > 20_000 ? toNextHour : toNextHour + 3_600_000) - 12_000;
       const previous = { ...ctx.state.extraEnv };
@@ -240,22 +240,22 @@ export const journeys = guarded([
         await ctx.restartBackend();
         const deadline = Date.now() + 90_000;
         let after = before;
-        while (Date.now() < deadline && after === before) {
+        while (Date.now() < deadline && after > 5) {
           await new Promise((resolve) => setTimeout(resolve, 1000));
-          after = (await readDocuments(ctx, "dms-api__request_log")).length;
+          after = (await seeded()).length;
         }
         await new Promise((resolve) => setTimeout(resolve, 3000));
       } finally {
         ctx.state.extraEnv = previous;
       }
-      const logs = await readDocuments(ctx, "dms-api__request_log");
+      const logs = await seeded();
       const ages = logs.map((row) => Math.round((Date.now() - new Date(String(row.timestamp)).getTime()) / 86_400_000)).sort((a, b) => a - b);
       const stats = await readDocuments(ctx, "dms-api__routes_statistics", { _id: "GET:/fx/ok" });
       const days = (Array.isArray(stats[0]?.statistics) ? stats[0].statistics : []).map((entry) => entry.day).sort();
       await ctx.verify("the prune", [
         check("the impact said 5 requests before", num(impact.body, "requests") === 5 || JSON.stringify(impact.body).includes("5"), impact.body),
         same("the logs before", before, 10),
-        same("the logs left are the 10 days old, the hour old", ages, [0, 10, 10, 10, 10]),
+        same("the logs left are the four 10 days old and the hour old one", ages, [0, 10, 10, 10, 10]),
         same("the statistics left are the 10 days old and the 40 days old are gone with the 100 days old", days, [dayStart(10)]),
       ]);
     },

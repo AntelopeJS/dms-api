@@ -1,5 +1,5 @@
 import { guarded } from "../guard.mjs";
-import { check, list, mon, num, pick, raw, same, settled, text, traffic, withConfig } from "../api.mjs";
+import { check, list, mon, num, pick, raw, same, settled, text, traffic, withConfig, openPage } from "../api.mjs";
 
 /** @typedef {import("../api.mjs").Ctx} Ctx */
 
@@ -15,7 +15,7 @@ const TESTER_HEADER = "x-antelopejs-api-source";
 async function tester(ctx, ref) {
   const tab = await ctx.tab("admin");
   await tab.signIn("admin");
-  await tab.goto(`/modules/api/routes?route=${encodeURIComponent(ref)}&tab=tester`);
+  await openPage(tab, `/modules/api/routes?route=${encodeURIComponent(ref)}&tab=tester`);
   await tab.visible({ role: "button", name: "Send" });
   return tab;
 }

@@ -1,5 +1,5 @@
 import { guarded } from "../guard.mjs";
-import { check, list, mon, num, same, settled, text, traffic } from "../api.mjs";
+import { check, list, mon, num, same, settled, text, traffic, openPage } from "../api.mjs";
 
 /** @typedef {import("../api.mjs").Ctx} Ctx */
 
@@ -20,13 +20,13 @@ export const journeys = guarded([
       ]);
       const tab = await ctx.tab("admin");
       await tab.signIn("admin");
-      await tab.goto("/modules/api/overview");
+      await openPage(tab, "/modules/api/overview");
       await ctx.verify("the Overview", [
         tab.visible({ role: "heading", name: "Overview", level: 1 }),
         tab.shows(/Degraded/),
         tab.shows(/View 1 server error/),
       ]);
-      await tab.goto("/modules/api/logs");
+      await openPage(tab, "/modules/api/logs");
       await ctx.verify("the Request logs", [
         tab.visible({ role: "button", name: "All 26" }),
         tab.visible({ role: "button", name: "5xx 1" }),

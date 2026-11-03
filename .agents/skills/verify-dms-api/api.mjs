@@ -374,3 +374,16 @@ export async function member(ctx, name, permissions) {
   ctx.addAccount(name, { email, password, userId });
   await ctx.verify(`${name} is a member`, [check("the signup answers a session", signup.status === 200 && userId !== "", signup.status)], { critical: true });
 }
+
+/**
+ * Opens a dashboard path and waits for the page to hydrate: a click that lands before it does nothing.
+ *
+ * @param {Tab} tab The tab
+ * @param {string} path The path
+ * @returns {Promise<void>}
+ */
+export async function openPage(tab, path) {
+  await tab.goto(path);
+  await tab.page.waitForLoadState("load");
+  await tab.page.waitForTimeout(2500);
+}

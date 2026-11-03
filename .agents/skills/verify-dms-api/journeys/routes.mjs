@@ -1,5 +1,5 @@
 import { guarded } from "../guard.mjs";
-import { check, list, mon, num, pick, raw, same, saveSettings, settled, text, traffic, withConfig } from "../api.mjs";
+import { check, list, mon, num, pick, raw, same, saveSettings, settled, text, traffic, withConfig, openPage } from "../api.mjs";
 
 /** @typedef {import("../api.mjs").Ctx} Ctx */
 
@@ -36,7 +36,7 @@ export const journeys = guarded([
       ]);
       const tab = await ctx.tab("admin");
       await tab.signIn("admin");
-      await tab.goto("/modules/api/routes");
+      await openPage(tab, "/modules/api/routes");
       const posts = rows.filter((row) => text(row, "method") === "POST").length;
       await ctx.verify("the tree", [
         tab.shows(/15 of 15 routes · \d+ folders/),
@@ -78,9 +78,9 @@ export const journeys = guarded([
       ]);
       const tab = await ctx.tab("admin");
       await tab.signIn("admin");
-      await tab.goto("/modules/api/routes");
+      await openPage(tab, "/modules/api/routes");
       await ctx.verify("no route named: the one needing attention", [check("the URL names the failing route", /route=GET\+%2Ffx%2Fboom/.test(tab.page.url()), tab.page.url()), tab.shows(/FixtureController\.boom/), tab.shows(/(Failing|Down)[^\n]*last 24 h/)]);
-      await tab.goto("/modules/api/routes?route=GET+%2Ffx%2Fok&tab=documentation");
+      await openPage(tab, "/modules/api/routes?route=GET+%2Ffx%2Fok&tab=documentation");
       await ctx.verify("the named route and tab", [
         tab.shows(/\/fx\/ok · FixtureController/),
         tab.shows(/(No traffic|Healthy) · last 24 h\s+FixtureController\.ok\s+Auth unknown\s+Project code/),
@@ -88,7 +88,7 @@ export const journeys = guarded([
       ]);
       await tab.click({ role: "link", name: "Requests" });
       await ctx.verify("Requests", [tab.at(/\/modules\/api\/logs$/), check("the logs narrow to the route", /route=GET\+%2Ffx%2Fok/.test(tab.page.url()), tab.page.url())]);
-      await tab.goto("/modules/api/routes");
+      await openPage(tab, "/modules/api/routes");
       await ctx.verify("the last route opened", [check("it lands on GET /fx/ok", /route=GET\+%2Ffx%2Fok/.test(tab.page.url()), tab.page.url())]);
     },
   },
@@ -112,7 +112,7 @@ export const journeys = guarded([
       ]);
       const tab = await ctx.tab("admin");
       await tab.signIn("admin");
-      await tab.goto(`/modules/api/routes?${named(ref)}&tab=statistics`);
+      await openPage(tab, `/modules/api/routes?${named(ref)}&tab=statistics`);
       await ctx.verify("the tab", [
         tab.shows(/REQUESTS\s+18\s/),
         tab.shows(/ERROR RATE\s+22\.2%\s+4 × 4xx · 0 × 5xx/),
@@ -143,7 +143,7 @@ export const journeys = guarded([
       ]);
       const tab = await ctx.tab("admin");
       await tab.signIn("admin");
-      await tab.goto(`/modules/api/routes?${named(ref)}&tab=documentation`);
+      await openPage(tab, `/modules/api/routes?${named(ref)}&tab=documentation`);
       const origin = text(found.body, "apiOrigin");
       await ctx.verify("the tab", [
         tab.shows(/Read from the requests captured over the last 7 days \(the tester's left out\) and from the handler's code\. What was never called does not show\./),
@@ -188,9 +188,9 @@ export const journeys = guarded([
       ]);
       const tab = await ctx.tab("admin");
       await tab.signIn("admin");
-      await tab.goto(`/modules/api/routes?${named("GET /fx/guarded/secret")}`);
+      await openPage(tab, `/modules/api/routes?${named("GET /fx/guarded/secret")}`);
       await ctx.verify("the header of the guarded route", [tab.shows(/GuardedController\.secret/), tab.shows(/Auth unknown/, { not: true, timeoutMs: 3000 })]);
-      await tab.goto(`/modules/api/routes?${named("GET /fx/named/page")}`);
+      await openPage(tab, `/modules/api/routes?${named("GET /fx/named/page")}`);
       await ctx.verify("the header of the unguarded route", [tab.shows(/Auth unknown/)]);
       await withConfig(ctx, { authMiddlewareCallbacks: ["checkTicket"], authMiddlewareNamePatterns: ["^never_"] }, async () => {
         const configured = {
