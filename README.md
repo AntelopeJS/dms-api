@@ -56,7 +56,7 @@ pnpm --dir playground traffic     # a few hundred demo requests
 | `@antelopejs/interface-core`                | `file:.campaign/tgz/antelopejs-interface-core-f7df541.tgz`                | `file:.campaign/tgz/antelopejs-interface-core-f7df541.tgz`                |
 | `@antelopejs/interface-database`            | `file:.campaign/tgz/antelopejs-interface-database-02e0360.tgz`            | `file:.campaign/tgz/antelopejs-interface-database-02e0360.tgz`            |
 | `@antelopejs/interface-database-decorators` | `file:.campaign/tgz/antelopejs-interface-database-decorators-e79a62b.tgz` | `file:.campaign/tgz/antelopejs-interface-database-decorators-e79a62b.tgz` |
-| `@antelopejs/interface-dms`                 | `file:.campaign/tgz/antelopejs-interface-dms-0cfaaa3.tgz`                 | `file:.campaign/tgz/antelopejs-interface-dms-0cfaaa3.tgz`                 |
+| `@antelopejs/interface-dms`                 | `file:.campaign/tgz/antelopejs-interface-dms-14e671d.tgz`                 | `file:.campaign/tgz/antelopejs-interface-dms-14e671d.tgz`                 |
 | `@antelopejs/interface-dms-automation`      | `file:.campaign/tgz/antelopejs-interface-dms-automation-b4bc5d2.tgz`      | `file:.campaign/tgz/antelopejs-interface-dms-automation-b4bc5d2.tgz`      |
 
 <!-- antelopejs-docs-compat:end -->
