@@ -92,7 +92,10 @@ $C doors "$PWD/.agents/skills/verify-dms-api/seeded-doors/data.patch"
 
 - Every dashboard page renders on the server and hydrates after `load`; `tab.signIn` waits for the sign-in form to hydrate.
 - The Routes page keeps its tree and filters behind the button that names the open route; the journeys open it before they filter.
-- Known finding: the published `@antelopejs/api` builds `proto` route handlers while the module reads `controller`; against the unpatched package `GET /api/monitoring/routes/list` answers 500 (draft `dms-api-controller-vs-published-api`). The fixture patches a copy of the package; a diff that makes the module read `proto` too would remove the need.
+- Known findings, each a failing journey with an issue draft under `~/.cache/campaign/issues/`:
+  - `routes` and every page that lists routes answer 500 against the published `@antelopejs/api`, which builds `proto` route handlers while the module reads `controller` (`dms-api-controller-vs-published-api`); the fixture patches a copy of the package, so no journey fails on it;
+  - `settings/a-log-retention-of-no-day-is-refused-at-start`: `requestLogRetention: 0` starts the module, the form shows 1 day, and the hourly prune uses a cutoff of now (`dms-api-log-retention-zero-accepted-at-start`);
+  - `access/a-role-opens-the-blocks-it-holds-and-no-others`: the docs say a role can hold one block of the console, but the DMS grants module-scoped permissions to the owner only (`dms-api-role-permissions-per-block-never-granted`).
 - `npm pack` ships `frontend-vue/tests/**` with the Vue layer (the `files` entry is the whole folder); the package journeys do not forbid it.
 
 ## Not driven
@@ -103,6 +106,7 @@ List these under `notVerified` in the judgement of every verdict. The per-featur
 - The automation nodes `api.route-unhealthy`, `api.get-api-health` and `api.query-request-logs`: the playground does not load `@antelopejs/dms-automation`.
 - A second instance behind one console sharing `testerSourceSecret`: the run has one backend.
 - Pointer drag of the drawer's edge and the persisted drawer width.
+- Keyboard shortcuts `L`, `/` and `?`, the Tester's History, Headers for all routes and the form's editors, and a Tester call's forwarding limits.
 
 ## Feature map
 
