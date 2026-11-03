@@ -129,15 +129,16 @@ export const journeys = guarded([
     title: "the Documentation tab shows an example request in cURL and fetch, the path, query and header parameters with examples and whether they are required, the body fields, the statuses seen and the response, from the last 7 days of captured calls, and shows nothing for what was never called",
     entryPoint: "/modules/api/routes?route=POST /fx/orders/:shop/lines&tab=documentation",
     async run(/** @type {Ctx} */ ctx) {
-      await raw(ctx, "a call", { method: "POST", path: "/fx/orders/shop1/lines?limit=5", headers: { "content-type": "application/json", "x-tenant": "t9" }, body: JSON.stringify({ sku: "A1", quantity: 2 }) });
+      await raw(ctx, "a call with a gift", { method: "POST", path: "/fx/orders/shop1/lines?limit=5", headers: { "content-type": "application/json", "x-tenant": "t9" }, body: JSON.stringify({ sku: "A1", quantity: 2, gift: true }) });
+      await raw(ctx, "a call without", { method: "POST", path: "/fx/orders/shop1/lines?limit=5", headers: { "content-type": "application/json", "x-tenant": "t9" }, body: JSON.stringify({ sku: "A1", quantity: 2 }) });
       const ref = "POST /fx/orders/:shop/lines";
-      const found = await settled(ctx, "the contract", `/routes/detail?${named(ref)}`, (body) => num(body, "contract", "total") === 1);
+      const found = await settled(ctx, "the contract", `/routes/detail?${named(ref)}`, (body) => num(body, "contract", "total") === 2);
       const never = await detail(ctx, "GET /fx/blob");
       const parameters = list(found.body, "parameters").map((entry) => [text(entry, "name"), text(entry, "in"), pick(entry, "required"), pick(entry, "example")]);
       await ctx.verify("the contract", [
         same("the parameters", parameters, [["shop", "path", true, "shop1"], ["limit", "query", false, "5"], ["x-tenant", "header", false, null]]),
-        same("the body fields", list(found.body, "contract", "bodyFields").map((entry) => [text(entry, "name"), pick(entry, "required"), pick(entry, "example")]), [["sku", true, "A1"], ["quantity", true, 2]]),
-        same("the statuses seen", list(found.body, "contract", "statuses").map((entry) => [num(entry, "status"), num(entry, "count")]), [[201, 1]]),
+        same("the body fields", list(found.body, "contract", "bodyFields").map((entry) => [text(entry, "name"), pick(entry, "required"), pick(entry, "example")]), [["sku", true, "A1"], ["quantity", true, 2], ["gift", false, true]]),
+        same("the statuses seen", list(found.body, "contract", "statuses").map((entry) => [num(entry, "status"), num(entry, "count")]), [[201, 2]]),
         same("the example path and query", [pick(found.body, "contract", "examplePath"), pick(found.body, "contract", "exampleQuery")], [{ shop: "shop1" }, { limit: "5" }]),
         same("a route never called has no statuses, fields or example", [num(never.body, "contract", "total"), list(never.body, "contract", "statuses").length, list(never.body, "contract", "bodyFields").length, pick(never.body, "contract", "exampleResponse")], [0, 0, 0, null]),
       ]);
@@ -149,13 +150,14 @@ export const journeys = guarded([
         tab.shows(/Read from the requests captured over the last 7 days \(the tester's left out\) and from the handler's code\. What was never called does not show\./),
         tab.shows(new RegExp(`curl -X POST '${origin.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/fx/orders/shop1/lines\\?limit=5'`)),
         tab.shows(/Authentication unknown/),
-        tab.shows(/BODY\s+Inferred from 1 successful request/),
+        tab.shows(/BODY\s+Inferred from 2 successful requests/),
         tab.shows(/sku\s+required\s+e\.g\. "A1"\s+string/),
         tab.shows(/quantity\s+required\s+e\.g\. 2\s+number/),
+        tab.shows(/gift\s+e\.g\. true\s+boolean/),
         tab.shows(/:shop\s+string\s+required\s+e\.g\. shop1/),
         tab.shows(/limit\s+object\s+e\.g\. 5/),
         tab.shows(/x-tenant\s+object\s+no successful call yet/),
-        tab.shows(/201\s+Created\s+seen once in 7 days/),
+        tab.shows(/201\s+Created\s+seen (twice|2 times) in 7 days/),
         tab.shows(/1\s+start[\s\S]*2\s+cors[\s\S]*3\s+OrdersController\.add[\s\S]*4\s+capture/),
       ]);
       await tab.click({ role: "radio", name: "fetch" });
