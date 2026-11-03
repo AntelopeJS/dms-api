@@ -43,7 +43,7 @@ export const journeys = guarded([
         same("the Tester's read finds it", list(listed.body, "results").map((entry) => text(entry, "path")), ["/fx/boom"]),
       ]);
       await ctx.verify("what was left out", [
-        check("the route's statistics hold no request", !JSON.stringify(summary.body).includes('"value":1'), summary.body),
+        same("the route's statistics list no card: no request counted", list(summary.body, "items").length, 0),
         same("the health counted nothing", num(health.body, "metrics", "requests"), 0),
         same("nothing needs attention", pick(attention.body, "count"), 0),
         same("the route stays idle", text(detail.body, "state"), "idle"),

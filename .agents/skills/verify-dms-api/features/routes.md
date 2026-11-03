@@ -41,6 +41,7 @@ The Routes page: the tree of routes with health and filters, a route's header, i
 - `a-route-opens-with-its-header-and-the-url-names-it`
 - `the-statistics-tab-adds-up-the-period`
 - `the-documentation-tab-is-inferred-from-the-code-and-the-traffic`
+- `the-contract-reads-seven-days-of-real-calls-and-never-the-testers`
 - `authentication-is-read-from-the-guards-before-the-handler`
 
 ## How to get to it (user POV)

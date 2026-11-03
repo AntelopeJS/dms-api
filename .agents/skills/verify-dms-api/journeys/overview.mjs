@@ -1,4 +1,5 @@
 import { guarded } from "../guard.mjs";
+import { seedLogs } from "../seed.mjs";
 import { check, isOn, list, mon, num, pick, same, saveSettings, settled, text, traffic, openPage } from "../api.mjs";
 
 /** @typedef {import("../api.mjs").Ctx} Ctx */
@@ -160,6 +161,54 @@ export const journeys = guarded([
       await ctx.verify("Routes open on the last choice", [isOn(tab, { role: "radio", name: "Last 7 days" })]);
       await openPage(tab, "/modules/api/overview?live=0");
       await ctx.verify("?live=0", [isOn(tab, { role: "button", name: "Pause" }), isOn(tab, { role: "button", name: "Live" }, false)]);
+    },
+  },
+  {
+    id: "down-reads-the-last-five-minutes-and-not-the-last-fifteen",
+    title: "10 failing calls out of 20 in the last 5 minutes read Down although 100 good calls 10 minutes ago keep the 15-minute rate under 20%; the same errors 10 minutes ago and 20 good calls now read Degraded, not Down",
+    entryPoint: "GET /api/monitoring/overview/health",
+    async run(/** @type {Ctx} */ ctx) {
+      await seedLogs(ctx, "100 good calls 10 minutes ago", { minutesAgo: 10, count: 100 });
+      await traffic(ctx, "10 good and 10 failing now", [{ path: "/fx/ok", count: 10 }, { path: "/fx/boom", count: 10 }]);
+      const recent = await settled(ctx, "health with a recent burst", "/overview/health", (body) => num(body, "metrics", "requests") === 120);
+      await ctx.verify("a recent burst", [
+        same("the verdict", text(recent.body, "verdict"), "down"),
+        same("the 15-minute rate is the 10 errors over 120 calls", [num(recent.body, "metrics", "requests"), Math.round((num(recent.body, "metrics", "serverErrorRate") ?? 0) * 10) / 10], [120, 8.3]),
+      ]);
+    },
+  },
+  {
+    id: "errors-older-than-five-minutes-do-not-make-the-api-down",
+    title: "40 failing calls out of 120 ten minutes ago and 20 good calls now (28.6% over 15 minutes, 0% over 5) read Degraded, not Down",
+    entryPoint: "GET /api/monitoring/overview/health",
+    async run(/** @type {Ctx} */ ctx) {
+      await seedLogs(ctx, "80 good calls 10 minutes ago", { minutesAgo: 10, count: 80 });
+      await seedLogs(ctx, "40 failing calls 10 minutes ago", { minutesAgo: 10, count: 40, uri: "/fx/boom", statusCode: 500, message: "seeded" });
+      await traffic(ctx, "20 good calls now", [{ path: "/fx/ok", count: 20 }]);
+      const aged = await settled(ctx, "health with aged errors", "/overview/health", (body) => num(body, "metrics", "requests") === 140);
+      await ctx.verify("aged errors", [
+        same("the verdict", text(aged.body, "verdict"), "degraded"),
+        same("the 15-minute rate is the 40 errors over 140 calls", Math.round((num(aged.body, "metrics", "serverErrorRate") ?? 0) * 10) / 10, 28.6),
+      ]);
+    },
+  },
+  {
+    id: "the-module-path-redirects-to-the-overview",
+    title: "opening /modules/api lands on /modules/api/overview, and the menu lists Overview, Request logs, Routes and API settings under Monitor, Explore and Configure",
+    entryPoint: "/modules/api",
+    async run(/** @type {Ctx} */ ctx) {
+      const tab = await ctx.tab("admin");
+      await tab.signIn("admin");
+      await openPage(tab, "/modules/api");
+      await ctx.verify("the redirect", [
+        tab.at(/^\/modules\/api\/overview$/),
+        tab.visible({ role: "heading", name: "Overview", level: 1 }),
+        tab.visible({ role: "link", name: "Overview", within: { role: "navigation" } }),
+        tab.visible({ role: "link", name: "Request logs" }),
+        tab.visible({ role: "link", name: "Routes" }),
+        tab.visible({ role: "link", name: "API settings" }),
+        tab.shows(/MONITOR\s+Overview\s+Request logs\s+EXPLORE\s+Routes\s+CONFIGURE\s+API settings/),
+      ]);
     },
   },
 ]);

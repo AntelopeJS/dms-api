@@ -1,4 +1,5 @@
 import { guarded } from "../guard.mjs";
+import { seedLogs } from "../seed.mjs";
 import { check, list, mon, num, pick, raw, same, saveSettings, settled, text, traffic, withConfig, openPage } from "../api.mjs";
 
 /** @typedef {import("../api.mjs").Ctx} Ctx */
@@ -100,15 +101,20 @@ export const journeys = guarded([
       await saveSettings(ctx, "slow from 50 ms", { requestSlownessThresholdMs: 50 });
       await traffic(ctx, "one route", [{ path: "/fx/items/7", count: 14 }, { path: "/fx/items/x1", count: 4 }, { path: "/fx/slow?ms=80", count: 2 }]);
       const ref = "GET /fx/items/:id";
-      const summary = await settled(ctx, "summary", `/routes/statistics/summary?${named(ref)}&preset=last-24h`, (body) => JSON.stringify(body).includes("18"));
+      const summary = await settled(ctx, "summary", `/routes/statistics/summary?${named(ref)}&preset=last-24h`, (body) => num(list(body, "items").find((item) => text(item, "id") === "requests"), "value") === 18);
+      await settled(ctx, "errors counted", `/routes/statistics/errors?${named(ref)}&preset=last-24h`, (body) => list(body, "items").length === 1);
       const errors = await mon(ctx, "top errors", `/routes/statistics/errors?${named(ref)}&preset=last-24h`);
       const activity = await mon(ctx, "activity", `/routes/statistics/activity?${named(ref)}&preset=last-24h`);
       const status = await mon(ctx, "status chart", `/routes/statistics/status?${named(ref)}&preset=last-24h`);
+      const cards = new Map(list(summary.body, "items").map((item) => [text(item, "id"), item]));
       await ctx.verify("the API", [
-        check("the summary counts 18 calls", JSON.stringify(summary.body).includes("18"), summary.body),
-        check("the top errors group the four 404s", JSON.stringify(errors.body).includes("no such item") && JSON.stringify(errors.body).includes("404"), errors.body),
-        check("the activity says the route was called", JSON.stringify(activity.body).includes("true") || JSON.stringify(activity.body).includes("18"), activity.body),
-        same("the status chart answers", status.status, 200),
+        same("the request count", num(cards.get("requests"), "value"), 18),
+        same("the error rate is 4 of 18", Math.round((num(cards.get("errors"), "value", "params", "rate", "value") ?? 0) * 1000) / 1000, 0.222),
+        same("the error split is 4 client errors and no server error", [num(cards.get("errors"), "detail", "params", "client", "value"), num(cards.get("errors"), "detail", "params", "server", "value")], [4, 0]),
+        same("the slow line names the threshold", num(cards.get("max"), "detail", "params", "threshold", "params", "value", "value"), 50),
+        same("the top errors group the four 404s under one message", list(errors.body, "items").map((item) => [num(item, "status"), text(item, "message"), num(item, "value")]), [[404, "no such item", 4]]),
+        same("the activity counts the calls", num(activity.body, "calls"), 18),
+        same("the status chart's figure is the error rate in percent", num(status.body, "value"), 22.2),
       ]);
       const tab = await ctx.tab("admin");
       await tab.signIn("admin");
@@ -202,6 +208,40 @@ export const journeys = guarded([
           same("replacing the patterns drops auth_check", pick(configured.guarded, "auth", "guards"), []),
         ]);
       });
+    },
+  },
+  {
+    id: "the-contract-reads-seven-days-of-real-calls-and-never-the-testers",
+    title: "a call 6 days old shapes the documentation, one 8 days old does not, and a call the Tester made leaves its totals, fields, statuses and examples unchanged",
+    entryPoint: "GET /api/monitoring/routes/detail",
+    async run(/** @type {Ctx} */ ctx) {
+      const ref = "POST /fx/orders/:shop/lines";
+      const uri = "/fx/orders/:shop/lines";
+      await seedLogs(ctx, "8 days old", { daysAgo: 8, count: 1, method: "POST", uri, statusCode: 201, requestBody: JSON.stringify({ sku: "OLD", legacy: true }), responseBody: JSON.stringify({ shop: "old" }) });
+      await seedLogs(ctx, "6 days old", { daysAgo: 6, count: 1, method: "POST", uri, statusCode: 201, requestBody: JSON.stringify({ sku: "R6", recent: true }), responseBody: JSON.stringify({ shop: "recent" }) });
+      await raw(ctx, "a real call", { method: "POST", path: "/fx/orders/shop1/lines?limit=5", headers: { "content-type": "application/json" }, body: JSON.stringify({ sku: "A1", quantity: 2 }) });
+      const before = await settled(ctx, "the contract", `/routes/detail?${named(ref)}`, (body) => num(body, "contract", "total") === 2);
+      const token = text((await mon(ctx, "ask a Tester token", "/tester/source")).body, "value");
+      await raw(ctx, "a Tester call with its own fields", { method: "POST", path: "/fx/orders/shop9/lines?viaTester=1", headers: { "content-type": "application/json", "x-antelopejs-api-source": token }, body: JSON.stringify({ sku: "T9", quantity: 9, viaTester: true }) });
+      await settled(ctx, "the Tester call is stored", "/logs?limit=50", (body) => list(body, "results").some((row) => text(row, "source") === "tester"));
+      const after = await mon(ctx, "the contract after the Tester call", `/routes/detail?${named(ref)}`);
+      const summarize = (/** @type {unknown} */ body) => ({
+        total: num(body, "contract", "total"),
+        fields: list(body, "contract", "bodyFields").map((entry) => [text(entry, "name"), pick(entry, "required")]).toSorted((left, right) => String(left[0]).localeCompare(String(right[0]))),
+        statuses: list(body, "contract", "statuses").map((entry) => [num(entry, "status"), num(entry, "count")]),
+        query: pick(body, "contract", "queryParams"),
+        example: pick(body, "contract", "exampleBody"),
+      });
+      await ctx.verify("seven days", [
+        same("only the calls of the last 7 days count", summarize(before.body).total, 2),
+        same("the 6 day old call's field is documented and the 8 day old one's is not", summarize(before.body).fields.map((entry) => entry[0]), ["quantity", "recent", "sku"]),
+        same("the statuses seen", summarize(before.body).statuses, [[201, 2]]),
+      ]);
+      await ctx.verify("the Tester", [
+        same("the contract is the same after a Tester call", summarize(after.body), summarize(before.body)),
+        same("the Tester's field is not documented", summarize(after.body).fields.map((entry) => entry[0]).includes("viaTester"), false),
+        same("the Tester's query parameter is not documented", summarize(after.body).query, ["limit"]),
+      ]);
     },
   },
 ]);

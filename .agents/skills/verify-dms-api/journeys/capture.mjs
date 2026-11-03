@@ -5,7 +5,7 @@ import { check, list, mon, num, parseJson, pick, same, saveSettings, sendAndRead
 
 const DEFAULT_HEADERS = ["content-type", "content-length", "user-agent", "accept", "accept-encoding", "host", "referer", "origin"];
 const REDACTED_WORDS = ["password", "passwd", "secret", "authorization", "cookie", "apikey", "privatekey", "credential", "recoverycode", "backupcode", "cardnumber", "securitycode", "pincode", "token", "otp", "cvc", "cvv", "cvn", "iban", "pin", "pan", "ssn", "card"];
-const JSON_HEADERS = { "content-type": "application/json", "user-agent": "verify-agent/1.0", "x-request-id": "req-capture-1", "x-webhook-signature": "sig-1", authorization: "Bearer top-secret", cookie: "sid=1", "x-api-key": "k-1", origin: "https://client.example.org", referer: "https://client.example.org/page" };
+const JSON_HEADERS = { "content-type": "application/json", "user-agent": "verify-agent/1.0", "x-request-id": "req-capture-1", "x-webhook-signature": "sig-1", authorization: "Bearer top-secret", cookie: "sid=1", "proxy-authorization": "Basic cHJveHk6cHc=", "set-cookie": "sid=2", "x-api-key": "k-1", origin: "https://client.example.org", referer: "https://client.example.org/page" };
 
 export const journeys = guarded([
   {
@@ -89,8 +89,8 @@ export const journeys = guarded([
         same("a header outside the list is absent", pick(before.log, "requestHeaders", "x-webhook-signature"), undefined),
         same("the allow-list in force", (await mon(ctx, "settings", "/settings")).body?.requestLogCaptureHeaders, DEFAULT_HEADERS),
       ]);
-      const secret = await saveSettings(ctx, "a secret header in the list", { requestLogCaptureHeaders: ["x-webhook-signature", "authorization"] });
-      await ctx.verify("a secret header is refused", [same("HTTP 400", secret.status, 400)]);
+      const refusedList = await saveSettings(ctx, "a secret header in the list", { requestLogCaptureHeaders: ["x-webhook-signature", "authorization"] });
+      await ctx.verify("a secret header is refused", [same("HTTP 400", refusedList.status, 400)]);
       const saved = await saveSettings(ctx, "add the webhook signature, in capitals", { requestLogCaptureHeaders: ["X-Webhook-Signature", "x-webhook-signature", "user-agent"] });
       await ctx.verify("stored lower case without repeats", [same("HTTP 200", saved.status, 200), same("the list", pick(saved.body, "requestLogCaptureHeaders"), ["x-webhook-signature", "user-agent"])]);
       const after = await sendAndRead(ctx, "custom list", { path: "/fx/ok", headers: JSON_HEADERS });
@@ -158,13 +158,13 @@ export const journeys = guarded([
     title: "keys such as clientSecret, x-api-key, accessToken, userPin, creditCard and card_cvc2 are redacted, short look-alikes such as spin, footprint, company and cardBrand are not, and a payment card number is redacted whatever its key",
     entryPoint: "POST /fx/echo with keys and values",
     async run(/** @type {Ctx} */ ctx) {
-      const secret = ["clientSecret", "x-api-key", "accessToken", "access_token", "accesstoken", "refreshtoken", "userPin", "creditCard", "card_cvc2", "myPassword", "iban", "totp", "X-Authorization"];
-      const plain = ["spin", "footprint", "isNotPaid", "company", "cardBrand", "tokenizer", "pinned", "panda", "cvcs"];
-      const body = { ...Object.fromEntries(secret.map((key) => [key, "v-" + key])), ...Object.fromEntries(plain.map((key) => [key, "v-" + key])), memo: "4111 1111 1111 1111", ref: "4111111111111111", short: "411111111111", note: "order 12345" };
+      const redactedKeys = ["clientSecret", "x-api-key", "accessToken", "access_token", "accesstoken", "refreshtoken", "userPin", "creditCard", "card_cvc2", "myPassword", "iban", "totp", "X-Authorization"];
+      const keptKeys = ["spin", "footprint", "isNotPaid", "company", "cardBrand", "tokenizer", "pinned", "panda", "cvcs"];
+      const body = { ...Object.fromEntries(redactedKeys.map((key) => [key, "v-" + key])), ...Object.fromEntries(keptKeys.map((key) => [key, "v-" + key])), memo: "4111 1111 1111 1111", ref: "4111111111111111", short: "411111111111", note: "order 12345" };
       const sent = await sendAndRead(ctx, "keys", { method: "POST", path: "/fx/echo", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
       const stored = parseJson(text(sent.log, "requestBody") || "{}");
-      await ctx.verify("secret keys", secret.map((key) => same(`${key} is redacted`, pick(stored, key), "[REDACTED]")));
-      await ctx.verify("look-alikes", plain.map((key) => same(`${key} keeps its value`, pick(stored, key), "v-" + key)));
+      await ctx.verify("secret keys", redactedKeys.map((key) => same(`${key} is redacted`, pick(stored, key), "[REDACTED]")));
+      await ctx.verify("look-alikes", keptKeys.map((key) => same(`${key} keeps its value`, pick(stored, key), "v-" + key)));
       await ctx.verify("card numbers", [
         same("a spaced card number is redacted whatever its key", pick(stored, "memo"), "[REDACTED]"),
         same("a plain card number is redacted", pick(stored, "ref"), "[REDACTED]"),

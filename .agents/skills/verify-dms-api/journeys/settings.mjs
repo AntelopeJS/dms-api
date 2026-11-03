@@ -7,6 +7,12 @@ import { readDocuments, seedLogs, seedStatistics, dayStart } from "../seed.mjs";
 
 /** @typedef {import("../api.mjs").Ctx} Ctx */
 
+/**
+ * @param {string} ref A route reference
+ * @returns {string} The query that names it
+ */
+const named = (ref) => `route=${encodeURIComponent(ref)}`;
+
 const DEFAULT_HEADERS = ["content-type", "content-length", "user-agent", "accept", "accept-encoding", "host", "referer", "origin"];
 
 /**
@@ -102,11 +108,14 @@ export const journeys = guarded([
       await ctx.verify("the header list", [
         same("50 headers are accepted", await statusOf(ctx, "requestLogCaptureHeaders", fifty), 200),
         same("51 headers are refused", await statusOf(ctx, "requestLogCaptureHeaders", [...fifty, "x-one-more"]), 400),
-        ...["authorization", "cookie", "set-cookie", "x-api-key", "proxy-authorization"].map((header) => check(`${header} is refused`, true, header)),
       ]);
-      const refused = [];
-      for (const header of ["authorization", "cookie", "x-api-key"]) refused.push([header, await statusOf(ctx, "requestLogCaptureHeaders", [header])]);
-      await ctx.verify("secret-looking headers", refused.map(([header, status]) => same(`${header} is refused`, status, 400)));
+      const secretHeaders = ["authorization", "cookie", "set-cookie", "x-api-key", "proxy-authorization", "X-Authorization", "x-antelopejs-api-source"];
+      const refusals = [];
+      for (const header of secretHeaders) refusals.push([header, await statusOf(ctx, "requestLogCaptureHeaders", [header])]);
+      await ctx.verify("secret-looking headers", refusals.map(([header, status]) => same(`${String(header)} is refused`, status, 400)));
+      const kept = [];
+      for (const header of ["x-request-trace", "accept-language", "if-none-match"]) kept.push([header, await statusOf(ctx, "requestLogCaptureHeaders", [header])]);
+      await ctx.verify("ordinary headers", kept.map(([header, status]) => same(`${String(header)} is accepted`, status, 200)));
     },
   },
   {
@@ -194,25 +203,30 @@ export const journeys = guarded([
     entryPoint: "GET /api/monitoring/settings/retention-impact",
     async run(/** @type {Ctx} */ ctx) {
       await seedLogs(ctx, "40 days old", { daysAgo: 40, count: 3 });
-      await seedLogs(ctx, "100 days old", { daysAgo: 100, count: 2 });
+      await seedLogs(ctx, "99.5 days old", { daysAgo: 99.5, count: 2 });
       await seedStatistics(ctx, "50 days old", { method: "GET", uri: "/fx/ok", daysAgo: 50, requests: 4 });
       await seedStatistics(ctx, "70 days old", { method: "GET", uri: "/fx/ok", daysAgo: 70, requests: 6 });
       const read = (/** @type {string} */ field, /** @type {number} */ days) => mon(ctx, `${field} at ${days}`, `/settings/retention-impact?field=${field}&days=${days}`);
+      const figures = (/** @type {import("../api.mjs").Answer} */ answer) => [num(answer.body, "days"), num(answer.body, "requests")];
       const logs30 = await read("requestLogRetentionDays", 30);
       const logs60 = await read("requestLogRetentionDays", 60);
       const logs366 = await read("requestLogRetentionDays", 366);
       const stats30 = await read("statisticsLifetimeDays", 30);
       const stats60 = await read("statisticsLifetimeDays", 60);
+      const stats90 = await read("statisticsLifetimeDays", 90);
       const unknown = await read("nope", 30);
       const zero = await read("requestLogRetentionDays", 0);
+      const over = await read("requestLogRetentionDays", 367);
       await ctx.verify("impact", [
-        same("logs older than 30 days", [num(logs30.body, "requests") ?? pick(logs30.body, "requests"), pick(logs30.body, "days")], [5, pick(logs30.body, "days")]),
-        same("logs older than 60 days", num(logs60.body, "requests"), 2),
-        same("logs older than 366 days", num(logs366.body, "requests"), 0),
-        check("statistics older than 30 days include the 50 and 70 day old entries", JSON.stringify(stats30.body).includes("2"), stats30.body),
-        check("statistics older than 60 days include only the 70 day old entry", JSON.stringify(stats60.body) !== JSON.stringify(stats30.body), stats60.body),
+        same("logs older than 30 days: the days back they reach and the requests", figures(logs30), [70, 5]),
+        same("logs older than 60 days", figures(logs60), [40, 2]),
+        same("logs older than 366 days", figures(logs366), [0, 0]),
+        same("statistics older than 30 days: the 50 and 70 day old rollups", figures(stats30), [2, 10]),
+        same("statistics older than 60 days: the 70 day old rollup", figures(stats60), [1, 6]),
+        same("statistics older than 90 days", figures(stats90), [0, 0]),
         same("an unknown field is refused", unknown.status, 400),
         same("0 days is refused", zero.status, 400),
+        same("367 days is refused", over.status, 400),
       ]);
     },
   },
@@ -222,7 +236,7 @@ export const journeys = guarded([
     entryPoint: "the hourly job of the module",
     async run(/** @type {Ctx} */ ctx) {
       await saveSettings(ctx, "keep logs 20 days and statistics 30 days", { requestLogRetentionDays: 20, statisticsLifetimeDays: 30 });
-      await seedLogs(ctx, "40 days old", { daysAgo: 40, count: 3 });
+      await seedLogs(ctx, "39.5 days old", { daysAgo: 39.5, count: 3 });
       await seedLogs(ctx, "25 days old", { daysAgo: 25, count: 2, uri: "/fx/boom", statusCode: 500 });
       await seedLogs(ctx, "10 days old", { daysAgo: 10, count: 4 });
       await seedLogs(ctx, "an hour old", { daysAgo: 1 / 24, count: 1 });
@@ -254,7 +268,7 @@ export const journeys = guarded([
       const kept = stats[0]?.statistics;
       const days = (Array.isArray(kept) ? list(kept) : []).map((entry) => num(entry, "day") ?? 0).toSorted((left, right) => left - right);
       await ctx.verify("the prune", [
-        check("the impact said 5 requests before", num(impact.body, "requests") === 5 || JSON.stringify(impact.body).includes("5"), impact.body),
+        same("the impact said 5 requests reaching back 20 days before", [num(impact.body, "days"), num(impact.body, "requests")], [20, 5]),
         same("the logs before", before, 10),
         same("the logs left are the four 10 days old and the hour old one", ages, [0, 10, 10, 10, 10]),
         same("the statistics left are the 10 days old and the 40 days old are gone with the 100 days old", days, [dayStart(10)]),
@@ -271,6 +285,57 @@ export const journeys = guarded([
       if (outcome.started) await ctx.restartBackend();
       await ctx.verify("a retention of 0", [
         check("the module stops and says so", !outcome.started && /\[dms-api\] invalid configuration/.test(outcome.log), { started: outcome.started, form: form?.body }),
+      ]);
+    },
+  },
+  {
+    id: "a-comparison-beyond-the-kept-statistics-compares-with-nothing",
+    title: "with the statistics kept 30 days the 30D period has no previous period (nothing is drawn, no zeros) and Routes says so; kept 60 days it has one; the 7D period keeps its comparison either way",
+    entryPoint: "GET /api/monitoring/overview/traffic?comparison=previous-period",
+    async run(/** @type {Ctx} */ ctx) {
+      await traffic(ctx, "some calls", [{ path: "/fx/ok", count: 3 }]);
+      const windowOf = async (/** @type {string} */ label, /** @type {string} */ preset) => {
+        const answer = await settled(ctx, label, `/overview/traffic?preset=${preset}&comparison=previous-period`, (body) => num(body, "value") === 3);
+        return [pick(answer.body, "window", "previousAvailable"), pick(answer.body, "window", "comparison"), list(answer.body, "series").length];
+      };
+      const kept90 = await windowOf("30D kept 90 days", "last-30-days");
+      await saveSettings(ctx, "keep 60 days", { statisticsLifetimeDays: 60 });
+      const kept60 = await windowOf("30D kept 60 days", "last-30-days");
+      await saveSettings(ctx, "keep 30 days", { statisticsLifetimeDays: 30 });
+      const kept30 = await windowOf("30D kept 30 days", "last-30-days");
+      const week30 = await windowOf("7D kept 30 days", "last-7-days");
+      await ctx.verify("the API", [
+        same("kept 90 days: the 30D period has a previous period", kept90[0], true),
+        same("kept 60 days: the 30D period has a previous period", kept60[0], true),
+        same("kept 30 days: the 30D period has none", kept30[0], false),
+        same("kept 30 days: the 7D period still has one", week30[0], true),
+      ]);
+      const tab = await ctx.tab("admin");
+      await tab.signIn("admin");
+      await openPage(tab, `/modules/api/routes?${named("GET /fx/ok")}&api.period=last-30-days&api.compare=previous-period`);
+      await ctx.verify("Routes at 30 days", [tab.shows(/REQUESTS\s+3\s+No previous period/)]);
+      await openPage(tab, `/modules/api/routes?${named("GET /fx/ok")}&api.period=last-7-days&api.compare=previous-period`);
+      await ctx.verify("Routes at 7 days", [tab.shows(/REQUESTS\s+3\s+none over the previous period/)]);
+      await saveSettings(ctx, "keep 90 days again", { statisticsLifetimeDays: 90 });
+      await openPage(tab, `/modules/api/routes?${named("GET /fx/ok")}&api.period=last-30-days&api.compare=previous-period`);
+      await ctx.verify("Routes at 30 days kept 90", [tab.shows(/REQUESTS\s+3\s+none over the previous period/)]);
+    },
+  },
+  {
+    id: "retention-fields-have-no-use-default-but-the-others-do",
+    title: "once overridden, the slow threshold and the body size show Use default beside their module default; the two retentions never do, since lowering a retention deletes data",
+    entryPoint: "/modules/api/settings",
+    async run(/** @type {Ctx} */ ctx) {
+      const tab = await ctx.tab("admin");
+      await tab.signIn("admin");
+      await openPage(tab, "/modules/api/settings");
+      await ctx.verify("nothing overridden", [tab.visible({ role: "button", name: "Use default" }, { hidden: true, timeoutMs: 3000 })]);
+      await saveSettings(ctx, "override four fields", { requestLogRetentionDays: 7, statisticsLifetimeDays: 30, requestSlownessThresholdMs: 250, requestLogMaxBodyKb: 8 });
+      await openPage(tab, "/modules/api/settings");
+      await ctx.verify("overridden", [
+        tab.shows(/Module\s+default:\s*64/i),
+        tab.shows(/Module\s+default:\s*1,000/i),
+        tab.count({ role: "button", name: "Use default" }, 2),
       ]);
     },
   },

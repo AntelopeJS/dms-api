@@ -137,14 +137,27 @@ export const journeys = guarded([
         same(`${preset}: live while the period reaches now`, pick(answers[index]?.body, "live"), true),
       ]));
       const sum = list(answers[0]?.body, "buckets").reduce((all, bucket) => [all[0] + (num(bucket, "success") ?? 0), all[1] + (num(bucket, "clientErrors") ?? 0), all[2] + (num(bucket, "serverErrors") ?? 0)], [0, 0, 0]);
-      const from = new Date(Date.now() - 3 * 86_400_000).toISOString();
-      const to = new Date(Date.now() - 2 * 86_400_000).toISOString();
-      const past = await mon(ctx, "a past range", `/logs/live?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
+      /** @type {[number, number, number][]} */
+      const ranges = [[3, 2, 900_000], [6, 1, 3_600_000], [20, 10, 7_200_000], [50, 2, 21_600_000], [0.1, 0.05, 60_000]];
+      const pasts = [];
+      for (const [startDays, endDays] of ranges) {
+        const from = new Date(Date.now() - startDays * 86_400_000).toISOString();
+        const to = new Date(Date.now() - endDays * 86_400_000).toISOString();
+        pasts.push(await mon(ctx, `a past range from ${startDays} to ${endDays} days ago`, `/logs/live?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`));
+      }
+      await ctx.verify("past ranges", pasts.flatMap((past, index) => {
+        const [startDays, endDays, size] = ranges[index] ?? [0, 0, 0];
+        const bars = list(past.body, "buckets").length;
+        return [
+          same(`${startDays} to ${endDays} days ago: the bar length`, num(past.body, "bucketMs"), size),
+          check(`${startDays} to ${endDays} days ago: 50 to 121 bars (the docs say 50 to 120; the last bar closes the range)`, bars >= 50 && bars <= 121, bars),
+          same(`${startDays} to ${endDays} days ago: not live and empty`, [pick(past.body, "live"), num(past.body, "total")], [false, 0]),
+        ];
+      }));
       const chosen = await mon(ctx, "a bar length asked for", "/logs/live?preset=last-24h&bucket=3600000");
       const tooSmall = await mon(ctx, "a bar length that would need too many bars", "/logs/live?preset=last-24h&bucket=1000");
       await ctx.verify("the rest", [
         same("the bars add up to the requests by class", sum, [3, 2, 1]),
-        same("a past range is not live", [pick(past.body, "live"), num(past.body, "total")], [false, 0]),
         same("a bar length asked for within the cap is used", num(chosen.body, "bucketMs"), 3_600_000),
         check("a bar length beyond the cap is not used", num(tooSmall.body, "bucketMs") !== 1000 && list(tooSmall.body, "buckets").length <= 120, num(tooSmall.body, "bucketMs")),
       ]);

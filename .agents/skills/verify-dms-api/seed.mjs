@@ -63,18 +63,18 @@ export function dayStart(daysAgo) {
  *
  * @param {Ctx} ctx The journey
  * @param {string} label What the rows are
- * @param {{ daysAgo: number, count: number, method?: string, uri?: string, statusCode?: number, message?: string }} batch The rows
+ * @param {{ daysAgo?: number, minutesAgo?: number, count: number, method?: string, uri?: string, statusCode?: number, message?: string, requestBody?: string, responseBody?: string, responseTimeMs?: number }} batch The rows, `minutesAgo` or `daysAgo` old
  * @returns {Promise<void>}
  */
 export async function seedLogs(ctx, label, batch) {
   const rows = Array.from({ length: batch.count }, (_, index) => ({
     _id: randomUUID(),
-    timestamp: new Date(Date.now() - batch.daysAgo * MS_PER_DAY + index * 1000),
+    timestamp: new Date(Date.now() - (batch.minutesAgo === undefined ? (batch.daysAgo ?? 0) * MS_PER_DAY : batch.minutesAgo * 60_000) + index * 1000),
     method: batch.method ?? "GET",
     uri: batch.uri ?? "/fx/ok",
     rawPath: batch.uri ?? "/fx/ok",
     statusCode: batch.statusCode ?? 200,
-    responseTimeMs: 5,
+    responseTimeMs: batch.responseTimeMs ?? 5,
     error: batch.message ? { message: batch.message } : null,
     routeId: null,
     routeMethod: null,
@@ -85,14 +85,14 @@ export async function seedLogs(ctx, label, batch) {
     pathParams: {},
     query: {},
     requestHeaders: {},
-    requestBody: null,
+    requestBody: batch.requestBody ?? null,
     requestBodyTruncated: false,
-    requestBodyOmitted: "empty",
+    requestBodyOmitted: batch.requestBody === undefined ? "empty" : null,
     requestBodySize: null,
     responseHeaders: {},
-    responseBody: null,
+    responseBody: batch.responseBody ?? null,
     responseBodyTruncated: false,
-    responseBodyOmitted: null,
+    responseBodyOmitted: batch.responseBody === undefined ? "empty" : null,
     responseBodySize: null,
     redactions: { query: 0, requestBody: 0, responseBody: 0, headers: [] },
     _instance: null,
