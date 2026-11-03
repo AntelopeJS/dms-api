@@ -1,6 +1,6 @@
 {
   "name": "@antelopejs/dms-api",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "description": "API console for the AntelopeJS DMS: API health, request logs, per-route statistics, inferred contracts and a request tester.",
   "keywords": [
     "antelopejs",
@@ -64,6 +64,7 @@
   },
   "devDependencies": {
     "@antelopejs/core": "file:.campaign/tgz/antelopejs-core-184eb90.tgz",
+    "@antelopejs/dms": "file:.campaign/tgz/antelopejs-dms-4358eef.tgz",
     "@antelopejs/interface-data-api": "file:.campaign/tgz/antelopejs-interface-data-api-d8a868f.tgz",
     "@antelopejs/tooling-configs": "^0.2.17",
     "@types/node": "^24.0.0",
@@ -92,7 +93,8 @@
       "@antelopejs/interface-data-api": "file:.campaign/tgz/antelopejs-interface-data-api-d8a868f.tgz",
       "@antelopejs/interface-dms": "file:.campaign/tgz/antelopejs-interface-dms-0cfaaa3.tgz",
       "@antelopejs/interface-core": "file:.campaign/tgz/antelopejs-interface-core-f7df541.tgz",
-      "@antelopejs/core": "file:.campaign/tgz/antelopejs-core-184eb90.tgz"
+      "@antelopejs/core": "file:.campaign/tgz/antelopejs-core-184eb90.tgz",
+      "@antelopejs/dms": "file:.campaign/tgz/antelopejs-dms-4358eef.tgz"
     }
   },
   "antelopeJs": {

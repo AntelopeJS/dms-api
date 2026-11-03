@@ -38,3 +38,5 @@
 @antelopejs/core	playground/package.json	devDependencies	1.17.1
 @antelopejs/core	playground/package.json	pnpm.overrides	
 @antelopejs/core	package.json	pnpm.overrides	
+@antelopejs/dms	package.json	devDependencies	>=0.13.1 <1.0.0
+@antelopejs/dms	package.json	pnpm.overrides	

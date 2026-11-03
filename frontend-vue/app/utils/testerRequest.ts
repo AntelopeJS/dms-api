@@ -157,11 +157,20 @@ export function neverSent(code: TesterErrorCode | undefined): boolean {
 export class TesterError extends Error {
   readonly code: TesterErrorCode
   readonly status?: number
+  readonly response?: Response
+  readonly data?: unknown
 
-  constructor(code: TesterErrorCode, message: string, status?: number) {
+  constructor(
+    code: TesterErrorCode,
+    message: string,
+    status?: number,
+    failure?: { response: Response; data: unknown },
+  ) {
     super(message)
     this.code = code
     this.status = status
+    this.response = failure?.response
+    this.data = failure?.data
   }
 }
 
@@ -506,6 +515,7 @@ export async function sendTesterRequest(
         code,
         `API Tester request failed (${response.status})`,
         response.status,
+        { response, data: payload },
       )
     }
     return (await response.json()) as TesterResponse
