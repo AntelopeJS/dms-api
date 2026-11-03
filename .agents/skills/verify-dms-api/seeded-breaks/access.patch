@@ -1,0 +1,9 @@
+diff --git a/src/routes/index.ts b/src/routes/index.ts
+index b113be1..89b0141 100644
+--- a/src/routes/index.ts
++++ b/src/routes/index.ts
+@@ -2,4 +2,3 @@ export * from "./logs";
+ export * from "./overview";
+ export * from "./routes";
+ export * from "./settings";
+-export * from "./tester";

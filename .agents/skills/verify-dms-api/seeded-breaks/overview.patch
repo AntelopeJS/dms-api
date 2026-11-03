@@ -1,0 +1,13 @@
+diff --git a/src/services/health-rules.ts b/src/services/health-rules.ts
+index 19f1d19..efbc1c9 100644
+--- a/src/services/health-rules.ts
++++ b/src/services/health-rules.ts
+@@ -28,7 +28,7 @@ import type { TimeRange } from "./window";
+  * rather than guessed from the oldest error in the window.
+  */
+ export const HEALTH_THRESHOLDS = {
+-  degradedServerErrorRate: 1,
++  degradedServerErrorRate: 2,
+   downServerErrorRate: Math.round(CRITICAL_ERROR_RATE * 100),
+   windowMinutes: 15,
+   downWindowMinutes: 5,

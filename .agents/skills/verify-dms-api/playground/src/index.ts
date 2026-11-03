@@ -1,5 +1,6 @@
 import "./fixture";
 import "./fixture-routes";
+import "./fixture-members";
 
 export function construct(): void {}
 

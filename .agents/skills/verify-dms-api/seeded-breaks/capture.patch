@@ -1,0 +1,22 @@
+diff --git a/src/services/request-log/redaction.ts b/src/services/request-log/redaction.ts
+index 674777b..bce5e4c 100644
+--- a/src/services/request-log/redaction.ts
++++ b/src/services/request-log/redaction.ts
+@@ -23,7 +23,7 @@ type KeyMatch = "anywhere" | "suffix" | "word" | "last";
+ 
+ const KEY_RULES: ReadonlyArray<readonly [string, KeyMatch]> = [
+   ["password", "anywhere"],
+-  ["passwd", "anywhere"],
++  ["passwd", "suffix"],
+   ["secret", "anywhere"],
+   ["authorization", "anywhere"],
+   ["cookie", "anywhere"],
+@@ -41,7 +41,7 @@ const KEY_RULES: ReadonlyArray<readonly [string, KeyMatch]> = [
+   ["cvv", "suffix"],
+   ["cvn", "suffix"],
+   ["iban", "suffix"],
+-  ["pin", "word"],
++  ["pin", "anywhere"],
+   ["pan", "word"],
+   ["ssn", "word"],
+   ["card", "last"],

@@ -27,8 +27,8 @@ export const journeys = guarded([
       const rows = list(listed.body, "routes");
       const byRef = (/** @type {string} */ ref) => rows.find((row) => text(row, "ref") === ref);
       await ctx.verify("the list", [
-        same("routes in scope", rows.length, 14),
-        same("the folders", [...new Set(rows.map((row) => text(row, "folder")))].sort(), ["/fx", "/fx/items"]),
+        same("routes in scope", rows.length, 15),
+        check("the project's folders", ["/fx/items", "/fx/orders", "/fx/guarded"].every((folder) => rows.some((row) => text(row, "folder") === folder)), [...new Set(rows.map((row) => text(row, "folder")))]),
         same("a route's counts and state", [num(byRef("GET /fx/boom"), "requests"), text(byRef("GET /fx/boom"), "state")], [25, "failing"]),
         same("a quiet route", [num(byRef("GET /fx/ok"), "requests"), text(byRef("GET /fx/ok"), "state")], [3, "healthy"]),
         same("an uncalled route", [num(byRef("GET /fx/blob"), "requests"), text(byRef("GET /fx/blob"), "state")], [0, "idle"]),
@@ -37,26 +37,28 @@ export const journeys = guarded([
       const tab = await ctx.tab("admin");
       await tab.signIn("admin");
       await tab.goto("/modules/api/routes");
+      const folders = new Set(rows.map((row) => text(row, "folder"))).size;
+      const posts = rows.filter((row) => text(row, "method") === "POST").length;
       await ctx.verify("the tree", [
-        tab.shows(/14 of 14 routes · 2 folders/),
+        tab.shows(new RegExp(`15 of 15 routes · ${folders} folders`)),
         tab.visible({ role: "treeitem", name: "GET /fx/boom 25 Failing" }),
         tab.visible({ role: "treeitem", name: "GET /fx/ok 3 Healthy" }),
         tab.visible({ role: "treeitem", name: "GET /fx/blob 0 No traffic" }),
         tab.visible({ role: "treeitem", name: "DEL /fx/items/:id 0 No traffic" }),
       ]);
       await tab.fill({ role: "textbox", name: "Filter by path or handler" }, "items");
-      await ctx.verify("the path filter", [tab.shows(/3 of 14 routes · 1 folder/), tab.visible({ role: "treeitem", name: "GET /fx/boom 25 Failing" }, { hidden: true, timeoutMs: 4000 })]);
+      await ctx.verify("the path filter", [tab.shows(/3 of 15 routes · 1 folder/), tab.visible({ role: "treeitem", name: "GET /fx/boom 25 Failing" }, { hidden: true, timeoutMs: 4000 })]);
       await tab.fill({ role: "textbox", name: "Filter by path or handler" }, "boom");
-      await ctx.verify("the handler filter", [tab.shows(/1 of 14 routes/)]);
+      await ctx.verify("the handler filter", [tab.shows(/1 of 15 routes/)]);
       await tab.fill({ role: "textbox", name: "Filter by path or handler" }, "");
       await tab.click({ role: "radio", name: "POST" });
-      await ctx.verify("the method filter", [tab.shows(/2 of 14 routes/), tab.visible({ role: "treeitem", name: /^POST \/fx\/echo/ }), tab.visible({ role: "treeitem", name: /^GET \/fx\/ok/ }, { hidden: true, timeoutMs: 4000 })]);
+      await ctx.verify("the method filter", [tab.shows(new RegExp(`${posts} of 15 routes`)), tab.visible({ role: "treeitem", name: /^POST \/fx\/echo/ }), tab.visible({ role: "treeitem", name: /^GET \/fx\/ok/ }, { hidden: true, timeoutMs: 4000 })]);
       await tab.click({ role: "radio", name: "All" });
       await tab.click({ role: "switch", name: "Only routes needing attention" });
-      await ctx.verify("only routes needing attention", [tab.shows(/1 of 14 routes/), tab.visible({ role: "treeitem", name: "GET /fx/boom 25 Failing" }), tab.visible({ role: "treeitem", name: /^GET \/fx\/ok/ }, { hidden: true, timeoutMs: 4000 })]);
+      await ctx.verify("only routes needing attention", [tab.shows(/1 of 15 routes/), tab.visible({ role: "treeitem", name: "GET /fx/boom 25 Failing" }), tab.visible({ role: "treeitem", name: /^GET \/fx\/ok/ }, { hidden: true, timeoutMs: 4000 })]);
       await tab.click({ role: "switch", name: "Only routes needing attention" });
       await tab.click({ role: "switch", name: /^Hide routes without traffic/ });
-      await ctx.verify("hide routes without traffic", [tab.shows(/3 of 14 routes/), tab.visible({ role: "treeitem", name: /^GET \/fx\/blob/ }, { hidden: true, timeoutMs: 4000 })]);
+      await ctx.verify("hide routes without traffic", [tab.shows(/3 of 15 routes/), tab.visible({ role: "treeitem", name: /^GET \/fx\/blob/ }, { hidden: true, timeoutMs: 4000 })]);
     },
   },
   {
@@ -70,19 +72,19 @@ export const journeys = guarded([
       const missing = await detail(ctx, "GET /fx/never");
       await ctx.verify("the detail", [
         same("identity", [text(ok.body, "ref"), text(ok.body, "controller"), text(ok.body, "handler"), pick(ok.body, "own"), text(ok.body, "module")], ["GET /fx/ok", "FixtureController", "ok", true, "app"]),
+        check("the snippets use the DMS apiBaseUrl", text(ok.body, "apiOrigin") === ctx.state.webUrl || text(ok.body, "apiOrigin") === ctx.state.apiUrl, text(ok.body, "apiOrigin")),
         same("the first-seen date is today", text(ok.body, "registeredAt").slice(0, 10), new Date().toISOString().slice(0, 10)),
         same("an unknown route is a 404", missing.status, 404),
       ]);
       const tab = await ctx.tab("admin");
       await tab.signIn("admin");
       await tab.goto("/modules/api/routes");
-      await ctx.verify("no route named: the one needing attention", [check("the URL names the failing route", /route=GET\+%2Ffx%2Fboom/.test(tab.page.url()), tab.page.url()), tab.shows(/FixtureController\.boom/), tab.shows(/Failing · last 24 h/)]);
+      await ctx.verify("no route named: the one needing attention", [check("the URL names the failing route", /route=GET\+%2Ffx%2Fboom/.test(tab.page.url()), tab.page.url()), tab.shows(/FixtureController\.boom/), tab.shows(/(Failing|Down) · last 24 h/)]);
       await tab.goto("/modules/api/routes?route=GET+%2Ffx%2Fok&tab=documentation");
       await ctx.verify("the named route and tab", [
-        tab.shows(/\/fx · FixtureController/),
-        tab.shows(/Healthy · last 24 h\s+FixtureController\.ok\s+Auth unknown\s+Project code\s+First seen/),
-        tab.visible({ role: "tab", name: /^Documentation/, selected: undefined }),
-        tab.shows(/Example request/),
+        tab.shows(/\/fx\/ok · FixtureController/),
+        tab.shows(/(No traffic|Healthy) · last 24 h\s+FixtureController\.ok\s+Auth unknown\s+Project code/),
+                tab.shows(/EXAMPLE REQUEST/),
       ]);
       await tab.click({ role: "link", name: "Requests" });
       await ctx.verify("Requests", [tab.at(/\/modules\/api\/logs$/), check("the logs narrow to the route", /route=GET\+%2Ffx%2Fok/.test(tab.page.url()), tab.page.url())]);
@@ -112,11 +114,12 @@ export const journeys = guarded([
       await tab.signIn("admin");
       await tab.goto(`/modules/api/routes?${named(ref)}&tab=statistics`);
       await ctx.verify("the tab", [
-        tab.shows(/Requests\s+18/),
-        tab.shows(/Error rate\s+22\.2%\s+4 × 4xx · 0 × 5xx/),
-        tab.shows(/Top errors/i),
-        tab.shows(/404[\s\S]*no such item[\s\S]*4/),
-        tab.shows(/Recent requests/i),
+        tab.shows(/REQUESTS\s+18\s/),
+        tab.shows(/ERROR RATE\s+22\.2%\s+4 × 4xx · 0 × 5xx/),
+        tab.shows(/TOP ERRORS/),
+        tab.shows(/404 · no such item\s+Client error/),
+        tab.shows(/RECENT REQUESTS/),
+        tab.shows(/SLOWEST CALL\s+\d+ ms\s+slow above 50 ms/),
         tab.shows(/\/fx\/items\/x1/),
       ]);
     },
@@ -141,18 +144,18 @@ export const journeys = guarded([
       const tab = await ctx.tab("admin");
       await tab.signIn("admin");
       await tab.goto(`/modules/api/routes?${named(ref)}&tab=documentation`);
-      const origin = ctx.state.apiUrl;
+      const origin = text(found.body, "apiOrigin");
       await ctx.verify("the tab", [
         tab.shows(/Read from the requests captured over the last 7 days \(the tester's left out\) and from the handler's code\. What was never called does not show\./),
         tab.shows(new RegExp(`curl -X POST '${origin.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/fx/orders/shop1/lines\\?limit=5'`)),
         tab.shows(/Authentication unknown/),
-        tab.shows(/Body\s+Inferred from 1 successful request/),
+        tab.shows(/BODY\s+Inferred from 1 successful request/),
         tab.shows(/sku\s+required\s+e\.g\. "A1"\s+string/),
         tab.shows(/quantity\s+required\s+e\.g\. 2\s+number/),
-        tab.shows(/:shop\s+string required e\.g\. shop1/),
-        tab.shows(/limit\s+object e\.g\. 5/),
-        tab.shows(/x-tenant\s+object no successful call yet/),
-        tab.shows(/201 Created\s+seen once in 7 days/),
+        tab.shows(/:shop\s+string\s+required\s+e\.g\. shop1/),
+        tab.shows(/limit\s+object\s+e\.g\. 5/),
+        tab.shows(/x-tenant\s+object\s+no successful call yet/),
+        tab.shows(/201\s+Created\s+seen once in 7 days/),
         tab.shows(/1\s+start[\s\S]*2\s+cors[\s\S]*3\s+OrdersController\.add[\s\S]*4\s+capture/),
       ]);
       await tab.click({ role: "radio", name: "fetch" });

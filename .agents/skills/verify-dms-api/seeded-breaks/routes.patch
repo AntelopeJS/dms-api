@@ -1,0 +1,13 @@
+diff --git a/src/services/route-contract.ts b/src/services/route-contract.ts
+index c8347e4..059f3bc 100644
+--- a/src/services/route-contract.ts
++++ b/src/services/route-contract.ts
+@@ -133,7 +133,7 @@ export function inferBodyFields(bodies: JsonObject[]): InferredField[] {
+     const inferred: InferredField = {
+       name,
+       types: [...field.types].sort(),
+-      required: field.seen === bodies.length,
++      required: field.seen > 0,
+     };
+     if (isScalar(field.example)) inferred.example = field.example;
+     return inferred;

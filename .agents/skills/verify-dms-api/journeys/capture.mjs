@@ -152,4 +152,24 @@ export const journeys = guarded([
       await ctx.verify("a cap of 0", [same("no request body is stored", pick(off.log, "requestBody"), null), same("no response body is stored", pick(off.log, "responseBody"), null), check("the status is still stored", pick(off.log, "statusCode") === 201, pick(off.log, "statusCode"))]);
     },
   },
+  {
+    id: "a-key-is-secret-by-the-words-it-is-made-of",
+    title: "keys such as clientSecret, x-api-key, accessToken, userPin, creditCard and card_cvc2 are redacted, short look-alikes such as spin, footprint, company and cardBrand are not, and a payment card number is redacted whatever its key",
+    entryPoint: "POST /fx/echo with keys and values",
+    async run(/** @type {Ctx} */ ctx) {
+      const secret = ["clientSecret", "x-api-key", "accessToken", "access_token", "userPin", "creditCard", "card_cvc2", "myPassword", "iban", "totp", "X-Authorization"];
+      const plain = ["spin", "footprint", "isNotPaid", "company", "cardBrand", "tokenizer", "pinned", "panda", "cvcs"];
+      const body = { ...Object.fromEntries(secret.map((key) => [key, "v-" + key])), ...Object.fromEntries(plain.map((key) => [key, "v-" + key])), memo: "4111 1111 1111 1111", ref: "4111111111111111", short: "411111111111", note: "order 12345" };
+      const sent = await sendAndRead(ctx, "keys", { method: "POST", path: "/fx/echo", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+      const stored = JSON.parse(text(sent.log, "requestBody") || "{}");
+      await ctx.verify("secret keys", secret.map((key) => same(`${key} is redacted`, stored[key], "[REDACTED]")));
+      await ctx.verify("look-alikes", plain.map((key) => same(`${key} keeps its value`, stored[key], "v-" + key)));
+      await ctx.verify("card numbers", [
+        same("a spaced card number is redacted whatever its key", stored.memo, "[REDACTED]"),
+        same("a plain card number is redacted", stored.ref, "[REDACTED]"),
+        same("twelve digits are not a card number", stored.short, "411111111111"),
+        same("other text is kept", stored.note, "order 12345"),
+      ]);
+    },
+  },
 ]);

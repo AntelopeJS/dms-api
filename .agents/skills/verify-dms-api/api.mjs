@@ -356,3 +356,21 @@ export async function withConfig(ctx, config, body) {
     await ctx.restartBackend();
   }
 }
+
+/**
+ * Creates a member whose role holds exactly `permissions`, signs them up, and lets the journey act as them.
+ *
+ * @param {Ctx} ctx The journey
+ * @param {string} name The account name
+ * @param {string[]} permissions The permission ids of the role
+ * @returns {Promise<void>}
+ */
+export async function member(ctx, name, permissions) {
+  const invite = await ctx.api(`invite ${name}`, { method: "POST", path: "/verify-api/member", body: { name, permissions }, as: "anon" });
+  const email = text(invite.body, "email");
+  const password = ctx.password();
+  const signup = await ctx.api(`${name} signs up`, { method: "POST", path: "/api/auth/signup", body: { name, email, password, lang: "en", token: text(invite.body, "token") }, as: "anon" });
+  const userId = text(signup.body, "user", "_id");
+  ctx.addAccount(name, { email, password, userId });
+  await ctx.verify(`${name} is a member`, [check("the signup answers a session", signup.status === 200 && userId !== "", signup.status)], { critical: true });
+}
