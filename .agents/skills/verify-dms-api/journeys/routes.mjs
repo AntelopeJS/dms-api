@@ -132,7 +132,7 @@ export const journeys = guarded([
       await raw(ctx, "a call with a gift", { method: "POST", path: "/fx/orders/shop1/lines?limit=5", headers: { "content-type": "application/json", "x-tenant": "t9" }, body: JSON.stringify({ sku: "A1", quantity: 2, gift: true }) });
       await raw(ctx, "a call without", { method: "POST", path: "/fx/orders/shop1/lines?limit=5", headers: { "content-type": "application/json", "x-tenant": "t9" }, body: JSON.stringify({ sku: "A1", quantity: 2 }) });
       const ref = "POST /fx/orders/:shop/lines";
-      const found = await settled(ctx, "the contract", `/routes/detail?${named(ref)}`, (body) => num(body, "contract", "total") === 2);
+      const found = await settled(ctx, "the contract", `/routes/detail?${named(ref)}`, (body) => num(body, "contract", "total") === 2 && list(body, "contract", "bodyFields").some((entry) => text(entry, "name") === "gift" && pick(entry, "required") === false));
       const never = await detail(ctx, "GET /fx/blob");
       const parameters = list(found.body, "parameters").map((entry) => [text(entry, "name"), text(entry, "in"), pick(entry, "required"), pick(entry, "example")]);
       await ctx.verify("the contract", [

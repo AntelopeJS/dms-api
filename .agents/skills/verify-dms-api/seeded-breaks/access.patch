@@ -1,8 +1,16 @@
 diff --git a/src/routes/settings.ts b/src/routes/settings.ts
-index 2bfdeb2..156a344 100644
+index 2bfdeb2..4cd9c35 100644
 --- a/src/routes/settings.ts
 +++ b/src/routes/settings.ts
-@@ -130,7 +130,7 @@ export class SettingsController extends Controller("/api/monitoring/settings") {
+@@ -8,7 +8,6 @@ import {
+ } from "@antelopejs/interface-api";
+ import { assert } from "@antelopejs/interface-api-util";
+ import { GetModel } from "@antelopejs/interface-database-decorators";
+-import { AuthOwnerOnly } from "@antelopejs/interface-dms/auth";
+ import type { User } from "@antelopejs/interface-dms/auth/db";
+ import { AuthUserWithPermission } from "@antelopejs/interface-dms/guards";
+ import {
+@@ -130,7 +129,7 @@ export class SettingsController extends Controller("/api/monitoring/settings") {
     * opens the console (module pages are owner-only), unlike the form.
     */
    @Get("summary")
