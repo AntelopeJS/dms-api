@@ -1,5 +1,5 @@
 import { guarded } from "../guard.mjs";
-import { check, isOn, list, mon, num, pick, same, saveSettings, settled, text, traffic } from "../api.mjs";
+import { check, isOn, list, mon, num, pick, raw, same, saveSettings, settled, text, traffic } from "../api.mjs";
 import { seedLogs } from "../seed.mjs";
 
 /** @typedef {import("../api.mjs").Ctx} Ctx */
@@ -33,7 +33,7 @@ export const journeys = guarded([
       const client = await listed(ctx, "4xx", "filter_statusClass=is:4xx");
       const server = await listed(ctx, "5xx", "filter_statusClass=is:5xx");
       const post = await listed(ctx, "POST", "filter_method=is:POST");
-      const methods = await listed(ctx, "GET and POST", "filter_method=is:GET,POST");
+      const methods = await listed(ctx, "GET and PUT", "filter_method=is:GET,PUT");
       const slow = await listed(ctx, "slow", "filter_slow=is:true");
       const route = await listed(ctx, "route", `filter_route=is:${encodeURIComponent("GET /fx/items/:id")}`);
       const path = await listed(ctx, "path", "filter_path=is:%2Ffx%2Fitems%2F7");
@@ -47,7 +47,7 @@ export const journeys = guarded([
         same("4xx", [client.total, [...new Set(client.paths)]], [2, ["/fx/missing"]]),
         same("5xx", [server.total, [...new Set(server.paths)]], [2, ["/fx/boom"]]),
         same("a method", [post.total, [...new Set(post.paths)]], [2, ["/fx/echo"]]),
-        same("two methods", methods.total, 9),
+        same("two methods (a GET and a PUT)", methods.total, 9),
         same("slow follows the threshold", [slow.total, slow.paths], [1, ["/fx/slow"]]),
         same("the route filter names the route, not the path", [route.total, route.paths], [1, ["/fx/items/7"]]),
         same("the path filter is the raw path", [path.total, path.paths], [1, ["/fx/items/7"]]),
@@ -112,12 +112,90 @@ export const journeys = guarded([
       await ctx.verify("paused", [
         isOn(tab, { role: "button", name: "Pause" }),
         tab.shows(/Paused · 3 new requests · 1 in 5xx/),
+        tab.shows(/3 new requests\s+1 in 5xx\s+Show/),
         tab.visible({ role: "button", name: "All 2" }),
-        tab.shows(/3 new requests · 1 in 5xx · Show/),
         tab.shows(/\/fx\/boom/, { not: true, timeoutMs: 1500 }),
       ]);
-      await tab.click({ role: "button", name: /3 new requests · 1 in 5xx · Show/ });
+      await tab.click({ role: "button", name: "Show", exact: true });
       await ctx.verify("shown", [tab.visible({ role: "button", name: "All 5" }), tab.shows(/\/fx\/boom/)]);
+    },
+  },
+  {
+    id: "the-histogram-bars-follow-the-period",
+    title: "the chart above the logs keeps a bar per minute over 1H, 15 minutes over 24H, 2 hours over 7D and 6 hours over 30D and All time, counts every request by class whatever the table filters, and says a past range is not live",
+    entryPoint: "GET /api/monitoring/logs/live",
+    async run(/** @type {Ctx} */ ctx) {
+      await traffic(ctx, "mixed", [{ path: "/fx/ok", count: 3 }, { path: "/fx/missing", count: 2 }, { path: "/fx/boom", count: 1 }]);
+      await settled(ctx, "counted", "/logs/live?preset=last-hour", (body) => num(body, "total") === 6);
+      /** @type {[string, number, number][]} */
+      const presets = [["last-hour", 60_000, 60], ["last-24h", 900_000, 96], ["last-7-days", 7_200_000, 84], ["last-30-days", 21_600_000, 120], ["all", 21_600_000, 120]];
+      const answers = [];
+      for (const [preset] of presets) answers.push(await mon(ctx, `histogram ${preset}`, `/logs/live?preset=${preset}`));
+      await ctx.verify("the bars", presets.flatMap(([preset, size, bars], index) => [
+        same(`${preset}: bar length and count`, [num(answers[index]?.body, "bucketMs"), list(answers[index]?.body, "buckets").length], [size, bars]),
+        same(`${preset}: the totals`, [num(answers[index]?.body, "total"), num(answers[index]?.body, "clientErrors"), num(answers[index]?.body, "serverErrors")], [6, 2, 1]),
+        same(`${preset}: live while the period reaches now`, pick(answers[index]?.body, "live"), true),
+      ]));
+      const sum = list(answers[0]?.body, "buckets").reduce((all, bucket) => [all[0] + (num(bucket, "success") ?? 0), all[1] + (num(bucket, "clientErrors") ?? 0), all[2] + (num(bucket, "serverErrors") ?? 0)], [0, 0, 0]);
+      const from = new Date(Date.now() - 3 * 86_400_000).toISOString();
+      const to = new Date(Date.now() - 2 * 86_400_000).toISOString();
+      const past = await mon(ctx, "a past range", `/logs/live?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
+      const chosen = await mon(ctx, "a bar length asked for", "/logs/live?preset=last-24h&bucket=3600000");
+      const tooSmall = await mon(ctx, "a bar length that would need too many bars", "/logs/live?preset=last-24h&bucket=1000");
+      await ctx.verify("the rest", [
+        same("the bars add up to the requests by class", sum, [3, 2, 1]),
+        same("a past range is not live", [pick(past.body, "live"), num(past.body, "total")], [false, 0]),
+        same("a bar length asked for within the cap is used", num(chosen.body, "bucketMs"), 3_600_000),
+        check("a bar length beyond the cap is not used", num(tooSmall.body, "bucketMs") !== 1000 && list(tooSmall.body, "buckets").length <= 120, num(tooSmall.body, "bucketMs")),
+      ]);
+      const tab = await ctx.tab("admin");
+      await tab.signIn("admin");
+      await tab.goto("/modules/api/logs");
+      await ctx.verify("the chart caption", [
+        tab.shows(/Requests per 15 min · last 24 h · all traffic/),
+        tab.shows(/Kept 30 days · bodies up to 64 KB/),
+        tab.shows(/6 requests/),
+      ]);
+      await tab.click({ role: "radio", name: "Last hour" });
+      await ctx.verify("1H", [tab.shows(/Requests per minute · last hour · all traffic/i)]);
+      await tab.click({ role: "radio", name: "All time" });
+      await ctx.verify("All time", [tab.shows(/all time/i)]);
+    },
+  },
+  {
+    id: "a-request-opens-in-a-drawer-that-steps-through-the-list",
+    title: "a row opens the request in a drawer titled with its method and path and its position over the whole result; Next, Previous, J and K step; ?record names it and a reload opens it again; Summary, Request and Response show what was captured; Replay in tester and Same error follow its links",
+    entryPoint: "/modules/api/logs?record=<id>",
+    async run(/** @type {Ctx} */ ctx) {
+      await traffic(ctx, "four calls", [{ path: "/fx/ok", count: 1 }, { path: "/fx/items/7", count: 1 }, { path: "/fx/boom", count: 2 }]);
+      await raw(ctx, "a call with a body", { method: "POST", path: "/fx/orders/shop1/lines?limit=5", headers: { "content-type": "application/json" }, body: JSON.stringify({ sku: "A1", quantity: 2 }) });
+      await settled(ctx, "the logs", "/logs", (body) => num(body, "total") === 5);
+      const tab = await ctx.tab("admin");
+      await tab.signIn("admin");
+      await tab.goto("/modules/api/logs");
+      await tab.click({ role: "button", name: "Open request", nth: 0 });
+      await ctx.verify("the newest request", [tab.visible({ role: "dialog", name: "POST /fx/orders/:shop/lines" }), tab.shows(/1 of 5/), tab.visible({ role: "button", name: "Previous" }), check("the URL names the record", /record=/.test(tab.page.url()), tab.page.url())]);
+      await tab.click({ role: "button", name: "Next" });
+      await ctx.verify("Next", [tab.visible({ role: "dialog", name: "GET /fx/boom" }), tab.shows(/2 of 5/)]);
+      await tab.press("k");
+      await ctx.verify("K steps to the next request", [tab.shows(/3 of 5/)]);
+      await tab.press("j");
+      await ctx.verify("J steps back", [tab.shows(/2 of 5/)]);
+      const url = tab.page.url();
+      await tab.reload();
+      await ctx.verify("a reload", [tab.visible({ role: "dialog", name: "GET /fx/boom" }), check("the same record", tab.page.url() === url, tab.page.url())]);
+      await ctx.verify("Summary", [tab.shows(/fixture boom: the invoice has no customer/), tab.shows(/Route\s+GET \/fx\/boom/), tab.shows(/User agent\s+/), tab.shows(/Request ID\s+/), tab.shows(/500 Internal Server Error/), tab.shows(/Slow threshold 1,000 ms, as set now\./)]);
+      await tab.click({ role: "link", name: "Same error" });
+      await ctx.verify("Same error", [check("the URL names the route and the error", /route=GET\+%2Ffx%2Fboom/.test(tab.page.url()) && /error=fixture\+boom/.test(tab.page.url()), tab.page.url()), tab.visible({ role: "button", name: "All 2" }), tab.shows(/\/fx\/ok/, { not: true, timeoutMs: 3000 })]);
+      await tab.goto("/modules/api/logs");
+      await tab.click({ role: "button", name: "Open request", nth: 0 });
+      await tab.click({ role: "tab", name: "Request" });
+      await ctx.verify("Request", [tab.shows(/limit\s+5/), tab.shows(/content-type\s+application\/json/), tab.shows(/"sku": "A1"|\{"sku":"A1"/)]);
+      await tab.click({ role: "tab", name: "Response" });
+      await ctx.verify("Response", [tab.shows(/201/), tab.shows(/"tenant"|tenant/)]);
+      await tab.click({ role: "link", name: "Replay in tester" });
+      await ctx.verify("Replay in tester", [check("the Tester of the route opens with the call to replay", /tab=tester/.test(tab.page.url()) && /replay=/.test(tab.page.url()) && /route=POST/.test(tab.page.url()), tab.page.url()), tab.visible({ role: "textbox", name: "Path parameter :shop" }), tab.shows(/sku[\s\S]*A1/)]);
+      await tab.press("Escape");
     },
   },
 ]);

@@ -32,6 +32,8 @@ The Request logs page: the histogram, the status tabs, the filters, the search, 
 - `the-tabs-the-filters-and-the-search-narrow-the-list`
 - `the-list-is-newest-first-sorts-and-pages`
 - `pause-holds-the-table-and-counts-what-was-missed`
+- `the-histogram-bars-follow-the-period`
+- `a-request-opens-in-a-drawer-that-steps-through-the-list`
 
 ## How to get to it (user POV)
 

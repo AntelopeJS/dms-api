@@ -1,0 +1,13 @@
+diff --git a/src/db/tables/routes_statistics.table.ts b/src/db/tables/routes_statistics.table.ts
+index e635897..815f517 100644
+--- a/src/db/tables/routes_statistics.table.ts
++++ b/src/db/tables/routes_statistics.table.ts
+@@ -33,7 +33,7 @@ export function normalizeRoutePath(uri: string): string {
+  * key built from a handler location (`/api/orders/`) matches the stored one.
+  */
+ export function getRouteStatsKey(method: string, uri: string): string {
+-  return `${normalizeRouteMethod(method)}:${normalizeRoutePath(uri)}`;
++  return `${normalizeRouteMethod(method)} ${normalizeRoutePath(uri)}`;
+ }
+ 
+ @RegisterTable(routesStatisticsTableName, SCHEMA_NAME)

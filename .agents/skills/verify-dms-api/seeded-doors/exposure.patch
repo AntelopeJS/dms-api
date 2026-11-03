@@ -1,0 +1,13 @@
+diff --git a/src/services/request-log/redaction.ts b/src/services/request-log/redaction.ts
+index 674777b..1fb5d66 100644
+--- a/src/services/request-log/redaction.ts
++++ b/src/services/request-log/redaction.ts
+@@ -25,8 +25,6 @@ const KEY_RULES: ReadonlyArray<readonly [string, KeyMatch]> = [
+   ["password", "anywhere"],
+   ["passwd", "anywhere"],
+   ["secret", "anywhere"],
+-  ["authorization", "anywhere"],
+-  ["cookie", "anywhere"],
+   ["apikey", "anywhere"],
+   ["privatekey", "anywhere"],
+   ["credential", "anywhere"],

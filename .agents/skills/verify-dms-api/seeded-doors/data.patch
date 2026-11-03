@@ -1,0 +1,13 @@
+diff --git a/src/db/models/request_log.model.ts b/src/db/models/request_log.model.ts
+index 2560236..d211fc2 100644
+--- a/src/db/models/request_log.model.ts
++++ b/src/db/models/request_log.model.ts
+@@ -430,7 +430,7 @@ export class RequestLogModel extends BasicDataModel(
+ 
+   async deleteOlderThan(cutoff: Date): Promise<number> {
+     return this.table
+-      .filter((doc) => doc.key("timestamp").lt(cutoff))
++      .filter((doc) => doc.key("timestamp").gt(cutoff))
+       .delete()
+       .run();
+   }

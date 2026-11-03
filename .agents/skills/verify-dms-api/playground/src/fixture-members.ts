@@ -13,6 +13,18 @@ const memberSchema = z.object({
   language: z.string().default("en"),
 });
 
+/** The ids a grant sits under, as the roles editor of the DMS stores them: `a.b.c` also grants `a` and `a.b`. */
+function withAncestors(permissions: string[]): string[] {
+  return [
+    ...new Set(
+      permissions.flatMap((id) => {
+        const segments = id.split(".");
+        return segments.map((_, index) => segments.slice(0, index + 1).join("."));
+      }),
+    ),
+  ];
+}
+
 /**
  * A role holding exactly the permission ids given, and an invitation to it a
  * journey signs up with: the roles editor of the DMS grants the same ids.
@@ -24,7 +36,7 @@ export class VerifyMembersController extends Controller("/verify-api") {
     const { name, permissions, language } = memberSchema.parse(body);
     const [roleId] = await GetModel(RoleModel, DEFAULT_TENANT_ID).insert({
       name: `${name} ${randomUUID()}`,
-      permissions,
+      permissions: withAncestors(permissions),
     });
     const token = randomUUID();
     const email = `${name.toLowerCase()}-${randomUUID()}@verify.local`;

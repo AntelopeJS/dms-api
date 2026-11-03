@@ -39,12 +39,42 @@ const config: VerifyConfig = {
   smoke: "smoke",
   smokeJourney: "onboard, call the fixture routes, read the Overview and the request logs",
   doors: {
-    data: null,
-    format: null,
-    contract: null,
-    outbound: null,
-    exposure: null,
-    publish: null,
+    data: {
+      globs: ["src/services/request-log/prune.ts", "src/services/statistics-prune.ts", "src/db/models/request_log.model.ts", "src/db/models/routes_statistics.model.ts", "src/index.ts"],
+      funnels: [],
+      containments: ["settings/the-hourly-prune-deletes-what-the-retention-passed"],
+      why: "the hourly prune deletes stored request logs and per-day statistics, which a revert of the code does not bring back",
+    },
+    format: {
+      globs: ["src/db/tables/**", "src/db/models/**", "src/services/statistics-write.ts", "src/services/request-log/capture.ts"],
+      funnels: [],
+      containments: [],
+      why: "the tables, the statistics keys and the stored log shape are read back by the next version of the module",
+    },
+    contract: {
+      globs: ["package.json", "src/routes/**", "src/config.ts", "frontend-vue/package.json", "frontend-vue/dms.frontend.ts", "skills/**"],
+      funnels: [],
+      containments: [],
+      why: "the dashboard and scripts call the HTTP routes, projects set the config keys and the renderer range, and agents read the skill",
+    },
+    outbound: {
+      globs: ["frontend-vue/server/tester.ts", "frontend-vue/dms.server.ts", "src/routes/tester.ts", "src/services/tester-source.ts"],
+      funnels: [],
+      containments: [],
+      why: "the Tester sends real requests, with the owner's session when asked, to the project's API",
+    },
+    exposure: {
+      globs: ["src/services/request-log/redaction.ts", "src/services/request-log/capture.ts", "src/services/request-log/access.ts", "src/services/request-log/console-traffic.ts", "src/guards.ts"],
+      funnels: [],
+      containments: [],
+      why: "what is stored of every request, what is redacted before storage and who may read it back",
+    },
+    publish: {
+      globs: ["package.json", ".release-it.json", "changelogen.config.json", ".github/workflows/release.yml"],
+      funnels: [],
+      containments: [],
+      why: "the package name, its files and the release workflow claim @antelopejs/dms-api in the npm registry",
+    },
   },
   formal: [],
 };
