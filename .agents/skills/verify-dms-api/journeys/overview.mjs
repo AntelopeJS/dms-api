@@ -378,4 +378,24 @@ export const journeys = guarded([
       ]);
     },
   },
+  {
+    id: "the-slowest-routes-are-ranked-by-average-latency-not-by-their-slowest-call",
+    title: "a route averaging 100 ms ranks above one that averages 99 ms but had a 900 ms call, in the API and on the page",
+    entryPoint: "GET /api/monitoring/overview/slowest",
+    async run(/** @type {Ctx} */ ctx) {
+      await seedLogs(ctx, "four calls at 100 ms", { minutesAgo: 30, count: 4, uri: "/fx/slow", responseTimeMs: 100 });
+      await seedLogs(ctx, "nine calls at 10 ms", { minutesAgo: 30, count: 9, uri: "/fx/ok", responseTimeMs: 10 });
+      await seedLogs(ctx, "one call at 900 ms", { minutesAgo: 30, count: 1, uri: "/fx/ok", responseTimeMs: 900 });
+      const slowest = await settled(ctx, "slowest", "/overview/slowest", (body) => list(body, "items").length === 2);
+      await ctx.verify("the ranking", [
+        same("by average latency", list(slowest.body, "items").map((item) => text(item, "id")), ["GET /fx/slow", "GET /fx/ok"]),
+      ]);
+      const tab = await ctx.tab("admin");
+      await tab.signIn("admin");
+      await openPage(tab, "/modules/api/overview");
+      await ctx.verify("the page", [
+        tab.shows(/GET \/fx\/slow\s+p95 \d+ ms · max 100 ms · 4 calls[\s\S]*GET \/fx\/ok\s+p95 \d+ ms · max 900 ms · 10 calls/),
+      ]);
+    },
+  },
 ]);

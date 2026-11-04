@@ -188,15 +188,15 @@ export const journeys = guarded([
     title: "a row opens the request in a drawer titled with its method and path and its position over the whole result; Next, Previous, J and K step; ?record names it and a reload opens it again; Summary, Request and Response show what was captured; Replay in tester and Same error follow its links",
     entryPoint: "/modules/api/logs?record=<id>",
     async run(/** @type {Ctx} */ ctx) {
-      await traffic(ctx, "four calls", [{ path: "/fx/ok", count: 1 }, { path: "/fx/items/7", count: 1 }, { path: "/fx/boom", count: 2 }]);
+      await traffic(ctx, "five calls", [{ path: "/fx/ok", count: 1 }, { path: "/fx/items/7", count: 1 }, { path: "/fx/boom", count: 2 }, { path: "/fx/boom-twin", count: 1 }]);
       await raw(ctx, "a call with a body", { method: "POST", path: "/fx/orders/shop1/lines?limit=5", headers: { "content-type": "application/json" }, body: JSON.stringify({ sku: "A1", quantity: 2 }) });
-      await settled(ctx, "the logs", "/logs", (body) => num(body, "total") === 5);
+      await settled(ctx, "the logs", "/logs", (body) => num(body, "total") === 6);
       const answerLength = Buffer.byteLength(JSON.stringify({ shop: "shop1", limit: "5", line: { sku: "A1", quantity: 2 } }));
       const tab = await ctx.tab("admin");
       await tab.signIn("admin");
       await openPage(tab, "/modules/api/logs");
       await tab.click({ role: "button", name: "Open request", nth: 0 });
-      await ctx.verify("the newest request", [tab.visible({ role: "dialog", name: "POST /fx/orders/shop1/lines" }), tab.shows(/1 of 5/), tab.visible({ role: "button", name: "Previous" }), check("the URL names the record", /record=/.test(tab.page.url()), tab.page.url())]);
+      await ctx.verify("the newest request", [tab.visible({ role: "dialog", name: "POST /fx/orders/shop1/lines" }), tab.shows(/1 of 6/), tab.visible({ role: "button", name: "Previous" }), check("the URL names the record", /record=/.test(tab.page.url()), tab.page.url())]);
       await ctx.verify("the Summary facts of the newest request", [
         tab.shows(new RegExp(`URL\\s+${ctx.state.webUrl.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/fx/orders/shop1/lines\\?limit=5`)),
         tab.shows(/Date\s+\w{3}, \d{1,2} \w{3} \d{4}, \d\d:\d\d:\d\d\.\d{3}/),
@@ -222,17 +222,19 @@ export const journeys = guarded([
       await openPage(tab, "/modules/api/logs");
       await tab.click({ role: "button", name: "Open request", nth: 0 });
       await tab.click({ role: "button", name: "Next" });
-      await ctx.verify("Next", [tab.visible({ role: "dialog", name: "GET /fx/boom" }), tab.shows(/2 of 5/)]);
+      await ctx.verify("Next", [tab.visible({ role: "dialog", name: "GET /fx/boom-twin" }), tab.shows(/2 of 6/)]);
       await tab.press("j");
-      await ctx.verify("J steps to the next request (the drawer's own hint: J next, K previous)", [tab.shows(/3 of 5/), tab.visible({ role: "dialog", name: "GET /fx/boom" })]);
+      await ctx.verify("J steps to the next request (the drawer's own hint: J next, K previous)", [tab.shows(/3 of 6/), tab.visible({ role: "dialog", name: /^GET \/fx\/boom$/ })]);
       await tab.press("k");
-      await ctx.verify("K steps back", [tab.shows(/2 of 5/)]);
+      await ctx.verify("K steps back", [tab.shows(/2 of 6/)]);
       const url = tab.page.url();
       await tab.reload();
-      await ctx.verify("a reload", [tab.visible({ role: "dialog", name: "GET /fx/boom" }), check("the same record", tab.page.url() === url, tab.page.url())]);
+      await ctx.verify("a reload", [tab.visible({ role: "dialog", name: "GET /fx/boom-twin" }), tab.shows(/2 of 6/), check("the same record", tab.page.url() === url, tab.page.url())]);
+      await tab.press("j");
+      await ctx.verify("the next one is the other route's twin neighbour", [tab.visible({ role: "dialog", name: /^GET \/fx\/boom$/ }), tab.shows(/3 of 6/)]);
       await ctx.verify("Summary", [tab.shows(/fixture boom: the invoice has no customer/), tab.shows(/Route\s+GET \/fx\/boom/), tab.shows(/User agent\s+\S+/), tab.shows(/Request ID\s+[0-9a-f-]{36}/), tab.shows(/500 Internal Server Error/), tab.shows(/TIMING/)]);
       await tab.click({ role: "link", name: "Same error" });
-      await ctx.verify("Same error", [check("the URL names the route and the error", /route=GET\+%2Ffx%2Fboom/.test(tab.page.url()) && /error=fixture\+boom/.test(tab.page.url()), tab.page.url()), tab.visible({ role: "button", name: "All 2" }), tab.shows(/\/fx\/ok/, { not: true, timeoutMs: 3000 })]);
+      await ctx.verify("Same error", [check("the URL names the route and the error", /route=GET\+%2Ffx%2Fboom/.test(tab.page.url()) && /error=fixture\+boom/.test(tab.page.url()), tab.page.url()), tab.visible({ role: "button", name: "All 2" }), tab.shows(/\/fx\/ok|boom-twin/, { not: true, timeoutMs: 3000 })]);
     },
   },
   {

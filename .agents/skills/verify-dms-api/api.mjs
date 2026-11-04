@@ -11,6 +11,9 @@ import { join } from "node:path";
  * @typedef {{ name: string, pass: boolean, detail: string }} Check
  */
 
+/** Routes the verification playground registers in the project's scope: 17 under /fx, the member route and the five node routes. */
+export const FIXTURE_ROUTES = 23;
+
 /** The console's HTTP API, which the dashboard calls. */
 export const MONITOR = "/api/monitoring";
 
@@ -387,4 +390,36 @@ export async function openPage(tab, path) {
   await tab.goto(path);
   await tab.page.waitForLoadState("load");
   await tab.page.waitForTimeout(2500);
+}
+
+/**
+ * Restarts the backend with extra environment variables, runs `body`, then restarts it with the previous ones.
+ *
+ * @param {Ctx} ctx The journey
+ * @param {Record<string, string>} env The variables
+ * @param {() => Promise<void>} body What to do under them
+ * @returns {Promise<void>}
+ */
+export async function withEnv(ctx, env, body) {
+  const previous = { ...ctx.state.extraEnv };
+  ctx.state.extraEnv = { ...previous, ...env };
+  try {
+    await ctx.restartBackend();
+    await body();
+  } finally {
+    ctx.state.extraEnv = previous;
+    await ctx.restartBackend();
+  }
+}
+
+/**
+ * Runs an automation action the module registered with the stand-in provider.
+ *
+ * @param {Ctx} ctx The journey
+ * @param {string} id The action's id
+ * @param {unknown} input Its input
+ * @returns {Promise<Answer>} The action's output
+ */
+export function runAction(ctx, id, input) {
+  return ctx.api(`run ${id} ${JSON.stringify(input).slice(0, 60)}`, { method: "POST", path: `/verify-api/nodes/action/${id}`, body: input, as: "anon" });
 }

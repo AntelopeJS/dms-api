@@ -1,6 +1,6 @@
 import { guarded } from "../guard.mjs";
 import { seedLogs } from "../seed.mjs";
-import { check, list, mon, num, pick, raw, same, saveSettings, settled, text, traffic, withConfig, openPage } from "../api.mjs";
+import { FIXTURE_ROUTES, check, list, mon, num, pick, raw, same, saveSettings, settled, text, traffic, withConfig, withEnv, openPage } from "../api.mjs";
 
 /** @typedef {import("../api.mjs").Ctx} Ctx */
 
@@ -28,20 +28,21 @@ export const journeys = guarded([
       const rows = list(listed.body, "routes");
       const byRef = (/** @type {string} */ ref) => rows.find((row) => text(row, "ref") === ref);
       await ctx.verify("the list", [
-        same("routes in scope", rows.length, 16),
+        same("routes in scope", rows.length, FIXTURE_ROUTES),
         check("the project's folders", ["/fx/items", "/fx/orders", "/fx/guarded"].every((folder) => rows.some((row) => text(row, "folder") === folder)), [...new Set(rows.map((row) => text(row, "folder")))]),
         same("a route's counts and state", [num(byRef("GET /fx/boom"), "requests"), text(byRef("GET /fx/boom"), "state")], [25, "failing"]),
         same("a quiet route", [num(byRef("GET /fx/ok"), "requests"), text(byRef("GET /fx/ok"), "state")], [3, "healthy"]),
         same("an uncalled route", [num(byRef("GET /fx/blob"), "requests"), text(byRef("GET /fx/blob"), "state")], [0, "idle"]),
         same("the window health reads", num(listed.body, "healthWindowMinutes"), 1440),
+        same("the folders: the first static segments up to a parameter, at most two", ["GET /fx/ok", "GET /fx/items/:id", "POST /fx/orders/:shop/lines", "GET /fx/guarded/secret", "POST /verify-api/member"].map((ref) => text(byRef(ref), "folder")), ["/fx/ok", "/fx/items", "/fx/orders", "/fx/guarded", "/verify-api/member"]),
       ]);
       const tab = await ctx.tab("admin");
       await tab.signIn("admin");
       await openPage(tab, "/modules/api/routes");
       const posts = rows.filter((row) => text(row, "method") === "POST").length;
-      await tab.click({ role: "button", name: /^[A-Z]+ \/\S+ 16$/ });
+      await tab.click({ role: "button", name: new RegExp(`^[A-Z]+ /\\S+ ${FIXTURE_ROUTES}$`) });
       await ctx.verify("the tree", [
-        tab.shows(/16 of 16 routes · \d+ folders/),
+        tab.shows(new RegExp(`${FIXTURE_ROUTES} of ${FIXTURE_ROUTES} routes · \\d+ folders`)),
         tab.visible({ role: "treeitem", name: /^GET \/fx\/boom 25\b/ }),
         tab.visible({ role: "treeitem", name: /^GET \/fx\/ok 3\b/ }),
         tab.visible({ role: "treeitem", name: /^GET \/fx\/items\/:id 1\b/ }),
@@ -49,18 +50,21 @@ export const journeys = guarded([
         tab.visible({ role: "treeitem", name: "DEL /fx/items/:id 0 No traffic" }),
       ]);
       await tab.fill({ role: "textbox", name: "Filter by path or handler" }, "items");
-      await ctx.verify("the path filter", [tab.shows(/3 of 16 routes · 1 folder/), tab.visible({ role: "treeitem", name: "GET /fx/boom 25 Failing" }, { hidden: true, timeoutMs: 4000 })]);
+      await ctx.verify("the path filter", [tab.shows(new RegExp(`3 of ${FIXTURE_ROUTES} routes · 1 folder`)), tab.visible({ role: "treeitem", name: "GET /fx/boom 25 Failing" }, { hidden: true, timeoutMs: 4000 })]);
       await tab.fill({ role: "textbox", name: "Filter by path or handler" }, "boom");
-      await ctx.verify("the handler filter", [tab.shows(/1 of 16 routes/)]);
+      await ctx.verify("the handler filter", [tab.shows(new RegExp(`1 of ${FIXTURE_ROUTES} routes`))]);
+      await tab.fill({ role: "textbox", name: "Filter by path or handler" }, "identify");
+      await ctx.verify("a handler name the path does not hold", [tab.shows(new RegExp(`1 of ${FIXTURE_ROUTES} routes`)), tab.visible({ role: "treeitem", name: /^GET \/fx\/who\b/ })]);
+
       await tab.fill({ role: "textbox", name: "Filter by path or handler" }, "");
       await tab.click({ role: "radio", name: "POST" });
-      await ctx.verify("the method filter", [tab.shows(new RegExp(`${posts} of 16 routes`)), tab.visible({ role: "treeitem", name: /^POST \/fx\/echo/ }), tab.visible({ role: "treeitem", name: /^GET \/fx\/ok/ }, { hidden: true, timeoutMs: 4000 })]);
+      await ctx.verify("the method filter", [tab.shows(new RegExp(`${posts} of ${FIXTURE_ROUTES} routes`)), tab.visible({ role: "treeitem", name: /^POST \/fx\/echo/ }), tab.visible({ role: "treeitem", name: /^GET \/fx\/ok/ }, { hidden: true, timeoutMs: 4000 })]);
       await tab.click({ role: "radio", name: "All" });
       await tab.click({ role: "switch", name: "Only routes needing attention" });
-      await ctx.verify("only routes needing attention", [tab.shows(/1 of 16 routes/), tab.visible({ role: "treeitem", name: /GET \/fx\/boom/ }), tab.visible({ role: "treeitem", name: /^GET \/fx\/ok/ }, { hidden: true, timeoutMs: 4000 })]);
+      await ctx.verify("only routes needing attention", [tab.shows(new RegExp(`1 of ${FIXTURE_ROUTES} routes`)), tab.visible({ role: "treeitem", name: /GET \/fx\/boom/ }), tab.visible({ role: "treeitem", name: /^GET \/fx\/ok/ }, { hidden: true, timeoutMs: 4000 })]);
       await tab.click({ role: "switch", name: "Only routes needing attention" });
       await tab.click({ role: "switch", name: /^Hide routes without traffic/ });
-      await ctx.verify("hide routes without traffic", [tab.shows(/3 of 16 routes/), tab.visible({ role: "treeitem", name: /^GET \/fx\/blob/ }, { hidden: true, timeoutMs: 4000 })]);
+      await ctx.verify("hide routes without traffic", [tab.shows(new RegExp(`3 of ${FIXTURE_ROUTES} routes`)), tab.visible({ role: "treeitem", name: /^GET \/fx\/blob/ }, { hidden: true, timeoutMs: 4000 })]);
     },
   },
   {
@@ -285,6 +289,33 @@ export const journeys = guarded([
         tab.shows(/ERROR RATE\s+30%\s+3 × 4xx · 0 × 5xx · \+20 pt vs\. 10% previous period/),
         tab.shows(/404 · seeded gone\s+Client error · last [^\n]* · \+200% vs\. 1 previous period\s+3/),
       ]);
+    },
+  },
+  {
+    id: "the-documentation-writes-its-snippets-against-the-public-api-origin-and-hides-what-was-never-called",
+    title: "with apiBaseUrl set to https://api.example.com the cURL and fetch snippets and the route detail use it; a route never called shows no responses, body or parameters section",
+    entryPoint: "/modules/api/routes?route=GET /fx/ok&tab=documentation",
+    async run(/** @type {Ctx} */ ctx) {
+      await traffic(ctx, "one call", [{ path: "/fx/ok", count: 1 }]);
+      await withEnv(ctx, { VERIFY_API_BASE_URL: "https://api.example.com" }, async () => {
+        await settled(ctx, "the call is counted", `/routes/detail?${named("GET /fx/ok")}`, (body) => num(body, "contract", "total") === 1);
+        const detail = await mon(ctx, "the detail", `/routes/detail?${named("GET /fx/ok")}`);
+        const tab = await ctx.tab("admin");
+        await tab.signIn("admin");
+        await openPage(tab, `/modules/api/routes?${named("GET /fx/ok")}&tab=documentation`);
+        await ctx.verify("the public origin", [
+          same("the route detail", text(detail.body, "apiOrigin"), "https://api.example.com"),
+          tab.shows(/curl -X GET 'https:\/\/api\.example\.com\/fx\/ok'/),
+        ]);
+        await tab.click({ role: "radio", name: "fetch" });
+        await ctx.verify("fetch", [tab.shows(/fetch\('https:\/\/api\.example\.com\/fx\/ok'/)]);
+        await openPage(tab, `/modules/api/routes?${named("GET /fx/blob")}&tab=documentation`);
+        await ctx.verify("a route never called", [
+          tab.shows(/What was never called does not show\./),
+          tab.shows(/EXAMPLE REQUEST/),
+          tab.shows(/RESPONSES|BODY\n|Inferred from/, { not: true, timeoutMs: 3000 }),
+        ]);
+      });
     },
   },
 ]);

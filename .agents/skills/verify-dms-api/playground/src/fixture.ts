@@ -60,6 +60,16 @@ export class FixtureController extends Controller("/fx") {
     };
   }
 
+  @Get("who")
+  identify() {
+    return { who: "me" };
+  }
+
+  @Get("boom-twin")
+  boomTwin() {
+    throw new Error("fixture boom: the invoice has no customer");
+  }
+
   @Get("blob")
   blob(@Parameter("size", "query") size?: string) {
     return { text: "x".repeat(Number(size ?? "10")) };

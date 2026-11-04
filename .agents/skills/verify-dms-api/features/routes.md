@@ -44,6 +44,7 @@ The Routes page: the tree of routes with health and filters, a route's header, i
 - `the-contract-reads-seven-days-of-real-calls-and-never-the-testers`
 - `a-route-from-an-installed-module-names-its-module`
 - `the-route-statistics-compare-in-points-with-the-period-before`
+- `the-documentation-writes-its-snippets-against-the-public-api-origin-and-hides-what-was-never-called`
 - `authentication-is-read-from-the-guards-before-the-handler`
 
 ## How to get to it (user POV)

@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { guarded } from "../guard.mjs";
-import { check, list, mon, pick, same, saveSettings, settled, text, traffic, withConfig, openPage } from "../api.mjs";
+import { FIXTURE_ROUTES, check, list, mon, pick, same, saveSettings, settled, text, traffic, withConfig, openPage } from "../api.mjs";
 
 /** @typedef {import("../api.mjs").Ctx} Ctx */
 
@@ -176,11 +176,11 @@ export const journeys = guarded([
       const module = await readScope("modules");
       const all = await readScope("all");
       await ctx.verify("scopes", [
-        same("own: every route is the project's (the fixture and its member route)", [own.projectRoutes + own.moduleRoutes, own.moduleRoutes], [16, 1]),
+        same("own: every route is the project's (the fixture, its member route and its node routes)", [own.projectRoutes + own.moduleRoutes, own.moduleRoutes], [FIXTURE_ROUTES, 6]),
         check("own: only the project's request is logged", own.logged.every((path) => path === "/fx/ok") && own.logged.length === 2, own.logged),
         check("modules: no fixture route, the installed modules' routes", module.projectRoutes === 0 && module.moduleRoutes > 100, module.moduleRoutes),
         check("modules: no fixture request is logged", !module.logged.includes("/fx/ok"), module.logged),
-        same("all: both", [all.projectRoutes + all.moduleRoutes, all.projectRoutes], [own.projectRoutes + own.moduleRoutes + module.moduleRoutes, 15]),
+        same("all: both", [all.projectRoutes + all.moduleRoutes, all.projectRoutes], [own.projectRoutes + own.moduleRoutes + module.moduleRoutes, 17]),
         check("all: the project's and the module's requests are logged", all.logged.includes("/fx/ok") && all.logged.includes("/api/onboarding/informations"), all.logged),
       ]);
       const tab = await ctx.tab("admin");

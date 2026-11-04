@@ -12,6 +12,10 @@ The three nodes the module registers when `@antelopejs/dms-automation` is loaded
 ## Sub-features
 
 - `without-the-automation-module-the-registration-is-a-silent-no-op`
+- `the-module-registers-its-three-nodes-with-their-documented-inputs`
+- `get-api-health-restricts-its-breakdown-to-the-last-days`
+- `query-request-logs-pages-caps-and-filters`
+- `route-unhealthy-fires-on-the-flags-it-watches-and-never-faster-than-ten-seconds`
 
 ## How to get to it (user POV)
 
@@ -25,4 +29,4 @@ dms-control journey "$RUN" automation
 
 ## Gotchas
 
-- The playground does not load `@antelopejs/dms-automation`, so the nodes' behaviour is not driven (see coverage/automation.md).
+- The playground's fixture module stands in for the automation provider when `VERIFY_API_AUTOMATION=1` (a journey restarts the backend with it): it keeps the node types the module registers and runs `execute` and `activate` through `/verify-api/nodes`. The automation runtime itself is not loaded.
