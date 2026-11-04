@@ -14,9 +14,9 @@ interface GetApiHealthInput {
   days?: number;
 }
 
-interface GetApiHealthOutput extends SummaryKpis {
+type GetApiHealthOutput = SummaryKpis & {
   statusBreakdown: StatusBreakdown;
-}
+};
 
 export const getApiHealthAction: ActionType<
   GetApiHealthInput,

@@ -202,7 +202,7 @@ describe("LogsPage toolbar and filters", () => {
   });
 
   it("serves the slowness threshold and the body limit in force", async () => {
-    const filters = await LogsPage.filters.onFilterCallback?.(
+    const filters: unknown = await LogsPage.filters.onFilterCallback?.(
       new Set(),
       {},
       "",
@@ -211,7 +211,7 @@ describe("LogsPage toolbar and filters", () => {
     expect(filters).toEqual({
       slowThresholdMs: getConfig().requestSlownessThreshold,
     });
-    const live = await LogsPage.live.onFilterCallback?.(
+    const live: unknown = await LogsPage.live.onFilterCallback?.(
       new Set(),
       { fetchUrl: "/api/monitoring/logs/live" },
       "",

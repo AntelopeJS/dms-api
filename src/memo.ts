@@ -40,7 +40,10 @@ export function createMemo(maxEntries: number, defaultTtlMs: number): Memo {
     ): Promise<T> {
       const now = Date.now();
       const hit = entries.get(key);
-      if (hit && hit.expires > now) return hit.value as Promise<T>;
+      if (hit && hit.expires > now) {
+        // SAFETY: each key names one computation (see aggregate-cache.ts), so the promise stored under it is the one that computation's load returned, a Promise<T> for that call site's T.
+        return hit.value as Promise<T>;
+      }
       evictExpired(now);
       const value = load();
       entries.set(key, { expires: now + ttlMs, value });

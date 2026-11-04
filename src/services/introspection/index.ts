@@ -18,10 +18,9 @@ import {
   type RouteHandler,
   type RouteHandlerMode,
 } from "@antelopejs/interface-api";
-import { isFunction } from "@/guards";
+import { isFunction, isRecord } from "@/guards";
 import { isAuthMiddleware } from "./auth";
 import {
-  controllerClass,
   type ControllerDecorators,
   controllerDecorators,
   type DecoratedParameter,
@@ -115,13 +114,18 @@ function isParameterSource(source: string): source is ParameterSource {
   );
 }
 
-const DECLARED_TYPES: Record<string, InferredType> = {
-  String: "string",
-  Number: "number",
-  Boolean: "boolean",
-  Object: "object",
-  Buffer: "buffer",
-};
+const DECLARED_TYPES = new Map<string, InferredType>([
+  ["String", "string"],
+  ["Number", "number"],
+  ["Boolean", "boolean"],
+  ["Object", "object"],
+  ["Buffer", "buffer"],
+]);
+
+/** The type a decorated parameter declares by its class name; a string when unknown. */
+export function inferredTypeOf(typeName: string | null): InferredType {
+  return DECLARED_TYPES.get(typeName ?? "") ?? "string";
+}
 
 /**
  * What its decorator says about a parameter, over what its provider showed:
@@ -151,9 +155,7 @@ function declaredParameter(
     name,
     source,
     multi,
-    inferredType: multi
-      ? "object"
-      : (DECLARED_TYPES[decorated.type ?? ""] ?? "string"),
+    inferredType: multi ? "object" : inferredTypeOf(decorated.type),
   };
 }
 
@@ -298,8 +300,7 @@ function comparePriorityThenMode(
 }
 
 function controllerNameOf(handler: RouteHandler): string | null {
-  const name = controllerClass(handler)?.name;
-  return name && name !== "Object" ? name : null;
+  return handler.controller.name || null;
 }
 
 /**
@@ -308,10 +309,12 @@ function controllerNameOf(handler: RouteHandler): string | null {
  * holds the method itself.
  */
 export function handlerMethod(
-  handler: Pick<RouteHandler, "callback" | "proto">,
+  handler: Pick<RouteHandler, "callback" | "controller">,
 ): Function {
   const name = handler.callback.name;
-  const method: unknown = name ? handler.proto?.[name] : undefined;
+  const prototype: unknown = handler.controller.prototype;
+  const method: unknown =
+    name && isRecord(prototype) ? prototype[name] : undefined;
   return isFunction(method) ? method : handler.callback;
 }
 

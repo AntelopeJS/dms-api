@@ -4,8 +4,8 @@
 > are the plan as first taken; the QA pass and its fixes changed several of
 > them. In short:
 >
-> - Dependencies: `@antelopejs/dms` `>=0.7.13 <0.8.0` (`interface-dms`
->   0.5.8) and `@antelopejs/dms-frontend` `>=0.5.2 <0.6.0`, not dms 0.6 /
+> - Dependencies: the `dms` 0.7 line, from 0.7.13 (`interface-dms`
+>   0.5.8), and the `dms-frontend` 0.5 line, from 0.5.2, not dms 0.6 /
 >   interface-dms 0.4 / dms-frontend 0.5.0.
 > - A request opens in the DMS row side panel (a `sidePanel` row action
 >   target, dms 0.7.8) on a single click, from every request table: the DMS
@@ -53,8 +53,8 @@ traces back to one of these answers.
 Inputs:
 
 - The request: bump every `@antelopejs` dependency, adapt to the breaking
-  changes of `@antelopejs/dms` 0.6 / `@antelopejs/interface-dms` 0.4 and
-  `@antelopejs/dms-frontend` 0.5, apply the new design (adding and removing
+  changes of the `dms` 0.6 line, the `interface-dms` 0.4 line and the
+  `dms-frontend` 0.5 line, apply the new design (adding and removing
   features where it says so), reuse the DMS blocks before writing custom
   components, describe every page on the backend, give custom blocks an i18n
   `meta`, retest everything and fix the bugs found on the way.
@@ -84,15 +84,15 @@ pages, tests) so the history can be reviewed commit by commit.
 
 **Q4. Which ranges?**
 
-| Package | Before | After |
+| Dependency | Before | After |
 | --- | --- | --- |
-| `@antelopejs/interface-dms` | `>=0.2.8 <1.0.0` | `>=0.4.0 <1.0.0` (the `antelopejs-check-interface-ranges` gate wants every release up to the next major; the DMS module is the one that caps it) |
-| `@antelopejs/interface-api` | `>=0.0.13` | `>=0.0.14` |
-| `@antelopejs/interface-dms-automation` (optional) | `>=0.1.0` | `>=0.1.1` |
-| `@antelopejs/core` (dev, pinned) | `1.13.4` | `1.13.5` |
-| frontend `engines["@antelopejs/dms-frontend"]` | `>=0.2.8 <0.4.0` | `>=0.5.0 <0.6.0` |
-| playground `@antelopejs/dms` | `>=0.5.0` | `>=0.6.0 <0.7.0` |
-| playground `@antelopejs/mongodb` / `api` | `^1.3.1` | `^1.4.2` / `^1.3.3` |
+| `interface-dms` | the 0.2 line, from 0.2.8 | the 0.4 line, from 0.4.0 (the `antelopejs-check-interface-ranges` gate wants every release up to the next major; the DMS module is the one that caps it) |
+| `interface-api` | from 0.0.13 | from 0.0.14 |
+| `interface-dms-automation` (optional) | from 0.1.0 | from 0.1.1 |
+| `core` (dev, pinned) | 1.13.4 | 1.13.5 |
+| frontend `engines` entry for `dms-frontend` | the 0.2 and 0.3 lines | the 0.5 line |
+| playground `dms` | from 0.5.0 | the 0.6 line |
+| playground `mongodb` / `api` | the 1.3 line from 1.3.1 | the 1.4 line from 1.4.2 / the 1.3 line from 1.3.3 |
 
 **Q5. What breaks on the backend?**
 Only `TreeNode` (`interface-dms/base/tree` was removed). The tree type moves

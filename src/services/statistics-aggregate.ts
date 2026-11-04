@@ -14,7 +14,7 @@ import { averageLatency, errorShare } from "./traffic";
  * Overview and the routes tree show; the volumes from the day rollups.
  */
 
-export interface SummaryKpis {
+export type SummaryKpis = {
   totalRoutes: number;
   /** Routes failing now, by the health rules. */
   failingRoutes: number;
@@ -23,9 +23,9 @@ export interface SummaryKpis {
   averageLatencyMs: number;
   callsToday: number;
   errors24h: number;
-}
+};
 
-export interface WatchListItem {
+export type WatchListItem = {
   routeKey: string;
   method: string;
   uri: string;
@@ -34,19 +34,19 @@ export interface WatchListItem {
   averageLatencyMs: number;
   requestsLast24h: number;
   flag: "broken" | "slow" | "warn";
-}
+};
 
 /**
  * Total request counts split by HTTP status class. `success` is every
  * non-error request (2xx/3xx); the two error buckets mirror the
  * day-statistics counters.
  */
-export interface StatusBreakdown {
+export type StatusBreakdown = {
   success: number;
   clientErrors: number;
   serverErrors: number;
   total: number;
-}
+};
 
 /**
  * Scope filter shared by every reader: a Set of `METHOD:uri` keys (from

@@ -27,6 +27,13 @@ describe("isJsonValue", () => {
     );
   });
 
+  it("answers for a document nested deeper than the call stack", () => {
+    const depth = 20_000;
+    const parsed: unknown = JSON.parse("[".repeat(depth) + "]".repeat(depth));
+
+    expect(isJsonValue(parsed)).toBe(true);
+  });
+
   it("rejects values JSON cannot hold", () => {
     expect(isJsonValue(undefined)).toBe(false);
     expect(isJsonValue(() => 1)).toBe(false);

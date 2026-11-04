@@ -19,9 +19,18 @@ interface QueryRequestLogsInput {
   limit?: number;
 }
 
-interface QueryRequestLogsOutput {
-  results: RequestLog[];
+/** A stored request log as the action hands it on: JSON, its timestamp an ISO string. */
+type RequestLogEntry = Omit<RequestLog, "timestamp"> & { timestamp: string };
+
+type QueryRequestLogsOutput = {
+  results: RequestLogEntry[];
   nextCursor?: string;
+};
+
+/** A stored request log as JSON: its `timestamp` as an ISO string, as the logs list serves it. */
+export function requestLogEntry(log: RequestLog): RequestLogEntry {
+  const { timestamp, ...fields } = log;
+  return { ...fields, timestamp: timestamp.toISOString() };
 }
 
 export const queryRequestLogsAction: ActionType<
@@ -73,6 +82,9 @@ export const queryRequestLogsAction: ActionType<
       },
       keys,
     );
-    return { results: page.results, nextCursor: page.nextCursor ?? undefined };
+    return {
+      results: page.results.map(requestLogEntry),
+      nextCursor: page.nextCursor ?? undefined,
+    };
   },
 };

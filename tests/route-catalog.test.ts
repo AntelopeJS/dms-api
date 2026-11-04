@@ -2,6 +2,7 @@ import type {
   ComputedParameter,
   ParameterProvider,
 } from "@antelopejs/interface-api";
+import { Controller } from "@antelopejs/interface-api";
 import { ImplementInterface } from "@antelopejs/interface-core";
 import { GetApiBaseUrl } from "@antelopejs/interface-dms/api-base-url";
 import { afterEach, describe, expect, it } from "vitest";
@@ -313,7 +314,7 @@ __decorate([
 
 describe("error codes from the handler", () => {
   it("reads the method on the prototype when the callback is a proxy", () => {
-    class OrdersController {
+    class OrdersController extends Controller("/orders") {
       async create(this: void, body: { items?: unknown[] }) {
         if (!body.items?.length) {
           return new HTTPResult(400, { error: "Cart is empty" });
@@ -328,7 +329,7 @@ describe("error codes from the handler", () => {
     ).toContain("native code");
     const method = handlerMethod({
       callback,
-      proto: OrdersController.prototype,
+      controller: OrdersController,
     });
     expect(probeHandlerErrors(method)).toEqual([
       { status: 400, reason: "Cart is empty", source: "HTTPResult" },

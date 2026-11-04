@@ -65,17 +65,17 @@ export interface RequestLogRow {
   requestId: string | null;
 }
 
-const STATUS_CLASS_OF_TAB: Record<string, RequestLogStatusClass> = {
-  "2xx": "success",
-  "4xx": "client-error",
-  "5xx": "server-error",
-};
+const STATUS_CLASS_OF_TAB = new Map<string, RequestLogStatusClass>([
+  ["2xx", "success"],
+  ["4xx", "client-error"],
+  ["5xx", "server-error"],
+]);
 
-const SORT_KEYS: Record<string, RequestLogSortKey> = {
-  timestamp: "timestamp",
-  status: "statusCode",
-  responseTimeMs: "responseTimeMs",
-};
+const SORT_KEYS = new Map<string, RequestLogSortKey>([
+  ["timestamp", "timestamp"],
+  ["status", "statusCode"],
+  ["responseTimeMs", "responseTimeMs"],
+]);
 
 const DEFAULT_PAGE_SIZE = 50;
 
@@ -154,8 +154,9 @@ export function filtersFromQuery(
   now: Date = new Date(),
 ): RequestLogFilters {
   const filters: RequestLogFilters = {};
-  const statusClass =
-    STATUS_CLASS_OF_TAB[filterValue(query.filter_statusClass) ?? ""];
+  const statusClass = STATUS_CLASS_OF_TAB.get(
+    filterValue(query.filter_statusClass) ?? "",
+  );
   if (statusClass) filters.statusClass = statusClass;
   const methods = filterValues(query.filter_method);
   if (methods.length === 1) filters.method = methods[0];
@@ -324,7 +325,7 @@ export async function listRequestLogs(
       positiveInt(query.limit) || DEFAULT_PAGE_SIZE,
       REQUEST_LOG_LIST_MAX_ROWS,
     ),
-    sortKey: SORT_KEYS[query.sortKey ?? ""],
+    sortKey: SORT_KEYS.get(query.sortKey ?? ""),
     sortDirection: query.sortDirection === "asc" ? "asc" : "desc",
   });
   return {

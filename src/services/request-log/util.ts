@@ -1,7 +1,13 @@
 import type { HTTPResult } from "@antelopejs/interface-api";
 import type { IncomingHttpHeaders } from "node:http";
 import type { RequestLogBodyOmission } from "@/db/tables/request_log.table";
-import { isBodyCarrier, isFunction, isNumber, isObject } from "@/guards";
+import {
+  hasStatusGetter,
+  isBodyCarrier,
+  isFunction,
+  isNumber,
+  isObject,
+} from "@/guards";
 import { HTTP_STATUS_OK } from "@/types/constants";
 import {
   isSensitiveHeader,
@@ -49,21 +55,20 @@ export function omittedBody(reason: RequestLogBodyOmission): CapturedBody {
   return { truncated: false, omitted: reason, redacted: 0 };
 }
 
-function isEmptyBody(body: unknown): boolean {
-  if (body === undefined || body === null || body === "") return true;
-  return Buffer.isBuffer(body) && body.length === 0;
-}
-
 /**
  * The body to store, redacted and cut at `maxBytes`, or why it is not stored.
  * JSON and forms only: what the redaction can read by key.
  */
 export function captureBody(
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- a response body is whatever a handler passed to HTTPResult (a string, a Buffer, any object, a value JSON cannot hold), and this function is where it is checked and parsed (sanitizeBody); a named type would only relabel unknown
   body: unknown,
   contentType: string | undefined,
   maxBytes: number,
 ): CapturedBody {
-  if (isEmptyBody(body)) return omittedBody("empty");
+  if (body === undefined || body === null || body === "") {
+    return omittedBody("empty");
+  }
+  if (Buffer.isBuffer(body) && body.length === 0) return omittedBody("empty");
   if (maxBytes <= 0) return omittedBody("disabled");
   const sanitized = sanitizeBody(body, contentType ?? "");
   if (sanitized.text === undefined) {
@@ -107,26 +112,26 @@ export function queryToRecord(url: URL) {
 
 /**
  * The status of a response or a thrown HTTPResult: its `getStatus()`, falling
- * through to `statusCode` then `status` when that throws or is missing, 200
- * otherwise.
+ * through to `statusCode` then `status` when that throws or does not return a
+ * number, 200 otherwise.
  */
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- value is a thrown value or a response of any shape, probed for getStatus, statusCode and status; HTTPResult cannot type it, as a thrown value may come from another copy of interface-api (tsc rejects HTTPResult for the capture.ts caller) and the tests feed non-objects
 export function extractStatusCode(value: unknown): number {
   if (!isObject(value)) return HTTP_STATUS_OK;
-  const v = value as {
-    getStatus?: () => number;
-    statusCode?: number;
-    status?: number;
-  };
-  if (typeof v.getStatus === "function") {
+  if (hasStatusGetter(value)) {
     try {
-      return v.getStatus();
+      const status: unknown = value.getStatus();
+      if (isNumber(status)) return status;
     } catch {}
   }
-  if (isNumber(v.statusCode)) return v.statusCode;
-  if (isNumber(v.status)) return v.status;
+  if ("statusCode" in value && isNumber(value.statusCode)) {
+    return value.statusCode;
+  }
+  if ("status" in value && isNumber(value.status)) return value.status;
   return HTTP_STATUS_OK;
 }
 
+// oxlint-disable-next-line anti-slop/no-unknown-parameters, anti-slop/no-unknown-returns -- value is a thrown value or a response probed for getBody and body (typing it HTTPResult fails tsc at the thrown-value caller in capture.ts), and the body it answers is whatever the handler set, which captureBody parses
 export function extractBody(value: unknown): unknown {
   if (!isBodyCarrier(value)) return undefined;
   if (isFunction(value.getBody)) {
