@@ -11,4 +11,4 @@
 | package.json | `dist` entry, the shipped folders, no sources, tests or playground | same | `main`, `the shipped folders`, `nothing else but the manifest, licence and readme`, `no source, test or playground file is packed` |
 | frontend-vue/i18n | English and French locale files hold the same keys | `the-docs-links-and-the-two-locales-are-complete` | both directions |
 | docs/2.installation.md (Try it with traffic) | The playground sends demo traffic | Not driven: `pnpm --dir playground traffic` is developer tooling |
-| docs/2.installation.md (Open the console) | `/modules/api` redirects to the Overview | Not driven: the redirect of the bare module path is not asserted (the Overview, Request logs, Routes and Settings paths are) |
+| docs/2.installation.md (Open the console) | `/modules/api` redirects to the Overview | `the-module-path-redirects-to-the-overview` (overview) | the path after the redirect is `/modules/api/overview` |

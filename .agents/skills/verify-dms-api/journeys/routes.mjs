@@ -244,4 +244,24 @@ export const journeys = guarded([
       ]);
     },
   },
+  {
+    id: "a-route-from-an-installed-module-names-its-module",
+    title: "under All routes a route registered by an installed module opens with its controller and the module that registered it where the project's routes read Project code, and the project's route still reads Project code",
+    entryPoint: "/modules/api/routes?route=GET /api/onboarding/informations",
+    async run(/** @type {Ctx} */ ctx) {
+      await saveSettings(ctx, "watch all routes", { scope: "all" });
+      const detailOf = await mon(ctx, "the module route", `/routes/detail?${named("GET /api/onboarding/informations")}`);
+      const own = await mon(ctx, "the project route", `/routes/detail?${named("GET /fx/ok")}`);
+      await ctx.verify("the API", [
+        same("the module route is not the project's", [pick(detailOf.body, "own"), pick(own.body, "own")], [false, true]),
+        same("the module that registered it", [text(detailOf.body, "module") !== "app", text(own.body, "module")], [true, "app"]),
+      ]);
+      const tab = await ctx.tab("admin");
+      await tab.signIn("admin");
+      await openPage(tab, `/modules/api/routes?${named("GET /api/onboarding/informations")}`);
+      await ctx.verify("the header of the module route", [tab.shows(/PublicOnboardingController\.getInformations\s+Auth unknown\s+Module dms\s+First seen/), tab.shows(/Project code/, { not: true, timeoutMs: 2000 })]);
+      await openPage(tab, `/modules/api/routes?${named("GET /fx/ok")}`);
+      await ctx.verify("the header of the project route", [tab.shows(/FixtureController\.ok\s+Auth unknown\s+Project code/), tab.shows(/Module dms/, { not: true, timeoutMs: 2000 })]);
+    },
+  },
 ]);

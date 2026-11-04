@@ -31,6 +31,7 @@ The API settings page and the module options it overrides: scope, retentions, ca
 - `retention-fields-have-no-use-default-but-the-others-do`
 - `the-scope-decides-which-routes-and-requests-every-page-watches`
 - `lowering-a-retention-tells-what-the-next-prune-deletes`
+- `lowering-a-retention-asks-before-it-deletes`
 - `the-hourly-prune-deletes-what-the-retention-passed`
 
 ## How to get to it (user POV)

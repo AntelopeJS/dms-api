@@ -211,4 +211,43 @@ export const journeys = guarded([
       ]);
     },
   },
+  {
+    id: "a-route-is-flagged-at-the-documented-edges-whatever-the-period",
+    title: "19 calls that all fail with a 4xx are too few, 20 calls with 1 client error (5%) are flagged, 25 calls with 1 (4%) are not, 19 slow calls are too few; a route flagged over the last 24 hours stays listed on the 1H period; the hero shows its four signals",
+    entryPoint: "GET /api/monitoring/overview/attention and /modules/api/overview",
+    async run(/** @type {Ctx} */ ctx) {
+      await saveSettings(ctx, "slow from 50 ms", { requestSlownessThresholdMs: 50 });
+      await seedLogs(ctx, "20 client errors 3 hours ago", { minutesAgo: 180, count: 20, uri: "/fx/blob", statusCode: 404, message: "seeded" });
+      await traffic(ctx, "the edges", [
+        { path: "/fx/missing", count: 19 },
+        { path: "/fx/items/7", count: 19 },
+        { path: "/fx/items/x1", count: 1 },
+        { path: "/fx/guarded/secret", count: 24, headers: { authorization: "Bearer letmein" } },
+        { path: "/fx/guarded/secret", count: 1 },
+        { path: "/fx/slow?ms=80", count: 19 },
+      ]);
+      const attention = await settled(ctx, "attention", "/overview/attention", (body) => list(body, "items").length >= 2);
+      const hour = await settled(ctx, "traffic over the last hour", "/overview/traffic?preset=last-hour", (body) => num(body, "value") === 83);
+      const day = await mon(ctx, "traffic over the last 24 hours", "/overview/traffic?preset=last-24h");
+      const flagged = list(attention.body, "items").map((item) => [text(item, "route"), text(item, "state")]).toSorted((left, right) => String(left[0]).localeCompare(String(right[0])));
+      await ctx.verify("the edges", [
+        same("only the routes at or past an edge are flagged", flagged, [["GET /fx/blob", "client-errors"], ["GET /fx/items/:id", "client-errors"]]),
+        same("the 20 calls with one client error read 5%", num(list(attention.body, "items").find((item) => text(item, "route") === "GET /fx/items/:id"), "metrics", "clientErrorRate"), 5),
+        same("the last hour holds the 83 calls, the last 24 hours the 20 seeded ones too", [num(hour.body, "value"), num(day.body, "value")], [83, 103]),
+      ]);
+      const tab = await ctx.tab("admin");
+      await tab.signIn("admin");
+      await openPage(tab, "/modules/api/overview?api.period=last-hour");
+      await ctx.verify("the last hour", [
+        tab.shows(/Needs attention\s+2/i),
+        tab.shows(/GET \/fx\/blob\s+4xx rate · 100% client errors · 20 of 20 calls/i),
+        tab.shows(/GET \/fx\/items\/:id\s+4xx rate · 5% client errors · 1 of 20 calls/i),
+        tab.shows(/5xx · 15 min\s+0%/i),
+        tab.shows(/4xx · 15 min\s+25\.3%/i),
+        tab.shows(/Traffic · 15 min\s+5\.5 req\/min/i),
+        tab.shows(/p95 latency · 15 min\s+\d+ ms\s+Slow from 50 ms/i),
+        tab.shows(/\d+ routes in scope/i),
+      ]);
+    },
+  },
 ]);

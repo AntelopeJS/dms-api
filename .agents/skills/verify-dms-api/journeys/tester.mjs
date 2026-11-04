@@ -79,4 +79,35 @@ export const journeys = guarded([
       await traffic(ctx, "a plain call", [{ path: "/fx/ok", count: 1 }]);
     },
   },
+  {
+    id: "the-tester-sends-the-form-and-keeps-twenty-five-calls",
+    title: "Send calls the route without credentials until Send with my session is on, a header added in the form reaches the handler, Ctrl Enter sends too, and the History keeps the last 25 calls with their credential note",
+    entryPoint: "/modules/api/routes?route=GET /fx/whoami&tab=tester",
+    async run(/** @type {Ctx} */ ctx) {
+      const tab = await tester(ctx, "GET /fx/whoami");
+      await tab.click({ role: "button", name: "Send" });
+      await ctx.verify("no credentials", [
+        tab.shows(/"authorization": "absent"/),
+        tab.shows(/Send with my session\s+No credentials are sent/),
+        tab.visible({ role: "button", name: /^GET 200 \/fx\/whoami no credentials / }),
+      ]);
+      await tab.click({ role: "button", name: "Add header", nth: 0 });
+      await tab.fill({ role: "textbox", name: "Name", nth: 0 }, "x-extra");
+      await tab.fill({ role: "textbox", name: "Value", nth: 0 }, "from-the-form");
+      await tab.click({ role: "button", name: "Send" });
+      await ctx.verify("a header from the form", [tab.shows(/"extra": "from-the-form"/), tab.shows(/"authorization": "absent"/)]);
+      await tab.click({ role: "switch", name: "Send with my session" });
+      await tab.click({ role: "button", name: "Send" });
+      await ctx.verify("with my session", [tab.shows(/"authorization": "present"/), tab.shows(/Send with my session\s+Your session token is sent/)]);
+      await tab.press("Control+Enter", { role: "textbox", name: "Value", nth: 0 });
+      await ctx.verify("Ctrl Enter sends", [tab.count({ role: "button", name: /^GET 200 \/fx\/whoami/ }, 4)]);
+      for (let index = 0; index < 24; index += 1) {
+        await tab.press("Control+Enter", { role: "textbox", name: "Value", nth: 0 });
+        await tab.page.waitForTimeout(250);
+      }
+      await ctx.verify("the History", [tab.count({ role: "button", name: /^GET 200 \/fx\/whoami/ }, 25)]);
+      const logs = await settled(ctx, "the Tester's calls are stored", "/logs?limit=100", (body) => list(body, "results").filter((row) => text(row, "source") === "tester").length === 28);
+      await ctx.verify("the logs", [same("every Send is one stored Tester call", list(logs.body, "results").filter((row) => text(row, "source") === "tester").length, 28)]);
+    },
+  },
 ]);

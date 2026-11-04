@@ -50,6 +50,11 @@ export class FixtureController extends Controller("/fx") {
     return { user: "ann", token: "issued-secret-value", note: "welcome" };
   }
 
+  @Get("whoami")
+  whoami(@Parameter("authorization", "header") authorization?: string, @Parameter("x-extra", "header") extra?: string) {
+    return { authorization: authorization === undefined ? "absent" : "present", extra: extra ?? null };
+  }
+
   @Get("blob")
   blob(@Parameter("size", "query") size?: string) {
     return { text: "x".repeat(Number(size ?? "10")) };

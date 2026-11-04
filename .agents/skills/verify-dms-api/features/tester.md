@@ -24,6 +24,7 @@ The Tester tab of a route: real calls through the frontend server, logged and ma
 ## Sub-features
 
 - `a-tester-call-is-logged-and-marked-but-never-counted`
+- `the-tester-sends-the-form-and-keeps-twenty-five-calls`
 - `a-secret-keeps-the-testers-token-valid-across-restarts`
 
 ## How to get to it (user POV)

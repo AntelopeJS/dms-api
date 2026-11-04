@@ -217,4 +217,29 @@ export const journeys = guarded([
       await ctx.verify("Same error", [check("the URL names the route and the error", /route=GET\+%2Ffx%2Fboom/.test(tab.page.url()) && /error=fixture\+boom/.test(tab.page.url()), tab.page.url()), tab.visible({ role: "button", name: "All 2" }), tab.shows(/\/fx\/ok/, { not: true, timeoutMs: 3000 })]);
     },
   },
+  {
+    id: "a-link-names-a-range-with-since-and-until",
+    title: "/modules/api/logs?since=&until= lists only the requests of that range, never more than the period, and the tabs count only them",
+    entryPoint: "/modules/api/logs?since=<iso>&until=<iso>",
+    async run(/** @type {Ctx} */ ctx) {
+      await seedLogs(ctx, "3 requests 5 hours ago", { minutesAgo: 300, count: 3, uri: "/fx/ok" });
+      await seedLogs(ctx, "2 failing requests 2 hours ago", { minutesAgo: 120, count: 2, uri: "/fx/boom", statusCode: 500, message: "seeded failure" });
+      const since = new Date(Date.now() - 6 * 3_600_000).toISOString();
+      const until = new Date(Date.now() - 3 * 3_600_000).toISOString();
+      const inRange = await mon(ctx, "the range", `/logs?preset=last-24h&filter_since=is:${encodeURIComponent(since)}&filter_until=is:${encodeURIComponent(until)}`);
+      await ctx.verify("the API", [
+        same("only the three requests of the range", [num(inRange.body, "total"), [...new Set(list(inRange.body, "results").map((row) => text(row, "path")))]], [3, ["/fx/ok"]]),
+      ]);
+      const tab = await ctx.tab("admin");
+      await tab.signIn("admin");
+      await openPage(tab, `/modules/api/logs?since=${encodeURIComponent(since)}&until=${encodeURIComponent(until)}`);
+      await ctx.verify("the page", [
+        tab.visible({ role: "button", name: "All 3" }),
+        tab.visible({ role: "button", name: "5xx 0" }),
+        tab.shows(/seeded failure/, { not: true, timeoutMs: 2000 }),
+      ]);
+      await openPage(tab, "/modules/api/logs");
+      await ctx.verify("without the range", [tab.visible({ role: "button", name: "All 5" }), tab.visible({ role: "button", name: "5xx 2" })]);
+    },
+  },
 ]);

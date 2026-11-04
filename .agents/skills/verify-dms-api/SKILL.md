@@ -26,7 +26,7 @@ RUN=$($C up --prepare --skill "$PWD/.agents/skills/verify-dms-api" --base origin
 
 - The checkout is laid out again under `$RUN/root`, every sibling linked, and the playground copied without `node_modules`, so the run's build, `.antelope/` and stored files are its own. The playground names the checkout's real folder as the module's source, because the module's `@/` import alias applies to files under the folder the source names.
 - The API, the dashboard and the mail sink get free ports from the kernel; a `mongod` the run owns serves `verify_<run>` databases.
-- The api module is a copy of the published `@antelopejs/api` patched by `fetch-api.mjs` to build route handlers with `controller` as well as `proto` (known finding: `~/.cache/campaign/issues/dms-api-controller-vs-published-api.md`). The `up` of a run needs the npm registry once, for the dashboard's dependencies.
+- The api module is a copy of the published `@antelopejs/api` patched by `fetch-api.mjs` to build route handlers with `controller` as well as `proto` (known finding, dms-api#101). The `up` of a run needs the npm registry once, for the dashboard's dependencies.
 
 The fixture module (`playground/src`) serves what a journey cannot do over the console's own routes. `/fx/*` are the project's routes that traffic goes to: `ok`, `slow?ms=`, `boom` (throws), `missing` (404), `echo` (POST, 201), `login` (a token in the answer), `blob`, `items/:id` (GET, PUT, DELETE), `guarded/secret` (behind `auth_check`), `named/page` (behind `checkTicket`), `inline/private` (checks inside), `orders/:shop/lines` (path, query, header and body parameters). `POST /verify-api/member` makes a member whose role holds exactly the permission ids given.
 
@@ -36,7 +36,7 @@ The fixture module (`playground/src`) serves what a journey cannot do over the c
 $C doctor "$RUN"          # prints only failing checks; --verbose prints all
 ```
 
-Do not drive a run that fails doctor. Its module checks look at this skill folder, not the module (known gap: `~/.cache/campaign/issues/dms-control-module-root-is-the-skill-folder.md`), so check that `dist/` is newer than `src/` yourself with `--prepare`.
+Do not drive a run that fails doctor. Its module checks look at this skill folder, not the module (known gap, reported against `dms-control`: the module root is taken from the playground's parent folder), so check that `dist/` is newer than `src/` yourself with `--prepare`.
 
 ## Drive
 
@@ -93,10 +93,13 @@ $C doors "$PWD/.agents/skills/verify-dms-api/seeded-doors/data.patch"
 - Every dashboard page renders on the server and hydrates after `load`; `tab.signIn` waits for the sign-in form to hydrate.
 - The Routes page keeps its tree and filters behind the button that names the open route; the journeys open it before they filter.
 - `mongod` comes from `DMS_CONTROL_MONGOD`, `PATH`, or the mongodb-memory-server cache (`~/.cache/mongodb-binaries`); a verifier with a bare environment passes `DMS_CONTROL_MONGOD` along.
-- Known findings, each a failing journey with an issue draft under `~/.cache/campaign/issues/`:
-  - `routes` and every page that lists routes answer 500 against the published `@antelopejs/api`, which builds `proto` route handlers while the module reads `controller` (`dms-api-controller-vs-published-api`); the fixture patches a copy of the package, so no journey fails on it;
-  - `settings/a-log-retention-of-no-day-is-refused-at-start`: `requestLogRetention: 0` starts the module, the form shows 1 day, and the hourly prune uses a cutoff of now (`dms-api-log-retention-zero-accepted-at-start`);
-  - `access/a-role-opens-the-blocks-it-holds-and-no-others`: the docs say a role can hold one block of the console, but the DMS grants module-scoped permissions to the owner only (`dms-api-role-permissions-per-block-never-granted`).
+- Known findings:
+  - `GET /api/monitoring/routes/list` answers 500 against the published `@antelopejs/api`, which builds `proto` route handlers while the module reads `controller` (dms-api#101); the fixture patches a copy of the package, so no journey fails on it;
+  - `settings/a-log-retention-of-no-day-is-refused-at-start` fails: `requestLogRetention: 0` starts the module, the form shows 1 day, and the hourly prune uses a cutoff of now (dms-api#103);
+  - `access/a-role-opens-the-blocks-it-holds-and-no-others` fails: the docs say a role can hold one block of the console, but the DMS grants module-scoped permissions to the owner only (dms-api#104);
+  - the docs read J as previous and K as next in the request drawer, the drawer steps the other way (dms-api#102; the journey asserts the behaviour the page announces);
+  - the docs and the Tester tab name the header `x-dms-api-source`, the code sends `x-antelopejs-api-source` (docs mismatch, pinned in coverage/tester.md).
+- The host's time zone must be a real one: with `TZ` unknown the dashboard pages answer 500 "Invalid time zone specified". Run with `TZ=UTC` (and `--pass-env TZ` for the agent-skills eval).
 - `npm pack` ships `frontend-vue/tests/**` with the Vue layer (the `files` entry is the whole folder); the package journeys do not forbid it.
 
 ## Not driven
