@@ -25,6 +25,9 @@ The Tester tab of a route: real calls through the frontend server, logged and ma
 
 - `a-tester-call-is-logged-and-marked-but-never-counted`
 - `the-tester-sends-the-form-and-keeps-twenty-five-calls`
+- `a-history-entry-restores-its-call-and-a-typed-authorization-beats-the-session`
+- `headers-for-all-routes-are-kept-in-the-browser-but-credentials-are-not`
+- `a-replayed-call-needs-its-credentials-and-redacted-values-by-hand`
 - `a-secret-keeps-the-testers-token-valid-across-restarts`
 
 ## How to get to it (user POV)

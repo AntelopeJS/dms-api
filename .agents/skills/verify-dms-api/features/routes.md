@@ -43,6 +43,7 @@ The Routes page: the tree of routes with health and filters, a route's header, i
 - `the-documentation-tab-is-inferred-from-the-code-and-the-traffic`
 - `the-contract-reads-seven-days-of-real-calls-and-never-the-testers`
 - `a-route-from-an-installed-module-names-its-module`
+- `the-route-statistics-compare-in-points-with-the-period-before`
 - `authentication-is-read-from-the-guards-before-the-handler`
 
 ## How to get to it (user POV)

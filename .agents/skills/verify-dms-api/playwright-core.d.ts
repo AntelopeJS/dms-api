@@ -37,6 +37,8 @@ declare module "playwright-core" {
     getAttribute(name: string, options?: Timeout): Promise<string | null>;
     inputValue(options?: Timeout): Promise<string>;
     textContent(options?: Timeout): Promise<string | null>;
+    innerText(options?: Timeout): Promise<string>;
+    evaluateAll<R>(callback: (elements: HTMLElement[]) => R): Promise<R>;
     allTextContents(): Promise<string[]>;
     waitFor(options?: Timeout & { state?: "attached" | "detached" | "visible" | "hidden" }): Promise<void>;
     evaluate<R, A>(callback: (element: HTMLElement, argument: A) => R, argument?: A): Promise<R>;

@@ -52,7 +52,12 @@ export class FixtureController extends Controller("/fx") {
 
   @Get("whoami")
   whoami(@Parameter("authorization", "header") authorization?: string, @Parameter("x-extra", "header") extra?: string) {
-    return { authorization: authorization === undefined ? "absent" : "present", extra: extra ?? null };
+    return {
+      authorization: authorization === undefined ? "absent" : "present",
+      bearer: authorization === undefined ? null : authorization.replace(/^Bearer /, "").slice(-13),
+      typed: authorization === "Bearer fixture-token",
+      extra: extra ?? null,
+    };
   }
 
   @Get("blob")

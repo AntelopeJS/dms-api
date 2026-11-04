@@ -22,3 +22,4 @@
 | docs/6.faq.md (30D comparison unavailable) | With 30 days kept, 30D has no period before it | `a-comparison-beyond-the-kept-statistics-compares-with-nothing` | `previousAvailable` false at 30 days, true at 60 and 90 |
 | docs/6.faq.md (invalid configuration) | The error lists each refused value | `the-module-refuses-to-start-with-a-value-the-form-would-refuse` | `the module stops and says so` (the log line `[dms-api] invalid configuration`) |
 | docs/6.faq.md (Upgrading from 0.1) | Settings return the error-rate thresholds as ratios (`0.05`) and the health action returns `failingRoutes` | `the-form-shows-the-documented-defaults` | `error rate warning` 0.05, `down rate` 0.2. Dropping the 0.1 tables is Not driven |
+| docs/4.usage/4.settings.md (Route visibility) | The scope is a setting that survives a restart | `the-scope-decides-which-routes-and-requests-every-page-watches` | after `restartBackend` the scope still reads `all` |

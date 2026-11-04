@@ -187,6 +187,9 @@ export const journeys = guarded([
       await tab.signIn("admin");
       await openPage(tab, "/modules/api/overview");
       await ctx.verify("the scope chip", [tab.shows(new RegExp(`All routes · ${all.projectRoutes + all.moduleRoutes}`))]);
+      await ctx.restartBackend();
+      const kept = await mon(ctx, "after a restart", "/settings");
+      await ctx.verify("the scope survives a restart", [same("scope", pick(kept.body, "scope"), "all")]);
     },
   },
   {

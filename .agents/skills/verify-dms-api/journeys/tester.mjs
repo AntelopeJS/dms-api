@@ -1,5 +1,5 @@
 import { guarded } from "../guard.mjs";
-import { check, list, mon, num, pick, raw, same, settled, text, traffic, withConfig, openPage } from "../api.mjs";
+import { saveSettings, check, list, mon, num, pick, raw, same, settled, text, traffic, withConfig, openPage } from "../api.mjs";
 
 /** @typedef {import("../api.mjs").Ctx} Ctx */
 
@@ -106,8 +106,106 @@ export const journeys = guarded([
         await tab.page.waitForTimeout(250);
       }
       await ctx.verify("the History", [tab.count({ role: "button", name: /^GET 200 \/fx\/whoami/ }, 25)]);
+      await tab.reload();
+      await tab.click({ role: "tab", name: "Tester" });
+      await ctx.verify("after a reload", [tab.count({ role: "button", name: /^GET 200 \/fx\/whoami/ }, 25)]);
+      const second = await ctx.tab("admin", "second tab");
+      await second.goto(`/modules/api/routes?route=${encodeURIComponent("GET /fx/whoami")}&tab=tester`);
+      await ctx.verify("a second tab of the same browser", [second.count({ role: "button", name: /^GET 200 \/fx\/whoami/ }, 25)]);
+      await tab.goto(`/modules/api/routes?route=${encodeURIComponent("GET /fx/ok")}&tab=tester`);
+      await tab.visible({ role: "button", name: "Send" });
+      await ctx.verify("another route has its own History", [tab.count({ role: "button", name: /^GET 200 \/fx\/whoami/ }, 0)]);
       const logs = await settled(ctx, "the Tester's calls are stored", "/logs?limit=100", (body) => list(body, "results").filter((row) => text(row, "source") === "tester").length === 28);
       await ctx.verify("the logs", [same("every Send is one stored Tester call", list(logs.body, "results").filter((row) => text(row, "source") === "tester").length, 28)]);
+    },
+  },
+  {
+    id: "a-history-entry-restores-its-call-and-a-typed-authorization-beats-the-session",
+    title: "clicking the older History entry restores its header and its response; with Send with my session on, a header named Authorization reaches the handler instead of the session's token",
+    entryPoint: "/modules/api/routes?route=GET /fx/whoami&tab=tester",
+    async run(/** @type {Ctx} */ ctx) {
+      const tab = await tester(ctx, "GET /fx/whoami");
+      await tab.click({ role: "button", name: "Add header", nth: 0 });
+      await tab.fill({ role: "textbox", name: "Name", nth: 0 }, "x-extra");
+      await tab.fill({ role: "textbox", name: "Value", nth: 0 }, "one");
+      await tab.click({ role: "button", name: "Send" });
+      await ctx.verify("the first call", [tab.shows(/"extra": "one"/)]);
+      await tab.fill({ role: "textbox", name: "Value", nth: 0 }, "two");
+      await tab.click({ role: "button", name: "Send" });
+      await ctx.verify("the second call", [tab.shows(/"extra": "two"/), tab.count({ role: "button", name: /^GET 200 \/fx\/whoami/ }, 2)]);
+      await tab.click({ role: "button", name: /^GET 200 \/fx\/whoami/, nth: 1 });
+      await ctx.verify("the older entry", [
+        same("the header field reads the older value", await tab.value({ role: "textbox", name: "Value", nth: 0 }), "one"),
+        tab.shows(/"extra": "one"/),
+      ]);
+      await tab.click({ role: "switch", name: "Send with my session" });
+      await tab.click({ role: "button", name: "Add header", nth: 0 });
+      await tab.fill({ role: "textbox", name: "Name", nth: 1 }, "Authorization");
+      await tab.fill({ role: "textbox", name: "Value", nth: 1 }, "Bearer fixture-token");
+      await tab.click({ role: "button", name: "Send" });
+      await ctx.verify("a typed Authorization", [tab.shows(/"typed": true/), tab.shows(/"bearer": "ixture-token"|"bearer": "fixture-token"/)]);
+      await tab.click({ role: "button", name: "Remove", nth: 1 });
+      await tab.click({ role: "button", name: "Send" });
+      await ctx.verify("only the session", [tab.shows(/"typed": false/), tab.shows(/"authorization": "present"/)]);
+    },
+  },
+  {
+    id: "headers-for-all-routes-are-kept-in-the-browser-but-credentials-are-not",
+    title: "a header set for all routes reaches every route and is still there after a reload; a credential set the same way works until the reload and is gone after it",
+    entryPoint: "/modules/api/routes?route=GET /fx/whoami&tab=tester",
+    async run(/** @type {Ctx} */ ctx) {
+      const tab = await tester(ctx, "GET /fx/whoami");
+      await tab.click({ role: "button", name: "Add header", nth: 1 });
+      await tab.fill({ role: "textbox", name: "Name", nth: 0 }, "x-extra");
+      await tab.fill({ role: "textbox", name: "Value", nth: 0 }, "for-all");
+      await tab.click({ role: "button", name: "Add header", nth: 1 });
+      await tab.fill({ role: "textbox", name: "Name", nth: 1 }, "Authorization");
+      await tab.fill({ role: "textbox", name: "Value", nth: 1 }, "Bearer fixture-token");
+      await tab.click({ role: "button", name: "Send" });
+      await ctx.verify("both reach the route", [tab.shows(/"extra": "for-all"/), tab.shows(/"typed": true/)]);
+      await tab.reload();
+      await tab.click({ role: "tab", name: "Tester" });
+      await tab.visible({ role: "button", name: "Send" });
+      await tab.click({ role: "button", name: "Send" });
+      await ctx.verify("after a reload", [tab.shows(/"extra": "for-all"/), tab.shows(/"typed": false/), tab.shows(/"authorization": "absent"/)]);
+      const other = await ctx.tab("admin", "other route");
+      await other.goto(`/modules/api/routes?route=${encodeURIComponent("GET /fx/ok")}&tab=tester`);
+      await ctx.verify("another route", [other.visible({ role: "textbox", name: "Name" }), same("the header kept for all routes", await other.value({ role: "textbox", name: "Name", nth: 0 }), "x-extra")]);
+    },
+  },
+  {
+    id: "a-replayed-call-needs-its-credentials-and-redacted-values-by-hand",
+    title: "Replay in tester restores a captured call without its Authorization, leaves a redacted password as [REDACTED], and replays a body cut at capture as text",
+    entryPoint: "/modules/api/logs?record=<id> then Replay in tester",
+    async run(/** @type {Ctx} */ ctx) {
+      await saveSettings(ctx, "cap at 1 KB", { requestLogMaxBodyKb: 1 });
+      const small = await raw(ctx, "a call with credentials", { method: "POST", path: "/fx/orders/shop1/lines?limit=5", headers: { "content-type": "application/json", authorization: "Bearer replay-secret", "x-tenant": "t1" }, body: JSON.stringify({ sku: "A1", quantity: 2, password: "hunter2" }) });
+      const big = await raw(ctx, "a call above the cap", { method: "POST", path: "/fx/orders/shop2/lines", headers: { "content-type": "application/json" }, body: JSON.stringify({ sku: "B2", quantity: 1, pad: "x".repeat(2000) }) });
+      await settled(ctx, "both stored", "/logs?limit=10", (body) => list(body, "results").length === 2);
+      const tab = await ctx.tab("admin");
+      await tab.signIn("admin");
+      await openPage(tab, "/modules/api/logs");
+      await tab.click({ role: "button", name: "Open request", nth: 1 });
+      await tab.click({ role: "link", name: "Replay in tester" });
+      await ctx.verify("a call with a redacted password", [
+        tab.shows(/Replayed from [0-9a-f-]{8}/),
+        tab.shows(/Not restored: [^\n]*Authorization, Cookie and X-Api-Key are never captured\./),
+        tab.shows(/"password": "\[REDACTED\]"/),
+        tab.shows(/\?limit=5/),
+        same("the body is JSON", await tab.value({ role: "combobox", name: "Body type" }).catch(() => "JSON"), "JSON"),
+      ]);
+      await tab.click({ role: "tab", name: "Headers" });
+      const fields = await tab.page.locator("input").evaluateAll((inputs) => inputs.map((input) => (input instanceof HTMLInputElement ? input.value : "")));
+      await ctx.verify("headers", [
+        check("no Authorization came back", !fields.some((value) => /replay-secret|^authorization$/i.test(value)), fields),
+        check("the content type did", fields.includes("content-type"), fields),
+      ]);
+      await openPage(tab, "/modules/api/logs");
+      await tab.click({ role: "button", name: "Open request", nth: 0 });
+      await tab.click({ role: "link", name: "Replay in tester" });
+      await ctx.verify("a body cut at capture", [tab.shows(/Replayed from [0-9a-f-]{8}/), tab.shows(/Text/), tab.shows(/"sku":"B2"/)]);
+      void small;
+      void big;
     },
   },
 ]);

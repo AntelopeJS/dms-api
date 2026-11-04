@@ -236,7 +236,7 @@ export const journeys = guarded([
       });
       await ctx.verify("seven days", [
         same("only the calls of the last 7 days count", summarize(before.body).total, 2),
-        same("the 6 day old call's field is documented and the 8 day old one's is not", summarize(before.body).fields.map((entry) => entry[0]), ["quantity", "recent", "sku"]),
+        same("the 6 day old call's field is documented, the 8 day old one's is not, and a field missing from a call is not required", summarize(before.body).fields, [["quantity", false], ["recent", false], ["sku", true]]),
         same("the statuses seen", summarize(before.body).statuses, [[201, 2]]),
       ]);
       await ctx.verify("the Tester", [
@@ -264,6 +264,27 @@ export const journeys = guarded([
       await ctx.verify("the header of the module route", [tab.shows(/PublicOnboardingController\.getInformations\s+Auth unknown\s+Module dms\s+First seen/), tab.shows(/Project code/, { not: true, timeoutMs: 2000 })]);
       await openPage(tab, `/modules/api/routes?${named("GET /fx/ok")}`);
       await ctx.verify("the header of the project route", [tab.shows(/FixtureController\.ok\s+Auth unknown\s+Project code/), tab.shows(/Module dms/, { not: true, timeoutMs: 2000 })]);
+    },
+  },
+  {
+    id: "the-route-statistics-compare-in-points-with-the-period-before",
+    title: "with 1 client error in 10 calls the period before and 3 in 10 now, the route's requests read +0% vs 10, the error rate +20 pt vs 10% (points, not percent), and its top error reads +200% vs 1 the period before",
+    entryPoint: "/modules/api/routes?route=GET /fx/ok&tab=statistics",
+    async run(/** @type {Ctx} */ ctx) {
+      await seedLogs(ctx, "9 good calls 30 hours ago", { minutesAgo: 1800, count: 9, uri: "/fx/ok" });
+      await seedLogs(ctx, "1 client error 30 hours ago", { minutesAgo: 1800, count: 1, uri: "/fx/ok", statusCode: 404, message: "seeded gone" });
+      await seedLogs(ctx, "7 good calls now", { minutesAgo: 20, count: 7, uri: "/fx/ok" });
+      await seedLogs(ctx, "3 client errors now", { minutesAgo: 20, count: 3, uri: "/fx/ok", statusCode: 404, message: "seeded gone" });
+      const ref = "GET /fx/ok";
+      await settled(ctx, "the compared period", `/routes/statistics/summary?${named(ref)}&preset=last-24h&comparison=previous-period`, (body) => num(list(body, "items").find((item) => text(item, "id") === "requests"), "value") === 10);
+      const tab = await ctx.tab("admin");
+      await tab.signIn("admin");
+      await openPage(tab, `/modules/api/routes?${named(ref)}&tab=statistics`);
+      await ctx.verify("the figures", [
+        tab.shows(/REQUESTS\s+10\s+\+0% vs\. 10 previous period/),
+        tab.shows(/ERROR RATE\s+30%\s+3 × 4xx · 0 × 5xx · \+20 pt vs\. 10% previous period/),
+        tab.shows(/404 · seeded gone\s+Client error · last [^\n]* · \+200% vs\. 1 previous period\s+3/),
+      ]);
     },
   },
 ]);

@@ -118,6 +118,14 @@ export const journeys = guarded([
       ]);
       await tab.click({ role: "button", name: "Show", exact: true });
       await ctx.verify("shown", [tab.visible({ role: "button", name: "All 5" }), tab.shows(/\/fx\/boom/)]);
+      await tab.click({ role: "button", name: "Pause" });
+      await openPage(tab, "/modules/api/overview");
+      await ctx.verify("the choice applies to the Overview", [isOn(tab, { role: "button", name: "Pause" })]);
+      await openPage(tab, "/modules/api/routes");
+      await ctx.verify("and to Routes", [isOn(tab, { role: "button", name: "Pause" })]);
+      await tab.click({ role: "button", name: "Live" });
+      await openPage(tab, "/modules/api/logs");
+      await ctx.verify("and back to Live everywhere", [isOn(tab, { role: "button", name: "Live" })]);
     },
   },
   {
