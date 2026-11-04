@@ -48,7 +48,7 @@ importers:
         specifier: 1.20.0
         version: 1.20.0
       '@antelopejs/dms-frontend':
-        specifier: 0.10.0
+        specifier: '>=0.10.0 <1.0.0'
         version: 0.10.0(@antelopejs/core@1.20.0)
       '@types/node':
         specifier: ^22.14.1
@@ -78,7 +78,7 @@ packages:
       '@antelopejs/core': '>=1.16.0 <2'
 
   '@antelopejs/dms@file:../.campaign/tgz/antelopejs-dms-14e671d.tgz':
-    resolution: {tarball: file:../.campaign/tgz/antelopejs-dms-14e671d.tgz}
+    resolution: {integrity: sha512-M783RksdAfeajsrkxkAtxtqrZStVfvvlcZz58hKVF6teZqemK2GgMwB2gwY16SlgvJSrvQuNWVb6XDRa8IVR0Q==, tarball: file:../.campaign/tgz/antelopejs-dms-14e671d.tgz}
     version: 0.15.0
     hasBin: true
     peerDependencies:
@@ -123,13 +123,13 @@ packages:
       '@antelopejs/interface-core': 0.4.0
 
   '@antelopejs/interface-dms-automation@file:../.campaign/tgz/antelopejs-interface-dms-automation-b4bc5d2.tgz':
-    resolution: {tarball: file:../.campaign/tgz/antelopejs-interface-dms-automation-b4bc5d2.tgz}
+    resolution: {integrity: sha512-QYkzTrr7ZGybut0ajNGNXUCwMQtP9WKeXeTfiwF8e6kFie/JXYL8RbcEditGg14AZgleAKESoCzvcQvtKeKweA==, tarball: file:../.campaign/tgz/antelopejs-interface-dms-automation-b4bc5d2.tgz}
     version: 0.6.0
     peerDependencies:
       '@antelopejs/interface-core': 0.4.0
 
   '@antelopejs/interface-dms@file:../.campaign/tgz/antelopejs-interface-dms-14e671d.tgz':
-    resolution: {tarball: file:../.campaign/tgz/antelopejs-interface-dms-14e671d.tgz}
+    resolution: {integrity: sha512-T/bpb8XB+MW5gamrUtiyy/t0nJ/iMW9aZItL93zbu0n6WKWQpEfBzVaNUJrqfTdqen1nMHp+jzDRD8AkWvkjsg==, tarball: file:../.campaign/tgz/antelopejs-interface-dms-14e671d.tgz}
     version: 0.12.0
     peerDependencies:
       '@antelopejs/interface-api': 0.2.0
