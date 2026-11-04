@@ -1,24 +1,4 @@
 @antelopejs/interface-dms-automation	package.json	optionalDependencies	>=0.2.1 <1.0.0
 @antelopejs/interface-dms-automation	package.json	pnpm.overrides	
 @antelopejs/interface-dms-automation	pnpm-workspace.yaml	overrides	
-@antelopejs/interface-api	package.json	pnpm.overrides	
-@antelopejs/interface-api-util	package.json	pnpm.overrides	
-@antelopejs/interface-database	package.json	pnpm.overrides	
-@antelopejs/interface-database-decorators	package.json	pnpm.overrides	
-@antelopejs/interface-data-api	package.json	pnpm.overrides	
-@antelopejs/interface-dms	package.json	dependencies	>=0.9.0 <1.0.0
-@antelopejs/interface-dms	playground/package.json	dependencies	>=0.9.0 <1.0.0
-@antelopejs/interface-dms	package.json	pnpm.overrides	
-@antelopejs/dms	playground/package.json	dependencies	>=0.11.0 <1.0.0
-@antelopejs/interface-api	playground/package.json	pnpm.overrides	
-@antelopejs/interface-api-util	playground/package.json	pnpm.overrides	
-@antelopejs/interface-database	playground/package.json	pnpm.overrides	
-@antelopejs/interface-database-decorators	playground/package.json	pnpm.overrides	
-@antelopejs/interface-data-api	playground/package.json	pnpm.overrides	
-@antelopejs/interface-dms	playground/package.json	pnpm.overrides	
-@antelopejs/dms	playground/package.json	pnpm.overrides	
 @antelopejs/interface-dms-automation	playground/package.json	pnpm.overrides	
-@antelopejs/interface-core	playground/package.json	pnpm.overrides	
-@antelopejs/interface-core	package.json	pnpm.overrides	
-@antelopejs/dms	package.json	devDependencies	>=0.13.1 <1.0.0
-@antelopejs/dms	package.json	pnpm.overrides	
