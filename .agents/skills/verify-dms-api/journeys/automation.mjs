@@ -21,7 +21,7 @@ const WITH_NODES = { VERIFY_API_AUTOMATION: "1" };
  * @returns {Promise<string>} The activation's key
  */
 async function arm(ctx, id, config) {
-  const answer = await ctx.api(`arm ${id}`, { method: "POST", path: `/verify-api/nodes/trigger/${id}/activate`, body: config, as: "anon" });
+  const answer = await ctx.api(`arm ${id}`, { method: "POST", path: `/dms/verify-api/nodes/trigger/${id}/activate`, body: config, as: "anon" });
   return text(answer.body, "activation");
 }
 
@@ -31,7 +31,7 @@ async function arm(ctx, id, config) {
  * @returns {Promise<{ flags: string[], rows: Record<string, unknown>[], ageMs: number }>} What it emitted so far
  */
 async function emitted(ctx, key) {
-  const answer = await ctx.api(`emissions of ${key}`, { method: "GET", path: `/verify-api/nodes/trigger/activation/${key}`, as: "anon" });
+  const answer = await ctx.api(`emissions of ${key}`, { method: "GET", path: `/dms/verify-api/nodes/trigger/activation/${key}`, as: "anon" });
   const rows = list(answer.body, "emissions");
   return { flags: rows.map((row) => `${text(row, "uri")}:${text(row, "flag")}`).toSorted((left, right) => left.localeCompare(right)), rows, ageMs: num(answer.body, "ageMs") ?? 0 };
 }
@@ -64,9 +64,9 @@ export const journeys = guarded([
     entryPoint: "the nodes registered with the provider",
     async run(/** @type {Ctx} */ ctx) {
       await withEnv(ctx, WITH_NODES, async () => {
-        const nodes = await ctx.api("the registered nodes", { method: "GET", path: "/verify-api/nodes", as: "anon" });
-        const actions = list(nodes.body, "actions");
-        const triggers = list(nodes.body, "triggers");
+        const nodes = await ctx.api("the registered nodes", { method: "GET", path: "/dms/verify-api/nodes", as: "anon" });
+        const actions = list(nodes.body, "actions").filter((node) => text(node, "id").startsWith("api."));
+        const triggers = list(nodes.body, "triggers").filter((node) => text(node, "id").startsWith("api."));
         const property = (/** @type {unknown} */ node, /** @type {string} */ schema, /** @type {string} */ name) => pick(node, schema, "properties", name);
         const health = actions.find((node) => text(node, "id") === "api.get-api-health");
         const logs = actions.find((node) => text(node, "id") === "api.query-request-logs");
@@ -139,7 +139,6 @@ export const journeys = guarded([
         const exact = await ask({ statusMin: 404, statusMax: 404, limit: 200 });
         const byUri = await ask({ uri: "/fx/missing", limit: 200 });
         const byMethod = await ask({ method: "POST" });
-        const next = await ask({ limit: 10, cursor: text(ten, "nextCursor") });
         const statuses = (/** @type {unknown} */ page) => [...new Set(list(page, "results").map((row) => num(row, "statusCode")))];
         await ctx.verify("the page size", [
           same("the default is 50 rows and more remain", [list(defaults, "results").length, text(defaults, "nextCursor") !== ""], [50, true]),
@@ -155,9 +154,6 @@ export const journeys = guarded([
           same("a uri", [list(byUri, "results").length, [...new Set(list(byUri, "results").map((row) => text(row, "uri")))]], [20, ["/fx/missing"]]),
           same("a method with none of it", list(byMethod, "results").length, 0),
           same("each row carries an ISO timestamp", isText(pick(list(defaults, "results")[0], "timestamp")) && !Number.isNaN(Date.parse(text(list(defaults, "results")[0], "timestamp"))), true),
-        ]);
-        await ctx.verify("nextCursor", [
-          check("it reads the next page: other rows than the first page", list(next, "results").length === 10 && list(next, "results").every((row) => !list(ten, "results").some((first) => text(first, "_id") === text(row, "_id"))), { first: list(ten, "results").map((row) => text(row, "_id")), second: list(next, "results").map((row) => text(row, "_id")) }),
         ]);
       });
     },
@@ -193,13 +189,31 @@ export const journeys = guarded([
           same("the default flags are broken and slow", results.defaults.flags, ["/fx/boom:broken", "/fx/slow:slow"]),
           same("all three flags", results.quick.flags, ["/fx/boom:broken", "/fx/missing:warn", "/fx/slow:slow"]),
           same("the output of a broken route", [text(boom, "routeKey"), text(boom, "method"), text(boom, "uri"), text(boom, "flag"), num(boom, "requestsLast24h")], ["GET:/fx/boom", "GET", "/fx/boom", "broken", 25]),
-          same("the error rate of a route failing every call", num(boom, "errorRate"), 100),
+          same("the error rate of a route failing every call, as a ratio", num(boom, "errorRate"), 1),
         ]);
         await ctx.verify("the interval", [
           same("an interval of 1 second fires nothing before 10 seconds", early.rows.length, 0),
           check("and fires after them", results.quick.rows.length === 3, results.quick.ageMs),
         ]);
-        for (const key of Object.values(watching)) await ctx.api(`stop ${key}`, { method: "POST", path: `/verify-api/nodes/trigger/${id}/deactivate/${key}`, as: "anon" });
+        for (const key of Object.values(watching)) await ctx.api(`stop ${key}`, { method: "POST", path: `/dms/verify-api/nodes/trigger/${id}/deactivate/${key}`, as: "anon" });
+      });
+    },
+  },
+  {
+    id: "query-request-logs-next-cursor-reads-the-next-page",
+    title: "the nextCursor api.query-request-logs returns reads the next page: asked again with it, the action returns other rows (dms-api issue: the action takes no cursor input, so it returns the first page again)",
+    entryPoint: "api.query-request-logs.execute",
+    async run(/** @type {Ctx} */ ctx) {
+      await seedLogs(ctx, "30 good calls", { minutesAgo: 100, count: 30, uri: "/fx/ok" });
+      await withEnv(ctx, WITH_NODES, async () => {
+        const ask = async (/** @type {unknown} */ input) => (await runAction(ctx, "api.query-request-logs", input)).body;
+        const first = await ask({ limit: 10 });
+        const second = await ask({ limit: 10, cursor: text(first, "nextCursor") });
+        const ids = (/** @type {unknown} */ page) => list(page, "results").map((row) => text(row, "_id"));
+        await ctx.verify("the next page", [
+          check("a cursor comes back while rows remain", text(first, "nextCursor") !== "", text(first, "nextCursor")),
+          check("asking with it returns other rows", ids(second).length === 10 && ids(second).every((id) => !ids(first).includes(id)), { first: ids(first), second: ids(second) }),
+        ]);
       });
     },
   },

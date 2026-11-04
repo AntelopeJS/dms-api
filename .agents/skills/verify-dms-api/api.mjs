@@ -421,5 +421,5 @@ export async function withEnv(ctx, env, body) {
  * @returns {Promise<Answer>} The action's output
  */
 export function runAction(ctx, id, input) {
-  return ctx.api(`run ${id} ${JSON.stringify(input).slice(0, 60)}`, { method: "POST", path: `/verify-api/nodes/action/${id}`, body: input, as: "anon" });
+  return ctx.api(`run ${id} ${JSON.stringify(input).slice(0, 60)}`, { method: "POST", path: `/dms/verify-api/nodes/action/${id}`, body: input, as: "anon" });
 }

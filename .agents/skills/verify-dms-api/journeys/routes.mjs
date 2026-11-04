@@ -52,7 +52,7 @@ export const journeys = guarded([
       await tab.fill({ role: "textbox", name: "Filter by path or handler" }, "items");
       await ctx.verify("the path filter", [tab.shows(new RegExp(`3 of ${FIXTURE_ROUTES} routes · 1 folder`)), tab.visible({ role: "treeitem", name: "GET /fx/boom 25 Failing" }, { hidden: true, timeoutMs: 4000 })]);
       await tab.fill({ role: "textbox", name: "Filter by path or handler" }, "boom");
-      await ctx.verify("the handler filter", [tab.shows(new RegExp(`1 of ${FIXTURE_ROUTES} routes`))]);
+      await ctx.verify("the handler filter", [tab.shows(new RegExp(`2 of ${FIXTURE_ROUTES} routes`)), tab.visible({ role: "treeitem", name: /^GET \/fx\/boom-twin\b/ })]);
       await tab.fill({ role: "textbox", name: "Filter by path or handler" }, "identify");
       await ctx.verify("a handler name the path does not hold", [tab.shows(new RegExp(`1 of ${FIXTURE_ROUTES} routes`)), tab.visible({ role: "treeitem", name: /^GET \/fx\/who\b/ })]);
 
@@ -308,12 +308,14 @@ export const journeys = guarded([
           tab.shows(/curl -X GET 'https:\/\/api\.example\.com\/fx\/ok'/),
         ]);
         await tab.click({ role: "radio", name: "fetch" });
-        await ctx.verify("fetch", [tab.shows(/fetch\('https:\/\/api\.example\.com\/fx\/ok'/)]);
+        await ctx.verify("fetch", [tab.shows(/await fetch\("https:\/\/api\.example\.com\/fx\/ok"/)]);
         await openPage(tab, `/modules/api/routes?${named("GET /fx/blob")}&tab=documentation`);
         await ctx.verify("a route never called", [
           tab.shows(/What was never called does not show\./),
           tab.shows(/EXAMPLE REQUEST/),
-          tab.shows(/RESPONSES|BODY\n|Inferred from/, { not: true, timeoutMs: 3000 }),
+          tab.shows(/Nothing observed in the last 7 days, and no error code found in the handler's code\./),
+          tab.shows(/size\s+string\s+no successful call yet/),
+          tab.shows(/Inferred from|e\.g\./, { not: true, timeoutMs: 3000 }),
         ]);
       });
     },

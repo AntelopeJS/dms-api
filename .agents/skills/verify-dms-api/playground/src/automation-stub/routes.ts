@@ -19,8 +19,8 @@ interface Activation {
 const activations = new Map<string, Activation>();
 let counter = 0;
 
-/** What a journey does with the nodes the module registered: list them, run an action, arm a trigger and read what it emitted. */
-export class AutomationNodesController extends Controller("/verify-api/nodes") {
+/** Under /dms, which the console neither logs nor counts, so running a node adds no traffic. What a journey does with the nodes the module registered: list them, run an action, arm a trigger and read what it emitted. */
+export class AutomationNodesController extends Controller("/dms/verify-api/nodes") {
   @Get("")
   list() {
     return asJson({

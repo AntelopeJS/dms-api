@@ -4,9 +4,6 @@
   "private": true,
   "main": "dist/index.js",
   "antelopeJs": {
-    "baseUrl": "dist",
-    "implements": [
-      "@antelopejs/interface-dms-automation"
-    ]
+    "baseUrl": "dist"
   }
 }

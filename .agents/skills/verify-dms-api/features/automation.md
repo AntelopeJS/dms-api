@@ -15,6 +15,7 @@ The three nodes the module registers when `@antelopejs/dms-automation` is loaded
 - `the-module-registers-its-three-nodes-with-their-documented-inputs`
 - `get-api-health-restricts-its-breakdown-to-the-last-days`
 - `query-request-logs-pages-caps-and-filters`
+- `query-request-logs-next-cursor-reads-the-next-page`
 - `route-unhealthy-fires-on-the-flags-it-watches-and-never-faster-than-ten-seconds`
 
 ## How to get to it (user POV)
