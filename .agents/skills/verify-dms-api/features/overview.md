@@ -49,6 +49,7 @@ The Overview: the health verdict and why, the attention list, the slowest routes
 - `the-period-and-the-comparison-are-kept-in-the-url-and-shared-by-the-pages`
 - `down-reads-the-last-five-minutes-and-not-the-last-fifteen`
 - `errors-older-than-five-minutes-do-not-make-the-api-down`
+- `a-comparison-beyond-the-kept-statistics-compares-with-nothing`
 - `the-module-path-redirects-to-the-overview`
 - `a-route-is-flagged-at-the-documented-edges-whatever-the-period`
 - the verdict ladder: `with-no-traffic-the-verdict-is-idle`, `nineteen-failing-calls-are-too-few-to-judge`, `one-failing-call-in-a-hundred-is-degraded`, `one-failing-call-in-a-hundred-and-one-is-operational`, `a-fifth-of-the-calls-failing-is-down`, `nineteen-percent-failing-is-degraded-not-down`

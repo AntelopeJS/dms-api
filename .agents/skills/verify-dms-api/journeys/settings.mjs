@@ -7,12 +7,6 @@ import { readDocuments, seedLogs, seedStatistics, dayStart } from "../seed.mjs";
 
 /** @typedef {import("../api.mjs").Ctx} Ctx */
 
-/**
- * @param {string} ref A route reference
- * @returns {string} The query that names it
- */
-const named = (ref) => `route=${encodeURIComponent(ref)}`;
-
 const DEFAULT_HEADERS = ["content-type", "content-length", "user-agent", "accept", "accept-encoding", "host", "referer", "origin"];
 
 /**
@@ -286,39 +280,6 @@ export const journeys = guarded([
       await ctx.verify("a retention of 0", [
         check("the module stops and says so", !outcome.started && /\[dms-api\] invalid configuration/.test(outcome.log), { started: outcome.started, form: form?.body }),
       ]);
-    },
-  },
-  {
-    id: "a-comparison-beyond-the-kept-statistics-compares-with-nothing",
-    title: "with the statistics kept 30 days the 30D period has no previous period (nothing is drawn, no zeros) and Routes says so; kept 60 days it has one; the 7D period keeps its comparison either way",
-    entryPoint: "GET /api/monitoring/overview/traffic?comparison=previous-period",
-    async run(/** @type {Ctx} */ ctx) {
-      await traffic(ctx, "some calls", [{ path: "/fx/ok", count: 3 }]);
-      const windowOf = async (/** @type {string} */ label, /** @type {string} */ preset) => {
-        const answer = await settled(ctx, label, `/overview/traffic?preset=${preset}&comparison=previous-period`, (body) => num(body, "value") === 3);
-        return [pick(answer.body, "window", "previousAvailable"), pick(answer.body, "window", "comparison"), list(answer.body, "series").length];
-      };
-      const kept90 = await windowOf("30D kept 90 days", "last-30-days");
-      await saveSettings(ctx, "keep 60 days", { statisticsLifetimeDays: 60 });
-      const kept60 = await windowOf("30D kept 60 days", "last-30-days");
-      await saveSettings(ctx, "keep 30 days", { statisticsLifetimeDays: 30 });
-      const kept30 = await windowOf("30D kept 30 days", "last-30-days");
-      const week30 = await windowOf("7D kept 30 days", "last-7-days");
-      await ctx.verify("the API", [
-        same("kept 90 days: the 30D period has a previous period", kept90[0], true),
-        same("kept 60 days: the 30D period has a previous period", kept60[0], true),
-        same("kept 30 days: the 30D period has none", kept30[0], false),
-        same("kept 30 days: the 7D period still has one", week30[0], true),
-      ]);
-      const tab = await ctx.tab("admin");
-      await tab.signIn("admin");
-      await openPage(tab, `/modules/api/routes?${named("GET /fx/ok")}&api.period=last-30-days&api.compare=previous-period`);
-      await ctx.verify("Routes at 30 days", [tab.shows(/REQUESTS\s+3\s+No previous period/)]);
-      await openPage(tab, `/modules/api/routes?${named("GET /fx/ok")}&api.period=last-7-days&api.compare=previous-period`);
-      await ctx.verify("Routes at 7 days", [tab.shows(/REQUESTS\s+3\s+none over the previous period/)]);
-      await saveSettings(ctx, "keep 90 days again", { statisticsLifetimeDays: 90 });
-      await openPage(tab, `/modules/api/routes?${named("GET /fx/ok")}&api.period=last-30-days&api.compare=previous-period`);
-      await ctx.verify("Routes at 30 days kept 90", [tab.shows(/REQUESTS\s+3\s+none over the previous period/)]);
     },
   },
   {
