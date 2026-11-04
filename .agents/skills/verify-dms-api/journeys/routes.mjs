@@ -224,6 +224,7 @@ export const journeys = guarded([
       const token = text((await mon(ctx, "ask a Tester token", "/tester/source")).body, "value");
       await raw(ctx, "a Tester call with its own fields", { method: "POST", path: "/fx/orders/shop9/lines?viaTester=1", headers: { "content-type": "application/json", "x-antelopejs-api-source": token }, body: JSON.stringify({ sku: "T9", quantity: 9, viaTester: true }) });
       await settled(ctx, "the Tester call is stored", "/logs?limit=50", (body) => list(body, "results").some((row) => text(row, "source") === "tester"));
+      await new Promise((resolve) => setTimeout(resolve, 16_000));
       const after = await mon(ctx, "the contract after the Tester call", `/routes/detail?${named(ref)}`);
       const summarize = (/** @type {unknown} */ body) => ({
         total: num(body, "contract", "total"),
