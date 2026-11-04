@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.6.1
+
+[compare changes](https://github.com/AntelopeJS/dms-api/compare/v0.6.0...v0.6.1)
+
+### 🩹 Fixes
+
+- **routes:** Write one row per route across replicas ([#96](https://github.com/AntelopeJS/dms-api/pull/96))
+
+### 📖 Documentation
+
+- **github:** Send questions and ideas to Discord ([#97](https://github.com/AntelopeJS/dms-api/pull/97))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli ([@Upd4ting](http://github.com/Upd4ting))
+
 ## v0.6.0
 
 [compare changes](https://github.com/AntelopeJS/dms-api/compare/v0.5.1...v0.6.0)
