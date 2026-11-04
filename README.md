@@ -56,7 +56,7 @@ pnpm --dir playground traffic     # a few hundred demo requests
 | `@antelopejs/interface-core`                | `>=0.4.0 <1.0.0`                                                     | `0.4.0`                                                              |
 | `@antelopejs/interface-database`            | `>=0.3.0 <1.0.0`                                                     | `0.3.0`                                                              |
 | `@antelopejs/interface-database-decorators` | `>=0.2.0 <1.0.0`                                                     | `0.2.0`                                                              |
-| `@antelopejs/interface-dms`                 | `file:.campaign/tgz/antelopejs-interface-dms-14e671d.tgz`            | `file:.campaign/tgz/antelopejs-interface-dms-14e671d.tgz`            |
+| `@antelopejs/interface-dms`                 | `>=0.12.0 <1.0.0`                                                    | `0.12.0`                                                             |
 | `@antelopejs/interface-dms-automation`      | `file:.campaign/tgz/antelopejs-interface-dms-automation-b4bc5d2.tgz` | `file:.campaign/tgz/antelopejs-interface-dms-automation-b4bc5d2.tgz` |
 
 <!-- antelopejs-docs-compat:end -->
