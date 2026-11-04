@@ -42,7 +42,7 @@ const config: VerifyConfig = {
     data: {
       globs: ["src/services/request-log/prune.ts", "src/services/statistics-prune.ts", "src/db/models/request_log.model.ts", "src/db/models/routes_statistics.model.ts", "src/index.ts"],
       funnels: [],
-      containments: ["settings/the-hourly-prune-deletes-what-the-retention-passed"],
+      containments: ["retention/the-hourly-prune-deletes-what-the-retention-passed"],
       why: "the hourly prune deletes stored request logs and per-day statistics, which a revert of the code does not bring back",
     },
     format: {

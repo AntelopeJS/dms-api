@@ -5,7 +5,6 @@ covers:
   - src/realtime.ts
   - src/services/statistics-write.ts
   - src/services/statistics-aggregate.ts
-  - src/services/statistics-prune.ts
   - src/services/statistics-utils.ts
   - src/services/aggregate-cache.ts
   - src/services/traffic-samples.ts

@@ -1,0 +1,13 @@
+diff --git a/src/services/statistics-prune.ts b/src/services/statistics-prune.ts
+index 92c34b2..1e0e328 100644
+--- a/src/services/statistics-prune.ts
++++ b/src/services/statistics-prune.ts
+@@ -50,7 +50,7 @@ export async function pruneAllStatistics(
+ ): Promise<number> {
+   const { statisticsLifetime } = getConfig();
+   const today = getTodayTimestamp();
+-  const cutoff = today - statisticsLifetime;
++  const cutoff = today - statisticsLifetime - 20 * 86_400_000;
+ 
+   const allStats = await statsModel.getAll();
+   let prunedCount = 0;
