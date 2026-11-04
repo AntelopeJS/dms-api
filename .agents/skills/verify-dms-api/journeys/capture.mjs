@@ -1,5 +1,5 @@
 import { guarded } from "../guard.mjs";
-import { check, list, mon, num, parseJson, pick, same, saveSettings, sendAndRead, settled, text, traffic } from "../api.mjs";
+import { check, isRow, list, mon, num, parseJson, pick, same, saveSettings, sendAndRead, settled, text, traffic } from "../api.mjs";
 
 /** @typedef {import("../api.mjs").Ctx} Ctx */
 
@@ -173,6 +173,59 @@ export const journeys = guarded([
         same("a plain card number is redacted", pick(stored, "ref"), "[REDACTED]"),
         same("twelve digits are not a card number", pick(stored, "short"), "411111111111"),
         same("other text is kept", pick(stored, "note"), "order 12345"),
+      ]);
+    },
+  },
+  {
+    id: "secrets-and-card-numbers-are-redacted-wherever-they-sit",
+    title: "card numbers and credential keys are redacted in query values (repeated ones too), form bodies, JSON arrays and nested arrays, at their count; invalid or look-alike digits are kept; bodies that are not JSON or form data, malformed JSON and bare JSON strings are not stored",
+    entryPoint: "GET /api/monitoring/logs/:id after calls to /fx/ok and /fx/echo",
+    async run(/** @type {Ctx} */ ctx) {
+      const query = await sendAndRead(ctx, "query values", { path: "/fx/ok?memo=4111111111111111&dash=4111-1111-1111-1111&sp=4111%201111%201111%201111&bad=4111111111111112&ms=1700000000000&amex=378282246310005&mc=5555555555554444&rep=1&rep=5555555555554444&token=abc&page=2&text=order%204111%201111%201111%201111%20paid" });
+      await ctx.verify("the query string", [
+        same("a plain card number", pick(query.log, "query", "memo"), "[REDACTED]"),
+        same("a card number with dashes", pick(query.log, "query", "dash"), "[REDACTED]"),
+        same("a card number with spaces", pick(query.log, "query", "sp"), "[REDACTED]"),
+        same("an American Express number", pick(query.log, "query", "amex"), "[REDACTED]"),
+        same("a Mastercard number", pick(query.log, "query", "mc"), "[REDACTED]"),
+        same("16 digits that fail the Luhn check are kept", pick(query.log, "query", "bad"), "4111111111111112"),
+        same("an epoch in milliseconds is kept", pick(query.log, "query", "ms"), "1700000000000"),
+        same("a repeated parameter keeps its plain value and redacts its card", pick(query.log, "query", "rep"), ["1", "[REDACTED]"]),
+        same("a credential key", pick(query.log, "query", "token"), "[REDACTED]"),
+        same("a plain parameter", pick(query.log, "query", "page"), "2"),
+        same("a card number inside a sentence", pick(query.log, "query", "text"), "order [REDACTED] paid"),
+        same("the count: memo, dash, sp, amex, mc, rep, token, text", pick(query.log, "redactions", "query"), 8),
+      ]);
+      const form = await sendAndRead(ctx, "form body", { method: "POST", path: "/fx/echo", headers: { "content-type": "application/x-www-form-urlencoded" }, body: "memo=4111111111111111&name=plain&password=x&amex=378282246310005&bad=4111111111111112" });
+      await ctx.verify("a form body", [
+        same("the stored form", text(form.log, "requestBody"), "memo=%5BREDACTED%5D&name=plain&password=%5BREDACTED%5D&amex=%5BREDACTED%5D&bad=4111111111111112"),
+        same("the count", pick(form.log, "redactions", "requestBody"), 3),
+      ]);
+      const nested = await sendAndRead(ctx, "arrays", { method: "POST", path: "/fx/echo", headers: { "content-type": "application/json" }, body: JSON.stringify({ items: [{ password: "p", keep: "k" }], cards: ["4111 1111 1111 1111", "plain"], n: [4111111111111111], m: 1700000000000, nest: [[{ token: "t", ok: 1 }]] }) });
+      await ctx.verify("arrays", [
+        same("the stored body", parseJson(text(nested.log, "requestBody")), { items: [{ password: "[REDACTED]", keep: "k" }], cards: ["[REDACTED]", "plain"], n: ["[REDACTED]"], m: 1700000000000, nest: [[{ token: "[REDACTED]", ok: 1 }]] }),
+        same("the request count", pick(nested.log, "redactions", "requestBody"), 4),
+        same("the response is redacted the same way", pick(nested.log, "redactions", "responseBody"), 4),
+        same("the stored response", parseJson(text(nested.log, "responseBody")), parseJson(text(nested.log, "requestBody"))),
+      ]);
+      /** @type {Record<string, unknown>} */
+      let deep = { leaf: "x" };
+      for (let level = 0; level < 40; level += 1) deep = { next: deep };
+      const tall = await sendAndRead(ctx, "forty levels", { method: "POST", path: "/fx/echo", headers: { "content-type": "application/json" }, body: JSON.stringify(deep) });
+      let walk = parseJson(text(tall.log, "requestBody"));
+      let levels = 0;
+      while (isRow(walk) && "next" in walk) {
+        walk = walk.next;
+        levels += 1;
+      }
+      await ctx.verify("a body nested deeper than 32 levels", [same("it stops at level 32 with a redaction", [levels, walk], [32, "[REDACTED]"])]);
+      const notJson = await sendAndRead(ctx, "text body", { method: "POST", path: "/fx/echo", headers: { "content-type": "text/plain" }, body: "token=abc" });
+      const malformed = await sendAndRead(ctx, "malformed JSON", { method: "POST", path: "/fx/echo", headers: { "content-type": "application/json" }, body: '{"password":' });
+      const bare = await sendAndRead(ctx, "bare string", { method: "POST", path: "/fx/echo", headers: { "content-type": "application/json" }, body: '"sk_live_abc"' });
+      await ctx.verify("bodies that cannot be redacted by key", [
+        same("text/plain is not stored", [pick(notJson.log, "requestBody"), pick(notJson.log, "requestBodyOmitted")], [null, "not-json"]),
+        same("malformed JSON is not stored", [pick(malformed.log, "requestBody"), pick(malformed.log, "requestBodyOmitted")], [null, "malformed"]),
+        same("a bare JSON string is not stored", [pick(bare.log, "requestBody"), pick(bare.log, "requestBodyOmitted")], [null, "not-json"]),
       ]);
     },
   },

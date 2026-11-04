@@ -98,6 +98,7 @@ $C doors "$PWD/.agents/skills/verify-dms-api/seeded-doors/data.patch"
   - `settings/a-log-retention-of-no-day-is-refused-at-start` fails: `requestLogRetention: 0` starts the module, the form shows 1 day, and the hourly prune uses a cutoff of now (dms-api#103);
   - `access/a-role-opens-the-blocks-it-holds-and-no-others` fails: the docs say a role can hold one block of the console, but the DMS grants module-scoped permissions to the owner only (dms-api#104);
   - the docs read J as previous and K as next in the request drawer, the drawer steps the other way (dms-api#102; the journey asserts the behaviour the page announces);
+  - `logs/a-past-range-draws-at-most-120-bars` fails: a past range that does not start on a bar boundary draws 121 bars where the docs promise at most 120 (a pending issue, `live.ts` closing bar);
   - the docs and the Tester tab name the header `x-dms-api-source`, the code sends `x-antelopejs-api-source` (docs mismatch, pinned in coverage/tester.md).
 - The host's time zone must be a real one: with `TZ` unknown the dashboard pages answer 500 "Invalid time zone specified". Run with `TZ=UTC` (and `--pass-env TZ` for the agent-skills eval).
 - `npm pack` ships `frontend-vue/tests/**` with the Vue layer (the `files` entry is the whole folder); the package journeys do not forbid it.

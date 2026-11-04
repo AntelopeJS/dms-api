@@ -13,6 +13,37 @@ const ROUTES = [
   ["GET", "/settings"], ["POST", "/settings"], ["GET", "/settings/retention-impact?field=requestLogRetentionDays&days=30"], ["GET", "/settings/summary"], ["GET", "/tester/source"],
 ];
 
+/** The permission each route of the console names in a refusal: one block, one id. */
+const BLOCK_OF = new Map([
+  ["GET /overview/health", "modules.api.monitor.overview.health"],
+  ["GET /overview/traffic", "modules.api.monitor.overview.dashboard.traffic.chart"],
+  ["GET /overview/classes", "modules.api.monitor.overview.dashboard.traffic.classes"],
+  ["GET /overview/error-share", "modules.api.monitor.overview.dashboard.health.errorShare"],
+  ["GET /overview/attention", "modules.api.monitor.overview.dashboard.health.attention"],
+  ["GET /overview/slowest", "modules.api.monitor.overview.dashboard.health.slowest"],
+  ["GET /overview/activity", "modules.api.monitor.overview.dashboard.recent.activity"],
+  ["GET /logs", "modules.api.monitor.logs.requests"],
+  ["GET /logs/recent", "modules.api.monitor.overview.dashboard.recent.requests.table"],
+  ["GET /logs/routes", "modules.api.explore.routes.explorer.tabs.statistics.recent.requests.table"],
+  ["GET /logs/tester", "modules.api.explore.routes.explorer.tabs.tester"],
+  ["GET /logs/live", "modules.api.monitor.logs.live"],
+  ["GET /logs/missing", "modules.api.monitor.logs.requests"],
+  ["GET /logs/recent/missing", "modules.api.monitor.overview.dashboard.recent.requests.table"],
+  ["GET /logs/tester/missing", "modules.api.explore.routes.explorer.tabs.tester"],
+  ["GET /logs/routes/missing", "modules.api.explore.routes.explorer.tabs.statistics.recent.requests.table"],
+  ["GET /routes/list", "modules.api.explore.routes.explorer.tree"],
+  ["GET /routes/detail", "modules.api.explore.routes.explorer"],
+  ["GET /routes/statistics/activity", "modules.api.explore.routes.explorer.tabs.statistics"],
+  ["GET /routes/statistics/summary", "modules.api.explore.routes.explorer.tabs.statistics.grid.summary.summary"],
+  ["GET /routes/statistics/status", "modules.api.explore.routes.explorer.tabs.statistics.grid.charts.status"],
+  ["GET /routes/statistics/latency-chart", "modules.api.explore.routes.explorer.tabs.statistics.grid.charts.latency"],
+  ["GET /routes/statistics/errors", "modules.api.explore.routes.explorer.tabs.statistics.grid.detail.errors"],
+  ["GET /settings", "modules.api.configure.settings.form"],
+  ["POST /settings", "modules.api.configure.settings.form"],
+  ["GET /settings/retention-impact", "modules.api.configure.settings.form"],
+  ["GET /tester/source", "modules.api.explore.routes.explorer.tabs.tester"],
+]);
+
 /**
  * @param {Ctx} ctx The journey
  * @param {string} as The account
@@ -40,7 +71,7 @@ export const journeys = guarded([
       const plain = await sweep(ctx, "plain");
       const owner = await sweep(ctx, "admin");
       await ctx.verify("without a session", anonymous.map((entry) => same(`${entry.route} is 401`, entry.status, 401)));
-      await ctx.verify("a member with no permission", plain.map((entry) => check(`${entry.route} is 403 and names what is missing`, entry.status === 403 && /(missing permission|Owner-only)/.test(entry.message), entry)));
+      await ctx.verify("a member with no permission", plain.map((entry) => same(`${entry.route} refuses with its own block's permission`, entry.message, entry.route === "GET /settings/summary" ? "Owner-only" : `Forbidden: missing permission ${BLOCK_OF.get(entry.route)}`)));
       await ctx.verify("the owner", owner.map((entry) => check(`${entry.route} passes the guard`, entry.status !== 401 && entry.status !== 403, entry)));
     },
   },

@@ -28,6 +28,7 @@ What the module records of the project's API traffic: each request with its rout
 - `only-the-listed-headers-are-stored-and-secret-ones-never`
 - `values-under-secret-looking-keys-are-redacted-before-storage`
 - `bodies-above-the-cap-are-stored-truncated-and-flagged`
+- `secrets-and-card-numbers-are-redacted-wherever-they-sit`
 - `a-key-is-secret-by-the-words-it-is-made-of`
 
 ## How to get to it (user POV)

@@ -39,6 +39,11 @@ The Request logs page: the histogram, the status tabs, the filters, the search, 
 - `pause-holds-the-table-and-counts-what-was-missed`
 - `the-histogram-bars-follow-the-period`
 - `a-link-names-a-range-with-since-and-until`
+- `a-past-range-draws-at-most-120-bars`
+- `filters-combine-with-the-status-tab`
+- `the-list-sorts-by-duration-both-ways`
+- `the-slow-labels-follow-the-threshold-in-seconds-or-milliseconds`
+- `counts-are-grouped-and-all-time-compares-nothing`
 - `a-request-opens-in-a-drawer-that-steps-through-the-list`
 
 ## How to get to it (user POV)

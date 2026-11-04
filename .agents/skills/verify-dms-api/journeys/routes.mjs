@@ -42,10 +42,11 @@ export const journeys = guarded([
       await tab.click({ role: "button", name: /^[A-Z]+ \/\S+ 16$/ });
       await ctx.verify("the tree", [
         tab.shows(/16 of 16 routes · \d+ folders/),
-        tab.visible({ role: "treeitem", name: /GET \/fx\/boom/ }),
-        tab.visible({ role: "treeitem", name: /GET \/fx\/ok/ }),
-        tab.visible({ role: "treeitem", name: /GET \/fx\/blob/ }),
-        tab.visible({ role: "treeitem", name: /DEL \/fx\/items\/:id/ }),
+        tab.visible({ role: "treeitem", name: /^GET \/fx\/boom 25\b/ }),
+        tab.visible({ role: "treeitem", name: /^GET \/fx\/ok 3\b/ }),
+        tab.visible({ role: "treeitem", name: /^GET \/fx\/items\/:id 1\b/ }),
+        tab.visible({ role: "treeitem", name: "GET /fx/blob 0 No traffic" }),
+        tab.visible({ role: "treeitem", name: "DEL /fx/items/:id 0 No traffic" }),
       ]);
       await tab.fill({ role: "textbox", name: "Filter by path or handler" }, "items");
       await ctx.verify("the path filter", [tab.shows(/3 of 16 routes · 1 folder/), tab.visible({ role: "treeitem", name: "GET /fx/boom 25 Failing" }, { hidden: true, timeoutMs: 4000 })]);
