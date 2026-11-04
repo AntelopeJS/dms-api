@@ -222,13 +222,14 @@ export const journeys = guarded([
     title: "/modules/api/logs?since=&until= lists only the requests of that range, never more than the period, and the tabs count only them",
     entryPoint: "/modules/api/logs?since=<iso>&until=<iso>",
     async run(/** @type {Ctx} */ ctx) {
+      await seedLogs(ctx, "2 requests 8 hours ago", { minutesAgo: 480, count: 2, uri: "/fx/ok" });
       await seedLogs(ctx, "3 requests 5 hours ago", { minutesAgo: 300, count: 3, uri: "/fx/ok" });
       await seedLogs(ctx, "2 failing requests 2 hours ago", { minutesAgo: 120, count: 2, uri: "/fx/boom", statusCode: 500, message: "seeded failure" });
       const since = new Date(Date.now() - 6 * 3_600_000).toISOString();
       const until = new Date(Date.now() - 3 * 3_600_000).toISOString();
       const inRange = await mon(ctx, "the range", `/logs?preset=last-24h&filter_since=is:${encodeURIComponent(since)}&filter_until=is:${encodeURIComponent(until)}`);
       await ctx.verify("the API", [
-        same("only the three requests of the range", [num(inRange.body, "total"), [...new Set(list(inRange.body, "results").map((row) => text(row, "path")))]], [3, ["/fx/ok"]]),
+        same("only the three requests of the range, not the two before it nor the two after", [num(inRange.body, "total"), [...new Set(list(inRange.body, "results").map((row) => text(row, "path")))]], [3, ["/fx/ok"]]),
       ]);
       const tab = await ctx.tab("admin");
       await tab.signIn("admin");
@@ -239,7 +240,7 @@ export const journeys = guarded([
         tab.shows(/seeded failure/, { not: true, timeoutMs: 2000 }),
       ]);
       await openPage(tab, "/modules/api/logs");
-      await ctx.verify("without the range", [tab.visible({ role: "button", name: "All 5" }), tab.visible({ role: "button", name: "5xx 2" })]);
+      await ctx.verify("without the range", [tab.visible({ role: "button", name: "All 7" }), tab.visible({ role: "button", name: "5xx 2" })]);
     },
   },
 ]);
