@@ -13,8 +13,8 @@ importers:
         version: 3.5.22(typescript@6.0.3)
     devDependencies:
       '@antelopejs/tooling-configs':
-        specifier: ^0.2.11
-        version: 0.2.11
+        specifier: ^0.3.0
+        version: 0.3.0
       '@typescript-eslint/parser':
         specifier: ^8.0.0
         version: 8.27.0(eslint@9.39.5(jiti@2.7.0))(typescript@6.0.3)
@@ -45,16 +45,20 @@ importers:
 
 packages:
 
-  '@antelopejs/tooling-configs@0.2.11':
-    resolution: {integrity: sha512-11reej4rSQuPEQqQgef60SyQZ8XGWlUSshD4RXLXPBpyFGVQmOqagKmj1zTg8QAktzwxxokhk/8JrIyChIv3LA==}
+  '@antelopejs/tooling-configs@0.3.0':
+    resolution: {integrity: sha512-ZiYDycndvrYdySvUGdpBEZMbpau6QBMN0LYS9mAO2sLvVagwULl7Sel55vKMn9giHhh3YsHsAWWqB/+4mlNagw==}
     engines: {node: '>=22.18.0'}
     hasBin: true
     peerDependencies:
       '@nuxt/eslint-config': '>=1.2.0'
       eslint-plugin-perfectionist: '>=5.0.0'
       knip: '>=6.0.0'
+      mongodb-memory-server: '>=10.0.0'
       oxfmt: ^0.66.0
       oxlint: 1.81.0
+      pixelmatch: '>=7.0.0'
+      playwright-core: '>=1.56.0'
+      sharp: '>=0.34.0'
     peerDependenciesMeta:
       '@nuxt/eslint-config':
         optional: true
@@ -62,9 +66,17 @@ packages:
         optional: true
       knip:
         optional: true
+      mongodb-memory-server:
+        optional: true
       oxfmt:
         optional: true
       oxlint:
+        optional: true
+      pixelmatch:
+        optional: true
+      playwright-core:
+        optional: true
+      sharp:
         optional: true
 
   '@babel/helper-string-parser@7.27.1':
@@ -1400,7 +1412,7 @@ packages:
 
 snapshots:
 
-  '@antelopejs/tooling-configs@0.2.11':
+  '@antelopejs/tooling-configs@0.3.0':
     dependencies:
       '@oxlint/plugins': 1.81.0
       dts-bundle-generator: 9.5.1
