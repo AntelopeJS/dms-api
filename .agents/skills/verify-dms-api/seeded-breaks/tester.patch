@@ -1,0 +1,13 @@
+diff --git a/src/services/tester-source.ts b/src/services/tester-source.ts
+index 4880a63..4775d56 100644
+--- a/src/services/tester-source.ts
++++ b/src/services/tester-source.ts
+@@ -19,7 +19,7 @@ const TOKEN_PREFIX = "tester";
+ const TOKEN_SEPARATOR = ".";
+ 
+ /** How long a token is accepted. The Tester asks for one before each call. */
+-export const TESTER_SOURCE_TOKEN_TTL_MS = 15 * MS_PER_MINUTE;
++export const TESTER_SOURCE_TOKEN_TTL_MS = 5 * MS_PER_MINUTE;
+ 
+ /** Signs the tokens when no `testerSourceSecret` is configured. */
+ const startKey = randomBytes(32);

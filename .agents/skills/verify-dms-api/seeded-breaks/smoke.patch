@@ -1,0 +1,13 @@
+diff --git a/src/types/constants.ts b/src/types/constants.ts
+index 9c7fa44..84012c6 100644
+--- a/src/types/constants.ts
++++ b/src/types/constants.ts
+@@ -17,7 +17,7 @@ export const MS_PER_DAY = 86_400_000;
+ export const ELEVATED_ERROR_RATE = 0.05;
+ 
+ /** Error rate (0-1) above which the summary health is reported as "down". */
+-export const CRITICAL_ERROR_RATE = 0.2;
++export const CRITICAL_ERROR_RATE = 0.03;
+ 
+ /**
+  * Default retention of the request logs in milliseconds (30 days): logs older

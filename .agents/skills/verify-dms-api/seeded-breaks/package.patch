@@ -1,0 +1,14 @@
+diff --git a/package.json b/package.json
+index 6891af0..a04187d 100644
+--- a/package.json
++++ b/package.json
+@@ -21,8 +21,7 @@
+   },
+   "files": [
+     "dist",
+-    "frontend-vue",
+-    "skills"
++    "frontend-vue"
+   ],
+   "main": "dist/index.js",
+   "publishConfig": {
