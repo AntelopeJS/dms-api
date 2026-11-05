@@ -1,6 +1,6 @@
 {
   "name": "@antelopejs/dms-api",
-  "version": "0.6.0",
+  "version": "0.6.2",
   "description": "API console for the AntelopeJS DMS: API health, request logs, per-route statistics, inferred contracts and a request tester.",
   "keywords": [
     "antelopejs",
@@ -53,19 +53,19 @@
     "suppressions:update": "antelopejs-suppressions --update"
   },
   "dependencies": {
-    "@antelopejs/interface-api": "file:.campaign/tgz/antelopejs-interface-api-f2a99b5.tgz",
-    "@antelopejs/interface-api-util": "file:.campaign/tgz/antelopejs-interface-api-util-639f38b.tgz",
-    "@antelopejs/interface-core": "file:.campaign/tgz/antelopejs-interface-core-f7df541.tgz",
-    "@antelopejs/interface-database": "file:.campaign/tgz/antelopejs-interface-database-02e0360.tgz",
-    "@antelopejs/interface-database-decorators": "file:.campaign/tgz/antelopejs-interface-database-decorators-e79a62b.tgz",
-    "@antelopejs/interface-dms": "file:.campaign/tgz/antelopejs-interface-dms-14e671d.tgz",
+    "@antelopejs/interface-api": ">=0.2.0 <1.0.0",
+    "@antelopejs/interface-api-util": ">=0.3.0 <1.0.0",
+    "@antelopejs/interface-core": ">=0.4.0 <1.0.0",
+    "@antelopejs/interface-database": ">=0.3.0 <1.0.0",
+    "@antelopejs/interface-database-decorators": ">=0.2.0 <1.0.0",
+    "@antelopejs/interface-dms": ">=0.12.0 <1.0.0",
     "node-cron": "^4.2.1",
     "zod": "^3.24.2"
   },
   "devDependencies": {
-    "@antelopejs/core": "file:.campaign/tgz/antelopejs-core-184eb90.tgz",
-    "@antelopejs/dms": "file:.campaign/tgz/antelopejs-dms-14e671d.tgz",
-    "@antelopejs/interface-data-api": "file:.campaign/tgz/antelopejs-interface-data-api-d8a868f.tgz",
+    "@antelopejs/core": "1.20.0",
+    "@antelopejs/dms": ">=0.16.0 <1.0.0",
+    "@antelopejs/interface-data-api": ">=0.6.0 <1.0.0",
     "@antelopejs/tooling-configs": "^0.2.17",
     "@types/node": "^24.0.0",
     "knip": "^6.34.0",
@@ -80,23 +80,9 @@
     "vitest": "^3.2.4"
   },
   "optionalDependencies": {
-    "@antelopejs/interface-dms-automation": "file:.campaign/tgz/antelopejs-interface-dms-automation-b4bc5d2.tgz"
+    "@antelopejs/interface-dms-automation": ">=0.6.0 <1.0.0"
   },
   "packageManager": "pnpm@10.6.5",
-  "pnpm": {
-    "overrides": {
-      "@antelopejs/interface-dms-automation": "file:.campaign/tgz/antelopejs-interface-dms-automation-b4bc5d2.tgz",
-      "@antelopejs/interface-api": "file:.campaign/tgz/antelopejs-interface-api-f2a99b5.tgz",
-      "@antelopejs/interface-api-util": "file:.campaign/tgz/antelopejs-interface-api-util-639f38b.tgz",
-      "@antelopejs/interface-database": "file:.campaign/tgz/antelopejs-interface-database-02e0360.tgz",
-      "@antelopejs/interface-database-decorators": "file:.campaign/tgz/antelopejs-interface-database-decorators-e79a62b.tgz",
-      "@antelopejs/interface-data-api": "file:.campaign/tgz/antelopejs-interface-data-api-d8a868f.tgz",
-      "@antelopejs/interface-dms": "file:.campaign/tgz/antelopejs-interface-dms-14e671d.tgz",
-      "@antelopejs/interface-core": "file:.campaign/tgz/antelopejs-interface-core-f7df541.tgz",
-      "@antelopejs/core": "file:.campaign/tgz/antelopejs-core-184eb90.tgz",
-      "@antelopejs/dms": "file:.campaign/tgz/antelopejs-dms-14e671d.tgz"
-    }
-  },
   "antelopeJs": {
     "baseUrl": "dist",
     "paths": {

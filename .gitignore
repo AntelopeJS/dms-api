@@ -73,7 +73,6 @@ lib-cov
 
 # Coverage directory used by tools like istanbul
 coverage
-!/.agents/skills/verify-dms-api/coverage
 *.lcov
 
 # nyc test coverage
@@ -372,9 +371,4 @@ $RECYCLE.BIN/
 .dms-frontend
 
 # pnpm store
-.pnpm-store/
-/.agents/skills/verify-dms-api/playground/dist
-/.agents/skills/verify-dms-api/node_modules
-/.agents/skills/verify-dms-api/api-module
-/.agents/skills/verify-dms-api/dist
-/.agents/skills/verify-dms-api/playground/node_modules
+.pnpm-store
