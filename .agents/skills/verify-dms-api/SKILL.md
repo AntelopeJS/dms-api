@@ -69,7 +69,7 @@ $C down "$RUN"
 2. **Unmapped surface fails the verdict.** User-facing code is `src/**`, `frontend-vue/**`, `skills/**` and `package.json`, tests and tool configs excluded (`verify.config.ts`). `map` checks the whole tree.
 3. **Every registered journey of a feature in `run` must have run and passed.**
 4. **Docs.** Judge every `docs:` page of each touched feature against what the journeys showed.
-5. **Formal checks.** None.
+5. **Formal checks.** `verify.config.ts` lists `formal-route-statistics` ([its skill](../formal-route-statistics/SKILL.md)): the per-route statistics rollup, model-checked with TLC. Run `$C formal "$RUN"` before the verdict: when the diff touches a file it covers or its own folder, it runs the full configuration and records it under `evidence/formal/formal-route-statistics/`. The check exiting non-zero, or not running, fails the verdict. It has no recorded finding, so any rule it reports broken fails it.
 6. **One-way doors.** The section comes right after the result line and is mandatory. `$C doors` prints the `One-way-door:` line for the diff. A Data door is contained by `settings/the-hourly-prune-deletes-what-the-retention-passed` passing in this run; no journey contains a Format door, so a Format row says so.
 7. **Result.** FAIL if any of rules 1 to 6 fail. PASS+NOTES when something is not verified or needs the owner's attention. PASS otherwise.
 

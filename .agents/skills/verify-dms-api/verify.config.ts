@@ -9,6 +9,33 @@ export interface DoorRule {
   why: string;
 }
 
+/**
+ * How the gate decides whether a diff changed what the covered code does:
+ * `emit` compares the JavaScript statements of the covered files on the
+ * base and on HEAD (types, comments, formatting, imports and export
+ * keywords left out); `probe` runs a command on a checkout of each, the
+ * checkout's path as last argument, and compares what it prints.
+ */
+export type Behaviour = { kind: "emit" } | { kind: "probe"; command: string[] };
+
+/**
+ * A formal check: the source files it covers, the check's own files, the
+ * command that runs it, how its output names a violated and a passing rule,
+ * how the gate decides that a diff changed the covered behaviour, and the
+ * command run on the base when it did or when the check's own files changed
+ * (`command` when absent).
+ */
+export interface FormalCheck {
+  name: string;
+  covers: string[];
+  files: string[];
+  command: string[];
+  baseCommand?: string[];
+  violation: RegExp | null;
+  passing: RegExp | null;
+  behaviour: Behaviour;
+}
+
 /** The repo-owned layer of the verification skill, read by `dms-control`. */
 export interface VerifyConfig {
   playground: string;
@@ -18,7 +45,7 @@ export interface VerifyConfig {
   smoke: string;
   smokeJourney: string;
   doors: Record<DoorKind, DoorRule | null>;
-  formal: never[];
+  formal: FormalCheck[];
 }
 
 const SKILL = ".agents/skills/verify-dms-api";
@@ -75,7 +102,26 @@ const config: VerifyConfig = {
       why: "the package name, its files and the release workflow claim @antelopejs/dms-api in the npm registry",
     },
   },
-  formal: [],
+  formal: [
+    {
+      name: "formal-route-statistics",
+      covers: [
+        "src/services/statistics-write.ts",
+        "src/services/statistics-prune.ts",
+        "src/services/statistics-utils.ts",
+        "src/db/models/routes_statistics.model.ts",
+        "src/db/tables/routes_statistics.table.ts",
+        "src/services/request-log/capture.ts",
+        "src/index.ts",
+      ],
+      files: [".agents/skills/formal-route-statistics/**"],
+      command: ["node", ".agents/skills/formal-route-statistics/check.mjs", "--full"],
+      baseCommand: ["node", ".agents/skills/formal-route-statistics/check.mjs"],
+      violation: /^(?:finding|BROKEN|CHANGED|HOLDS) +(\w+)/gm,
+      passing: /(?<=^holds +(?:\w+, )*)(\w+)(?=,| \()/gm,
+      behaviour: { kind: "emit" },
+    },
+  ],
 };
 
 export default config;
