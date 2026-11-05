@@ -19,7 +19,7 @@ Give `seeded`, `doors` and `--skill` absolute paths.
 ## Launch
 
 ```bash
-RUN=$($C up --prepare --skill "$PWD/.agents/skills/verify-dms-api" --base origin/campaign/integration)
+RUN=$($C up --prepare --skill "$PWD/.agents/skills/verify-dms-api" --base origin/main)
 ```
 
 `--prepare` runs the `prepare` commands of `verify.config.ts`: the frozen install, the build of the module, `playwright-core` and `mongodb-memory-server-core` into this folder, the playground's install, `fetch-api.mjs` and the TypeScript build of the fixture module. Without it `up` uses the builds already there. `up` starts an isolated DMS from the playground in `playground/`: the DMS, the api, MongoDB, auth, local file storage and mail modules, the module under verification as a `local` source at the checkout, and a fixture module `app`.
@@ -42,7 +42,7 @@ Do not drive a run that fails doctor. Its module checks look at this skill folde
 
 ```bash
 $C map                                   # every user-facing file is covered by a feature
-$C plan --base origin/campaign/integration
+$C plan --base origin/main
 $C journey "$RUN" smoke
 $C journey "$RUN" overview [journey-id...]
 ```
@@ -82,7 +82,7 @@ The skill is not Trusted yet. It becomes Trusted when it catches every seeded br
 ## Seeded breaks and doors
 
 ```bash
-$C seeded smoke capture overview logs routes tester settings access package
+$C seeded smoke capture overview logs routes tester settings retention access package automation
 $C doors "$PWD/.agents/skills/verify-dms-api/seeded-doors/data.patch"
 ```
 
@@ -99,6 +99,7 @@ $C doors "$PWD/.agents/skills/verify-dms-api/seeded-doors/data.patch"
   - `access/a-role-opens-the-blocks-it-holds-and-no-others` fails: the docs say a role can hold one block of the console, but the DMS grants module-scoped permissions to the owner only (dms-api#104);
   - the docs read J as previous and K as next in the request drawer, the drawer steps the other way (dms-api#102; the journey asserts the behaviour the page announces);
   - `logs/a-past-range-draws-at-most-120-bars` fails: a past range that does not start on a bar boundary draws 121 bars where the docs promise at most 120 (a pending issue, `live.ts` closing bar);
+  - `automation/query-request-logs-next-cursor-reads-the-next-page` fails: `api.query-request-logs` returns a `nextCursor` but takes no cursor input, so a second call returns the first page again (a pending issue);
   - the docs and the Tester tab name the header `x-dms-api-source`, the code sends `x-antelopejs-api-source` (docs mismatch, pinned in coverage/tester.md).
 - The host's time zone must be a real one: with `TZ` unknown the dashboard pages answer 500 "Invalid time zone specified". Run with `TZ=UTC` (and `--pass-env TZ` for the agent-skills eval).
 - `npm pack` ships `frontend-vue/tests/**` with the Vue layer (the `files` entry is the whole folder); the package journeys do not forbid it.
@@ -108,7 +109,7 @@ $C doors "$PWD/.agents/skills/verify-dms-api/seeded-doors/data.patch"
 List these under `notVerified` in the judgement of every verdict. The per-feature reasons are in [coverage/](coverage).
 
 - Copy, Copy cURL and Copy the URL buttons: they write to the clipboard.
-- The automation nodes `api.route-unhealthy`, `api.get-api-health` and `api.query-request-logs`: the playground does not load `@antelopejs/dms-automation`.
+- The automation runtime: the playground does not load `@antelopejs/dms-automation`. The fixture module stands in for its provider, so the `automation` journeys drive the three nodes' `execute` and `activate`, and the election that runs `api.route-unhealthy` on one node is not driven.
 - A second instance behind one console sharing `testerSourceSecret`: the run has one backend.
 - Pointer drag of the drawer's edge and the persisted drawer width.
 - Keyboard shortcuts `L`, `/` and `?`, the Tester's History, Headers for all routes and the form's editors, and a Tester call's forwarding limits.
