@@ -372,3 +372,5 @@ $RECYCLE.BIN/
 
 # pnpm store
 .pnpm-store
+!.agents/skills/verify-dms-api/coverage
+!.agents/skills/verify-dms-api/journeys/logs
