@@ -1,6 +1,6 @@
 ---
 name: verify-dms-api
-description: "Drive the AntelopeJS dms-api module (the API console: health verdict, request logs, routes with their statistics and inferred documentation, the tester, and the settings) the way the platform owner does, inside a DMS with free ports and its own MongoDB database, and post a verdict with evidence. Use to prove a change to AntelopeJS/dms-api works before merge, to verify a PR, or to check that a seeded break or a seeded one-way door is caught."
+description: "Drive the AntelopeJS dms-api module (the API console: health verdict, request logs, routes with their statistics and inferred documentation, the tester, and the settings) the way the platform owner does, inside a DMS with free ports and its own MongoDB database, and post a verdict with evidence. Use to prove a change to AntelopeJS/dms-api works before merge, or to verify a PR."
 ---
 
 # Verify dms-api
@@ -14,7 +14,7 @@ C="pnpm exec dms-control"
 $C                       # lists every command
 ```
 
-Give `seeded`, `doors` and `--skill` absolute paths.
+Give `doors` and `--skill` absolute paths.
 
 ## Launch
 
@@ -70,23 +70,14 @@ $C down "$RUN"
 3. **Every registered journey of a feature in `run` must have run and passed.**
 4. **Docs.** Judge every `docs:` page of each touched feature against what the journeys showed.
 5. **Formal checks.** `verify.config.ts` lists `formal-route-statistics` ([its skill](../formal-route-statistics/SKILL.md)): the per-route statistics rollup, model-checked with TLC. Run `$C formal "$RUN"` before the verdict: when the diff touches a file it covers or its own folder, it runs the full configuration and records it under `evidence/formal/formal-route-statistics/`. The check exiting non-zero, or not running, fails the verdict. It has no recorded finding, so any rule it reports broken fails it.
-6. **One-way doors.** The section comes right after the result line and is mandatory. `$C doors` prints the `One-way-door:` line for the diff. A Data door is contained by `settings/the-hourly-prune-deletes-what-the-retention-passed` passing in this run; no journey contains a Format door, so a Format row says so.
+6. **One-way doors.** The section comes right after the result line and is mandatory. `$C doors` prints the `One-way-door:` line for the diff.
 7. **Result.** FAIL if any of rules 1 to 6 fail. PASS+NOTES when something is not verified or needs the owner's attention. PASS otherwise.
 
 Write `$RUN/evidence/judgement.json` (`doors`, `docs`, `notVerified`, `attention`, `verifier`), then `$C verdict "$RUN" --pr <n>` and, from a thread that did not write the change, `$C publish "$RUN" --pr <n>`.
 
 ## Trust
 
-The skill is not Trusted yet. It becomes Trusted when it catches every seeded break and flags every seeded door, passes a shadow run of 10 consecutive agent PRs, and its last maintain pass is newer than the last change to the repository or its `@antelopejs` dependencies and at most 30 days old.
-
-## Seeded breaks and doors
-
-```bash
-$C seeded smoke capture overview logs routes tester settings retention access package automation
-$C doors "$PWD/.agents/skills/verify-dms-api/seeded-doors/data.patch"
-```
-
-`seeded-breaks/<feature>.patch` is one minimal product bug per feature; `seeded` builds a control and a patched worktree, runs the feature's journeys in each, and prints `CAUGHT` with the journeys that caught it, or `MISSED`. `seeded-doors/<kind>.patch` holds one change per door kind.
+The skill is not Trusted yet. It becomes Trusted when it passes a shadow run of 10 consecutive agent PRs, and its last maintain pass is newer than the last change to the repository or its `@antelopejs` dependencies and at most 30 days old.
 
 ## Gotchas
 
