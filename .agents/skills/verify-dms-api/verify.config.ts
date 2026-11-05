@@ -30,7 +30,6 @@ const config: VerifyConfig = {
     ["pnpm", "run", "build"],
     ["npm", "install", "--no-save", "--no-package-lock", "--no-audit", "--no-fund", "--prefix", SKILL, "playwright-core@1.56.1", "mongodb-memory-server-core@11.0.1"],
     ["pnpm", "--dir", "playground", "install", "--ignore-workspace", "--frozen-lockfile", "--prefer-offline", "--ignore-scripts"],
-    ["node", `${SKILL}/fetch-api.mjs`],
     ["ln", "-sfn", "../../../../playground/node_modules", `${SKILL}/playground/node_modules`],
     ["node_modules/.bin/tsc", "-p", `${SKILL}/playground/tsconfig.build.json`],
   ],

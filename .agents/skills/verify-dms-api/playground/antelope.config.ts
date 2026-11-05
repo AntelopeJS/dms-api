@@ -117,7 +117,11 @@ export default defineConfig({
       },
     },
     api: {
-      source: { type: "local", path: process.env.VERIFY_API_PATH ?? "../api-module" },
+      source: {
+        type: "package",
+        package: "@antelopejs/api",
+        version: ">=1.7.0 <3.0.0",
+      },
       config: {
         servers: [{ protocol: "http", port: preferredApiPort }],
         publicBaseUrl: process.env.DMS_CLIENT_BASE_URL,

@@ -22,11 +22,11 @@ Give `seeded`, `doors` and `--skill` absolute paths.
 RUN=$($C up --prepare --skill "$PWD/.agents/skills/verify-dms-api" --base origin/main)
 ```
 
-`--prepare` runs the `prepare` commands of `verify.config.ts`: the frozen install, the build of the module, `playwright-core` and `mongodb-memory-server-core` into this folder, the playground's install, `fetch-api.mjs` and the TypeScript build of the fixture module. Without it `up` uses the builds already there. `up` starts an isolated DMS from the playground in `playground/`: the DMS, the api, MongoDB, auth, local file storage and mail modules, the module under verification as a `local` source at the checkout, and a fixture module `app`.
+`--prepare` runs the `prepare` commands of `verify.config.ts`: the frozen install, the build of the module, `playwright-core` and `mongodb-memory-server-core` into this folder, the playground's install and the TypeScript build of the fixture module. Without it `up` uses the builds already there. `up` starts an isolated DMS from the playground in `playground/`: the DMS, the api, MongoDB, auth, local file storage and mail modules, the module under verification as a `local` source at the checkout, and a fixture module `app`.
 
 - The checkout is laid out again under `$RUN/root`, every sibling linked, and the playground copied without `node_modules`, so the run's build, `.antelope/` and stored files are its own. The playground names the checkout's real folder as the module's source, because the module's `@/` import alias applies to files under the folder the source names.
 - The API, the dashboard and the mail sink get free ports from the kernel; a `mongod` the run owns serves `verify_<run>` databases.
-- The api module is a copy of the published `@antelopejs/api` patched by `fetch-api.mjs` to build route handlers with `controller` as well as `proto` (known finding, dms-api#101). The `up` of a run needs the npm registry once, for the dashboard's dependencies.
+- The api module is the published `@antelopejs/api` (1.7.0 or later, which builds route handlers with `controller`). The `up` of a run needs the npm registry once, for the api and the dashboard's dependencies.
 
 The fixture module (`playground/src`) serves what a journey cannot do over the console's own routes. `/fx/*` are the project's routes that traffic goes to: `ok`, `slow?ms=`, `boom` (throws), `missing` (404), `echo` (POST, 201), `login` (a token in the answer), `blob`, `items/:id` (GET, PUT, DELETE), `guarded/secret` (behind `auth_check`), `named/page` (behind `checkTicket`), `inline/private` (checks inside), `orders/:shop/lines` (path, query, header and body parameters). `POST /verify-api/member` makes a member whose role holds exactly the permission ids given.
 
@@ -94,7 +94,6 @@ $C doors "$PWD/.agents/skills/verify-dms-api/seeded-doors/data.patch"
 - The Routes page keeps its tree and filters behind the button that names the open route; the journeys open it before they filter.
 - `mongod` comes from `DMS_CONTROL_MONGOD`, `PATH`, or the mongodb-memory-server cache (`~/.cache/mongodb-binaries`); a verifier with a bare environment passes `DMS_CONTROL_MONGOD` along.
 - Known findings:
-  - `GET /api/monitoring/routes/list` answers 500 against the published `@antelopejs/api`, which builds `proto` route handlers while the module reads `controller` (dms-api#101); the fixture patches a copy of the package, so no journey fails on it;
   - `settings/a-log-retention-of-no-day-is-refused-at-start` fails: `requestLogRetention: 0` starts the module, the form shows 1 day, and the hourly prune uses a cutoff of now (dms-api#103);
   - `access/a-role-opens-the-blocks-it-holds-and-no-others` fails: the docs say a role can hold one block of the console, but the DMS grants module-scoped permissions to the owner only (dms-api#104);
   - the docs read J as previous and K as next in the request drawer, the drawer steps the other way (dms-api#102; the journey asserts the behaviour the page announces);
