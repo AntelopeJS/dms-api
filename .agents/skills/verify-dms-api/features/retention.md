@@ -1,6 +1,11 @@
 ---
 covers:
   - src/services/statistics-prune.ts
+  - src/services/request-log/prune.ts
+  - src/services/settings-form.ts
+  - src/routes/settings.ts
+  - frontend-vue/app/components/blocks/RetentionInput.vue
+  - frontend-vue/app/utils/settingsForm.ts
 docs:
   - docs/4.usage/4.settings.md
 ---
