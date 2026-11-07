@@ -380,7 +380,9 @@ export async function member(ctx, name, permissions) {
 }
 
 /**
- * Opens a dashboard path and waits for the page to hydrate: a click that lands before it does nothing.
+ * Opens a dashboard path and waits for the page to hydrate: a click that lands before it does nothing. The dashboard
+ * marks `<html data-dms-ready="true">` once its app has mounted. A page that has not mounted after 15 seconds is left
+ * to the checks that follow, which wait on what they read.
  *
  * @param {Tab} tab The tab
  * @param {string} path The path
@@ -388,8 +390,7 @@ export async function member(ctx, name, permissions) {
  */
 export async function openPage(tab, path) {
   await tab.goto(path);
-  await tab.page.waitForLoadState("load");
-  await tab.page.waitForTimeout(2500);
+  await tab.page.waitForFunction(() => document.documentElement.dataset.dmsReady === "true", undefined, { timeout: 15_000 }).catch(() => undefined);
 }
 
 /**
