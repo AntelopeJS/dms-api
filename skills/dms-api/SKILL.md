@@ -27,7 +27,7 @@ Monitors the project's own HTTP API: it captures each request of the routes in s
 - The Tester forwards calls through the module's own frontend server route `POST /api/_dms-api/tester` (`frontend-vue/dms.server.ts`); dms-frontend 0.6 has no built-in tester route.
 - It needs `@antelopejs/dms` 0.11 or later (`interface-dms` 0.9 or later) and `@antelopejs/dms-frontend` 0.9; 0.5.0 is the DMS 0.10 line.
 - A route reads "Auth unknown" when the check happens inside the handler; guard with the DMS auth decorators or name the middleware in `authMiddlewareCallbacks`.
-- Each block is its own permission (`@AuthUserWithPermission(<block>)`): grant roles the blocks they need.
+- The console is owner-only: the DMS grants module-scoped permissions to the owner alone, so no role can be given the console or one of its blocks, and a member gets a 403 naming the block's permission.
 - Request logs can hold application data; secret-looking keys are always redacted.
 - Overview and Routes compare with the period before or with nothing (`?api.compare=previous-period|none`); every chart draws the compared period dashed and every figure says its change and its value then. No year-back comparison: the retention never keeps a year of statistics. The Request logs compare nothing.
 - The Request logs histogram follows the page's period (`GET /api/monitoring/logs/live?preset=last-7-days`, or `from` / `to`, or `preset=all`), in bars of 1 min (1H), 15 min (24H), 2 h (7D) or 6 h (30D, All time), all traffic in scope whatever the table filters.

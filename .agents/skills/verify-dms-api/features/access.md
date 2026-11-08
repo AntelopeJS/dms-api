@@ -9,16 +9,16 @@ docs:
 
 # Access
 
-Who may call the console: a session for every route, and for each block the permission the DMS role editor grants it.
+Who may call the console: a session for every route, and the platform owner only, since the DMS grants a module page's permissions to the owner alone.
 
 ## Sub-features
 
 - `every-console-route-needs-a-session-and-the-block-it-serves`
-- `a-role-opens-the-blocks-it-holds-and-no-others`
+- `the-console-is-the-owners-and-a-role-holding-a-block-is-refused`
 
 ## How to get to it (user POV)
 
-- Settings › Roles in the DMS; a member opens Modules › API.
+- The owner opens Modules › API; a member with any role is refused.
 
 ## Driving it with dms-control
 
