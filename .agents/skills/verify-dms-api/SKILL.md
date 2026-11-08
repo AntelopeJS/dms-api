@@ -90,7 +90,6 @@ The skill is not Trusted yet. It becomes Trusted when it passes a shadow run of 
   - the docs read J as previous and K as next in the request drawer, the drawer steps the other way (dms-api#102; the journey asserts the behaviour the page announces);
   - `logs/a-past-range-draws-at-most-120-bars` fails: a past range that does not start on a bar boundary draws 121 bars where the docs promise at most 120 (a pending issue, `live.ts` closing bar);
   - `automation/query-request-logs-next-cursor-reads-the-next-page` fails: `api.query-request-logs` returns a `nextCursor` but takes no cursor input, so a second call returns the first page again (a pending issue);
-  - the docs and the Tester tab name the header `x-dms-api-source`, the code sends `x-antelopejs-api-source` (docs mismatch, pinned in coverage/tester.md).
 - The host's time zone must be a real one: with `TZ` unknown the dashboard pages answer 500 "Invalid time zone specified". Run with `TZ=UTC` (and `--pass-env TZ` for the agent-skills eval).
 - `npm pack` ships `frontend-vue/tests/**` with the Vue layer (the `files` entry is the whole folder); the package journeys do not forbid it.
 

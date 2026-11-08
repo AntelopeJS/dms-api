@@ -661,7 +661,7 @@
       "redacted_value": "Masked at capture: replace it with the real value",
       "implied_header": "set by the body type",
       "headers_hint": "A header named Authorization replaces your session. Credentials are never stored.",
-      "marks_hint": "x-request-id and x-dms-api-source are added to find the call in the logs.",
+      "marks_hint": "x-request-id and x-antelopejs-api-source are added to find the call in the logs.",
       "common_headers": "Headers for all routes",
       "common_headers_hint": "Sent to every route, under the headers above. Kept in this browser; credentials only until the page reloads.",
       "common_secret": "{names} goes to every route, in place of your session, and is forgotten when the page reloads.",
