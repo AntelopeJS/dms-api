@@ -1,6 +1,6 @@
 ---
 name: verify-dms-api
-description: "Drive the AntelopeJS dms-api module (the API console: health verdict, request logs, routes with their statistics and inferred documentation, the tester, and the settings) the way the platform owner does, inside a DMS with free ports and its own MongoDB database, and post a verdict with evidence. Use to prove a change to AntelopeJS/dms-api works before merge, or to verify a PR."
+description: "Drive the AntelopeJS dms-api module (the API console: health verdict, request logs, routes with their statistics and inferred documentation, the tester, and the settings) the way the platform owner does, inside a DMS with free ports and its own MongoDB database, and report a verdict with evidence. Use to prove a change to AntelopeJS/dms-api works before merge, or to verify a PR."
 ---
 
 # Verify dms-api
@@ -73,11 +73,7 @@ $C down "$RUN"
 6. **One-way doors.** The section comes right after the result line and is mandatory. `$C doors` prints the `One-way-door:` line for the diff.
 7. **Result.** FAIL if any of rules 1 to 6 fail. PASS+NOTES when something is not verified or needs the owner's attention. PASS otherwise.
 
-Write `$RUN/evidence/judgement.json` (`doors`, `docs`, `notVerified`, `attention`, `verifier`), then `$C verdict "$RUN" --pr <n>` and, from a thread that did not write the change, `$C publish "$RUN" --pr <n>`.
-
-## Trust
-
-The skill is not Trusted yet. It becomes Trusted when it passes a shadow run of 10 consecutive agent PRs, and its last maintain pass is newer than the last change to the repository or its `@antelopejs` dependencies and at most 30 days old.
+Write `$RUN/evidence/judgement.json` (`doors`, `docs`, `notVerified`, `attention`, `verifier`), then `$C verdict "$RUN" --pr <n>`, which writes `$RUN/evidence/verdict.md`. Report the verdict and what you saw in your own reply.
 
 ## Gotchas
 
