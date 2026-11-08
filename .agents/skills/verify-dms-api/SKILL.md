@@ -85,7 +85,6 @@ The skill is not Trusted yet. It becomes Trusted when it passes a shadow run of 
 - The Routes page keeps its tree and filters behind the button that names the open route; the journeys open it before they filter.
 - `mongod` comes from `DMS_CONTROL_MONGOD`, `PATH`, or the mongodb-memory-server cache (`~/.cache/mongodb-binaries`); a verifier with a bare environment passes `DMS_CONTROL_MONGOD` along.
 - Known findings:
-  - `settings/a-log-retention-of-no-day-is-refused-at-start` fails: `requestLogRetention: 0` starts the module, the form shows 1 day, and the hourly prune uses a cutoff of now (dms-api#103);
   - `access/a-role-opens-the-blocks-it-holds-and-no-others` fails: the docs say a role can hold one block of the console, but the DMS grants module-scoped permissions to the owner only (dms-api#104);
   - the docs read J as previous and K as next in the request drawer, the drawer steps the other way (dms-api#102; the journey asserts the behaviour the page announces);
   - `logs/a-past-range-draws-at-most-120-bars` fails: a past range that does not start on a bar boundary draws 121 bars where the docs promise at most 120 (a pending issue, `live.ts` closing bar);

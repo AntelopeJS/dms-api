@@ -83,6 +83,31 @@ describe("configErrors", () => {
     expect(errors[1]).toMatch(/^requestSlownessThresholdMs: /);
   });
 
+  it.each([0, MS_PER_DAY / 2, MS_PER_DAY - 1])(
+    "names a request-log retention of %i ms, under the form's 1 day",
+    (requestLogRetention) => {
+      const { scope: _scope, ...config } = settings;
+      const errors = configErrors(
+        { ...config, requestLogRetention },
+        neverSensitive,
+      );
+      expect(errors).not.toEqual([]);
+      expect(
+        errors.every((error) => error.startsWith("requestLogRetentionDays: ")),
+      ).toBe(true);
+    },
+  );
+
+  it("accepts a request-log retention of 1 day", () => {
+    const { scope: _scope, ...config } = settings;
+    expect(
+      configErrors(
+        { ...config, requestLogRetention: MS_PER_DAY },
+        neverSensitive,
+      ),
+    ).toEqual([]);
+  });
+
   it("names a secret header set to be captured", () => {
     const { scope: _scope, ...config } = settings;
     expect(
