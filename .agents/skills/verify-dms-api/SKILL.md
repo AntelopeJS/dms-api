@@ -81,8 +81,7 @@ Write `$RUN/evidence/judgement.json` (`doors`, `docs`, `notVerified`, `attention
 - The Routes page keeps its tree and filters behind the button that names the open route; the journeys open it before they filter.
 - `mongod` comes from `DMS_CONTROL_MONGOD`, `PATH`, or the mongodb-memory-server cache (`~/.cache/mongodb-binaries`); a verifier with a bare environment passes `DMS_CONTROL_MONGOD` along.
 - Known findings:
-  - `logs/a-past-range-draws-at-most-120-bars` fails: a past range that does not start on a bar boundary draws 121 bars where the docs promise at most 120 (a pending issue, `live.ts` closing bar);
-  - `automation/query-request-logs-next-cursor-reads-the-next-page` fails: `api.query-request-logs` returns a `nextCursor` but takes no cursor input, so a second call returns the first page again (a pending issue);
+  - `automation/query-request-logs-next-cursor-reads-the-next-page` fails: `api.query-request-logs` returns a `nextCursor` but takes no cursor input, so a second call returns the first page again (a pending issue).
 - The host's time zone must be a real one: with `TZ` unknown the dashboard pages answer 500 "Invalid time zone specified". Run with `TZ=UTC` (and `--pass-env TZ` for the agent-skills eval).
 - `npm pack` ships `frontend-vue/tests/**` with the Vue layer (the `files` entry is the whole folder); the package journeys do not forbid it.
 
