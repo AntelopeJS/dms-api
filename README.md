@@ -12,7 +12,7 @@
 
 </div>
 
-![The API Overview: health verdict, routes needing attention, slowest routes and error share](./docs/images/overview.png)
+<img data-illustration alt="The API Overview in the dark theme, from the live demo. The API health card reads Healthy with 0% server errors, with panels for routes needing attention, the slowest routes by latency and the error share over the last 24 hours." src="./.github/readme/hero.png">
 
 ## What it does
 
