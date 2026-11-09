@@ -1,5 +1,51 @@
 # Changelog
 
+## v0.6.3
+
+[compare changes](https://github.com/AntelopeJS/dms-api/compare/v0.6.2...v0.6.3)
+
+### 🚀 Enhancements
+
+- **skills:** Add the verify-dms-api verification skill ([#100](https://github.com/AntelopeJS/dms-api/pull/100))
+
+### 🔥 Performance
+
+- **verify:** Wait for the dashboard's ready marker in openPage ([#121](https://github.com/AntelopeJS/dms-api/pull/121))
+
+### 🩹 Fixes
+
+- **playground:** Update the lockfile to @antelopejs/core 1.21.0 ([#119](https://github.com/AntelopeJS/dms-api/pull/119))
+- **verify:** Map the request-log prune and retention impact to the retention feature ([#122](https://github.com/AntelopeJS/dms-api/pull/122))
+- **settings:** Refuse a request-log retention under 1 day at start ([#125](https://github.com/AntelopeJS/dms-api/pull/125))
+- **tester:** Name x-antelopejs-api-source in the docs and the Tester hint ([#126](https://github.com/AntelopeJS/dms-api/pull/126))
+- **logs:** Draw a past range in at most 120 bars ([#129](https://github.com/AntelopeJS/dms-api/pull/129))
+
+### 📖 Documentation
+
+- **request-logs:** Say J steps to the next request and K to the previous one ([#124](https://github.com/AntelopeJS/dms-api/pull/124))
+- Say the API console is owner-only ([#123](https://github.com/AntelopeJS/dms-api/pull/123))
+- **readme:** Open with the AntelopeJS DMS module kit ([#128](https://github.com/AntelopeJS/dms-api/pull/128))
+
+### 📦 Build
+
+- **deps:** Bump @antelopejs packages to the 2026-11-06 releases ([#118](https://github.com/AntelopeJS/dms-api/pull/118))
+- **deps:** Bump @antelopejs/dms to 0.18.2 and drop verify publish ([#127](https://github.com/AntelopeJS/dms-api/pull/127))
+
+### 🏡 Chore
+
+- Remove the .amp directory ([#114](https://github.com/AntelopeJS/dms-api/pull/114))
+- **verify:** Remove seeded runs from the verification skill ([#115](https://github.com/AntelopeJS/dms-api/pull/115))
+- **ci:** Remove the weekly mutation caller ([#116](https://github.com/AntelopeJS/dms-api/pull/116))
+
+### 🤖 CI
+
+- Call ci-node.yml@v1 ([#117](https://github.com/AntelopeJS/dms-api/pull/117))
+- Run the build in its own job beside the checks ([#120](https://github.com/AntelopeJS/dms-api/pull/120))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli ([@Upd4ting](http://github.com/Upd4ting))
+
 ## v0.6.2
 
 [compare changes](https://github.com/AntelopeJS/dms-api/compare/v0.6.1...v0.6.2)
