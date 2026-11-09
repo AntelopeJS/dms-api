@@ -50,8 +50,13 @@ export interface SettingsFormContext {
   >;
 }
 
+/**
+ * `ms` in whole days, rounded. Under one day it stays the fraction, which the
+ * form's 1-day minimum refuses, so `configErrors` names it.
+ */
 export function msToDays(ms: number): number {
-  return Math.max(1, Math.round(ms / MS_PER_DAY));
+  const days = ms / MS_PER_DAY;
+  return days < 1 ? days : Math.round(days);
 }
 
 export function bytesToKb(bytes: number): number {
