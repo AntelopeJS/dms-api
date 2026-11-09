@@ -76,8 +76,8 @@ export const journeys = guarded([
     },
   },
   {
-    id: "a-role-opens-the-blocks-it-holds-and-no-others",
-    title: "a role holding only the Request logs table opens the logs and nothing else; a role holding only the Tester opens the Tester's token and nothing else",
+    id: "the-console-is-the-owners-and-a-role-holding-a-block-is-refused",
+    title: "a role holding the Request logs table's permission, or the Tester's, is still refused on every route of the console, while the owner opens both",
     entryPoint: "GET /api/monitoring/logs and /api/monitoring/tester/source as members",
     async run(/** @type {Ctx} */ ctx) {
       await traffic(ctx, "a request to read", [{ path: "/fx/ok", count: 1 }]);
@@ -91,8 +91,10 @@ export const journeys = guarded([
       await member(ctx, "tester", [testerPermission]);
       const reader = await sweep(ctx, "reader");
       const tester = await sweep(ctx, "tester");
-      await ctx.verify("the reader", reader.map((entry) => (entry.route === "GET /logs" ? check("GET /logs opens", entry.status === 200, entry) : check(`${entry.route} stays closed`, entry.status === 403, entry))));
-      await ctx.verify("the tester", tester.map((entry) => (entry.route === "GET /tester/source" ? check("the Tester's token opens", entry.status === 200, entry) : check(`${entry.route} stays closed`, entry.status === 403, entry))));
+      const owner = await sweep(ctx, "admin");
+      await ctx.verify("the reader", reader.map((entry) => check(`${entry.route} is refused`, entry.status === 403, entry)));
+      await ctx.verify("the tester", tester.map((entry) => check(`${entry.route} is refused`, entry.status === 403, entry)));
+      await ctx.verify("the owner", ["GET /logs", "GET /tester/source"].map((route) => check(`${route} opens`, owner.find((entry) => entry.route === route)?.status === 200, owner.find((entry) => entry.route === route))));
     },
   },
 ]);

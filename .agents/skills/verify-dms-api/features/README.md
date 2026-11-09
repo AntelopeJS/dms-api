@@ -12,7 +12,7 @@ One file per feature. `covers:` lists the source globs it owns, `docs:` the page
 | [tester](tester.md) | The Tester: real calls logged and marked apart from the traffic, and the token that marks them. | a-tester-call-is-logged-and-marked-but-never-counted, a-secret-keeps-the-testers-token-valid-across-restarts |
 | [settings](settings.md) | The API settings page and the module options: defaults, bounds, Use default, refusal at start, scope, retention and the hourly prune. | the-form-shows-the-documented-defaults, every-bound-of-the-form-is-enforced-on-its-edge, use-default-returns-a-field-to-the-module-option, the-module-refuses-to-start-with-a-value-the-form-would-refuse, the-scope-decides-which-routes-and-requests-every-page-watches |
 | [retention](retention.md) | Retention: what the next prune deletes, the confirmation before a lower retention, and the hourly prune. | lowering-a-retention-asks-before-it-deletes |
-| [access](access.md) | Who may call the console: a session for every route and the permission of each block. | every-console-route-needs-a-session-and-the-block-it-serves, a-role-opens-the-blocks-it-holds-and-no-others |
+| [access](access.md) | Who may call the console: a session for every route, and the owner only. | every-console-route-needs-a-session-and-the-block-it-serves, the-console-is-the-owners-and-a-role-holding-a-block-is-refused |
 | [package](package.md) | What a project installs: the tarball, the ranges, the skill, the docs links and the locales. | the-tarball-holds-what-the-manifest-names, the-ranges-and-the-skill-match-what-the-docs-name, the-docs-links-and-the-two-locales-are-complete |
 
 The smoke journey runs on every verdict.
