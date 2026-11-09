@@ -17,13 +17,17 @@ import {
   queryString,
   redactedFields,
   replayFrom,
+  REQUEST_ID_HEADER,
   revealBidi,
   sendTesterRequest,
   serializeBody,
+  SOURCE_HEADER,
   TesterError,
   type TesterRequest,
   withQueryRows,
 } from '../app/utils/testerRequest'
+import enGB from '../i18n/locales/api-en-GB.json'
+import frFR from '../i18n/locales/api-fr-FR.json'
 
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -279,6 +283,14 @@ describe('building the request', () => {
     expect(authModeOf({ Authorization: 'Bearer x' }, true)).toBe('manual')
     expect(authModeOf({}, true)).toBe('session')
     expect(authModeOf({}, false)).toBe('none')
+  })
+
+  it.each([
+    ['en-GB', enGB],
+    ['fr-FR', frFR],
+  ])('names the headers it adds in the %s hint', (_locale, messages) => {
+    expect(messages.api.tester.marks_hint).toContain(REQUEST_ID_HEADER)
+    expect(messages.api.tester.marks_hint).toContain(SOURCE_HEADER)
   })
 
   it('marks the call as the tester’s, with its own request id', () => {

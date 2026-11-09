@@ -661,7 +661,7 @@
       "redacted_value": "Masquée à la capture : remplacez-la par la vraie valeur",
       "implied_header": "défini par le type de corps",
       "headers_hint": "Un en-tête Authorization remplace votre session. Les identifiants ne sont jamais stockés.",
-      "marks_hint": "x-request-id et x-dms-api-source sont ajoutés pour retrouver l'appel dans les journaux.",
+      "marks_hint": "x-request-id et x-antelopejs-api-source sont ajoutés pour retrouver l'appel dans les journaux.",
       "common_headers": "En-têtes pour toutes les routes",
       "common_headers_hint": "Envoyés à chaque route, sous les en-têtes ci-dessus. Gardés dans ce navigateur ; les identifiants seulement jusqu'au rechargement de la page.",
       "common_secret": "{names} part vers toutes les routes, à la place de votre session, et sera oublié au rechargement de la page.",
