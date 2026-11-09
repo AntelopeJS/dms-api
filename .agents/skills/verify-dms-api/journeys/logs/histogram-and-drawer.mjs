@@ -23,7 +23,7 @@ export const histogramAndDrawer = [
       ]));
       const sum = list(answers[0]?.body, "buckets").reduce((all, bucket) => [all[0] + (num(bucket, "success") ?? 0), all[1] + (num(bucket, "clientErrors") ?? 0), all[2] + (num(bucket, "serverErrors") ?? 0)], [0, 0, 0]);
       /** @type {[number, number, number][]} */
-      const ranges = [[3, 2, 900_000], [6, 1, 3_600_000], [20, 10, 7_200_000], [50, 2, 21_600_000], [0.1, 0.05, 60_000]];
+      const ranges = [[3, 2, 900_000], [6, 1, 7_200_000], [20, 10, 10_800_000], [50, 2, 21_600_000], [0.1, 0.05, 60_000]];
       const pasts = [];
       for (const [startDays, endDays] of ranges) {
         const from = new Date(Date.now() - startDays * 86_400_000).toISOString();
@@ -142,7 +142,7 @@ export const histogramAndDrawer = [
   },
   {
     id: "a-past-range-draws-at-most-120-bars",
-    title: "the chart keeps between 50 and 120 bars for a past range: the 6-to-1-day and 20-to-10-day ranges draw 121 (dms-api issue: the closing bar of an unaligned range)",
+    title: "the chart keeps between 50 and 120 bars for a past range, one that starts off a bar boundary included",
     entryPoint: "GET /api/monitoring/logs/live?from=&to=",
     async run(/** @type {Ctx} */ ctx) {
       /** @type {[number, number][]} */

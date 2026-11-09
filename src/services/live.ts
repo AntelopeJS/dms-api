@@ -76,32 +76,59 @@ const TARGET_MAX_BARS = 120;
 /** The most bars a bar length asked for may draw. */
 const MAX_BARS = 240;
 
+/** The range a histogram draws, `[from, to)` in ms, and whether it reaches now. */
+export interface DrawnRange {
+  from: number;
+  to: number;
+  live: boolean;
+}
+
+/** The bars that draw a range, before any cap: the start of the last one, and how many. */
+interface DrawnBars {
+  last: number;
+  count: number;
+}
+
 /**
- * The bar length of a period of `spanMs`: the shortest that draws it in at
- * most {@link TARGET_MAX_BARS} bars. 1 hour: 1 min (60 bars); 24 hours:
- * 15 min (96); 7 days: 2 h (84); 30 days: 6 h (120). Beyond 120 days, a day.
+ * The bars of `bucketMs` that draw `range`. A range reaching now ends on the
+ * bar still running and keeps its count of bars as the clock moves; a past
+ * one is covered by whole bars, one more when it starts off a bar boundary.
  */
-export function liveBucketMs(spanMs: number): number {
-  const span = Math.max(spanMs, MS_PER_MINUTE);
+function barsOver(range: DrawnRange, bucketMs: number): DrawnBars {
+  const { from, to, live } = range;
+  const last = barOf(live ? to : Math.max(to - 1, from), bucketMs);
+  const count = live
+    ? Math.ceil((to - from) / bucketMs)
+    : Math.floor((last - barOf(from, bucketMs)) / bucketMs) + 1;
+  return { last, count: Math.max(count, 1) };
+}
+
+/**
+ * The bar length of `range`: the shortest that draws it in at most
+ * {@link TARGET_MAX_BARS} bars. 1 hour: 1 min (60 bars); 24 hours: 15 min
+ * (96); 7 days: 2 h (84); 30 days: 6 h (120). Beyond 120 days, a day.
+ */
+export function liveBucketMs(range: DrawnRange): number {
   return (
-    LIVE_BUCKET_SIZES_MS.find((size) => span / size <= TARGET_MAX_BARS) ??
-    MS_PER_DAY
+    LIVE_BUCKET_SIZES_MS.find(
+      (size) => barsOver(range, size).count <= TARGET_MAX_BARS,
+    ) ?? MS_PER_DAY
   );
 }
 
 /**
  * The bar length a request asks for (`bucket`, in ms), when it is one of
- * {@link LIVE_BUCKET_SIZES_MS} and draws the period in at most
- * {@link MAX_BARS} bars; the period's own otherwise.
+ * {@link LIVE_BUCKET_SIZES_MS} and draws `range` in at most
+ * {@link MAX_BARS} bars; the range's own otherwise.
  */
 export function resolveBucketMs(
   raw: string | undefined,
-  spanMs: number,
+  range: DrawnRange,
 ): number {
   const asked = Number(raw);
   const allowed = LIVE_BUCKET_SIZES_MS.find((size) => size === asked);
-  if (allowed && spanMs / allowed <= MAX_BARS) return allowed;
-  return liveBucketMs(spanMs);
+  if (allowed && barsOver(range, allowed).count <= MAX_BARS) return allowed;
+  return liveBucketMs(range);
 }
 
 /** The period of the histogram when the request names none: the last hour. */
@@ -177,13 +204,11 @@ export async function getLiveTraffic(
   const { period, range } = liveRange(query, pinned);
   const from = range.from.getTime();
   const to = range.to.getTime();
-  const bucketMs = resolveBucketMs(query.bucket, to - from);
   const live = to >= pinned.getTime() - CACHE_QUANTUM_MS;
-  const last = barOf(live ? to : Math.max(to - 1, from), bucketMs);
-  const barCount = live
-    ? Math.ceil((to - from) / bucketMs)
-    : Math.floor((last - barOf(from, bucketMs)) / bucketMs) + 1;
-  const count = Math.min(Math.max(barCount, 1), MAX_BARS);
+  const drawn = { from, to, live };
+  const bucketMs = resolveBucketMs(query.bucket, drawn);
+  const { last, count: barCount } = barsOver(drawn, bucketMs);
+  const count = Math.min(barCount, MAX_BARS);
   const start = last - (count - 1) * bucketMs;
   const bars = Array.from({ length: count }, (_, index) =>
     emptyBucket(start + index * bucketMs),

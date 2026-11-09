@@ -51,6 +51,11 @@ function history(days: number, uri = "/a"): RequestLogSample[] {
   return rows;
 }
 
+/** The range of the last `spanMs`, up to now. */
+function upToNow(spanMs: number) {
+  return { from: NOW.getTime() - spanMs, to: NOW.getTime(), live: true };
+}
+
 function barsTotal(
   buckets: { success: number; clientErrors: number; serverErrors: number }[],
 ) {
@@ -75,32 +80,32 @@ afterEach(() => {
 
 describe("liveBucketMs", () => {
   it("draws every preset in 50 to 120 bars", () => {
-    expect(liveBucketMs(MS_PER_HOUR)).toBe(MS_PER_MINUTE);
-    expect(liveBucketMs(MS_PER_DAY)).toBe(15 * MS_PER_MINUTE);
-    expect(liveBucketMs(7 * MS_PER_DAY)).toBe(2 * MS_PER_HOUR);
-    expect(liveBucketMs(30 * MS_PER_DAY)).toBe(6 * MS_PER_HOUR);
+    expect(liveBucketMs(upToNow(MS_PER_HOUR))).toBe(MS_PER_MINUTE);
+    expect(liveBucketMs(upToNow(MS_PER_DAY))).toBe(15 * MS_PER_MINUTE);
+    expect(liveBucketMs(upToNow(7 * MS_PER_DAY))).toBe(2 * MS_PER_HOUR);
+    expect(liveBucketMs(upToNow(30 * MS_PER_DAY))).toBe(6 * MS_PER_HOUR);
   });
 
   it("picks a custom range's bar by the same rule", () => {
-    expect(liveBucketMs(3 * MS_PER_HOUR)).toBe(2 * MS_PER_MINUTE);
-    expect(liveBucketMs(10 * MS_PER_MINUTE)).toBe(MS_PER_MINUTE);
-    expect(liveBucketMs(0)).toBe(MS_PER_MINUTE);
-    expect(liveBucketMs(365 * MS_PER_DAY)).toBe(MS_PER_DAY);
+    expect(liveBucketMs(upToNow(3 * MS_PER_HOUR))).toBe(2 * MS_PER_MINUTE);
+    expect(liveBucketMs(upToNow(10 * MS_PER_MINUTE))).toBe(MS_PER_MINUTE);
+    expect(liveBucketMs(upToNow(0))).toBe(MS_PER_MINUTE);
+    expect(liveBucketMs(upToNow(365 * MS_PER_DAY))).toBe(MS_PER_DAY);
   });
 
   it("takes an asked bar only when offered and within the cap", () => {
-    expect(resolveBucketMs(`${10 * MS_PER_MINUTE}`, MS_PER_DAY)).toBe(
+    expect(resolveBucketMs(`${10 * MS_PER_MINUTE}`, upToNow(MS_PER_DAY))).toBe(
       10 * MS_PER_MINUTE,
     );
     expect(
-      resolveBucketMs(`${5 * MS_PER_MINUTE}`, MS_PER_DAY),
+      resolveBucketMs(`${5 * MS_PER_MINUTE}`, upToNow(MS_PER_DAY)),
       "288 bars: past the cap.",
     ).toBe(15 * MS_PER_MINUTE);
-    expect(resolveBucketMs(`${MS_PER_MINUTE}`, MS_PER_DAY)).toBe(
+    expect(resolveBucketMs(`${MS_PER_MINUTE}`, upToNow(MS_PER_DAY))).toBe(
       15 * MS_PER_MINUTE,
     );
-    expect(resolveBucketMs("12345", MS_PER_HOUR)).toBe(MS_PER_MINUTE);
-    expect(resolveBucketMs("nope", MS_PER_HOUR)).toBe(MS_PER_MINUTE);
+    expect(resolveBucketMs("12345", upToNow(MS_PER_HOUR))).toBe(MS_PER_MINUTE);
+    expect(resolveBucketMs("nope", upToNow(MS_PER_HOUR))).toBe(MS_PER_MINUTE);
   });
 });
 
@@ -246,5 +251,28 @@ describe("getLiveTraffic", () => {
     const at = new Date(2026, 9, 7, 13, 47).getTime();
     expect(new Date(barOf(at, 6 * MS_PER_HOUR)).getHours()).toBe(12);
     expect(new Date(barOf(at, 2 * MS_PER_HOUR)).getMinutes()).toBe(0);
+  });
+});
+
+describe("a past range", () => {
+  it("starts off the bar boundaries and draws in at most 120 whole bars", async () => {
+    const from = NOW.getTime() - 6 * MS_PER_DAY;
+    const to = NOW.getTime() - MS_PER_DAY;
+    const traffic = await getLiveTraffic(
+      new FakeLogs(history(7)),
+      null,
+      {
+        preset: "custom",
+        from: new Date(from).toISOString(),
+        to: new Date(to).toISOString(),
+      },
+      NOW,
+    );
+    const first = traffic.buckets[0]?.start ?? Number.NaN;
+    const last = traffic.buckets.at(-1)?.start ?? Number.NaN;
+    expect(traffic.buckets.length).toBeGreaterThanOrEqual(50);
+    expect(traffic.buckets.length).toBeLessThanOrEqual(120);
+    expect(first).toBeLessThanOrEqual(from);
+    expect(last + traffic.bucketMs).toBeGreaterThanOrEqual(to);
   });
 });
