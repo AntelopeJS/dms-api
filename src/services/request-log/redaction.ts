@@ -148,6 +148,18 @@ export function isCardNumber(digits: string): boolean {
 class Redactor {
   count = 0;
 
+  /** {@link isSensitiveKey} of each key this pass has met: rows of a list repeat their keys. */
+  private readonly sensitiveKeys = new Map<string, boolean>();
+
+  private isSensitive(key: string): boolean {
+    let sensitive = this.sensitiveKeys.get(key);
+    if (sensitive === undefined) {
+      sensitive = isSensitiveKey(key);
+      this.sensitiveKeys.set(key, sensitive);
+    }
+    return sensitive;
+  }
+
   /** `text` with every card number in it replaced. */
   text(text: string): string {
     return text.replace(CARD_NUMBER, (match) => {
@@ -173,7 +185,7 @@ class Redactor {
     if (!isObject(value)) return value;
     return Object.fromEntries(
       Object.entries(value).map(([key, item]): [string, JsonValue] => {
-        if (!isSensitiveKey(key)) return [key, this.value(item, depth + 1)];
+        if (!this.isSensitive(key)) return [key, this.value(item, depth + 1)];
         this.count++;
         return [key, REDACTED];
       }),
@@ -183,7 +195,7 @@ class Redactor {
   params(params: URLSearchParams): URLSearchParams {
     return new URLSearchParams(
       [...params].map(([key, value]) => {
-        if (!isSensitiveKey(key)) return [key, this.text(value)];
+        if (!this.isSensitive(key)) return [key, this.text(value)];
         this.count++;
         return [key, REDACTED];
       }),
