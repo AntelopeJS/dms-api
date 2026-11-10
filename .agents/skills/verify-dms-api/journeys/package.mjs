@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join } from "node:path";
 import { guarded } from "../guard.mjs";
-import { check, isRow, isText, list, parseJson, pick, same, text } from "../api.mjs";
+import { check, isFunction, isRow, isText, list, parseJson, pick, same, text } from "../api.mjs";
 
 /** @typedef {import("../api.mjs").Ctx} Ctx */
 
@@ -30,6 +30,14 @@ const readJson = (ctx, path) => parseJson(read(ctx, path));
 const strings = (value) => (Array.isArray(value) ? value.filter(isText) : []);
 
 /**
+ * @param {unknown} value A loaded module
+ * @returns {value is { satisfies: (version: unknown, range: unknown) => unknown }} Whether it is the semver module
+ */
+function isSemver(value) {
+  return isRow(value) && isFunction(value.satisfies);
+}
+
+/**
  * @param {unknown} value A value
  * @param {unknown} range A semver range
  * @param {Ctx} ctx The journey
@@ -38,8 +46,7 @@ const strings = (value) => (Array.isArray(value) ? value.filter(isText) : []);
 function satisfies(value, range, ctx) {
   /** @type {unknown} */
   const semver = createRequire(join(ctx.state.repo, "package.json"))("semver");
-  const compare = pick(semver, "satisfies");
-  return compare instanceof Function ? Boolean(compare.call(semver, value, range)) : false;
+  return isSemver(semver) ? Boolean(semver.satisfies(value, range)) : false;
 }
 
 export const journeys = guarded([
