@@ -11,7 +11,7 @@ const MS_PER_DAY = 86_400_000;
 const require = createRequire(fileURLToPath(import.meta.url));
 
 /**
- * @typedef {{ insertMany: (rows: object[]) => Promise<unknown>, insertOne: (row: object) => Promise<unknown>, findOne: (filter: object) => Promise<unknown>, updateOne: (filter: object, update: object) => Promise<unknown>, find: (filter: object) => { toArray: () => Promise<unknown[]> } }} Collection
+ * @typedef {{ insertMany: (rows: object[]) => Promise<unknown>, updateOne: (filter: object, update: object, options: { upsert: boolean }) => Promise<unknown>, find: (filter: object) => { toArray: () => Promise<unknown[]> } }} Collection
  * @typedef {{ collection: (name: string) => Collection }} Database
  * @typedef {{ connect: () => Promise<unknown>, close: () => Promise<unknown>, db: (name: string) => Database }} Client
  */
@@ -128,12 +128,15 @@ export async function seedStatistics(ctx, label, day) {
   const folder = ctx.step(`seed statistics ${label}`);
   mkdirSync(folder, { recursive: true });
   writeFileSync(join(folder, "seed.json"), `${JSON.stringify({ day, entry }, null, 2)}\n`);
-  await withDatabase(ctx, async (db) => {
-    const id = `${day.method}:${day.uri}`;
-    const found = await db.collection("dms-api__routes_statistics").findOne({ _id: id });
-    if (found) await db.collection("dms-api__routes_statistics").updateOne({ _id: id }, { $push: { statistics: entry } });
-    else await db.collection("dms-api__routes_statistics").insertOne({ _id: id, method: day.method, uri: day.uri, statistics: [entry], revision: randomUUID(), _instance: null });
-  });
+  await withDatabase(ctx, (db) =>
+    db
+      .collection("dms-api__routes_statistics")
+      .updateOne(
+        { _id: `${day.method}:${day.uri}` },
+        { $push: { statistics: entry }, $setOnInsert: { method: day.method, uri: day.uri, revision: randomUUID(), _instance: null } },
+        { upsert: true },
+      ),
+  );
 }
 
 /**
