@@ -1,4 +1,4 @@
-import { check, isRow, mon, parseJson, pick, same, saveSettings, sendAndRead, text } from "../../api.mjs";
+import { check, isRow, isText, mon, parseJson, pick, same, saveSettings, sendAndRead, text } from "../../api.mjs";
 import { DEFAULT_HEADERS, REDACTED_WORDS, JSON_HEADERS } from "./shared.mjs";
 
 /** @typedef {import("../../api.mjs").Ctx} Ctx */
@@ -41,7 +41,8 @@ export const redaction = [
     entryPoint: "POST /fx/echo with one key per redacted word",
     async run(/** @type {Ctx} */ ctx) {
       const settings = await mon(ctx, "the fixed list", "/settings");
-      const words = Array.isArray(pick(settings.body, "redactedKeys")) ? /** @type {string[]} */ (pick(settings.body, "redactedKeys")) : [];
+      const listed = pick(settings.body, "redactedKeys");
+      const words = Array.isArray(listed) && listed.every(isText) ? listed : [];
       const fields = new Map([...words.map((word) => /** @type {const} */ ([word, `value-of-${word}`])), /** @type {const} */ (["name", "plain"])]);
       const body = { ...Object.fromEntries(fields), nested: { token: "deep", keep: "kept" } };
       const query = words.map((word) => `${word}=q-${word}`).join("&");

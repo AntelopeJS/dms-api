@@ -127,12 +127,11 @@ class FakeRoutes implements RoutesStore {
     if (isString(route))
       throw new Error("The sync updates a route by its row.");
     const row = route._id ? this.rows.get(route._id) : undefined;
-    if (row)
-      Object.assign(row, {
-        module: route.module,
-        own: route.own,
-        uri: route.uri,
-      });
+    if (row) {
+      if (route.module !== undefined) row.module = route.module;
+      if (route.own !== undefined) row.own = route.own;
+      if (route.uri !== undefined) row.uri = route.uri;
+    }
     return Promise.resolve(1);
   }
   delete(id: string) {

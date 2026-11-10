@@ -3,7 +3,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
-import { isRow, pick } from "./api.mjs";
+import { isFunction, isRow, pick } from "./api.mjs";
 
 /** @typedef {import("./api.mjs").Ctx} Ctx */
 
@@ -37,7 +37,7 @@ async function withDatabase(ctx, body) {
   const driver = createRequire(require.resolve("mongodb-memory-server-core"))("mongodb");
   const MongoClient = pick(driver, "MongoClient");
   /** @type {unknown} */
-  const client = MongoClient instanceof Function ? Reflect.construct(MongoClient, [ctx.state.mongoUrl]) : undefined;
+  const client = isFunction(MongoClient) ? Reflect.construct(MongoClient, [ctx.state.mongoUrl]) : undefined;
   if (!isClient(client)) throw new Error("the MongoDB driver has no MongoClient");
   await client.connect();
   try {
