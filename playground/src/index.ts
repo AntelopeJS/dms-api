@@ -1,10 +1,8 @@
 import "./home";
 import "./shop";
-// oxlint-disable-next-line import/no-duplicates -- evaluated here on purpose, ahead of the named import below
-import "./notes";
+import { PLAYGROUND_SCHEMA } from "./notes";
 
 import { RegisterSchema } from "@antelopejs/interface-database-decorators";
-import { PLAYGROUND_SCHEMA } from "./notes";
 
 export async function construct(): Promise<void> {}
 

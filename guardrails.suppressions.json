@@ -2,14 +2,14 @@
   "rules": {
     "anti-slop/no-unknown-parameters": 4,
     "anti-slop/no-unknown-returns": 1,
-    "import/no-duplicates": 2,
+    "import/no-duplicates": 0,
     "typescript/no-base-to-string": 1
   },
   "tsExpectError": 0,
   "tsIgnore": 0,
   "safety": 1,
   "config": {
-    "vue/multi-word-component-names for frontend-vue/**/*.vue": 1
+    "vue/multi-word-component-names for frontend-vue/**/*.vue": 0
   },
   "agentFiles": true
 }

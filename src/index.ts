@@ -1,5 +1,9 @@
-// oxlint-disable-next-line import/no-duplicates -- evaluated here on purpose, ahead of the named import below: the module has to be initialised before anything that reaches into it
-import "./db";
+import {
+  ApiSettingsModel,
+  RequestLogModel,
+  RouteModel,
+  RouteStatisticsModel,
+} from "./db";
 import "./routes";
 import "./services/request-log/capture";
 import "./pages";
@@ -16,12 +20,6 @@ import {
   unregisterAutomationNodes,
 } from "./automation";
 import { type DmsApiConfig, getBaseConfig, setConfig } from "./config";
-import {
-  ApiSettingsModel,
-  RequestLogModel,
-  RouteModel,
-  RouteStatisticsModel,
-} from "./db";
 import { registerLiveTopics } from "./realtime";
 import {
   loadSettings,
