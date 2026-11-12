@@ -9,7 +9,7 @@
  * `window.ts`), so the blocks of one page land on the same keys.
  */
 
-import { createMemo } from "@/memo";
+import { createMemoPool, type Memo } from "@/memo";
 
 /** How long a cached aggregation is served, by default. */
 export const CACHE_TTL_MS = 15_000;
@@ -17,15 +17,11 @@ export const CACHE_TTL_MS = 15_000;
 /** Bound on the entries kept: each can hold a day of samples. */
 const MAX_ENTRIES = 24;
 
-const aggregates = createMemo(MAX_ENTRIES, CACHE_TTL_MS);
+const aggregates = createMemoPool(MAX_ENTRIES, CACHE_TTL_MS);
 
-/** The shared aggregation under `key` (see `Memo.cached`). */
-export function cached<T>(
-  key: string,
-  load: () => Promise<T>,
-  ttlMs: number = CACHE_TTL_MS,
-): Promise<T> {
-  return aggregates.cached(key, load, ttlMs);
+/** The memo of one aggregation, sharing the bound of all the others. */
+export function aggregateMemo<T>(): Memo<T> {
+  return aggregates.memo<T>();
 }
 
 /** Forget everything: for tests, and after a setting changes what counts. */
