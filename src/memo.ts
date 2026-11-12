@@ -14,7 +14,7 @@ export interface Memo<T> {
    * The value under `key`, computed by `load` when absent or expired. A
    * failed load is forgotten at once so the next call retries it.
    */
-  cached(key: string, load: () => Promise<T>, ttlMs?: number): Promise<T>;
+  cached: (key: string, load: () => Promise<T>, ttlMs?: number) => Promise<T>;
   clear(): void;
 }
 

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createMemoPool } from "@/memo";
 
 const HOUR_MS = 60 * 60 * 1000;
@@ -39,6 +39,21 @@ describe("createMemoPool", () => {
     const value = await words.cached("a", () => Promise.resolve("second"));
 
     expect(value).toBe("first");
+  });
+
+  it("loads a key again once its value expired", async () => {
+    vi.useFakeTimers({ now: 0 });
+    try {
+      const memo = createMemoPool(4, 100).memo<string>();
+      await memo.cached("a", () => Promise.resolve("first"));
+      vi.setSystemTime(100);
+
+      const value = await memo.cached("a", () => Promise.resolve("second"));
+
+      expect(value).toBe("second");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("retries a key whose load failed", async () => {
