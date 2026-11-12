@@ -1,5 +1,22 @@
 # Changelog
 
+## v0.6.4
+
+[compare changes](https://github.com/AntelopeJS/dms-api/compare/v0.6.3...v0.6.4)
+
+### 🔥 Performance
+
+- **request-log:** Classify each body key once per redaction pass ([#131](https://github.com/AntelopeJS/dms-api/pull/131))
+
+### 📦 Build
+
+- **deps:** Bump @antelopejs/tooling-configs to 0.5.0 ([#130](https://github.com/AntelopeJS/dms-api/pull/130))
+- **deps:** Bump @antelopejs/tooling-configs to 0.5.1 ([#132](https://github.com/AntelopeJS/dms-api/pull/132))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli ([@Upd4ting](http://github.com/Upd4ting))
+
 ## v0.6.3
 
 [compare changes](https://github.com/AntelopeJS/dms-api/compare/v0.6.2...v0.6.3)
