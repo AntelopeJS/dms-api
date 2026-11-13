@@ -1,6 +1,7 @@
 import type { JsonValue } from "@antelopejs/interface-dms/base/types/json";
 import { isJsonValue, isNumber, isObject, isString } from "@/guards";
 import { TESTER_SOURCE_HEADER } from "@/types/constants";
+import { type BodyValue, bodyText } from "./body";
 
 const REDACTED = "[REDACTED]";
 const MAX_REDACTION_DEPTH = 32;
@@ -244,12 +245,11 @@ export interface SanitizedBody {
  * `Date` or a `toJSON` instance is stored as it was sent.
  */
 export function sanitizeBody(
-  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- this is the parse step for a response body of any shape: it narrows with Buffer.isBuffer, isString and isObject, serialises it as a client receives it, and parses the JSON before redacting; a named type would only relabel unknown
-  body: unknown,
+  body: BodyValue,
   contentType: string,
 ): SanitizedBody {
   const mediaType = contentType.split(";")[0].trim().toLowerCase();
-  const text = Buffer.isBuffer(body) ? body.toString("utf8") : body;
+  const text = body.kind === "text" ? bodyText(body.raw) : undefined;
   const isForm = mediaType === "application/x-www-form-urlencoded";
   if (
     !isForm &&
@@ -260,16 +260,15 @@ export function sanitizeBody(
   }
   try {
     if (isForm) {
-      if (!isString(text)) return { omitted: "malformed", redacted: 0 };
+      if (text === undefined) return { omitted: "malformed", redacted: 0 };
       const { value, redacted } = redactSearchParams(new URLSearchParams(text));
       return { text: value.toString(), redacted };
     }
-    if (!isString(text) && !isObject(text)) {
+    if (text === undefined && body.kind !== "data") {
       return { omitted: "not-json", redacted: 0 };
     }
-    const serialised: string | undefined = isString(text)
-      ? text
-      : JSON.stringify(text);
+    const serialised: string | undefined =
+      body.kind === "data" ? JSON.stringify(body.data) : text;
     const parsed: unknown =
       serialised === undefined ? undefined : JSON.parse(serialised);
     if (!isJsonValue(parsed) || !isObject(parsed)) {

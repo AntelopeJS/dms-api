@@ -1,9 +1,9 @@
 {
   "rules": {
-    "anti-slop/no-unknown-parameters": 4,
-    "anti-slop/no-unknown-returns": 1,
+    "anti-slop/no-unknown-parameters": 0,
+    "anti-slop/no-unknown-returns": 0,
     "import/no-duplicates": 0,
-    "typescript/no-base-to-string": 1
+    "typescript/no-base-to-string": 0
   },
   "tsExpectError": 0,
   "tsIgnore": 0,

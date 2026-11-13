@@ -13,19 +13,17 @@ import { Logging } from "@antelopejs/interface-core/logging";
 import { GetModel } from "@antelopejs/interface-database-decorators";
 import { type DmsApiConfig, getConfig } from "@/config";
 import { RequestLogModel, RouteStatisticsModel } from "@/db";
-import type { RequestLogSource } from "@/db/tables/request_log.table";
+import type {
+  RequestLogError,
+  RequestLogSource,
+} from "@/db/tables/request_log.table";
 import { normalizeRoutePath } from "@/db/tables/routes_statistics.table";
 import { recordLiveRequest } from "@/services/live-feed";
 import { requestSource } from "@/services/tester-source";
 import { addRequestStatistics } from "@/services/statistics-write";
 import { NS_TO_MS, REQUEST_ID_HEADER, REQUEST_ID_MAX_LENGTH } from "@/types";
-import {
-  hasStatusGetter,
-  isMessageBody,
-  isErrorBody,
-  isString,
-  isTextOrBuffer,
-} from "@/guards";
+import { isStatusCarrier, isMessageBody, isString } from "@/guards";
+import { type BodyValue, bodyText, parseBody } from "./body";
 import {
   type CapturedBody,
   captureBody,
@@ -198,7 +196,7 @@ async function captureRequest(
   return {
     headers,
     body: captureBody(
-      raw,
+      parseBody(raw),
       headerValue(rawHeaders, "content-type"),
       config.requestLogMaxBodySize,
     ),
@@ -234,7 +232,7 @@ function captureResponse(
   const headers = sentHeaders(
     response,
     extractContentType(response),
-    isTextOrBuffer(body) ? body : undefined,
+    body.kind === "text" ? body.raw : undefined,
   );
   return {
     headers: pickHeaders(
@@ -274,11 +272,7 @@ interface LogInputs {
 }
 
 /**
- * The stored record. Small fields first: a search reads the path and the
- * error message of every row, and the database walks a document's fields in
- * order to reach them, so they come before the headers and bodies.
- *
- * The error is what a thrown value says went wrong: an Error's message and
+ * What a thrown value says went wrong: an Error's message and
  * stack; a thrown HTTPResult's body message, its status otherwise; anything
  * else as `String(err)`, not its JSON form. A thrown HTTPResult is not an
  * Error, so JSON would serialise its whole own-property graph -- body and
@@ -287,30 +281,30 @@ interface LogInputs {
  * also throws on a cycle or a BigInt, where this path has to be total, and
  * prints "{}" for an object whose message lives in its `toString`.
  */
+function describeThrown(err: unknown): RequestLogError {
+  if (err instanceof Error) return { message: err.message, stack: err.stack };
+  if (isStatusCarrier(err)) {
+    return {
+      message:
+        bodyErrorMessage(extractBody(err)) ?? `HTTP ${extractStatusCode(err)}`,
+    };
+  }
+  try {
+    return { message: String(err) };
+  } catch {
+    return { message: "unknown error" };
+  }
+}
+
+/**
+ * The stored record. Small fields first: a search reads the path and the
+ * error message of every row, and the database walks a document's fields in
+ * order to reach them, so they come before the headers and bodies.
+ */
 function assembleLogRecord(input: LogInputs) {
   const { context, route, request, response } = input;
   const headers = context.rawRequest.headers;
-  const err = context.error;
-  let thrown: { message: string; stack?: string } | undefined;
-  if (!err) {
-    thrown = undefined;
-  } else if (err instanceof Error) {
-    thrown = { message: err.message, stack: err.stack };
-  } else if (hasStatusGetter(err)) {
-    const body = extractBody(err);
-    thrown = {
-      message:
-        bodyErrorMessage(isErrorBody(body) ? body : undefined) ??
-        `HTTP ${extractStatusCode(err)}`,
-    };
-  } else {
-    try {
-      // oxlint-disable-next-line typescript/no-base-to-string -- the string form, not the JSON one (see the TSDoc above)
-      thrown = { message: String(err) };
-    } catch {
-      thrown = { message: "unknown error" };
-    }
-  }
+  const thrown = context.error ? describeThrown(context.error) : undefined;
   return {
     timestamp: new Date(),
     method: route.method,
@@ -487,17 +481,18 @@ const BODY_MESSAGE_KEYS = ["error", "message"] as const;
  * shape `HTTPResult` bodies and `assert` use. Read from the body object, or
  * from its JSON text.
  */
-export function bodyErrorMessage(
-  body: string | Buffer | { error?: unknown; message?: unknown } | undefined,
-): string | undefined {
-  let value: unknown = body;
-  if (Buffer.isBuffer(value)) value = value.toString("utf8");
-  if (isString(value)) {
+export function bodyErrorMessage(body: BodyValue): string | undefined {
+  let value: unknown;
+  if (body.kind === "data") {
+    value = body.data;
+  } else if (body.kind === "text") {
     try {
-      value = JSON.parse(value);
+      value = JSON.parse(bodyText(body.raw));
     } catch {
       return undefined;
     }
+  } else {
+    return undefined;
   }
   if (!isMessageBody(value)) return undefined;
   for (const key of BODY_MESSAGE_KEYS) {
@@ -512,8 +507,7 @@ function responseError(
   response: HTTPResult,
 ): { message: string } | undefined {
   if (statusCode < ERROR_STATUS_MIN) return undefined;
-  const body = extractBody(response);
-  const message = bodyErrorMessage(isErrorBody(body) ? body : undefined);
+  const message = bodyErrorMessage(extractBody(response));
   return message ? { message } : undefined;
 }
 

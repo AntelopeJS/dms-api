@@ -2,13 +2,14 @@ import type { HTTPResult } from "@antelopejs/interface-api";
 import type { IncomingHttpHeaders } from "node:http";
 import type { RequestLogBodyOmission } from "@/db/tables/request_log.table";
 import {
-  hasStatusGetter,
+  isStatusCarrier,
   isBodyCarrier,
   isFunction,
   isNumber,
   isObject,
 } from "@/guards";
 import { HTTP_STATUS_OK } from "@/types/constants";
+import { type BodyValue, NO_BODY, parseBody } from "./body";
 import {
   isSensitiveHeader,
   redactSearchParams,
@@ -60,15 +61,13 @@ export function omittedBody(reason: RequestLogBodyOmission): CapturedBody {
  * JSON and forms only: what the redaction can read by key.
  */
 export function captureBody(
-  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- a response body is whatever a handler passed to HTTPResult (a string, a Buffer, any object, a value JSON cannot hold), and this function is where it is checked and parsed (sanitizeBody); a named type would only relabel unknown
-  body: unknown,
+  body: BodyValue,
   contentType: string | undefined,
   maxBytes: number,
 ): CapturedBody {
-  if (body === undefined || body === null || body === "") {
+  if (body.kind === "none" || (body.kind === "text" && body.raw.length === 0)) {
     return omittedBody("empty");
   }
-  if (Buffer.isBuffer(body) && body.length === 0) return omittedBody("empty");
   if (maxBytes <= 0) return omittedBody("disabled");
   const sanitized = sanitizeBody(body, contentType ?? "");
   if (sanitized.text === undefined) {
@@ -115,10 +114,9 @@ export function queryToRecord(url: URL) {
  * through to `statusCode` then `status` when that throws or does not return a
  * number, 200 otherwise.
  */
-// oxlint-disable-next-line anti-slop/no-unknown-parameters -- value is a thrown value or a response of any shape, probed for getStatus, statusCode and status; HTTPResult cannot type it, as a thrown value may come from another copy of interface-api (tsc rejects HTTPResult for the capture.ts caller) and the tests feed non-objects
 export function extractStatusCode(value: unknown): number {
   if (!isObject(value)) return HTTP_STATUS_OK;
-  if (hasStatusGetter(value)) {
+  if (isStatusCarrier(value)) {
     try {
       const status: unknown = value.getStatus();
       if (isNumber(status)) return status;
@@ -131,17 +129,20 @@ export function extractStatusCode(value: unknown): number {
   return HTTP_STATUS_OK;
 }
 
-// oxlint-disable-next-line anti-slop/no-unknown-parameters, anti-slop/no-unknown-returns -- value is a thrown value or a response probed for getBody and body (typing it HTTPResult fails tsc at the thrown-value caller in capture.ts), and the body it answers is whatever the handler set, which captureBody parses
-export function extractBody(value: unknown): unknown {
-  if (!isBodyCarrier(value)) return undefined;
+/**
+ * The body of a thrown value or a response: its `getBody()`, or its `body`
+ * when it has no such method. None when there is neither or `getBody` throws.
+ */
+export function extractBody(value: unknown): BodyValue {
+  if (!isBodyCarrier(value)) return NO_BODY;
   if (isFunction(value.getBody)) {
     try {
-      return value.getBody();
+      return parseBody(value.getBody());
     } catch {
-      return undefined;
+      return NO_BODY;
     }
   }
-  return value.body;
+  return parseBody(value.body);
 }
 
 export function extractContentType(value: HTTPResult): string | undefined {
