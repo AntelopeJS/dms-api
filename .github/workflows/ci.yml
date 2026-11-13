@@ -26,6 +26,7 @@ jobs:
         docs
       renovate-sync: false
       test-job: true
+      windows: true
     permissions:
       contents: read
 
