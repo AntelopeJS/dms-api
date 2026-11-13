@@ -1,6 +1,8 @@
+import { HTTPResult } from "@antelopejs/interface-api";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import {
   bodyErrorMessage,
+  describeThrown,
   dmsModuleOf,
   isDmsConsoleCall,
   isDmsConsolePage,
@@ -41,6 +43,44 @@ describe("bodyErrorMessage", () => {
     expect(bodyErrorMessage(parseBody({ message: 1 }))).toBeUndefined();
     expect(bodyErrorMessage(parseBody("<html>"))).toBeUndefined();
     expect(bodyErrorMessage(parseBody(undefined))).toBeUndefined();
+  });
+});
+
+describe("describeThrown", () => {
+  it("keeps an Error's message and stack", () => {
+    const error = new Error("boom");
+    expect(describeThrown(error)).toEqual({
+      message: "boom",
+      stack: error.stack,
+    });
+  });
+
+  it("reads a thrown HTTPResult's body message, its status otherwise", () => {
+    expect(
+      describeThrown(
+        new HTTPResult(409, { error: "Conflict" }, "application/json"),
+      ),
+    ).toEqual({ message: "Conflict" });
+    expect(describeThrown(new HTTPResult(503))).toEqual({
+      message: "HTTP 503",
+    });
+  });
+
+  it("stores anything else in its string form, not its JSON", () => {
+    expect(describeThrown("plain")).toEqual({ message: "plain" });
+    expect(describeThrown({ toString: () => "custom" })).toEqual({
+      message: "custom",
+    });
+    expect(describeThrown({ a: 1 })).toEqual({ message: "[object Object]" });
+  });
+
+  it("falls back when the string form throws", () => {
+    const hostile = {
+      toString: () => {
+        throw new Error("no");
+      },
+    };
+    expect(describeThrown(hostile)).toEqual({ message: "unknown error" });
   });
 });
 

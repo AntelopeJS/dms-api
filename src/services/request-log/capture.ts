@@ -281,7 +281,7 @@ interface LogInputs {
  * also throws on a cycle or a BigInt, where this path has to be total, and
  * prints "{}" for an object whose message lives in its `toString`.
  */
-function describeThrown(err: unknown): RequestLogError {
+export function describeThrown(err: unknown): RequestLogError {
   if (err instanceof Error) return { message: err.message, stack: err.stack };
   if (isStatusCarrier(err)) {
     return {
