@@ -264,7 +264,10 @@ export interface RouteDetail {
  * selected route reads its detail, and reading a busy route's week of logs
  * is what costs.
  */
-const contracts = createMemo(16, CACHE_TTL_MS);
+const contracts = createMemo<Awaited<ReturnType<typeof loadContractTraffic>>>(
+  16,
+  CACHE_TTL_MS,
+);
 
 /** The route a `METHOD /path` reference names, with its contract. */
 export async function getRouteDetail(

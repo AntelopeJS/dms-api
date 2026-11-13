@@ -4,7 +4,7 @@ import { getConfig } from "@/config";
 import type { RequestLogModel, RouteModel, RouteStatisticsModel } from "@/db";
 import type { RequestLogSample } from "@/db/models/request_log.model";
 import { MS_PER_MINUTE } from "@/types";
-import { cached } from "./aggregate-cache";
+import { aggregateMemo } from "./aggregate-cache";
 import {
   alignComparison,
   comparisonSeriesName,
@@ -195,6 +195,9 @@ export function healthLookback(now: Date = new Date()): TimeRange {
   return { from: new Date(to.getTime() - RECENT_SPAN_MS), to };
 }
 
+const routeHealth = aggregateMemo<Map<string, RouteHealthState>>();
+const requestCounts = aggregateMemo<number>();
+
 /**
  * Every route judged by the health rules over the last 24 h. Routes are
  * judged one by one, so the result does not depend on the scope: it is
@@ -205,7 +208,7 @@ export async function loadRouteHealth(
   now: Date = new Date(),
 ): Promise<{ lookback: TimeRange; routes: Map<string, RouteHealthState> }> {
   const lookback = healthLookback(now);
-  const routes = await cached(
+  const routes = await routeHealth.cached(
     `route-health:${+lookback.from}:${+lookback.to}`,
     async () =>
       evaluateRoutes(await loadSamples(models.logs, lookback, null), lookback),
@@ -231,7 +234,7 @@ function countRequests(
   keys: ScopeKeys,
 ): Promise<number> {
   if (keys && keys.size === 0) return Promise.resolve(0);
-  return cached(
+  return requestCounts.cached(
     `count:${scopeId(keys)}:${+range.from}:${+range.to}`,
     async () => {
       const page = await models.logs.list(

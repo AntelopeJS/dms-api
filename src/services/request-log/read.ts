@@ -87,7 +87,7 @@ export interface RouteLatencySources {
  * A route's latency is read again at most every minute: every request the
  * panel opens on the same route asks for it.
  */
-const routeLatencies = createMemo(64, 60_000);
+const routeLatencies = createMemo<RouteLatency | null>(64, 60_000);
 
 /** The latency histogram and extremes of the days from `firstDay` on. */
 function daysLatency(days: readonly DayStatistics[], firstDay: number) {

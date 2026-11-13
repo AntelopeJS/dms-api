@@ -4,7 +4,7 @@ import type {
   RequestLogSample,
 } from "@/db/models/request_log.model";
 import { MS_PER_DAY } from "@/types";
-import { cached } from "./aggregate-cache";
+import { aggregateMemo } from "./aggregate-cache";
 import { scopeRouteKey } from "./scope";
 import { CACHE_QUANTUM_MS, pinnedNow, type TimeRange } from "./window";
 
@@ -69,6 +69,9 @@ function lowerBound(times: number[], at: number): number {
   }
   return low;
 }
+
+const sampleSets = aggregateMemo<SampleSet>();
+const errorSets = aggregateMemo<SampleSet>();
 
 function slice(set: SampleSet, range: TimeRange): RequestLogSample[] {
   return set.samples.slice(
@@ -185,12 +188,12 @@ export async function samplesIn(
     range.from >= recent.from &&
     range.to.getTime() <= now.getTime() + CACHE_QUANTUM_MS
   ) {
-    const set = await cached(`samples:${rangeKey(recent)}`, () =>
+    const set = await sampleSets.cached(`samples:${rangeKey(recent)}`, () =>
       scanRecent(model, recent),
     );
     return slice(set, range);
   }
-  const set = await cached(`samples:${rangeKey(range)}`, () =>
+  const set = await sampleSets.cached(`samples:${rangeKey(range)}`, () =>
     scanSamples(model, range),
   );
   return slice(set, range);
@@ -247,8 +250,9 @@ export async function loadErrorSamples(
   minStatus: 400 | 500,
 ): Promise<RequestLogSample[]> {
   if (keys && keys.size === 0) return [];
-  const set = await cached(`errors:${minStatus}:${rangeKey(range)}`, () =>
-    scanErrors(model, range, minStatus),
+  const set = await errorSets.cached(
+    `errors:${minStatus}:${rangeKey(range)}`,
+    () => scanErrors(model, range, minStatus),
   );
   const samples = slice(set, range);
   return keys

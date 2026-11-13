@@ -4,7 +4,7 @@ import type { RouteStatistics } from "@/db/tables/routes_statistics.table";
 import { createMemo } from "@/memo";
 import { isNumber } from "@/guards";
 import type { DayStatistics } from "@/types";
-import { cached } from "./aggregate-cache";
+import { aggregateMemo } from "./aggregate-cache";
 import { scopeRouteKey } from "./scope";
 import {
   emptyHistogram,
@@ -257,6 +257,10 @@ interface MinuteTraffic {
 /** A past day of logs, per route and per minute. */
 type DayProfile = Map<string, MinuteTraffic[]>;
 
+const dayProfiles = aggregateMemo<DayProfile | null>();
+const rollups = aggregateMemo<RouteStatistics[]>();
+const windowTraffics = aggregateMemo<WindowTraffic>();
+
 /** A past day does not change: its profile is kept for hours. */
 const PROFILE_TTL_MS = 6 * 60 * 60 * 1000;
 
@@ -282,7 +286,7 @@ function dayProfile(
   model: SampleSource,
   dayStart: number,
 ): Promise<DayProfile | null> {
-  return cached(
+  return dayProfiles.cached(
     `profile:${dayStart}`,
     async () => {
       if (dayStart < horizonOf("hour", new Date()).getTime()) return null;
@@ -327,7 +331,7 @@ type DayCounts = Map<string, MinuteCount[]>;
  * Bounded by the longest log retention the histogram reads.
  */
 const MAX_COUNTED_DAYS = 400;
-const countedDays = createMemo(MAX_COUNTED_DAYS, PROFILE_TTL_MS);
+const countedDays = createMemo<DayCounts>(MAX_COUNTED_DAYS, PROFILE_TTL_MS);
 
 /** Forget the counted days: for tests, with the aggregate cache. */
 export function forgetDayCounts(): void {
@@ -438,7 +442,11 @@ function partialDay(
 
 /** The day rollups, shared by the blocks of a page. */
 export function loadRollups(model: RollupSource): Promise<RouteStatistics[]> {
-  return cached("rollups", async () => model.getAll(), CACHE_QUANTUM_MS);
+  return rollups.cached(
+    "rollups",
+    async () => model.getAll(),
+    CACHE_QUANTUM_MS,
+  );
 }
 
 /**
@@ -505,15 +513,18 @@ export function windowTraffic(
   range: TimeRange,
   granularity: WindowGranularity,
 ): Promise<WindowTraffic> {
-  return cached(`traffic:${granularity}:${rangeKey(range)}`, async () => {
-    if (granularity === "day") return dayTraffic(models, range);
-    const starts = bucketStarts(range, granularity);
-    const samples = await samplesIn(models.logs, range);
-    return {
-      starts,
-      routes: bucketSamplesByRoute(samples, starts, granularity),
-    };
-  });
+  return windowTraffics.cached(
+    `traffic:${granularity}:${rangeKey(range)}`,
+    async () => {
+      if (granularity === "day") return dayTraffic(models, range);
+      const starts = bucketStarts(range, granularity);
+      const samples = await samplesIn(models.logs, range);
+      return {
+        starts,
+        routes: bucketSamplesByRoute(samples, starts, granularity),
+      };
+    },
+  );
 }
 
 /** The traffic of the routes in scope, summed bucket by bucket. */

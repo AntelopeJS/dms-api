@@ -3,55 +3,86 @@
  * others wait for the same promise, then read the result until it expires.
  */
 
-interface Entry {
+interface Slot {
   expires: number;
-  value: Promise<unknown>;
+  drop(): void;
 }
 
-/** A memo of `maxEntries` values, each served `ttlMs` unless told otherwise. */
-export interface Memo {
+/** The values of one computation, each served `ttlMs` unless told otherwise. */
+export interface Memo<T> {
   /**
    * The value under `key`, computed by `load` when absent or expired. A
    * failed load is forgotten at once so the next call retries it.
    */
-  cached<T>(key: string, load: () => Promise<T>, ttlMs?: number): Promise<T>;
+  cached: (key: string, load: () => Promise<T>, ttlMs?: number) => Promise<T>;
   clear(): void;
 }
 
-export function createMemo(maxEntries: number, defaultTtlMs: number): Memo {
-  const entries = new Map<string, Entry>();
+/**
+ * Memos of several computations under one bound of `maxEntries` values: when
+ * it is reached, the oldest value goes first, whichever memo holds it.
+ */
+export interface MemoPool {
+  memo<T>(): Memo<T>;
+  clear(): void;
+}
 
-  function evictExpired(now: number): void {
-    for (const [key, entry] of entries) {
-      if (entry.expires <= now) entries.delete(key);
+export function createMemoPool(
+  maxEntries: number,
+  defaultTtlMs: number,
+): MemoPool {
+  const slots = new Set<Slot>();
+
+  function evict(now: number): void {
+    for (const slot of slots) {
+      if (slot.expires <= now) slot.drop();
     }
-    while (entries.size >= maxEntries) {
-      const oldest = entries.keys().next().value;
+    while (slots.size >= maxEntries) {
+      const oldest = slots.values().next().value;
       if (oldest === undefined) break;
-      entries.delete(oldest);
+      oldest.drop();
     }
   }
 
+  function memo<T>(): Memo<T> {
+    const entries = new Map<string, { slot: Slot; value: Promise<T> }>();
+    return {
+      cached(key, load, ttlMs = defaultTtlMs) {
+        const now = Date.now();
+        const hit = entries.get(key);
+        if (hit && hit.slot.expires > now) return hit.value;
+        evict(now);
+        const value = load();
+        const slot: Slot = {
+          expires: now + ttlMs,
+          drop: () => {
+            slots.delete(slot);
+            if (entries.get(key)?.slot === slot) entries.delete(key);
+          },
+        };
+        slots.add(slot);
+        entries.set(key, { slot, value });
+        value.catch(() => slot.drop());
+        return value;
+      },
+      clear: () => {
+        for (const { slot } of entries.values()) slot.drop();
+      },
+    };
+  }
+
   return {
-    cached<T>(
-      key: string,
-      load: () => Promise<T>,
-      ttlMs = defaultTtlMs,
-    ): Promise<T> {
-      const now = Date.now();
-      const hit = entries.get(key);
-      if (hit && hit.expires > now) {
-        // SAFETY: each key names one computation (see aggregate-cache.ts), so the promise stored under it is the one that computation's load returned, a Promise<T> for that call site's T.
-        return hit.value as Promise<T>;
-      }
-      evictExpired(now);
-      const value = load();
-      entries.set(key, { expires: now + ttlMs, value });
-      value.catch(() => {
-        if (entries.get(key)?.value === value) entries.delete(key);
-      });
-      return value;
+    memo,
+    clear: () => {
+      for (const slot of slots) slot.drop();
     },
-    clear: () => entries.clear(),
   };
+}
+
+/** A memo of `maxEntries` values of one computation. */
+export function createMemo<T>(
+  maxEntries: number,
+  defaultTtlMs: number,
+): Memo<T> {
+  return createMemoPool(maxEntries, defaultTtlMs).memo<T>();
 }
