@@ -1,7 +1,6 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
-import { join } from "node:path";
 import { guarded } from "../guard.mjs";
-import { FIXTURE_ROUTES, check, list, mon, pick, same, saveSettings, settled, text, traffic, withConfig, openPage } from "../api.mjs";
+import { FIXTURE_ROUTES, backendLog, check, list, mon, pick, same, saveSettings, settled, text, traffic, withConfig, openPage } from "../api.mjs";
 
 /** @typedef {import("../api.mjs").Ctx} Ctx */
 
@@ -28,7 +27,7 @@ async function statusOf(ctx, field, value) {
  */
 async function startWith(ctx, config) {
   const previous = { ...ctx.state.extraEnv };
-  const file = join(ctx.state.logs, "backend.log");
+  const file = backendLog(ctx);
   const before = existsSync(file) ? statSync(file).size : 0;
   ctx.state.extraEnv = { ...previous, VERIFY_API_CONFIG: JSON.stringify(config) };
   let started = true;

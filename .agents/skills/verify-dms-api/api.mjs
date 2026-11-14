@@ -18,6 +18,19 @@ export const FIXTURE_ROUTES = 23;
 export const MONITOR = "/api/monitoring";
 
 /**
+ * The log file of the journey's backend: dms-control names it after the
+ * journey's database, so each journey's backend writes its own.
+ *
+ * @param {Ctx} ctx The journey
+ * @returns {string} Its path
+ */
+export function backendLog(ctx) {
+  const backend = ctx.state.processes.find((entry) => entry.name === "backend");
+  if (!backend) throw new Error("the run has no backend");
+  return backend.log;
+}
+
+/**
  * @param {unknown} value Anything a JSON answer holds
  * @returns {value is Row} Whether it is an object
  */

@@ -1,7 +1,6 @@
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { guarded } from "../guard.mjs";
-import { FIXTURE_ROUTES, check, isRow, isText, list, mon, num, pick, runAction, same, saveSettings, settled, text, traffic, withEnv } from "../api.mjs";
+import { FIXTURE_ROUTES, backendLog, check, isRow, isText, list, mon, num, pick, runAction, same, saveSettings, settled, text, traffic, withEnv } from "../api.mjs";
 import { seedLogs, seedStatistics } from "../seed.mjs";
 
 /** @typedef {import("../api.mjs").Ctx} Ctx */
@@ -44,7 +43,7 @@ export const journeys = guarded([
     async run(/** @type {Ctx} */ ctx) {
       await ctx.restartBackend();
       await traffic(ctx, "a call", [{ path: "/fx/ok", count: 1 }]);
-      const log = readFileSync(join(ctx.state.logs, "backend.log"), "utf8").split("\n");
+      const log = readFileSync(backendLog(ctx), "utf8").split("\n");
       const start = log.map((line) => /Server started/.test(line)).lastIndexOf(true);
       const lines = log.slice(Math.max(0, start - 60));
       const health = await mon(ctx, "health", "/overview/health");
