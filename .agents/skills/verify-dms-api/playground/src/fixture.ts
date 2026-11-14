@@ -24,8 +24,8 @@ export class FixtureController extends Controller("/fx") {
   }
 
   @Get("slow")
-  async slow(@Parameter("ms", "query") ms?: string) {
-    await wait(Number(ms ?? "1200"));
+  async slow(@Parameter("ms", "query") ms: string | true | undefined) {
+    await wait(Number(ms === true || ms === undefined ? "1200" : ms));
     return { slow: true };
   }
 
@@ -71,8 +71,8 @@ export class FixtureController extends Controller("/fx") {
   }
 
   @Get("blob")
-  blob(@Parameter("size", "query") size?: string) {
-    return { text: "x".repeat(Number(size ?? "10")) };
+  blob(@Parameter("size", "query") size: string | true | undefined) {
+    return { text: "x".repeat(Number(size === true || size === undefined ? "10" : size)) };
   }
 
   @Get("items/:id")
