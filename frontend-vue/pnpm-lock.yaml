@@ -13,8 +13,8 @@ importers:
         version: 3.5.22(typescript@6.0.3)
     devDependencies:
       '@antelopejs/tooling-configs':
-        specifier: ^0.5.0
-        version: 0.5.0
+        specifier: '>=0.7.0 <0.8.0'
+        version: 0.7.0
       '@typescript-eslint/parser':
         specifier: ^8.0.0
         version: 8.27.0(eslint@9.39.5(jiti@2.7.0))(typescript@6.0.3)
@@ -45,8 +45,8 @@ importers:
 
 packages:
 
-  '@antelopejs/tooling-configs@0.5.0':
-    resolution: {integrity: sha512-vTZyx0FpSzArjSdb119i+CTGPsYe903/D/JY+0KVUgBjdw/2+LTRt58NUinDtvnf9H18uAlF2xwWJXsSPTv/6A==}
+  '@antelopejs/tooling-configs@0.7.0':
+    resolution: {integrity: sha512-FtE+vFwTpQR1hgWWSdiylEtn8SaJ6L7B4F7TTyy97cYaj/qvpX/l5QDebJw/A/RQ/Tt1FVYtgKV+lzFFbjau7w==}
     engines: {node: '>=22.18.0'}
     hasBin: true
     peerDependencies:
@@ -506,6 +506,10 @@ packages:
   '@typescript-eslint/visitor-keys@8.27.0':
     resolution: {integrity: sha512-WsXQwMkILJvffP6z4U3FYJPlbf/j07HIxmDjZpbNvBJkMfvwXj5ACRkkHwBDvLBbDbtX5TdU64/rcvKJ/vuInQ==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
+
+  '@typescript/typescript6@6.0.2':
+    resolution: {integrity: sha512-mbCddXd+jm7hfx7w2YU64/Av4/NqqeG3GoRZgxPcgoTxYjhrcfJRw9ULch71SS4G+Q3bOXFhRvPqjguN0Hyp5w==}
+    hasBin: true
 
   '@vitejs/plugin-vue@6.0.10':
     resolution: {integrity: sha512-b80aUQh3n+qEzzZm5oQp3rT2QImeCx58K6eFl/RkJ3d65KW0kTuv5lNsLRVAjbW9YRUpo/wzmvzMgV34bTAItA==}
@@ -1273,11 +1277,6 @@ packages:
     resolution: {integrity: sha512-XleUoc9uwGXqjWwXaUTZAmzMcFZ5858QA2vvx1Ur5xIcixXIP+8LnFDgRplU30us6teqdlskFfu+ae4K79Ooew==}
     engines: {node: '>= 0.8.0'}
 
-  typescript@5.9.3:
-    resolution: {integrity: sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==}
-    engines: {node: '>=14.17'}
-    hasBin: true
-
   typescript@6.0.3:
     resolution: {integrity: sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw==}
     engines: {node: '>=14.17'}
@@ -1424,12 +1423,13 @@ packages:
 
 snapshots:
 
-  '@antelopejs/tooling-configs@0.5.0':
+  '@antelopejs/tooling-configs@0.7.0':
     dependencies:
       '@oxlint/plugins': 1.81.0
+      '@typescript/typescript6': 6.0.2
       dts-bundle-generator: 9.5.1
       minimatch: 10.2.6
-      typescript: 5.9.3
+      semver: 7.8.5
       yaml: 2.9.1
 
   '@babel/helper-string-parser@7.27.1': {}
@@ -1753,6 +1753,10 @@ snapshots:
     dependencies:
       '@typescript-eslint/types': 8.27.0
       eslint-visitor-keys: 4.2.0
+
+  '@typescript/typescript6@6.0.2':
+    dependencies:
+      '@typescript/old': typescript@6.0.3
 
   '@vitejs/plugin-vue@6.0.10(vite@7.1.10(@types/node@24.2.0)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.39.0)(yaml@2.9.1))(vue@3.5.22(typescript@6.0.3))':
     dependencies:
@@ -2469,8 +2473,6 @@ snapshots:
   type-check@0.4.0:
     dependencies:
       prelude-ls: 1.2.1
-
-  typescript@5.9.3: {}
 
   typescript@6.0.3: {}
 

@@ -7,8 +7,8 @@ import {
   writeFileSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { dirname, join, sep } from 'node:path'
-import { build as viteBuild, type Plugin } from 'vite'
+import { dirname, join } from 'node:path'
+import { normalizePath, build as viteBuild, type Plugin } from 'vite'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { backendBoundary } from '../build/backend-boundary'
 
@@ -102,9 +102,9 @@ describe('the backend boundary of the frontend build', () => {
     )
     await expect(failure).rejects.toThrow(/Backend boundary/)
     await expect(failure).rejects.toThrow(
-      join(frontend, 'entry.ts').split(sep).join('/'),
+      normalizePath(join(frontend, 'entry.ts')),
     )
-    await expect(failure).rejects.toThrow(backendFile())
+    await expect(failure).rejects.toThrow(normalizePath(backendFile()))
   })
 
   it('fails on a file deeper under the backend source', async () => {
