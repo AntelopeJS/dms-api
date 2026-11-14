@@ -122,8 +122,16 @@ const DECLARED_TYPES = new Map<string, InferredType>([
   ["Buffer", "buffer"],
 ]);
 
-/** The type a decorated parameter declares by its class name; a string when unknown. */
-export function inferredTypeOf(typeName: string | null): InferredType {
+/**
+ * The type a decorated parameter declares by its class name; a string when
+ * unknown. A query parameter is always a string: its value is text or a bare
+ * flag, which the compiler records as `Object`.
+ */
+export function inferredTypeOf(
+  typeName: string | null,
+  source: ParameterSource,
+): InferredType {
+  if (source === "query") return "string";
   return DECLARED_TYPES.get(typeName ?? "") ?? "string";
 }
 
@@ -155,7 +163,7 @@ function declaredParameter(
     name,
     source,
     multi,
-    inferredType: multi ? "object" : inferredTypeOf(decorated.type),
+    inferredType: multi ? "object" : inferredTypeOf(decorated.type, source),
   };
 }
 
