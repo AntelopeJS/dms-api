@@ -346,7 +346,7 @@ const count = (value: number) =>
 </script>
 
 <template>
-  <DmsCard
+  <DmsCardPanel
     :padded="false"
     class="@5xl:max-h-[calc(100dvh-2rem)] @5xl:min-h-[24rem] flex flex-col overflow-hidden"
   >
@@ -395,7 +395,7 @@ const count = (value: number) =>
             <UKbd value="/" />
           </template>
         </UInput>
-        <DmsSegmented
+        <DmsSegmentedControl
           v-model="method"
           :items="methodItems"
           size="sm"
@@ -606,5 +606,5 @@ const count = (value: number) =>
         :toggle-all="toggleAll"
       />
     </div>
-  </DmsCard>
+  </DmsCardPanel>
 </template>

@@ -10,7 +10,7 @@ const { t } = useI18n()
 
 <template>
   <section class="flex flex-col gap-2">
-    <DmsEyebrow :label="t('api.request.general')" />
+    <DmsEyebrowLabel :label="t('api.request.general')" />
     <dl
       class="grid grid-cols-[max-content_minmax(0,1fr)] gap-x-4 gap-y-1.5 text-[12.5px]"
     >

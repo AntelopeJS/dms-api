@@ -427,7 +427,7 @@ const dateFormat = useDateFormat()
 
       <div v-else-if="tab === 'overview'" class="flex flex-col gap-5">
         <section v-if="log.error" class="flex flex-col gap-2">
-          <DmsEyebrow :label="t('api.request.error')" />
+          <DmsEyebrowLabel :label="t('api.request.error')" />
           <div class="border-error/40 bg-error/5 rounded-md border px-3 py-2.5">
             <div class="flex items-start gap-2">
               <p
@@ -476,7 +476,7 @@ const dateFormat = useDateFormat()
         />
 
         <section class="flex flex-col gap-2">
-          <DmsEyebrow :label="t('api.request.path_params')" />
+          <DmsEyebrowLabel :label="t('api.request.path_params')" />
           <ApiKeyValues
             :values="log.pathParams"
             :empty="t('api.request.no_path_params')"
@@ -486,7 +486,7 @@ const dateFormat = useDateFormat()
 
       <div v-else-if="tab === 'request'" class="flex flex-col gap-5">
         <section class="flex flex-col gap-2">
-          <DmsEyebrow :label="t('api.request.headers')" />
+          <DmsEyebrowLabel :label="t('api.request.headers')" />
           <ApiKeyValues
             :values="log.requestHeaders"
             :empty="t('api.request.no_headers')"
@@ -516,7 +516,7 @@ const dateFormat = useDateFormat()
           v-if="log.query && Object.keys(log.query).length"
           class="flex flex-col gap-2"
         >
-          <DmsEyebrow :label="t('api.request.query')" />
+          <DmsEyebrowLabel :label="t('api.request.query')" />
           <ApiKeyValues :values="log.query" :empty="''" />
           <p
             v-if="redactions.query > 0"
@@ -533,7 +533,7 @@ const dateFormat = useDateFormat()
           </p>
         </section>
         <section class="flex flex-col gap-2">
-          <DmsEyebrow :label="t('api.request.body')" />
+          <DmsEyebrowLabel :label="t('api.request.body')" />
           <ApiBody
             kind="request"
             :body="log.requestBody"
@@ -560,14 +560,14 @@ const dateFormat = useDateFormat()
 
       <div v-else class="flex flex-col gap-5">
         <section class="flex flex-col gap-2">
-          <DmsEyebrow :label="t('api.request.headers')" />
+          <DmsEyebrowLabel :label="t('api.request.headers')" />
           <ApiKeyValues
             :values="log.responseHeaders"
             :empty="t('api.request.no_headers')"
           />
         </section>
         <section class="flex flex-col gap-2">
-          <DmsEyebrow :label="t('api.request.body')" />
+          <DmsEyebrowLabel :label="t('api.request.body')" />
           <ApiBody
             kind="response"
             :body="log.responseBody"

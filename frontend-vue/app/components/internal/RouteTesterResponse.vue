@@ -38,7 +38,7 @@ const {
 </script>
 
 <template>
-  <DmsCard :padded="false" class="min-w-0">
+  <DmsCardPanel :padded="false" class="min-w-0">
     <div v-if="!result" class="px-4 py-10">
       <DmsEmptyState
         size="sm"
@@ -122,7 +122,7 @@ const {
         </UTooltip>
       </div>
       <div class="flex flex-col gap-2 p-3">
-        <DmsBanner
+        <DmsNoticeBanner
           v-if="errorCopy"
           :tone="result.error === 'aborted' ? 'info' : 'error'"
           size="sm"
@@ -130,7 +130,7 @@ const {
           :title="errorCopy.title"
           :description="errorCopy.description"
         />
-        <DmsBanner
+        <DmsNoticeBanner
           v-else-if="result.status === 401"
           tone="warning"
           size="sm"
@@ -147,7 +147,7 @@ const {
               @click="useSession = true"
             />
           </template>
-        </DmsBanner>
+        </DmsNoticeBanner>
         <UTabs
           v-if="responseTabs.length"
           v-model="responseTab"
@@ -196,7 +196,7 @@ const {
               </span>
               <span>{{ shortId(capturedLog._id) }}</span>
             </div>
-            <DmsBanner
+            <DmsNoticeBanner
               v-if="capturedLog.error"
               tone="error"
               size="sm"
@@ -268,5 +268,5 @@ const {
         </template>
       </div>
     </template>
-  </DmsCard>
+  </DmsCardPanel>
 </template>

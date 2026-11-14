@@ -46,7 +46,7 @@ describe("RoutesPage", () => {
       "tabs",
       "statistics",
     ]);
-    expect(guard.componentName).toBe("dms-guard");
+    expect(guard.componentName).toBe("dms-guard-block");
     expect(guard.options).toMatchObject({
       fetchUrl:
         "/api/monitoring/routes/statistics/activity?route={{query.route}}",

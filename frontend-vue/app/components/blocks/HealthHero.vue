@@ -367,7 +367,7 @@ const metrics = computed<HeroMetric[]>(() => {
          82.5 px on a wide screen) and the row of reasons under it, so
          nothing below moves when the verdict arrives. -->
     <template v-if="pending && !data">
-      <DmsCard :padded="false" class="px-4 py-[22px] sm:px-[26px]">
+      <DmsCardPanel :padded="false" class="px-4 py-[22px] sm:px-[26px]">
         <div class="flex min-h-[82.5px] items-center gap-6">
           <USkeleton class="size-16 rounded-full" />
           <div class="flex flex-col gap-2">
@@ -382,7 +382,7 @@ const metrics = computed<HeroMetric[]>(() => {
             </div>
           </div>
         </div>
-      </DmsCard>
+      </DmsCardPanel>
       <div class="flex h-7 items-center gap-2" aria-hidden="true">
         <USkeleton class="h-4 w-56" />
         <span class="grow" />
@@ -390,7 +390,7 @@ const metrics = computed<HeroMetric[]>(() => {
       </div>
     </template>
 
-    <DmsCard v-else-if="!data">
+    <DmsCardPanel v-else-if="!data">
       <DmsEmptyState
         variant="error"
         :title="t('api.health.error_title')"
@@ -403,9 +403,9 @@ const metrics = computed<HeroMetric[]>(() => {
           },
         ]"
       />
-    </DmsCard>
+    </DmsCardPanel>
 
-    <DmsCard v-else-if="data.firstRun" :padded="false" class="px-6 py-7">
+    <DmsCardPanel v-else-if="data.firstRun" :padded="false" class="px-6 py-7">
       <DmsEmptyState
         size="lg"
         icon="i-ph-broadcast"
@@ -446,12 +446,12 @@ const metrics = computed<HeroMetric[]>(() => {
           </p>
         </li>
       </ol>
-    </DmsCard>
+    </DmsCardPanel>
 
     <template v-else>
       <!-- The DMS status hero, drawn here: its "since" line takes a tooltip
            and the 4xx figure stays grey, which DmsStatusSummary cannot do. -->
-      <DmsCard
+      <DmsCardPanel
         :padded="false"
         class="px-4 py-[22px] sm:px-[26px]"
         :style="cardStyle"
@@ -482,7 +482,7 @@ const metrics = computed<HeroMetric[]>(() => {
               </span>
             </div>
             <div>
-              <DmsEyebrow as="h2" :label="heading" />
+              <DmsEyebrowLabel as="h2" :label="heading" />
               <p
                 :class="LOOKS[data.verdict].text"
                 class="mt-1.5 text-[28px] font-[650] leading-none tracking-[-0.035em]"
@@ -510,7 +510,7 @@ const metrics = computed<HeroMetric[]>(() => {
 
           <HealthHeroMetrics :metrics="metrics" />
         </div>
-      </DmsCard>
+      </DmsCardPanel>
 
       <div class="flex flex-wrap items-center gap-2">
         <DmsStatusPill
@@ -592,7 +592,7 @@ const metrics = computed<HeroMetric[]>(() => {
           @click="refreshPage"
         />
       </div>
-      <DmsBanner
+      <DmsNoticeBanner
         v-if="stale"
         tone="warning"
         size="sm"
@@ -609,7 +609,7 @@ const metrics = computed<HeroMetric[]>(() => {
             @click="refresh()"
           />
         </template>
-      </DmsBanner>
+      </DmsNoticeBanner>
     </template>
   </section>
 </template>
