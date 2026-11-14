@@ -50,15 +50,15 @@ pnpm --dir playground traffic     # a few hundred demo requests
 
 <!-- antelopejs-docs-compat:start -->
 
-| Package                                     | Supported         | Tested with |
-| ------------------------------------------- | ----------------- | ----------- |
-| `@antelopejs/interface-api`                 | `>=0.2.0 <1.0.0`  | `0.2.0`     |
-| `@antelopejs/interface-api-util`            | `>=0.3.0 <1.0.0`  | `0.3.0`     |
-| `@antelopejs/interface-core`                | `>=0.4.0 <1.0.0`  | `0.4.0`     |
-| `@antelopejs/interface-database`            | `>=0.3.0 <1.0.0`  | `0.3.0`     |
-| `@antelopejs/interface-database-decorators` | `>=0.2.0 <1.0.0`  | `0.2.0`     |
-| `@antelopejs/interface-dms`                 | `>=0.12.0 <1.0.0` | `0.12.0`    |
-| `@antelopejs/interface-dms-automation`      | `>=0.6.0 <1.0.0`  | `0.6.0`     |
+| Package                                     | Supported          | Tested with |
+| ------------------------------------------- | ------------------ | ----------- |
+| `@antelopejs/interface-api`                 | `>=0.2.0 <0.3.0`   | `0.2.0`     |
+| `@antelopejs/interface-api-util`            | `>=0.3.0 <0.4.0`   | `0.3.0`     |
+| `@antelopejs/interface-core`                | `>=0.4.0 <0.5.0`   | `0.4.0`     |
+| `@antelopejs/interface-database`            | `>=0.3.0 <0.4.0`   | `0.3.0`     |
+| `@antelopejs/interface-database-decorators` | `>=0.2.0 <0.3.0`   | `0.2.0`     |
+| `@antelopejs/interface-dms`                 | `>=0.12.0 <0.13.0` | `0.12.0`    |
+| `@antelopejs/interface-dms-automation`      | `>=0.6.0 <0.7.0`   | `0.6.0`     |
 
 <!-- antelopejs-docs-compat:end -->
 
