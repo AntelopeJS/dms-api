@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.7.1
+
+[compare changes](https://github.com/AntelopeJS/dms-api/compare/v0.7.0...v0.7.1)
+
+### 🩹 Fixes
+
+- **deps:** Accept interface-dms-automation 0.7, the line dms-automation 0.11 provides ([#139](https://github.com/AntelopeJS/dms-api/pull/139))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli ([@Upd4ting](http://github.com/Upd4ting))
+
 ## v0.7.0
 
 [compare changes](https://github.com/AntelopeJS/dms-api/compare/v0.6.4...v0.7.0)
