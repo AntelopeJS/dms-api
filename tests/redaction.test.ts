@@ -7,6 +7,7 @@ import {
   redactValue,
   sanitizeBody,
 } from "@/services/request-log/redaction";
+import { parseBody } from "@/services/request-log/body";
 
 describe("isSensitiveKey", () => {
   it.each([
@@ -149,13 +150,15 @@ describe("redactSearchParams", () => {
 
 describe("sanitizeBody", () => {
   it("says why a body is not stored", () => {
-    expect(sanitizeBody("{nope", "application/json")).toMatchObject({
+    expect(sanitizeBody(parseBody("{nope"), "application/json")).toMatchObject({
       omitted: "malformed",
     });
-    expect(sanitizeBody("<a/>", "application/xml")).toMatchObject({
+    expect(sanitizeBody(parseBody("<a/>"), "application/xml")).toMatchObject({
       omitted: "not-json",
     });
-    expect(sanitizeBody('"a token"', "application/json")).toMatchObject({
+    expect(
+      sanitizeBody(parseBody('"a token"'), "application/json"),
+    ).toMatchObject({
       omitted: "not-json",
     });
   });
@@ -171,33 +174,38 @@ describe("sanitizeBody", () => {
       text: '{"user":{"name":"Jane","password":"[REDACTED]","tags":["a","[REDACTED]"]},"list":[1,null,true,{"token":"[REDACTED]"}],"note":"paid with [REDACTED]","nothing":null}',
       redacted: 4,
     };
-    expect(sanitizeBody(text, "application/json")).toEqual(expected);
-    expect(sanitizeBody(Buffer.from(text), "application/json")).toEqual(
-      expected,
-    );
-    expect(sanitizeBody(JSON.parse(text), "application/json")).toEqual(
-      expected,
-    );
+    expect(sanitizeBody(parseBody(text), "application/json")).toEqual(expected);
+    expect(
+      sanitizeBody(parseBody(Buffer.from(text)), "application/json"),
+    ).toEqual(expected);
+    expect(
+      sanitizeBody(parseBody(JSON.parse(text)), "application/json"),
+    ).toEqual(expected);
   });
 
   it("keeps the answers for bodies that are not objects", () => {
-    expect(sanitizeBody("null", "application/json")).toEqual({
+    expect(sanitizeBody(parseBody("null"), "application/json")).toEqual({
       omitted: "not-json",
       redacted: 0,
     });
-    expect(sanitizeBody(12, "application/json")).toEqual({
+    expect(sanitizeBody(parseBody(12), "application/json")).toEqual({
       omitted: "not-json",
       redacted: 0,
     });
-    expect(sanitizeBody(10n, "application/json")).toEqual({
+    expect(sanitizeBody(parseBody(10n), "application/json")).toEqual({
       omitted: "not-json",
       redacted: 0,
     });
-    expect(sanitizeBody(() => 1, "application/json")).toEqual({
+    expect(
+      sanitizeBody(
+        parseBody(() => 1),
+        "application/json",
+      ),
+    ).toEqual({
       omitted: "not-json",
       redacted: 0,
     });
-    expect(sanitizeBody({ big: 10n }, "application/json")).toEqual({
+    expect(sanitizeBody(parseBody({ big: 10n }), "application/json")).toEqual({
       omitted: "malformed",
       redacted: 0,
     });
@@ -206,7 +214,10 @@ describe("sanitizeBody", () => {
   it("cuts a deeply nested body at the redaction depth, however deep it goes", () => {
     const depth = 20_000;
     const nested = "[".repeat(depth) + "]".repeat(depth);
-    const { text, redacted } = sanitizeBody(nested, "application/json");
+    const { text, redacted } = sanitizeBody(
+      parseBody(nested),
+      "application/json",
+    );
     expect(text).toBe("[".repeat(32) + '"[REDACTED]"' + "]".repeat(32));
     expect(redacted).toBe(1);
   });
@@ -214,7 +225,7 @@ describe("sanitizeBody", () => {
   it("redacts a form and counts it", () => {
     expect(
       sanitizeBody(
-        "password=x&card=4242424242424242&name=Jane",
+        parseBody("password=x&card=4242424242424242&name=Jane"),
         "application/x-www-form-urlencoded",
       ),
     ).toEqual({
@@ -226,12 +237,12 @@ describe("sanitizeBody", () => {
 
 describe("sanitizeBody on a body set as an object", () => {
   it("stores a Date field the way the client received it", () => {
-    expect(sanitizeBody({ at: new Date(0), n: 1 }, "application/json")).toEqual(
-      {
-        text: '{"at":"1970-01-01T00:00:00.000Z","n":1}',
-        redacted: 0,
-      },
-    );
+    expect(
+      sanitizeBody(parseBody({ at: new Date(0), n: 1 }), "application/json"),
+    ).toEqual({
+      text: '{"at":"1970-01-01T00:00:00.000Z","n":1}',
+      redacted: 0,
+    });
   });
 
   it("stores a class instance as its toJSON form, then redacts that form", () => {
@@ -247,7 +258,7 @@ describe("sanitizeBody on a body set as an object", () => {
       }
     }
     expect(
-      sanitizeBody({ session: new Session() }, "application/json"),
+      sanitizeBody(parseBody({ session: new Session() }), "application/json"),
     ).toEqual({
       text: '{"session":{"id":"kept","token":"[REDACTED]","cards":["[REDACTED]"]}}',
       redacted: 2,
@@ -259,26 +270,31 @@ describe("sanitizeBody on a body set as an object", () => {
       id = 7;
       password = "x";
     }
-    expect(sanitizeBody([new Row()], "application/json")).toEqual({
+    expect(sanitizeBody(parseBody([new Row()]), "application/json")).toEqual({
       text: '[{"id":7,"password":"[REDACTED]"}]',
       redacted: 1,
     });
   });
 
   it("omits a body that serialises to a scalar", () => {
-    expect(sanitizeBody(new Date(0), "application/json")).toEqual({
+    expect(sanitizeBody(parseBody(new Date(0)), "application/json")).toEqual({
       omitted: "not-json",
       redacted: 0,
     });
     expect(
-      sanitizeBody({ toJSON: () => undefined }, "application/json"),
+      sanitizeBody(parseBody({ toJSON: () => undefined }), "application/json"),
     ).toEqual({ omitted: "not-json", redacted: 0 });
   });
 
   it("stores the fields a client received, and none that JSON drops", () => {
     expect(
       sanitizeBody(
-        { password: undefined, tag: () => 1, n: 1, list: [undefined] },
+        parseBody({
+          password: undefined,
+          tag: () => 1,
+          n: 1,
+          list: [undefined],
+        }),
         "application/json",
       ),
     ).toEqual({ text: '{"n":1,"list":[null]}', redacted: 0 });
@@ -291,7 +307,7 @@ describe("sanitizeBody on a body set as an object", () => {
     }
     const body: Loop = { id: 1 };
     body.self = body;
-    expect(sanitizeBody(body, "application/json")).toEqual({
+    expect(sanitizeBody(parseBody(body), "application/json")).toEqual({
       omitted: "malformed",
       redacted: 0,
     });

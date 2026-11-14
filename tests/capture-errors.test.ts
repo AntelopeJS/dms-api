@@ -1,6 +1,8 @@
+import { HTTPResult } from "@antelopejs/interface-api";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import {
   bodyErrorMessage,
+  describeThrown,
   dmsModuleOf,
   isDmsConsoleCall,
   isDmsConsolePage,
@@ -9,6 +11,7 @@ import {
   resolveRequestRoute,
 } from "@/services/request-log/capture";
 import { captureBody, pickHeaders } from "@/services/request-log/util";
+import { parseBody } from "@/services/request-log/body";
 import { registerRoutes, routeHandler } from "./helpers/routes";
 
 let ids: string[] = [];
@@ -24,18 +27,60 @@ beforeAll(() => {
 
 describe("bodyErrorMessage", () => {
   it("reads `error` or `message` from a body object or its JSON", () => {
-    expect(bodyErrorMessage({ error: "Cart is empty" })).toBe("Cart is empty");
-    expect(bodyErrorMessage('{"message":" Not found "}')).toBe("Not found");
-    expect(bodyErrorMessage(Buffer.from('{"error":"Conflict"}'))).toBe(
-      "Conflict",
+    expect(bodyErrorMessage(parseBody({ error: "Cart is empty" }))).toBe(
+      "Cart is empty",
     );
+    expect(bodyErrorMessage(parseBody('{"message":" Not found "}'))).toBe(
+      "Not found",
+    );
+    expect(
+      bodyErrorMessage(parseBody(Buffer.from('{"error":"Conflict"}'))),
+    ).toBe("Conflict");
   });
 
   it("finds nothing in a body without one", () => {
-    expect(bodyErrorMessage({})).toBeUndefined();
-    expect(bodyErrorMessage({ message: 1 })).toBeUndefined();
-    expect(bodyErrorMessage("<html>")).toBeUndefined();
-    expect(bodyErrorMessage(undefined)).toBeUndefined();
+    expect(bodyErrorMessage(parseBody({}))).toBeUndefined();
+    expect(bodyErrorMessage(parseBody({ message: 1 }))).toBeUndefined();
+    expect(bodyErrorMessage(parseBody("<html>"))).toBeUndefined();
+    expect(bodyErrorMessage(parseBody(undefined))).toBeUndefined();
+  });
+});
+
+describe("describeThrown", () => {
+  it("keeps an Error's message and stack", () => {
+    const error = new Error("boom");
+    expect(describeThrown(error)).toEqual({
+      message: "boom",
+      stack: error.stack,
+    });
+  });
+
+  it("reads a thrown HTTPResult's body message, its status otherwise", () => {
+    expect(
+      describeThrown(
+        new HTTPResult(409, { error: "Conflict" }, "application/json"),
+      ),
+    ).toEqual({ message: "Conflict" });
+    expect(describeThrown(new HTTPResult(503))).toEqual({
+      message: "HTTP 503",
+    });
+  });
+
+  it("stores anything else in its string form, not its JSON", () => {
+    expect(describeThrown("plain")).toEqual({ message: "plain" });
+    expect(describeThrown({ toString: () => "custom" })).toEqual({
+      message: "custom",
+    });
+    expect(describeThrown({ a: 1 })).toEqual({ message: "[object Object]" });
+  });
+
+  it("falls back when the string form throws", () => {
+    const hostile = {
+      toString: () => {
+        throw new Error("no");
+      },
+    };
+    expect(describeThrown(hostile)).toEqual({ message: "unknown error" });
   });
 });
 
@@ -200,32 +245,38 @@ describe("request marks", () => {
 
 describe("captureBody", () => {
   it("says why a body is not stored", () => {
-    expect(captureBody(undefined, "application/json", 1024).omitted).toBe(
-      "empty",
-    );
-    expect(captureBody(Buffer.alloc(0), "application/json", 1024).omitted).toBe(
-      "empty",
-    );
-    expect(captureBody('{"a":1}', "application/json", 0).omitted).toBe(
-      "disabled",
-    );
-    expect(captureBody("%PDF", "application/pdf", 1024).omitted).toBe(
-      "not-json",
-    );
-    expect(captureBody("{oops", "application/json", 1024).omitted).toBe(
-      "malformed",
-    );
+    expect(
+      captureBody(parseBody(undefined), "application/json", 1024).omitted,
+    ).toBe("empty");
+    expect(
+      captureBody(parseBody(Buffer.alloc(0)), "application/json", 1024).omitted,
+    ).toBe("empty");
+    expect(
+      captureBody(parseBody('{"a":1}'), "application/json", 0).omitted,
+    ).toBe("disabled");
+    expect(
+      captureBody(parseBody("%PDF"), "application/pdf", 1024).omitted,
+    ).toBe("not-json");
+    expect(
+      captureBody(parseBody("{oops"), "application/json", 1024).omitted,
+    ).toBe("malformed");
   });
 
   it("stores a redacted body, cut at the size limit", () => {
     expect(
-      captureBody('{"token":"t","sku":"DESK"}', "application/json", 1024),
+      captureBody(
+        parseBody('{"token":"t","sku":"DESK"}'),
+        "application/json",
+        1024,
+      ),
     ).toEqual({
       body: '{"token":"[REDACTED]","sku":"DESK"}',
       truncated: false,
       redacted: 1,
     });
-    expect(captureBody('{"sku":"DESK"}', "application/json", 5)).toEqual({
+    expect(
+      captureBody(parseBody('{"sku":"DESK"}'), "application/json", 5),
+    ).toEqual({
       body: '{"sku',
       truncated: true,
       redacted: 0,
@@ -235,7 +286,11 @@ describe("captureBody", () => {
   });
 
   it("cuts a multi-byte body at the limit in bytes, between characters", () => {
-    const captured = captureBody('{"n":"ééééé"}', "application/json", 9);
+    const captured = captureBody(
+      parseBody('{"n":"ééééé"}'),
+      "application/json",
+      9,
+    );
     expect(
       captured.body,
       '`{"n":"` is 6 bytes, each "é" 2: 9 bytes end inside the second one.',
