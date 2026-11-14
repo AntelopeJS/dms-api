@@ -58,7 +58,7 @@ export class OrdersController extends Controller("/fx/orders") {
   @Post(":shop/lines")
   add(
     @Parameter("shop", "param") shop: string,
-    @Parameter("limit", "query") limit: string | undefined,
+    @Parameter("limit", "query") limit: string | true | undefined,
     @Parameter("x-tenant", "header") tenant: string | undefined,
     @JSONBody() body: OrderBody,
   ) {

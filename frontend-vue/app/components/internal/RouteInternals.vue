@@ -28,7 +28,7 @@ const PIPELINE_TONE = {
 </script>
 
 <template>
-  <DmsCard :title="t('api.routes.docs.pipeline')" :padded="false">
+  <DmsCardPanel :title="t('api.routes.docs.pipeline')" :padded="false">
     <p class="text-dimmed px-4 pt-3 text-xs">
       {{ t('api.routes.docs.pipeline_description') }}
     </p>
@@ -69,7 +69,7 @@ const PIPELINE_TONE = {
         />
       </li>
     </ol>
-  </DmsCard>
+  </DmsCardPanel>
 
   <details
     v-if="internalParameters.length || internalProperties.length"

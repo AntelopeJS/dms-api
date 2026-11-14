@@ -60,7 +60,9 @@ function settingsValues() {
   };
 }
 
-function isRetentionField(value: string): value is RetentionField {
+function isRetentionField(
+  value: string | true | undefined,
+): value is RetentionField {
   return RETENTION_FIELDS.some((field) => field === value);
 }
 
@@ -106,10 +108,10 @@ export class SettingsController extends Controller("/api/monitoring/settings") {
   @Get("retention-impact")
   async getRetentionImpact(
     @AuthUserWithPermission(SettingsPage.form) _user: User,
-    @Parameter("field", "query") field: string,
-    @Parameter("days", "query") rawDays: string,
+    @Parameter("field", "query") field: string | true | undefined,
+    @Parameter("days", "query") rawDays: string | true | undefined,
   ) {
-    const days = Number(rawDays);
+    const days = Number(rawDays === true ? undefined : rawDays);
     assert(isRetentionField(field), HTTP_BAD_REQUEST, "Unknown field");
     assert(
       Number.isInteger(days) &&

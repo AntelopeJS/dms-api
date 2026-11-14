@@ -191,10 +191,10 @@ export class RoutesController extends Controller("/api/monitoring/routes") {
   async getDetail(
     @AuthUserWithPermission(explorer)
     _user: User,
-    @Parameter("route", "query") route?: string,
+    @Parameter("route", "query") route: string | true | undefined,
   ) {
     const [detail, health, keys] = await Promise.all([
-      route
+      route !== true && route
         ? apiOrigin().then((origin) => getRouteDetail(models(), route, origin))
         : undefined,
       routeHealth(),

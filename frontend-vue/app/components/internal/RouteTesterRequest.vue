@@ -30,7 +30,7 @@ const {
 </script>
 
 <template>
-  <DmsCard :padded="false" class="@container min-w-0">
+  <DmsCardPanel :padded="false" class="@container min-w-0">
     <div
       class="border-default flex flex-wrap items-center gap-x-2 border-b px-3"
     >
@@ -221,5 +221,5 @@ const {
         </p>
       </template>
     </div>
-  </DmsCard>
+  </DmsCardPanel>
 </template>

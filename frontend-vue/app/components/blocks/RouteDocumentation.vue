@@ -173,7 +173,7 @@ function exampleOf(value: string | number | boolean | null | undefined) {
     <USkeleton class="h-56" />
   </div>
   <div v-else-if="route" class="flex flex-col gap-4">
-    <DmsBanner
+    <DmsNoticeBanner
       tone="primary"
       size="sm"
       icon="i-ph-flask"
@@ -183,9 +183,9 @@ function exampleOf(value: string | number | boolean | null | undefined) {
 
     <div class="grid gap-4 2xl:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
       <div class="flex min-w-0 flex-col gap-4">
-        <DmsCard :title="t('api.routes.docs.example')">
+        <DmsCardPanel :title="t('api.routes.docs.example')">
           <template #actions>
-            <DmsSegmented
+            <DmsSegmentedControl
               v-model="snippetKind"
               :items="snippetItems"
               size="xs"
@@ -202,9 +202,9 @@ function exampleOf(value: string | number | boolean | null | undefined) {
           <p v-if="!apiOrigin" class="text-warning mt-2 text-xs">
             {{ t('api.routes.docs.origin_unknown') }}
           </p>
-        </DmsCard>
+        </DmsCardPanel>
 
-        <DmsBanner
+        <DmsNoticeBanner
           v-if="auth"
           :tone="auth.tone"
           size="sm"
@@ -228,7 +228,7 @@ function exampleOf(value: string | number | boolean | null | undefined) {
           </span>
         </div>
 
-        <DmsCard v-if="withBody" :title="t('api.routes.docs.body')">
+        <DmsCardPanel v-if="withBody" :title="t('api.routes.docs.body')">
           <template #actions>
             <DmsStatusPill
               v-if="route.contract.bodyFields.length"
@@ -286,9 +286,9 @@ function exampleOf(value: string | number | boolean | null | undefined) {
               </span>
             </li>
           </ul>
-        </DmsCard>
+        </DmsCardPanel>
 
-        <DmsCard :title="t('api.routes.docs.parameters')">
+        <DmsCardPanel :title="t('api.routes.docs.parameters')">
           <p v-if="parameterGroups.length === 0" class="text-dimmed text-sm">
             {{ t('api.routes.docs.no_parameters') }}
           </p>
@@ -348,11 +348,11 @@ function exampleOf(value: string | number | boolean | null | undefined) {
               </dd>
             </div>
           </dl>
-        </DmsCard>
+        </DmsCardPanel>
       </div>
 
       <div class="flex min-w-0 flex-col gap-4">
-        <DmsCard :title="t('api.routes.docs.responses')" :padded="false">
+        <DmsCardPanel :title="t('api.routes.docs.responses')" :padded="false">
           <template v-if="latency" #actions>
             <DmsStatusPill
               tone="neutral"
@@ -411,9 +411,9 @@ function exampleOf(value: string | number | boolean | null | undefined) {
               </span>
             </li>
           </ul>
-        </DmsCard>
+        </DmsCardPanel>
 
-        <DmsCard
+        <DmsCardPanel
           v-if="exampleResponse || route.contract.responseFields.length"
           :title="t('api.routes.docs.response')"
         >
@@ -453,7 +453,7 @@ function exampleOf(value: string | number | boolean | null | undefined) {
           <p v-if="exampleResponse?.truncated" class="text-dimmed mt-2 text-xs">
             {{ t('api.routes.docs.response_truncated') }}
           </p>
-        </DmsCard>
+        </DmsCardPanel>
 
         <RouteInternals :route="route" />
       </div>

@@ -16,7 +16,7 @@ const { t } = useI18n()
 
 <template>
   <section class="flex flex-col gap-2">
-    <DmsEyebrow :label="t('api.request.timing')" />
+    <DmsEyebrowLabel :label="t('api.request.timing')" />
     <template v-if="timing">
       <div class="flex flex-wrap items-baseline gap-x-2 gap-y-1">
         <span class="text-highlighted font-mono text-xl font-semibold">

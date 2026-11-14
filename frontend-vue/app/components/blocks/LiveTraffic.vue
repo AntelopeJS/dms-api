@@ -282,10 +282,10 @@ const share = (part: number, bar: { heights: Record<string, number> }) => {
 </script>
 
 <template>
-  <DmsCard :padded="false" class="overflow-hidden">
+  <DmsCardPanel :padded="false" class="overflow-hidden">
     <template #header>
       <div class="flex w-full flex-wrap items-center gap-x-3 gap-y-1.5">
-        <DmsEyebrow :label="title" />
+        <DmsEyebrowLabel :label="title" />
         <span class="text-dimmed font-mono text-[11px]">{{ kept }}</span>
         <span class="grow" />
         <span
@@ -462,7 +462,7 @@ const share = (part: number, bar: { heights: Record<string, number> }) => {
         <div class="mt-1 h-3.5" />
       </div>
     </div>
-  </DmsCard>
+  </DmsCardPanel>
 </template>
 
 <style scoped>

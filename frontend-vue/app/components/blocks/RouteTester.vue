@@ -89,7 +89,7 @@ const {
     @focusin="onFocusIn"
     @focusout="onFocusOut"
   >
-    <DmsCard :padded="false">
+    <DmsCardPanel :padded="false">
       <!-- The method and the path keep a line of their own when the card is
            narrow: the buttons go under them, and a long path wraps. -->
       <div class="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
@@ -208,7 +208,7 @@ const {
         </UTooltip>
       </div>
       <div v-if="replayInfo" class="border-default border-t px-4 py-2.5">
-        <DmsBanner
+        <DmsNoticeBanner
           tone="info"
           size="sm"
           icon="i-ph-arrow-counter-clockwise"
@@ -226,9 +226,9 @@ const {
               :label="t('api.tester.replay_banner.open')"
             />
           </template>
-        </DmsBanner>
+        </DmsNoticeBanner>
       </div>
-    </DmsCard>
+    </DmsCardPanel>
 
     <div class="grid gap-4 xl:grid-cols-2 xl:items-start">
       <RouteTesterRequest :tester="tester" />
@@ -236,7 +236,7 @@ const {
       <RouteTesterResponse :tester="tester" />
     </div>
 
-    <DmsCard :title="t('api.tester.history')" :padded="false">
+    <DmsCardPanel :title="t('api.tester.history')" :padded="false">
       <template #actions>
         <span class="text-dimmed text-xs">
           {{ t('api.tester.history_hint') }}
@@ -307,7 +307,7 @@ const {
           </button>
         </li>
       </ul>
-    </DmsCard>
+    </DmsCardPanel>
     <p class="sr-only" aria-live="polite">{{ liveMessage }}</p>
   </div>
 </template>

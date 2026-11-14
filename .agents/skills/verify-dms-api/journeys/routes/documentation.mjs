@@ -35,7 +35,7 @@ export const documentation = [
         tab.shows(/sku\s+required\s+e\.g\. "A1"\s+string/),
         tab.shows(/quantity\s+required\s+e\.g\. 2\s+number/),
         tab.shows(/:shop\s+string\s+required\s+e\.g\. shop1/),
-        tab.shows(/limit\s+object\s+e\.g\. 5/),
+        tab.shows(/limit\s+number\s+e\.g\. 5/),
         tab.shows(/x-tenant\s+object\s+no successful call yet/),
         tab.shows(/201\s+Created\s+seen once in 7 days/),
         tab.shows(/1\s+start[\s\S]*2\s+cors[\s\S]*3\s+OrdersController\.add[\s\S]*4\s+capture/),

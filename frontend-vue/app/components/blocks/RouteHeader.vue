@@ -181,16 +181,16 @@ async function copyCurl() {
 
 <template>
   <div class="flex scroll-mt-4 flex-col gap-3">
-    <DmsCard v-if="!selection.ref.value" :padded="false" class="px-5 py-8">
+    <DmsCardPanel v-if="!selection.ref.value" :padded="false" class="px-5 py-8">
       <DmsEmptyState
         icon="i-ph-tree-structure"
         :title="t('api.routes.header.pick_title')"
         :description="t('api.routes.header.pick_description')"
       />
-    </DmsCard>
+    </DmsCardPanel>
 
     <!-- The lines of the header below, at their heights. -->
-    <DmsCard v-else-if="pending" :padded="false" class="px-5 py-4">
+    <DmsCardPanel v-else-if="pending" :padded="false" class="px-5 py-4">
       <div class="flex h-7 items-center">
         <USkeleton class="h-3 w-40 max-w-full" />
       </div>
@@ -200,9 +200,9 @@ async function copyCurl() {
       <div class="mt-3 flex h-[1.5em] items-center text-[12.5px]">
         <USkeleton class="h-3 w-96 max-w-full" />
       </div>
-    </DmsCard>
+    </DmsCardPanel>
 
-    <DmsCard v-else-if="!route" :padded="false" class="px-5 py-6">
+    <DmsCardPanel v-else-if="!route" :padded="false" class="px-5 py-6">
       <DmsEmptyState
         :variant="missing ? 'no-result' : 'error'"
         :title="
@@ -230,12 +230,12 @@ async function copyCurl() {
             : [{ label: t('api.common.retry'), onClick: () => refresh() }]
         "
       />
-    </DmsCard>
+    </DmsCardPanel>
 
     <!-- Each line keeps one height whatever its width and the font drawing
          it: the actions sit on the folder's line, the path is cut rather
          than wrapped (whole in its tooltip). -->
-    <DmsCard v-else :padded="false" class="px-5 py-4">
+    <DmsCardPanel v-else :padded="false" class="px-5 py-4">
       <div class="flex h-7 items-center gap-3">
         <p
           class="text-dimmed flex min-w-0 items-center gap-1.5 font-mono text-[11.5px]"
@@ -316,7 +316,7 @@ async function copyCurl() {
           {{ firstSeen }}
         </span>
       </div>
-    </DmsCard>
+    </DmsCardPanel>
 
     <UAlert
       v-if="route && route.inScope === false"
