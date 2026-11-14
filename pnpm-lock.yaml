@@ -80,8 +80,8 @@ importers:
         version: 3.2.7(@types/node@24.19.2)(jiti@2.7.0)(jsdom@29.1.1)(yaml@2.9.1)
     optionalDependencies:
       '@antelopejs/interface-dms-automation':
-        specifier: '>=0.6.0 <0.7.0'
-        version: 0.6.0(@antelopejs/interface-core@0.5.1)
+        specifier: '>=0.7.0 <0.8.0'
+        version: 0.7.0(@antelopejs/interface-core@0.5.1)
 
 packages:
 
@@ -157,10 +157,10 @@ packages:
     peerDependencies:
       '@antelopejs/interface-core': '>=0.2.4 <1.0.0'
 
-  '@antelopejs/interface-dms-automation@0.6.0':
-    resolution: {integrity: sha512-s/PnKGVBUq7JjY9qHWoOFwk6XlXrbAc40fgmImj3VU79I+8cIryKN61/f1BnJJ4TJDxG2pU1JUN9bBol9Ge2Cw==}
+  '@antelopejs/interface-dms-automation@0.7.0':
+    resolution: {integrity: sha512-huGVCIDoJVkpT939wo4yWNYtyuy887QvcuXI9XjwuvYiWXdwNWiDLgs1lIulvkNGc+cf0ZUHYEpERuhhWPcHcQ==}
     peerDependencies:
-      '@antelopejs/interface-core': '>=0.2.4 <1.0.0'
+      '@antelopejs/interface-core': '>=0.5.1 <0.6.0'
 
   '@antelopejs/interface-dms-builder@0.5.1':
     resolution: {integrity: sha512-qNgJeAaCymkMUG2z0wNKGHAHsQXEnp1hU7zuEg+HPjtxHaHtMr6086nji82OEpQyt79VYSGata1tszm3L0/M9A==}
@@ -3260,7 +3260,7 @@ snapshots:
     optionalDependencies:
       '@antelopejs/core': 1.23.2
       '@antelopejs/interface-database-catalog': 0.0.4(@antelopejs/interface-core@0.5.1)
-      '@antelopejs/interface-dms-automation': 0.6.0(@antelopejs/interface-core@0.5.1)
+      '@antelopejs/interface-dms-automation': 0.7.0(@antelopejs/interface-core@0.5.1)
       '@antelopejs/interface-redis': 0.0.9(@antelopejs/interface-core@0.5.1)
       playwright-core: 1.65.1
       typescript: 6.0.3
@@ -3310,7 +3310,7 @@ snapshots:
     dependencies:
       '@antelopejs/interface-core': 0.5.1
 
-  '@antelopejs/interface-dms-automation@0.6.0(@antelopejs/interface-core@0.5.1)':
+  '@antelopejs/interface-dms-automation@0.7.0(@antelopejs/interface-core@0.5.1)':
     dependencies:
       '@antelopejs/interface-core': 0.5.1
     optional: true
