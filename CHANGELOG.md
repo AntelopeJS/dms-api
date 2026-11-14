@@ -1,5 +1,35 @@
 # Changelog
 
+## v0.7.0
+
+[compare changes](https://github.com/AntelopeJS/dms-api/compare/v0.6.4...v0.7.0)
+
+### 🚀 Enhancements
+
+- ⚠️  Move to interface-dms 0.14 and dms 0.20 ([#138](https://github.com/AntelopeJS/dms-api/pull/138))
+
+### 💅 Refactors
+
+- Drop duplicate-import and config suppressions ([#133](https://github.com/AntelopeJS/dms-api/pull/133))
+- **memo:** Type each memo by its computation instead of casting ([#134](https://github.com/AntelopeJS/dms-api/pull/134))
+- **request-log:** Parse bodies at the boundary and drop the last suppressions ([#135](https://github.com/AntelopeJS/dms-api/pull/135))
+
+### ✅ Tests
+
+- **frontend:** Compare backend-boundary paths without rewriting separators ([#137](https://github.com/AntelopeJS/dms-api/pull/137))
+
+### 🤖 CI
+
+- Run the CI on Windows beside Linux ([#136](https://github.com/AntelopeJS/dms-api/pull/136))
+
+#### ⚠️ Breaking Changes
+
+- ⚠️  Move to interface-dms 0.14 and dms 0.20 ([#138](https://github.com/AntelopeJS/dms-api/pull/138))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli ([@Upd4ting](http://github.com/Upd4ting))
+
 ## v0.6.4
 
 [compare changes](https://github.com/AntelopeJS/dms-api/compare/v0.6.3...v0.6.4)
