@@ -32,10 +32,14 @@ export function isMessageBody(
   return typeof value === "object" && value !== null;
 }
 
+/** A response or a thrown value that may carry a body, as `getBody()` or as `body`. */
+export interface BodyCarrier {
+  getBody?: unknown;
+  body?: unknown;
+}
+
 /** An object other than `null`, its `getBody` and `body`, present or not, read as `unknown`. */
-export function isBodyCarrier(
-  value: unknown,
-): value is { getBody?: unknown; body?: unknown } {
+export function isBodyCarrier(value: unknown): value is BodyCarrier {
   return typeof value === "object" && value !== null;
 }
 
