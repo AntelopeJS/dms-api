@@ -1,4 +1,4 @@
-import type { HTTPResult } from "@antelopejs/interface-api";
+import type { HTTPResult, RequestContext } from "@antelopejs/interface-api";
 import type { IncomingHttpHeaders } from "node:http";
 import type { RequestLogBodyOmission } from "@/db/tables/request_log.table";
 import {
@@ -114,7 +114,7 @@ export function queryToRecord(url: URL) {
  * through to `statusCode` then `status` when that throws or does not return a
  * number, 200 otherwise.
  */
-export function extractStatusCode(value: unknown): number {
+export function extractStatusCode(value: RequestContext["error"]): number {
   if (!isObject(value)) return HTTP_STATUS_OK;
   if (isStatusCarrier(value)) {
     try {
@@ -133,7 +133,7 @@ export function extractStatusCode(value: unknown): number {
  * The body of a thrown value or a response: its `getBody()`, or its `body`
  * when it has no such method. None when there is neither or `getBody` throws.
  */
-export function extractBody(value: unknown): BodyValue {
+export function extractBody(value: RequestContext["error"]): BodyValue {
   if (!isBodyCarrier(value)) return NO_BODY;
   if (isFunction(value.getBody)) {
     try {

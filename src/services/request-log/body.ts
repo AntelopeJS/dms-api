@@ -1,4 +1,4 @@
-import { isObject, isTextOrBuffer } from "@/guards";
+import { type BodyCarrier, isObject, isTextOrBuffer } from "@/guards";
 
 /**
  * A body as a handler set it or a client sent it, sorted once by what the log
@@ -15,7 +15,7 @@ export type BodyValue =
 export const NO_BODY: BodyValue = { kind: "none" };
 
 /** The kind of body `value` is: `undefined` and `null` carry none. */
-export function parseBody(value: unknown): BodyValue {
+export function parseBody(value: BodyCarrier["body"]): BodyValue {
   if (isTextOrBuffer(value)) return { kind: "text", raw: value };
   if (isObject(value)) return { kind: "data", data: value };
   if (value === undefined || value === null) return NO_BODY;
