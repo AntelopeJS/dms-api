@@ -14,7 +14,7 @@
 ## Versioning
 
 - The `dependency:ranges` step of `pnpm run checks` checks the `@antelopejs/*` dependency ranges.
-- `frontend-vue/package.json` pins the `@antelopejs/dms-frontend` minor it builds against in `engines`. Move it together with the `@antelopejs/dms`, `@antelopejs/interface-dms` and `@antelopejs/dms-frontend` versions in `playground/package.json` and the compatibility table in `README.md`.
+- `frontend-vue/package.json` pins the `@antelopejs/dms-frontend` minor it builds against in `engines`. Move it together with the `@antelopejs/dms`, `@antelopejs/interface-dms` and `@antelopejs/dms-frontend` versions in `playground/package.json`, the root `@antelopejs/dms-frontend` devDependency that `pnpm test:frontend` runs, and the compatibility table in `README.md`.
 - The root package publishes CommonJS from `dist`. Do not add `"type": "module"` to it.
 
 ## What `pnpm run checks` does not run
