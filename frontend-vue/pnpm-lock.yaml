@@ -4,6 +4,9 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  '@antelopejs/interface-dms': '>=0.14.0 <0.15.0'
+
 importers:
 
   .:

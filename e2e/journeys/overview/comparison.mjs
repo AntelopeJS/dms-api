@@ -100,7 +100,7 @@ export const comparison = [
       await ctx.verify("the hero", [
         tab.shows(/API health · live\s+Down/i),
         tab.shows(/for 3 min\s*·\s*checked \d\d:\d\d:\d\d/),
-        check("the tooltip names the minute the verdict began", /^Down since \w+ \d{1,2} \w+ \d{4} at \d\d:\d\d$/.test((await tab.page.locator("time").first().getAttribute("title")) ?? ""), await tab.page.locator("time").first().getAttribute("title")),
+        check("the tooltip names the minute the verdict began", /^Down since \w+,? \d{1,2} \w+ \d{4} at \d\d:\d\d$/.test((await tab.page.locator("time").first().getAttribute("title")) ?? ""), await tab.page.locator("time").first().getAttribute("title")),
         check("the tooltip's minute is the verdict's start, about 3 minutes ago", await (async () => {
           const since = (await tab.page.locator("time").first().getAttribute("datetime")) ?? "";
           const title = (await tab.page.locator("time").first().getAttribute("title")) ?? "";

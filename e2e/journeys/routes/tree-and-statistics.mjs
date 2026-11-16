@@ -56,6 +56,7 @@ export const treeAndStatistics = [
   },
   {
     id: "a-route-opens-with-its-header-and-the-url-names-it",
+    tag: "@smoke",
     title: "the page opens the route and the tab the URL names, shows its method, path, controller, handler, origin and first-seen date, Requests opens the logs on the route, and a page opened with no route lands on the last route opened, else the one needing attention",
     entryPoint: "/modules/api/routes?route=...&tab=...",
     async run(/** @type {Ctx} */ ctx) {

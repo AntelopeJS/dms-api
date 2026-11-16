@@ -4,3 +4,5 @@ allowBuilds:
   lefthook: false
 minimumReleaseAgeExclude:
   - "@antelopejs/interface-*"
+overrides:
+  "@antelopejs/interface-dms": ">=0.14.0 <0.15.0"

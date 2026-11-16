@@ -8,6 +8,7 @@ import { listed } from "./shared.mjs";
 export const listAndPause = [
   {
     id: "the-tabs-the-filters-and-the-search-narrow-the-list",
+    tag: "@smoke",
     title: "the status tabs count 2xx, 4xx and 5xx, Method and Slow narrow the table, the path, route and error links filter it, and the search matches the words of the path and the error",
     entryPoint: "/modules/api/logs and GET /api/monitoring/logs",
     async run(/** @type {Ctx} */ ctx) {

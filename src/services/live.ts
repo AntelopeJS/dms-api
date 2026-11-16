@@ -2,6 +2,7 @@ import { MS_PER_DAY, MS_PER_HOUR, MS_PER_MINUTE } from "@/types";
 import { getMaxLogDays } from "./period";
 import {
   addSample,
+  type CountSource,
   emptyBucket,
   loadSamples,
   minuteCounts,
@@ -195,7 +196,7 @@ export function barOf(at: number, bucketMs: number): number {
  * with whole bars.
  */
 export async function getLiveTraffic(
-  model: SampleSource,
+  model: SampleSource & CountSource,
   keys: ScopeKeys,
   query: LiveQuery = {},
   now: Date = new Date(),

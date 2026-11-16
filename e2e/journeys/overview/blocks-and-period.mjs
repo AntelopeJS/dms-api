@@ -7,6 +7,7 @@ import { check, isOn, list, mon, num, pick, same, saveSettings, settled, text, t
 export const blocksAndPeriod = [
   {
     id: "the-blocks-rank-the-routes-by-what-is-wrong-with-them",
+    tag: "@smoke",
     title: "Needs attention lists a failing, a slow and a noisy route with their facts, Slowest routes ranks by average latency, and the share, traffic and class blocks add up",
     entryPoint: "/modules/api/overview",
     async run(/** @type {Ctx} */ ctx) {

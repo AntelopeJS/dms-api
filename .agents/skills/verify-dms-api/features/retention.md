@@ -32,4 +32,4 @@ dms-control journey "$RUN" retention
 
 ## Gotchas
 
-- The prune runs at the turn of the hour: `clock.cjs` sets the backend's clock ahead so it fires within seconds.
+- The prune runs at the turn of the hour: `e2e/clock.cjs` sets the backend's clock ahead so it fires within seconds.
