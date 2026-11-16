@@ -20,6 +20,7 @@
 ## What `pnpm run checks` does not run
 
 - The build. CI runs `pnpm build` in its own job, beside the checks, and so does `prepack`.
+- `pnpm test:frontend`, which builds and typechecks the Vue layer with `ajs dms verify-source` against the DMS layer of the `@antelopejs/dms` devDependency. CI runs it in its own job. It needs no backend.
 - `pnpm --dir frontend-vue typecheck`. It needs a running DMS backend, so that `ajs dms prepare` can generate the Inertia workspace. Set `DMS_FRONTEND_WORKSPACE` to that workspace.
 - The playground's typecheck and build (oxlint still lints it). Run `pnpm build`, `pnpm --dir playground install --ignore-workspace` and `pnpm --dir playground build`, then `pnpm dev` with a MongoDB running.
 - The browser journeys of `e2e/`. CI runs the `@smoke` ones on a ready pull request to `main` and a push to `next`, and every one nightly. Run them with `TZ=UTC pnpm e2e` (the verify skill says how to narrow them).

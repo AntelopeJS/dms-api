@@ -24,6 +24,10 @@ jobs:
         docs
       renovate-sync: false
       test-job: true
+      # Builds and typechecks the frontend layer against the DMS layer from
+      # the `@antelopejs/dms` devDependency: no running backend needed.
+      extra-commands: pnpm test:frontend
+      extra-commands-job: true
     permissions:
       contents: read
 

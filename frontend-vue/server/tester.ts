@@ -45,14 +45,6 @@ const UNSAFE_PATH = /[\\#\u0000- \u007f]/
 // Decoded path segments need the same boundary after every decoding pass.
 const UNSAFE_DECODED_SEGMENT = /[\\/#\u0000- \u007f]/
 
-interface TesterInput {
-  path?: unknown
-  method?: unknown
-  headers?: unknown
-  body?: unknown
-  useSession?: unknown
-}
-
 interface ValidInput {
   method: string
   headers: Record<string, string>
@@ -117,33 +109,46 @@ function filteredHeaders(input: HeadersInit, allowAuthorization = false) {
   )
 }
 
-function validateInput(event: DmsServerEvent, input: TesterInput) {
-  if (!input || typeof input !== 'object' || Array.isArray(input))
-    invalidInput()
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function stringRecord(value: unknown): Record<string, string> {
+  if (!isRecord(value)) invalidInput()
+  return Object.fromEntries(
+    Object.entries(value).map(([name, entry]): [string, string] => {
+      if (typeof entry !== 'string') invalidInput()
+      return [name, entry]
+    }),
+  )
+}
+
+function validateInput(
+  event: DmsServerEvent,
+  input: unknown,
+): { target: URL; input: ValidInput } {
+  if (!isRecord(input)) invalidInput()
+  const { method, useSession, body } = input
   if (
-    typeof input.method !== 'string' ||
-    !METHODS.has(input.method) ||
-    typeof input.useSession !== 'boolean'
+    typeof method !== 'string' ||
+    !METHODS.has(method) ||
+    typeof useSession !== 'boolean'
   )
     invalidInput()
-  const headers = input.headers
-  if (!headers || typeof headers !== 'object' || Array.isArray(headers))
-    invalidInput()
-  if (Object.values(headers).some((value) => typeof value !== 'string'))
-    invalidInput()
+  const headers = stringRecord(input.headers)
   if (
-    input.body !== undefined &&
-    (typeof input.body !== 'string' || ['GET', 'HEAD'].includes(input.method))
+    body !== undefined &&
+    (typeof body !== 'string' || ['GET', 'HEAD'].includes(method))
   )
     invalidInput()
   try {
-    new Headers(headers as Record<string, string>)
+    new Headers(headers)
   } catch {
     invalidInput()
   }
   return {
     target: targetUrl(event, input.path),
-    input: input as ValidInput,
+    input: { method, headers, body, useSession },
   }
 }
 
@@ -249,10 +254,7 @@ export async function testerRoute(event: DmsServerEvent): Promise<Response> {
   try {
     const session = event.session.read()
     if (!session?.accessToken) return failure(401, 'Not authenticated')
-    const { input, target } = validateInput(
-      event,
-      await event.readJson<TesterInput>(),
-    )
+    const { input, target } = validateInput(event, await event.readJson())
     const signal = AbortSignal.timeout(REQUEST_TIMEOUT_MS)
     if (!(await isOwner(event, session, signal)))
       return failure(403, 'Forbidden')
