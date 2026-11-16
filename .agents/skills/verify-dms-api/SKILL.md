@@ -5,7 +5,7 @@ description: "Drive the AntelopeJS dms-api module (the API console: health verdi
 
 # Verify dms-api
 
-Every deterministic step is a `dms-control` command. You choose which journeys to run and judge what they show; you never write a multi-step shell recipe. When a journey you need does not exist, add it to `journeys/<feature>.mjs`, describe it in its feature file, and run it.
+Every deterministic step is a `dms-control` command. You choose which journeys to run and judge what they show; you never write a multi-step shell recipe. When a journey you need does not exist, add it to `e2e/journeys/<feature>.mjs`, describe it in its feature file, and run it.
 
 `dms-control` is the bin of `@antelopejs/dms`, a devDependency of this package. Run it with Node 24 after `pnpm install`:
 
@@ -22,7 +22,7 @@ Give `doors` and `--skill` absolute paths.
 RUN=$($C up --prepare --skill "$PWD/.agents/skills/verify-dms-api" --base origin/main)
 ```
 
-`--prepare` runs the `prepare` commands of `verify.config.ts`: the frozen install, the build of the module, `playwright-core` and `mongodb-memory-server-core` into this folder, the playground's install and the TypeScript build of the fixture module. Without it `up` uses the builds already there. `up` starts an isolated DMS from the playground in `playground/`: the DMS, the api, MongoDB, auth, local file storage and mail modules, the module under verification as a `local` source at the checkout, and a fixture module `app`.
+`--prepare` runs the `prepare` commands of `verify.config.ts`: the frozen install, the build of the module, the playground's install and the TypeScript build of the fixture module. Without it `up` uses the builds already there. `up` starts an isolated DMS from the playground in `playground/`: the DMS, the api, MongoDB, auth, local file storage and mail modules, the module under verification as a `local` source at the checkout, and a fixture module `app`.
 
 - The checkout is laid out again under `$RUN/root`, every sibling linked, and the playground copied without `node_modules`, so the run's build, `.antelope/` and stored files are its own. The playground names the checkout's real folder as the module's source, because the module's `@/` import alias applies to files under the folder the source names.
 - The API, the dashboard and the mail sink get free ports from the kernel; a `mongod` the run owns serves `verify_<run>` databases.
@@ -47,8 +47,10 @@ $C journey "$RUN" smoke
 $C journey "$RUN" overview [journey-id...]
 ```
 
-- Each feature file in [features/](features/README.md) lists its source globs (`covers:`), its docs pages (`docs:`) and its journeys; the journeys are in `journeys/<feature>.mjs`, with the helpers they share in `api.mjs` (requests, checks, traffic, settings, members), `seed.mjs` (aged rows written to the run's MongoDB, which the module cannot be made to age), `guard.mjs` (environment loss) and `clock.cjs` (the backend's clock set ahead, so the hourly prune fires within seconds). [coverage/](coverage) holds one table per feature: every documented behaviour, its catching journey and check, or `Not driven` with the reason.
+- Each feature file in [features/](features/README.md) lists its source globs (`covers:`), its docs pages (`docs:`) and its journeys; the journeys are in `e2e/journeys/<feature>.mjs` (the `journeys` folder of `verify.config.ts`), with the helpers they share in `e2e/`: `api.mjs` (requests, checks, traffic, settings, members), `seed.mjs` (aged rows written to the run's MongoDB, which the module cannot be made to age), `guard.mjs` (environment loss) and `clock.cjs` (the backend's clock set ahead, so the hourly prune fires within seconds). [coverage/](coverage) holds one table per feature: every documented behaviour, its catching journey and check, or `Not driven` with the reason.
 - A journey starts on an empty database with the administrator onboarded and the backend restarted on it. It reads every mutation back through a second view: the API, a reload, the stored documents, or a backend restart.
+- A journey may set `tag` (Playwright tags such as `"@smoke"`, the set the full CI tier runs) and `knownFailures`, which maps the name of each check that fails today to the finding that makes it fail. A listed check that fails is `known` and does not fail the journey. A listed check that passes is `fixed` and fails the journey until the entry is removed.
+- The same journeys run as the Playwright suite of `e2e/`, which CI runs (`@smoke` on a ready pull request to `main`, a push to `next` and a manual run, every journey nightly): `TZ=UTC pnpm e2e` prepares and starts a run, runs every journey on it and stops it; `pnpm e2e -g <feature or journey id>` or `--grep @smoke` narrows it. `DMS_E2E_PREBUILT=1` skips the prepare commands, and `DMS_E2E_RUN=$RUN` drives a run you started with `up`, which it leaves running. The report attaches each failed step's screenshot and ARIA snapshot and the backend log.
 - Statistics and health are written behind the response: journeys wait with `settled` before reading them.
 - `withConfig(ctx, { statisticsLifetime: … }, body)` restarts the backend with module options set and restarts it again without them.
 - To look at the product yourself: `$C onboard "$RUN"`, `$C browser "$RUN" login`, `goto --path`, `snapshot`, `click --role --name`, `fill`, `press`, `screenshot`, `$C api "$RUN" <method> <path> [--as anon] [--body <json>]`, `$C reset "$RUN"`. Each writes its evidence under `$RUN/evidence/`.
@@ -67,27 +69,25 @@ $C down "$RUN"
 
 1. **Run every feature whose `covers:` globs the diff touches, plus the smoke journey.** `plan` prints that list as `run`.
 2. **Unmapped surface fails the verdict.** User-facing code is `src/**`, `frontend-vue/**`, `skills/**` and `package.json`, tests and tool configs excluded (`verify.config.ts`). `map` checks the whole tree.
-3. **Every registered journey of a feature in `run` must have run and passed.**
+3. **Every registered journey of a feature in `run` must have run and passed.** A check listed in its journey's `knownFailures` reads `known` and does not fail it: name each one in the reply as a note.
 4. **Docs.** Judge every `docs:` page of each touched feature against what the journeys showed.
 5. **Formal checks.** `verify.config.ts` lists `formal-route-statistics` ([its skill](../formal-route-statistics/SKILL.md)): the per-route statistics rollup, model-checked with TLC. Run `$C formal "$RUN"` before the verdict: when the diff touches a file it covers or its own folder, it runs the full configuration and records it under `evidence/formal/formal-route-statistics/`. The check exiting non-zero, or not running, fails the verdict. It has no recorded finding, so any rule it reports broken fails it.
 6. **One-way doors.** The section comes right after the result line and is mandatory. `$C doors` prints the `One-way-door:` line for the diff.
 7. **Result.** FAIL if any of rules 1 to 6 fail. PASS+NOTES when something is not verified or needs the owner's attention. PASS otherwise.
 
-Write `$RUN/evidence/judgement.json` (`doors`, `docs`, `notVerified`, `attention`, `verifier`), then `$C verdict "$RUN" --pr <n>`, which writes `$RUN/evidence/verdict.md`. Report the verdict and what you saw in your own reply.
+State the verdict in your own reply. Start it with the result, then the doors, then what each rule showed, what was not verified and what needs the owner's attention.
 
 ## Gotchas
 
 - Every dashboard page renders on the server and hydrates after `load`; `tab.signIn` waits for the sign-in form to hydrate.
 - The Routes page keeps its tree and filters behind the button that names the open route; the journeys open it before they filter.
 - `mongod` comes from `DMS_CONTROL_MONGOD`, `PATH`, or the mongodb-memory-server cache (`~/.cache/mongodb-binaries`); a verifier with a bare environment passes `DMS_CONTROL_MONGOD` along.
-- Known findings:
-  - `automation/query-request-logs-next-cursor-reads-the-next-page` fails: `api.query-request-logs` returns a `nextCursor` but takes no cursor input, so a second call returns the first page again (a pending issue).
 - The host's time zone must be a real one: with `TZ` unknown the dashboard pages answer 500 "Invalid time zone specified". Run with `TZ=UTC` (and `--pass-env TZ` for the agent-skills eval).
 - `npm pack` ships `frontend-vue/tests/**` with the Vue layer (the `files` entry is the whole folder); the package journeys do not forbid it.
 
 ## Not driven
 
-List these under `notVerified` in the judgement of every verdict. The per-feature reasons are in [coverage/](coverage).
+List these as not verified in every verdict. The per-feature reasons are in [coverage/](coverage).
 
 - Copy, Copy cURL and Copy the URL buttons: they write to the clipboard.
 - The automation runtime: the playground does not load `@antelopejs/dms-automation`. The fixture module stands in for its provider, so the `automation` journeys drive the three nodes' `execute` and `activate`, and the election that runs `api.route-unhealthy` on one node is not driven.

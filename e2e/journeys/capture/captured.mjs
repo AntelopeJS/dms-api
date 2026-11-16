@@ -7,6 +7,7 @@ import { JSON_HEADERS } from "./shared.mjs";
 export const captured = [
   {
     id: "a-request-is-captured-with-its-facts",
+    tag: "@smoke",
     title: "a call to a project route is stored with its method, route pattern, raw path, path parameters, query, status, duration, client, request id, headers and bodies",
     entryPoint: "GET /api/monitoring/logs/:id after a call to /fx/*",
     async run(/** @type {Ctx} */ ctx) {

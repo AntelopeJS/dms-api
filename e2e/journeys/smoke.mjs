@@ -6,6 +6,7 @@ import { check, list, num, same, settled, text, traffic, openPage } from "../api
 export const journeys = guarded([
   {
     id: "traffic-shows-in-the-overview-and-the-request-logs",
+    tag: "@smoke",
     title: "an owner sends the project's routes 25 good calls and one failing call, reads the Degraded verdict on the Overview and finds the failing request in the Request logs",
     entryPoint: "/modules/api/overview and /modules/api/logs",
     async run(/** @type {Ctx} */ ctx) {
