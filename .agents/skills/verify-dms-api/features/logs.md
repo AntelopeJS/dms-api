@@ -38,6 +38,7 @@ The Request logs page: the histogram, the status tabs, the filters, the search, 
 - `the-list-is-newest-first-sorts-and-pages`
 - `pause-holds-the-table-and-counts-what-was-missed`
 - `the-histogram-bars-follow-the-period`
+- `the-histogram-counts-past-days-by-class`
 - `a-link-names-a-range-with-since-and-until`
 - `a-past-range-draws-at-most-120-bars`
 - `filters-combine-with-the-status-tab`

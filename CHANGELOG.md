@@ -1,5 +1,34 @@
 # Changelog
 
+## v0.7.2
+
+[compare changes](https://github.com/AntelopeJS/dms-api/compare/v0.7.1...v0.7.2)
+
+### 🔥 Performance
+
+- **traffic:** Count past days per route, minute and status in the database ([#147](https://github.com/AntelopeJS/dms-api/pull/147))
+
+### 🩹 Fixes
+
+- **frontend:** Parse the tester body from unknown and run verify-source in CI ([#146](https://github.com/AntelopeJS/dms-api/pull/146))
+- **deps:** Depend on the stable @antelopejs/dms and @antelopejs/tooling-configs
+
+### 📦 Build
+
+- Move to @antelopejs/tooling-configs 0.8 and the three-tier CI ([#141](https://github.com/AntelopeJS/dms-api/pull/141))
+
+### 🏡 Chore
+
+- **deps:** Move to core 1.24, dms 0.20.2, dms-frontend 0.11.4 and the batch drivers ([#140](https://github.com/AntelopeJS/dms-api/pull/140))
+
+### ✅ Tests
+
+- **e2e:** Run the verify skill's journeys as a Playwright suite in CI ([#143](https://github.com/AntelopeJS/dms-api/pull/143))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli
+
 ## v0.7.1
 
 [compare changes](https://github.com/AntelopeJS/dms-api/compare/v0.7.0...v0.7.1)
