@@ -4,6 +4,7 @@
 |---|---|---|---|
 | docs/4.usage/2.request-logs.md (intro) | The page lists every captured request, newest first | `the-list-is-newest-first-sorts-and-pages` | `newest first` |
 | docs/4.usage/2.request-logs.md (Filter) | The chart shows the requests of the period by status class, for all traffic whatever the table filters | `the-histogram-bars-follow-the-period` | `the totals` per preset, `the bars add up to the requests by class`; page text `6 requests` |
+| docs/4.usage/2.request-logs.md (Filter) | Over 7D and 30D the past days count every kept request by class, in the bar of its time | `the-histogram-counts-past-days-by-class` | `7D: the totals`, `7D: the bars around 3 days ago hold them`, `30D: the totals, the calls of 10 days ago included` |
 | docs/4.usage/2.request-logs.md (Filter) | Bars: a minute over 1H, 15 minutes over 24H, 2 hours over 7D, 6 hours over 30D and All time, 50 to 120 bars | same | `bar length and count` for the five presets (60, 96, 84, 120, 120 bars) |
 | docs/4.usage/2.request-logs.md (Filter) | The chart shows the retention and body cap in use | same | page text `Kept 30 days · bodies up to 64 KB` |
 | docs/4.usage/2.request-logs.md (Filter) | A period that reaches now updates live and freezes on Pause; a past range is read once and says it is not live | same; `pause-holds-the-table-and-counts-what-was-missed` | `live while the period reaches now`, and for five past ranges `not live and empty`; `Live` is on, then `Pause` |
