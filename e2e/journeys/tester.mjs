@@ -23,6 +23,7 @@ async function tester(ctx, ref) {
 export const journeys = guarded([
   {
     id: "a-tester-call-is-logged-and-marked-but-never-counted",
+    tag: "@smoke",
     title: "Send calls the route through the frontend server; the call is stored marked as the Tester's, found by its x-request-id, and left out of the route's statistics, the health and the Overview",
     entryPoint: "/modules/api/routes?route=GET /fx/boom&tab=tester",
     async run(/** @type {Ctx} */ ctx) {

@@ -43,6 +43,8 @@ export interface VerifyConfig {
   notUserFacing: string[];
   smoke: string;
   smokeJourney: string;
+  /** The folder of the journeys modules, relative to the repository root. */
+  journeys: string;
   doors: Record<DoorKind, DoorRule | null>;
   formal: FormalCheck[];
 }
@@ -54,7 +56,6 @@ const config: VerifyConfig = {
   prepare: [
     ["pnpm", "install", "--frozen-lockfile", "--prefer-offline", "--ignore-scripts"],
     ["pnpm", "run", "build"],
-    ["npm", "install", "--no-save", "--no-package-lock", "--no-audit", "--no-fund", "--prefix", SKILL, "playwright-core@1.56.1", "mongodb-memory-server-core@11.0.1"],
     ["pnpm", "--dir", "playground", "install", "--ignore-workspace", "--frozen-lockfile", "--prefer-offline", "--ignore-scripts"],
     ["ln", "-sfn", "../../../../playground/node_modules", `${SKILL}/playground/node_modules`],
     ["node_modules/.bin/tsc", "-p", `${SKILL}/playground/tsconfig.build.json`],
@@ -63,6 +64,7 @@ const config: VerifyConfig = {
   notUserFacing: ["frontend-vue/tests/**", "frontend-vue/.*", "frontend-vue/eslint.config.mjs", "frontend-vue/vitest.config.ts", "frontend-vue/pnpm-lock.yaml"],
   smoke: "smoke",
   smokeJourney: "onboard, call the fixture routes, read the Overview and the request logs",
+  journeys: "e2e/journeys",
   doors: {
     data: {
       globs: ["src/services/request-log/prune.ts", "src/services/statistics-prune.ts", "src/db/models/request_log.model.ts", "src/db/models/routes_statistics.model.ts", "src/index.ts"],

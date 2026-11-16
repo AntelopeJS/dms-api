@@ -21,12 +21,9 @@
 
 - The build. CI runs `pnpm build` in its own job, beside the checks, and so does `prepack`.
 - `pnpm --dir frontend-vue typecheck`. It needs a running DMS backend, so that `ajs dms prepare` can generate the Inertia workspace. Set `DMS_FRONTEND_WORKSPACE` to that workspace.
-- The playground's typecheck and build (oxlint still lints it). Run `.agents/playground`, then `pnpm dev`.
+- The playground's typecheck and build (oxlint still lints it). Run `pnpm build`, `pnpm --dir playground install --ignore-workspace` and `pnpm --dir playground build`, then `pnpm dev` with a MongoDB running.
+- The browser journeys of `e2e/`. CI runs the `@smoke` ones on a ready pull request to `main` and a push to `next`, and every one nightly. Run them with `TZ=UTC pnpm e2e` (the verify skill says how to narrow them).
 - Unused files and exports. `pnpm knip` checks dependencies only. `pnpm knip:all` also reports dead files and exports, and expects findings: confirm each one before you remove it.
-
-## Orb
-
-`.agents/setup` belongs to the guardrail pack. `.agents/playground` installs the AntelopeJS CLI and MongoDB and builds the playground. The `dms-backend` service runs it before it starts.
 
 <!-- antelopejs-guardrails:start -->
 <!-- Managed by @antelopejs/tooling-configs. `antelopejs-sync` rewrites everything between these markers; write repository-specific guidance outside them. -->

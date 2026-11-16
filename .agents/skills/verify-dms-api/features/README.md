@@ -1,6 +1,6 @@
 # Feature map
 
-One file per feature. `covers:` lists the source globs it owns, `docs:` the pages a verdict judges, `journeys/<feature>.mjs` its journeys, and `coverage/<feature>.md` the documented behaviours and the check that pins each. `dms-control map` checks that every user-facing file is covered and that every feature has its journeys and existing docs pages.
+One file per feature. `covers:` lists the source globs it owns, `docs:` the pages a verdict judges, `e2e/journeys/<feature>.mjs` its journeys, and `coverage/<feature>.md` the documented behaviours and the check that pins each. `dms-control map` checks that every user-facing file is covered and that every feature has its journeys and existing docs pages.
 
 | Feature | What the user does | Journeys |
 |---|---|---|

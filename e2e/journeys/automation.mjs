@@ -200,6 +200,7 @@ export const journeys = guarded([
   },
   {
     id: "query-request-logs-next-cursor-reads-the-next-page",
+    knownFailures: { "asking with it returns other rows": "api.query-request-logs returns a nextCursor but takes no cursor input, so a second call returns the first page again" },
     title: "the nextCursor api.query-request-logs returns reads the next page: asked again with it, the action returns other rows (dms-api issue: the action takes no cursor input, so it returns the first page again)",
     entryPoint: "api.query-request-logs.execute",
     async run(/** @type {Ctx} */ ctx) {

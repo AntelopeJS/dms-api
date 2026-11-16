@@ -62,6 +62,7 @@ async function sweep(ctx, as) {
 export const journeys = guarded([
   {
     id: "every-console-route-needs-a-session-and-the-block-it-serves",
+    tag: "@smoke",
     title: "every route of the console answers 401 without a session and 403 naming the missing permission to a member whose role holds none, while the owner passes every one",
     entryPoint: "every /api/monitoring route",
     async run(/** @type {Ctx} */ ctx) {
