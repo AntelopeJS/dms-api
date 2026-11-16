@@ -38,6 +38,7 @@
     "lint": "oxlint && pnpm --dir frontend-vue lint",
     "typecheck": "tsc -p tests",
     "test": "vitest run && pnpm --dir frontend-vue test",
+    "test:frontend": "ajs dms verify-source --layer node_modules/@antelopejs/dms/frontend-vue --module frontend-vue",
     "format": "oxfmt . && pnpm --dir frontend-vue format",
     "frontend:dev": "cd playground && pnpm frontend:dev",
     "prepack": "pnpm run build",
@@ -65,6 +66,7 @@
   "devDependencies": {
     "@antelopejs/core": "~1.24.0",
     "@antelopejs/dms": "0.20.8-next.936.g1313dd7",
+    "@antelopejs/dms-frontend": ">=0.11.4 <0.12.0",
     "@antelopejs/interface-data-api": ">=0.8.0 <0.9.0",
     "@antelopejs/tooling-configs": "0.8.1-next.372.g1d7ef26",
     "@playwright/test": "~1.65.0",
