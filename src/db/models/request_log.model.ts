@@ -1,6 +1,9 @@
 import { ValueProxy } from "@antelopejs/interface-database";
 import { BasicDataModel } from "@antelopejs/interface-database-decorators";
-import { REQUEST_LOG_LIST_MAX_ROWS } from "../../types/constants";
+import {
+  MS_PER_MINUTE,
+  REQUEST_LOG_LIST_MAX_ROWS,
+} from "../../types/constants";
 import {
   escapeRegex,
   ID_PREFIX_END,
@@ -132,6 +135,19 @@ export interface RequestLogSample {
   errorMessage?: string;
 }
 
+/** The calls of one route in one minute answered with one status code. */
+export interface RequestLogStatusCount {
+  /** Method of the route the request reached (`routeMethod ?? method`). */
+  method: string;
+  uri: string;
+  /** Start of the minute, in milliseconds since the UNIX epoch. */
+  minute: number;
+  statusCode: number;
+  requests: number;
+}
+
+const SECONDS_PER_MINUTE = MS_PER_MINUTE / 1000;
+
 const DEFAULT_LIMIT = 50;
 /** `source` of a request the console's Tester sent. */
 const TESTER_SOURCE = "tester";
@@ -234,6 +250,35 @@ export class RequestLogModel extends BasicDataModel(
         errorMessage: doc.key("error").default(null).key("message"),
       }))
       .run();
+  }
+
+  /**
+   * The rows matching `filters`, counted by the database per route, minute
+   * and status code: what a count over days reads instead of every row. The
+   * Tester's requests are left out, as in `samples`.
+   */
+  async statusCounts(
+    filters: RequestLogFilters,
+  ): Promise<RequestLogStatusCount[]> {
+    const groups = await this.applyFilters(this.table, {
+      ...filters,
+      apiTrafficOnly: true,
+    })
+      .map((doc) => ({
+        call: {
+          method: doc.key("routeMethod").default(doc.key("method")),
+          uri: doc.key("uri"),
+          minute: doc.key("timestamp").epoch().div(SECONDS_PER_MINUTE).floor(),
+          statusCode: doc.key("statusCode"),
+        },
+      }))
+      .group("call", (calls, call) => ({ call, requests: calls.count() }))
+      .run();
+    return groups.map(({ call, requests }) => ({
+      ...call,
+      minute: call.minute * MS_PER_MINUTE,
+      requests,
+    }));
   }
 
   private listItems(rows: this["table"]): Promise<RequestLogListItem[]> {

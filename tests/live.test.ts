@@ -3,6 +3,7 @@ import { setConfig } from "@/config";
 import type {
   RequestLogFilters,
   RequestLogSample,
+  RequestLogStatusCount,
 } from "@/db/models/request_log.model";
 import { clearAggregateCache } from "@/services/aggregate-cache";
 import {
@@ -15,21 +16,49 @@ import {
 import { forgetDayCounts, forgetRecentScan } from "@/services/traffic";
 import { MS_PER_DAY, MS_PER_HOUR, MS_PER_MINUTE } from "@/types";
 
-/** The logs table, in memory: what `samples` reads, and over which ranges. */
+/**
+ * The logs table, in memory: the rows `samples` reads and over which ranges,
+ * and the calls `statusCounts` counts the way the database groups them.
+ */
 class FakeLogs {
   ranges: [number, number][] = [];
   constructor(readonly rows: RequestLogSample[]) {}
+
+  private within(filters: RequestLogFilters): RequestLogSample[] {
+    return this.rows.filter(
+      (row) =>
+        (!filters.since || row.timestamp >= filters.since) &&
+        (!filters.until || row.timestamp < filters.until),
+    );
+  }
 
   async samples(filters: RequestLogFilters): Promise<RequestLogSample[]> {
     this.ranges.push([
       filters.since?.getTime() ?? 0,
       filters.until?.getTime() ?? 0,
     ]);
-    return this.rows.filter(
-      (row) =>
-        (!filters.since || row.timestamp >= filters.since) &&
-        (!filters.until || row.timestamp < filters.until),
-    );
+    return this.within(filters);
+  }
+
+  async statusCounts(
+    filters: RequestLogFilters,
+  ): Promise<RequestLogStatusCount[]> {
+    const groups = new Map<string, RequestLogStatusCount>();
+    for (const row of this.within(filters)) {
+      const minute =
+        Math.floor(row.timestamp.getTime() / MS_PER_MINUTE) * MS_PER_MINUTE;
+      const call = [row.method, row.uri, minute, row.statusCode].join(" ");
+      const group = groups.get(call) ?? {
+        method: row.method,
+        uri: row.uri,
+        minute,
+        statusCode: row.statusCode,
+        requests: 0,
+      };
+      group.requests += 1;
+      groups.set(call, group);
+    }
+    return [...groups.values()];
   }
 }
 
@@ -251,6 +280,139 @@ describe("getLiveTraffic", () => {
     const at = new Date(2026, 9, 7, 13, 47).getTime();
     expect(new Date(barOf(at, 6 * MS_PER_HOUR)).getHours()).toBe(12);
     expect(new Date(barOf(at, 2 * MS_PER_HOUR)).getMinutes()).toBe(0);
+  });
+});
+
+/**
+ * Calls over the last nine days on two routes, `/a` also logged as `/a/`:
+ * every status class, several calls of one route and status in the same
+ * minute, calls on the first and the last millisecond of a minute and around
+ * local midnight.
+ */
+function mixedHistory(): RequestLogSample[] {
+  const statuses = [200, 201, 302, 399, 400, 404, 499, 500, 503];
+  const routes: [string, string][] = [
+    ["GET", "/a"],
+    ["GET", "/a/"],
+    ["POST", "/b"],
+  ];
+  const rows: RequestLogSample[] = [];
+  const add = (at: number) => {
+    const [method, uri] = routes[rows.length % routes.length];
+    rows.push({
+      timestamp: new Date(at),
+      method,
+      uri,
+      statusCode: statuses[rows.length % statuses.length],
+      responseTimeMs: 10,
+    });
+  };
+  const end = NOW.getTime();
+  for (let at = end - 9 * MS_PER_DAY; at < end; at += 47 * MS_PER_MINUTE) {
+    const minute = Math.floor(at / MS_PER_MINUTE) * MS_PER_MINUTE;
+    add(minute);
+    add(minute + 59_999);
+    for (let tie = 0; tie < 3; tie += 1) add(at + 13_500);
+  }
+  for (let day = 1; day <= 8; day += 1) {
+    const midnight = new Date(NOW);
+    midnight.setDate(midnight.getDate() - day);
+    midnight.setHours(0, 0, 0, 0);
+    add(midnight.getTime() - 1);
+    add(midnight.getTime());
+  }
+  return rows;
+}
+
+/**
+ * The bars as read from every row: a call counts in the bar of its minute
+ * when that minute starts at or after the minute of `from` and before `to`,
+ * and a call of today when it falls inside the range.
+ */
+function barsFromRows(
+  rows: RequestLogSample[],
+  traffic: Awaited<ReturnType<typeof getLiveTraffic>>,
+  keys: Set<string> | null,
+) {
+  const from = new Date(traffic.from).getTime();
+  const to = new Date(traffic.to).getTime();
+  const today = new Date(NOW).setHours(0, 0, 0, 0);
+  const counted = rows.filter((row) => {
+    const at = row.timestamp.getTime();
+    const minute = Math.floor(at / MS_PER_MINUTE) * MS_PER_MINUTE;
+    const key = `${row.method}:${row.uri.replace(/\/+$/, "")}`;
+    return (
+      (!keys || keys.has(key)) &&
+      minute >= Math.floor(from / MS_PER_MINUTE) * MS_PER_MINUTE &&
+      minute < to &&
+      (at < today || (at >= Math.max(from, today) && at < to))
+    );
+  });
+  return traffic.buckets.map(({ start }) => {
+    const inBar = counted.filter((row) => {
+      const at = row.timestamp.getTime();
+      const minute = Math.floor(at / MS_PER_MINUTE) * MS_PER_MINUTE;
+      return minute >= start && minute < start + traffic.bucketMs;
+    });
+    const serverErrors = inBar.filter((row) => row.statusCode >= 500).length;
+    const clientErrors = inBar.filter(
+      (row) => row.statusCode >= 400 && row.statusCode < 500,
+    ).length;
+    return {
+      start,
+      success: inBar.length - clientErrors - serverErrors,
+      clientErrors,
+      serverErrors,
+    };
+  });
+}
+
+describe("a window longer than a day", () => {
+  it("counts its past days in the database, reading none of their rows", async () => {
+    const logs = new FakeLogs(history(40));
+    const traffic = await getLiveTraffic(
+      logs,
+      null,
+      { preset: "last-30-days" },
+      NOW,
+    );
+    expect(traffic.total).toBeGreaterThan(0);
+    expect(
+      logs.ranges,
+      "Only the shared scan of the last day reads rows.",
+    ).toHaveLength(1);
+    expect(logs.ranges[0][1] - logs.ranges[0][0]).toBe(MS_PER_DAY);
+  });
+
+  it.each([
+    ["the last 7 days", { preset: "last-7-days" }, null],
+    ["the last 30 days", { preset: "last-30-days" }, null],
+    ["the last 7 days of one route", { preset: "last-7-days" }, ["GET:/a"]],
+    [
+      "a past range off the minute",
+      {
+        preset: "custom",
+        from: new Date(NOW.getTime() - 5.3 * MS_PER_DAY - 1234).toISOString(),
+        to: new Date(NOW.getTime() - 1.7 * MS_PER_DAY + 4321).toISOString(),
+      },
+      null,
+    ],
+  ])("draws %s as every row counted one by one", async (_, query, scope) => {
+    const rows = mixedHistory();
+    const keys = scope ? new Set(scope) : null;
+    const traffic = await getLiveTraffic(new FakeLogs(rows), keys, query, NOW);
+    const bars = barsFromRows(rows, traffic, keys);
+    expect(traffic.buckets).toEqual(bars);
+    expect(
+      [traffic.total, traffic.clientErrors, traffic.serverErrors],
+      "The totals are the bars'.",
+    ).toEqual([
+      barsTotal(bars),
+      bars.reduce((sum, bar) => sum + bar.clientErrors, 0),
+      bars.reduce((sum, bar) => sum + bar.serverErrors, 0),
+    ]);
+    expect(traffic.serverErrors).toBeGreaterThan(0);
+    expect(traffic.clientErrors).toBeGreaterThan(0);
   });
 });
 

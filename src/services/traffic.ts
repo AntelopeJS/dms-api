@@ -1,5 +1,8 @@
-import type { RouteStatisticsModel } from "@/db";
-import type { RequestLogSample } from "@/db/models/request_log.model";
+import type { RequestLogModel, RouteStatisticsModel } from "@/db";
+import type {
+  RequestLogSample,
+  RequestLogStatusCount,
+} from "@/db/models/request_log.model";
 import type { RouteStatistics } from "@/db/tables/routes_statistics.table";
 import { createMemo } from "@/memo";
 import { isNumber } from "@/guards";
@@ -39,6 +42,8 @@ export {
   type ScopeKeys,
 } from "./traffic-samples";
 
+/** What the traffic reads of the logs to count past days: the database's counts. */
+export type CountSource = Pick<RequestLogModel, "statusCounts">;
 /** What the traffic reads of the day rollups: all of them. */
 export type RollupSource = Pick<RouteStatisticsModel, "getAll">;
 /** The two stores a window's traffic is read from. */
@@ -359,22 +364,44 @@ function countSample(
   else if (sample.statusCode >= 400) last.clientErrors += 1;
 }
 
+/** Fold the calls the database counted per status code into their minute. */
+function countStatuses(rows: RequestLogStatusCount[]): DayCounts {
+  const routes = new Map<string, Map<number, MinuteCount>>();
+  for (const row of rows) {
+    const key = scopeRouteKey(row.method, row.uri);
+    const minutes = routes.get(key) ?? new Map<number, MinuteCount>();
+    routes.set(key, minutes);
+    const count = minutes.get(row.minute) ?? {
+      minute: row.minute,
+      requests: 0,
+      clientErrors: 0,
+      serverErrors: 0,
+    };
+    minutes.set(row.minute, count);
+    count.requests += row.requests;
+    if (row.statusCode >= 500) count.serverErrors += row.requests;
+    else if (row.statusCode >= 400) count.clientErrors += row.requests;
+  }
+  return new Map(
+    [...routes].map(([key, minutes]) => [key, [...minutes.values()]]),
+  );
+}
+
 /**
  * The calls per route and per minute of the past day starting at
- * `dayStart`: read once, then kept for hours, since a past day no longer
- * changes. A day the retention already cut holds what is left of it.
+ * `dayStart`, counted by the database: read once, then kept for hours, since
+ * a past day no longer changes. A day the retention already cut holds what
+ * is left of it.
  */
-function dayCounts(model: SampleSource, dayStart: number): Promise<DayCounts> {
-  return countedDays.cached(`${dayStart}`, async () => {
-    const range = {
-      from: new Date(dayStart),
-      to: new Date(nextDay(dayStart)),
-    };
-    const { samples } = await scanSamples(model, range);
-    const routes: DayCounts = new Map();
-    for (const sample of samples) countSample(routes, sample, null);
-    return routes;
-  });
+function dayCounts(model: CountSource, dayStart: number): Promise<DayCounts> {
+  return countedDays.cached(`${dayStart}`, async () =>
+    countStatuses(
+      await model.statusCounts({
+        since: new Date(dayStart),
+        until: new Date(nextDay(dayStart)),
+      }),
+    ),
+  );
 }
 
 /**
@@ -385,7 +412,7 @@ function dayCounts(model: SampleSource, dayStart: number): Promise<DayCounts> {
  * which every live block already shares.
  */
 export async function minuteCounts(
-  model: SampleSource,
+  model: SampleSource & CountSource,
   range: TimeRange,
   keys: ScopeKeys,
 ): Promise<MinuteCount[]> {
