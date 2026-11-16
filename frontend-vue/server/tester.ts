@@ -242,7 +242,7 @@ function failure(status: number, error: string): Response {
 }
 
 function inputFailureStatus(error: unknown): number | undefined {
-  const status = (error as { status?: unknown } | undefined)?.status
+  const status = isRecord(error) ? error.status : undefined
   return status === 400 || status === 413 ? status : undefined
 }
 
