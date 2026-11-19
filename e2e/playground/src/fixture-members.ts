@@ -28,9 +28,9 @@ function withAncestors(permissions: string[]): string[] {
 /**
  * A role holding exactly the permission ids given, and an invitation to it a
  * journey signs up with: the roles editor of the DMS grants the same ids.
- * Only the verification playground serves it.
+ * Only the e2e playground serves it.
  */
-export class VerifyMembersController extends Controller("/verify-api") {
+export class VerifyMembersController extends Controller("/fixture-api") {
   @Post("/member")
   async member(@JSONBody() body: unknown) {
     const { name, permissions, language } = memberSchema.parse(body);

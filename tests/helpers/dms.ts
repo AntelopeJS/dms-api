@@ -13,7 +13,7 @@ declare module "vitest" {
 /** The console's HTTP API, which the dashboard calls. */
 export const MONITOR = "/api/monitoring";
 
-/** Routes the verification playground registers in the project's scope: 17 under /fx, the member route and the five node routes. */
+/** Routes the e2e playground registers in the project's scope: 17 under /fx, the member route and the five node routes. */
 export const FIXTURE_ROUTES = 23;
 
 const SETTLE_TIMEOUT_MS = 15_000;
@@ -304,7 +304,7 @@ export class Dms {
   async member(name: string, permissions: string[]): Promise<void> {
     const invite = invitationSchema.parse(
       (
-        await this.api("POST", "/verify-api/member", {
+        await this.api("POST", "/fixture-api/member", {
           body: { name, permissions },
           as: "anon",
         })
@@ -373,7 +373,7 @@ export class Dms {
 
   /** Runs an automation action the module registered with the playground's stand-in provider. */
   runAction(id: string, input: Json): Promise<Answer> {
-    return this.api("POST", `/dms/verify-api/nodes/action/${id}`, {
+    return this.api("POST", `/dms/fixture-api/nodes/action/${id}`, {
       body: input,
       as: "anon",
     });

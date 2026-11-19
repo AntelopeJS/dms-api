@@ -23,7 +23,7 @@
 - `pnpm test:frontend`, which builds and typechecks the Vue layer with `ajs dms verify-source` against the DMS layer of the `@antelopejs/dms` devDependency. CI runs it in its own job. It needs no backend.
 - `pnpm --dir frontend-vue typecheck`. It needs a running DMS backend, so that `ajs dms prepare` can generate the Inertia workspace. Set `DMS_FRONTEND_WORKSPACE` to that workspace.
 - The playground's typecheck and build (oxlint still lints it). Run `pnpm build`, `pnpm --dir playground install --ignore-workspace` and `pnpm --dir playground build`, then `pnpm dev` with a MongoDB running.
-- The browser journeys of `e2e/`. CI runs the `@smoke` ones on a ready pull request, and every one in the merge queue, nightly, on a manual run and on a pull request labelled `ci:full`. Run them with `TZ=UTC pnpm e2e` (the verify skill says how to narrow them).
+- The browser journeys of `e2e/`. CI runs the `@smoke` ones on a ready pull request, and every one in the merge queue, nightly, on a manual run and on a pull request labelled `ci:full`. Run them with `TZ=UTC pnpm e2e`, narrowed with `--grep @smoke` or `--grep <feature>`.
 - Unused files and exports. `pnpm knip` checks dependencies only. `pnpm knip:all` also reports dead files and exports, and expects findings: confirm each one before you remove it.
 
 <!-- antelopejs-guardrails:start -->
@@ -36,8 +36,6 @@ CI runs `pnpm run checks` in full on every pull request and reports what failed.
 - `pnpm run typecheck` after you change types or signatures.
 - `pnpm exec oxlint <files>` and `pnpm exec oxfmt <files>` on the files you changed.
 - One test file, not the suite. In a module that tests with `ajs module test`: `pnpm run build`, then `pnpm exec ajs module test . -f dist/<path>.test.js`.
-
-Prove a change works with the verification skill in [`.agents/skills/verify-dms-api/SKILL.md`](.agents/skills/verify-dms-api/SKILL.md) before you call it done.
 
 ### Comments
 

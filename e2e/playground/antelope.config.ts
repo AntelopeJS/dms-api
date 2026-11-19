@@ -40,7 +40,7 @@ const moduleRoot = dirname(realpathSync(resolve(__dirname, "../../package.json")
  * verification built from the checkout.
  */
 export default defineConfig({
-  name: "verify-dms-api",
+  name: "dms-api-e2e",
   modules: {
     app: {
       source: { type: "local", path: "." },

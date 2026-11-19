@@ -372,7 +372,6 @@ $RECYCLE.BIN/
 
 # pnpm store
 .pnpm-store
-!.agents/skills/verify-dms-api/coverage
 !e2e/journeys/logs
 
 # Playwright output of the e2e suite
@@ -381,7 +380,7 @@ e2e/test-results
 e2e/blob-report
 e2e/blob-reports
 
-# What a backend of the verification playground writes when it starts
+# What a backend of the e2e playground writes when it starts
 e2e/playground/antelope-lock
 e2e/playground/.codex
 e2e/playground/.mcp.json
