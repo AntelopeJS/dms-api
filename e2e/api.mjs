@@ -18,19 +18,6 @@ export const FIXTURE_ROUTES = 23;
 export const MONITOR = "/api/monitoring";
 
 /**
- * The log file of the journey's backend: dms-control names it after the
- * journey's database, so each journey's backend writes its own.
- *
- * @param {Ctx} ctx The journey
- * @returns {string} Its path
- */
-export function backendLog(ctx) {
-  const backend = ctx.state.processes.find((entry) => entry.name === "backend");
-  if (!backend) throw new Error("the run has no backend");
-  return backend.log;
-}
-
-/**
  * @param {unknown} value Anything a JSON answer holds
  * @returns {value is Row} Whether it is an object
  */
@@ -424,16 +411,4 @@ export async function withEnv(ctx, env, body) {
     ctx.state.extraEnv = previous;
     await ctx.restartBackend();
   }
-}
-
-/**
- * Runs an automation action the module registered with the stand-in provider.
- *
- * @param {Ctx} ctx The journey
- * @param {string} id The action's id
- * @param {unknown} input Its input
- * @returns {Promise<Answer>} The action's output
- */
-export function runAction(ctx, id, input) {
-  return ctx.api(`run ${id} ${JSON.stringify(input).slice(0, 60)}`, { method: "POST", path: `/dms/verify-api/nodes/action/${id}`, body: input, as: "anon" });
 }
