@@ -1,14 +1,15 @@
 import { satisfies } from "semver";
 import { beforeAll, describe, expect, it } from "vitest";
+import journeysConfig from "../e2e/journeys.config";
 import {
   exists,
   installedVersion,
+  journeyFeatures,
   localeKeys,
   manifest,
   packedFiles,
   readText,
   rendererRange,
-  run,
   skillCases,
 } from "./helpers/package";
 
@@ -143,8 +144,15 @@ describe("the docs and the locales", () => {
   });
 });
 
-describe("the verify feature map", () => {
-  it("covers every user-facing file, and every feature has its journeys", () => {
-    expect(() => run("pnpm", ["exec", "dms-control", "map"])).not.toThrow();
+describe("the e2e journeys", () => {
+  it("give every feature journeys, each id once, the smoke feature among them", async () => {
+    const features = await journeyFeatures();
+    const ids = [...features.values()].flat();
+
+    expect(
+      [...features].filter(([, journeys]) => journeys.length === 0),
+    ).toEqual([]);
+    expect(ids.filter((id, index) => ids.indexOf(id) !== index)).toEqual([]);
+    expect([...features.keys()]).toContain(journeysConfig.smoke);
   });
 });

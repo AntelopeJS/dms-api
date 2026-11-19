@@ -34,7 +34,7 @@
     "build": "rimraf dist && tsc",
     "dev": "ajs project dev -w -p playground",
     "e2e": "playwright test -c e2e",
-    "e2e:build": "pnpm run build && pnpm --dir playground install --ignore-workspace --frozen-lockfile --prefer-offline --ignore-scripts && ln -sfn ../../../../playground/node_modules .agents/skills/verify-dms-api/playground/node_modules && tsc -p .agents/skills/verify-dms-api/playground/tsconfig.build.json",
+    "e2e:build": "pnpm run build && pnpm --dir playground install --ignore-workspace --frozen-lockfile --prefer-offline --ignore-scripts && ln -sfn ../../playground/node_modules e2e/playground/node_modules && tsc -p e2e/playground/tsconfig.build.json",
     "lint:fix": "oxlint --fix --max-warnings=1000000 && oxfmt . && pnpm --dir frontend-vue lint:fix",
     "lint": "oxlint && pnpm --dir frontend-vue lint",
     "typecheck": "tsc -p tests",
@@ -67,7 +67,7 @@
   },
   "devDependencies": {
     "@antelopejs/core": "~1.24.5",
-    "@antelopejs/dms": "0.21.4-next.939.g641c7fa",
+    "@antelopejs/dms": "0.21.4-next.944.g3da5606",
     "@antelopejs/dms-frontend": ">=0.11.8 <0.12.0",
     "@antelopejs/interface-data-api": ">=0.8.0 <0.9.0",
     "@antelopejs/tooling-configs": ">=0.8.9 <0.9.0",

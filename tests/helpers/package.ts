@@ -1,7 +1,8 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
-import { join } from "node:path";
+import { basename, join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { z } from "zod";
 
 const ROOT = join(__dirname, "..", "..");
@@ -108,4 +109,24 @@ export function localeKeys(file: string): string[] {
   return localeKeysSchema.parse(
     JSON.parse(readText(`frontend-vue/i18n/locales/${file}`)),
   );
+}
+
+const journeysModuleSchema = z.object({
+  journeys: z.array(z.object({ id: z.string() })),
+});
+
+/** Each feature of `e2e/journeys/`, named after its file, mapped to the ids of the journeys it exports. */
+export async function journeyFeatures(): Promise<Map<string, string[]>> {
+  const folder = join(ROOT, "e2e", "journeys");
+  const files = readdirSync(folder).filter((file) => file.endsWith(".mjs"));
+  const features = await Promise.all(
+    files.map(async (file) => {
+      const module: unknown = await import(
+        pathToFileURL(join(folder, file)).href
+      );
+      const { journeys } = journeysModuleSchema.parse(module);
+      return [basename(file, ".mjs"), journeys.map(({ id }) => id)] as const;
+    }),
+  );
+  return new Map(features);
 }

@@ -32,11 +32,11 @@ function apiConfig(): z.infer<typeof apiOptions> {
  * and the module's `@/` import alias applies to files under the folder the
  * source names, so the source names the files' real folder.
  */
-const moduleRoot = dirname(realpathSync(resolve(__dirname, "../../../../package.json")));
+const moduleRoot = dirname(realpathSync(resolve(__dirname, "../../package.json")));
 
 /**
  * The repository's playground with the ports, origins, secrets and mail
- * `dms-control` sets for a run, a fixture module (`app`) and the module under
+ * the e2e kit sets for a run, a fixture module (`app`) and the module under
  * verification built from the checkout.
  */
 export default defineConfig({
