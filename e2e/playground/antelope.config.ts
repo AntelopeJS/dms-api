@@ -37,7 +37,7 @@ const moduleRoot = dirname(realpathSync(resolve(__dirname, "../../package.json")
 /**
  * The repository's playground with the ports, origins, secrets and mail
  * the e2e kit sets for a run, a fixture module (`app`) and the module under
- * verification built from the checkout.
+ * test built from the checkout.
  */
 export default defineConfig({
   name: "dms-api-e2e",
@@ -57,7 +57,7 @@ export default defineConfig({
       },
       config: {
         homepage: "/modules/api/overview",
-        meta: { title: "AntelopeJS API", description: "API console verification" },
+        meta: { title: "AntelopeJS API", description: "API console end-to-end tests" },
         auth: {
           jwtSecret: process.env.DMS_JWT_SECRET ?? "dev",
           signInCountry: { database: false },

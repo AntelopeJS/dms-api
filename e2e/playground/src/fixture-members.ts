@@ -30,7 +30,7 @@ function withAncestors(permissions: string[]): string[] {
  * journey signs up with: the roles editor of the DMS grants the same ids.
  * Only the e2e playground serves it.
  */
-export class VerifyMembersController extends Controller("/fixture-api") {
+export class FixtureMembersController extends Controller("/fixture-api") {
   @Post("/member")
   async member(@JSONBody() body: unknown) {
     const { name, permissions, language } = memberSchema.parse(body);

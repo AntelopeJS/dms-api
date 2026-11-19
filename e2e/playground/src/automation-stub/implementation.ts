@@ -3,7 +3,7 @@ import { actions, dataNodes, triggers } from "./registry";
 
 /**
  * The part of `@antelopejs/interface-dms-automation` a node-contributing module talks to, without the
- * automation runtime: registrations are kept so the verification routes can run each node.
+ * automation runtime: registrations are kept so the fixture routes can run each node.
  */
 export namespace internal {
   export const RegisterTriggerType = {
@@ -47,13 +47,13 @@ export async function ListDataNodeTypes(): Promise<DataNodeType[]> {
 }
 
 export async function InvokeProcedure(): Promise<never> {
-  throw new Error("the verification stand-in runs no procedure");
+  throw new Error("the e2e stand-in runs no procedure");
 }
 
 export async function RunProcedure(): Promise<never> {
-  throw new Error("the verification stand-in runs no procedure");
+  throw new Error("the e2e stand-in runs no procedure");
 }
 
 export async function DeclareProcedure(): Promise<never> {
-  throw new Error("the verification stand-in runs no procedure");
+  throw new Error("the e2e stand-in runs no procedure");
 }

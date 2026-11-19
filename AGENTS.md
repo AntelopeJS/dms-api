@@ -23,7 +23,7 @@
 - `pnpm test:frontend`, which builds and typechecks the Vue layer with `ajs dms verify-source` against the DMS layer of the `@antelopejs/dms` devDependency. CI runs it in its own job. It needs no backend.
 - `pnpm --dir frontend-vue typecheck`. It needs a running DMS backend, so that `ajs dms prepare` can generate the Inertia workspace. Set `DMS_FRONTEND_WORKSPACE` to that workspace.
 - The playground's typecheck and build (oxlint still lints it). Run `pnpm build`, `pnpm --dir playground install --ignore-workspace` and `pnpm --dir playground build`, then `pnpm dev` with a MongoDB running.
-- The browser journeys of `e2e/`. CI runs the `@smoke` ones on a ready pull request, and every one in the merge queue, nightly, on a manual run and on a pull request labelled `ci:full`. Run them with `TZ=UTC pnpm e2e`, narrowed with `--grep @smoke` or `--grep <feature>`.
+- The browser journeys of `e2e/`. CI runs the `@smoke` ones on a ready pull request, and every one in the merge queue, nightly, on a manual run and on a pull request labelled `ci:full`. Run them with `TZ=UTC pnpm e2e`, narrowed with `--grep @smoke` or `--grep <journey id>`.
 - Unused files and exports. `pnpm knip` checks dependencies only. `pnpm knip:all` also reports dead files and exports, and expects findings: confirm each one before you remove it.
 
 <!-- antelopejs-guardrails:start -->
