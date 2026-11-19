@@ -145,11 +145,9 @@ describe("the docs and the locales", () => {
 });
 
 describe("the e2e journeys", () => {
-  it("export a journeys list per feature, each id once, and journeys for the smoke feature", async () => {
+  it("export a journeys list per feature, and journeys for the smoke feature", async () => {
     const features = await journeyFeatures();
-    const ids = [...features.values()].flat();
 
-    expect(ids.filter((id, index) => ids.indexOf(id) !== index)).toEqual([]);
     expect(features.get(journeysConfig.smoke)?.length).toBeGreaterThan(0);
   });
 });

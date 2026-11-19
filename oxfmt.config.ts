@@ -1,6 +1,6 @@
 import { antelopeFmtPreset } from "@antelopejs/tooling-configs/oxc/fmt";
 
-/** Prettier formats the Vue layer; Markdown was never machine-formatted here; the journeys, their helpers and their playground keep the layout they had in the verify skill. */
+/** Prettier formats the Vue layer; Markdown was never machine-formatted here; the journeys, their helpers and their playground are hand-formatted. */
 export default antelopeFmtPreset({
   ignorePatterns: [
     "frontend-vue/**",
