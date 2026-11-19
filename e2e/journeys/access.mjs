@@ -9,6 +9,7 @@ const TESTER_HEADER = "x-antelopejs-api-source";
 export const journeys = guarded([
   {
     id: "a-member-without-the-modules-permissions-is-sent-to-their-settings",
+    tag: "@smoke",
     title: "every page of the console sends a member whose role holds none of its permissions to their own Settings page, where none of the console's headings show, while the owner stays on the page",
     entryPoint: "/modules/api, /modules/api/overview, /modules/api/logs, /modules/api/routes and /modules/api/settings",
     async run(/** @type {Ctx} */ ctx) {
