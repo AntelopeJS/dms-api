@@ -75,12 +75,20 @@ export class Dms {
 
   private constructor(readonly backend: Backend) {}
 
-  /** Starts a backend on a fresh database and onboards its administrator. */
-  static async start(mongoUrl: string): Promise<Dms> {
+  /**
+   * Starts a backend on a fresh database and onboards its administrator.
+   * The database and the backend's log are named after `label` and a
+   * random suffix.
+   */
+  static async start(mongoUrl: string, label: string): Promise<Dms> {
+    const name = label
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "_")
+      .slice(0, 40);
     const dms = new Dms(
       new Backend(
         mongoUrl,
-        `journey_${randomUUID().replaceAll("-", "").slice(0, 12)}`,
+        `${name}_${randomUUID().replaceAll("-", "").slice(0, 8)}`,
       ),
     );
     await dms.backend.start();
@@ -367,9 +375,8 @@ export class Dms {
 
 /** `test` with `dms`: a DMS of the test's own, stopped once the test ends. */
 export const test = base.extend<{ dms: Dms }>({
-  // oxlint-disable-next-line no-empty-pattern -- Vitest reads a fixture's dependencies from its first parameter's pattern.
-  dms: async ({}, use) => {
-    const dms = await Dms.start(inject("mongoUrl"));
+  dms: async ({ task }, use) => {
+    const dms = await Dms.start(inject("mongoUrl"), task.name);
     try {
       await use(dms);
     } finally {
