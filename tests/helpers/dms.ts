@@ -263,7 +263,8 @@ export class Dms {
 
   /**
    * Sends one call to the project's routes and reads back the request log
-   * it made, found by its `x-request-id` or by its method and path.
+   * it made, found by its `x-request-id` or by its method and path among
+   * the logs written after the call.
    */
   async sendAndRead(request: {
     method?: string;
@@ -271,6 +272,11 @@ export class Dms {
     headers?: HeadersInit;
     body?: string;
   }): Promise<{ status: number; log: Json }> {
+    const earlier = new Set(
+      resultsOf((await this.mon("/logs?limit=50")).body, loggedSchema).map(
+        (entry) => entry._id,
+      ),
+    );
     const sent = await this.raw(request);
     const path = request.path.split("?")[0];
     const method = request.method ?? "GET";
@@ -280,8 +286,9 @@ export class Dms {
       const listed = await this.mon("/logs?limit=50");
       const row = resultsOf(listed.body, loggedSchema).find(
         (entry) =>
-          (requestId !== null && entry.requestId === requestId) ||
-          (entry.path === path && entry.method === method),
+          !earlier.has(entry._id) &&
+          ((requestId !== null && entry.requestId === requestId) ||
+            (entry.path === path && entry.method === method)),
       );
       if (row)
         return {
