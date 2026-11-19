@@ -46,6 +46,8 @@ The Routes page: the tree of routes with health and filters, a route's header, i
 - `the-route-statistics-compare-in-points-with-the-period-before`
 - `the-documentation-writes-its-snippets-against-the-public-api-origin-and-hides-what-was-never-called`
 - `authentication-is-read-from-the-guards-before-the-handler`
+- `slash-opens-the-route-filter`
+- `copy-curl-on-a-route-copies-an-example-call`
 
 ## How to get to it (user POV)
 
@@ -59,4 +61,4 @@ dms-control journey "$RUN" routes
 
 ## Gotchas
 
-- Controller internals, Copy and Copy cURL write to the clipboard: not driven.
+- Controller internals are not driven. Copy cURL is: the journey grants the browser context the clipboard permission and reads the text back with `navigator.clipboard.readText()`.
