@@ -62,6 +62,7 @@ export const histogramAndDrawer = [
   },
   {
     id: "a-request-opens-in-a-drawer-that-steps-through-the-list",
+    tag: "@smoke",
     title: "a row opens the request in a drawer titled with its method and path and its position over the whole result; Next, Previous, J and K step; ?record names it and a reload opens it again; Summary, Request and Response show what was captured; Replay in tester and Same error follow its links",
     entryPoint: "/modules/api/logs?record=<id>",
     async run(/** @type {Ctx} */ ctx) {
