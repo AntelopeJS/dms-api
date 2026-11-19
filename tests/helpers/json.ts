@@ -9,7 +9,7 @@ export type Json =
   | Json[]
   | { [key: string]: Json };
 
-const jsonSchema: z.ZodType<Json> = z.lazy(() =>
+export const jsonSchema: z.ZodType<Json> = z.lazy(() =>
   z.union([
     z.string(),
     z.number(),
