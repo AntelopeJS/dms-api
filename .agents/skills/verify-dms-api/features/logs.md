@@ -46,6 +46,10 @@ The Request logs page: the histogram, the status tabs, the filters, the search, 
 - `the-slow-labels-follow-the-threshold-in-seconds-or-milliseconds`
 - `counts-are-grouped-and-all-time-compares-nothing`
 - `a-request-opens-in-a-drawer-that-steps-through-the-list`
+- `slash-opens-the-request-search-and-question-mark-lists-the-shortcuts`
+- `copy-curl-copies-the-open-request-as-a-command`
+- `dragging-the-drawers-left-edge-widens-it-and-it-opens-again-at-that-width`
+- `an-open-row-or-an-active-search-holds-the-table-and-says-why`
 
 ## How to get to it (user POV)
 

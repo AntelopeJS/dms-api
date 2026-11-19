@@ -56,6 +56,7 @@ The Overview: the health verdict and why, the attention list, the slowest routes
 - `the-slowest-routes-are-ranked-by-average-latency-not-by-their-slowest-call`
 - `the-module-path-redirects-to-the-overview`
 - `a-route-is-flagged-at-the-documented-edges-whatever-the-period`
+- `l-switches-the-page-between-live-and-pause`
 - the verdict ladder: `with-no-traffic-the-verdict-is-idle`, `nineteen-failing-calls-are-too-few-to-judge`, `one-failing-call-in-a-hundred-is-degraded`, `one-failing-call-in-a-hundred-and-one-is-operational`, `a-fifth-of-the-calls-failing-is-down`, `nineteen-percent-failing-is-degraded-not-down`
 
 ## How to get to it (user POV)

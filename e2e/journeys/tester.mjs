@@ -1,7 +1,9 @@
 import { guarded } from "../guard.mjs";
+import { forwarding } from "./tester/forwarding.mjs";
 import { saveSettings, check, list, mon, num, pick, raw, same, settled, text, traffic, withConfig, openPage } from "../api.mjs";
 
 /** @typedef {import("../api.mjs").Ctx} Ctx */
+/** @typedef {import("../api.mjs").Tab} Tab */
 
 const TESTER_HEADER = "x-antelopejs-api-source";
 
@@ -209,4 +211,5 @@ export const journeys = guarded([
       void big;
     },
   },
+  ...forwarding,
 ]);

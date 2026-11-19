@@ -28,6 +28,7 @@ The API settings page and the module options it overrides: scope, retentions, ca
 - `the-module-refuses-to-start-with-a-value-the-form-would-refuse`
 - `a-log-retention-of-no-day-is-refused-at-start`
 - `retention-fields-have-no-use-default-but-the-others-do`
+- `the-use-default-button-removes-an-override-on-the-page`
 - `the-scope-decides-which-routes-and-requests-every-page-watches`
 
 ## How to get to it (user POV)

@@ -15,6 +15,8 @@ Who may call the console: a session for every route, and the platform owner only
 
 - `every-console-route-needs-a-session-and-the-block-it-serves`
 - `the-console-is-the-owners-and-a-role-holding-a-block-is-refused`
+- `a-member-without-the-modules-permissions-is-sent-to-their-settings`
+- `a-panel-opened-from-one-table-reads-only-a-request-that-table-can-list`
 
 ## How to get to it (user POV)
 
