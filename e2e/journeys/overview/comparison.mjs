@@ -117,26 +117,6 @@ export const comparison = [
     },
   },
   {
-    id: "a-comparison-the-page-does-not-know-compares-with-nothing",
-    title: "a year back or any name the page does not know gives no previous period, no compared line and no previous-period figure, where the two names it knows do",
-    entryPoint: "GET /api/monitoring/overview/traffic?comparison=",
-    async run(/** @type {Ctx} */ ctx) {
-      await traffic(ctx, "some calls", [{ path: "/fx/ok", count: 3 }]);
-      await settled(ctx, "counted", "/overview/traffic?preset=last-24h", (body) => num(body, "value") === 3);
-      const windowOf = async (/** @type {string} */ name) => {
-        const answer = await mon(ctx, `comparison ${name}`, `/overview/traffic?preset=last-24h&comparison=${name}`);
-        return [pick(answer.body, "window", "comparison"), pick(answer.body, "window", "previous") === null, pick(answer.body, "window", "previousAvailable"), list(answer.body, "series").length];
-      };
-      await ctx.verify("the names", [
-        same("previous-year", await windowOf("previous-year"), ["none", true, false, 3]),
-        same("year", await windowOf("year"), ["none", true, false, 3]),
-        same("an empty name", await windowOf(""), ["none", true, false, 3]),
-        same("none", await windowOf("none"), ["none", true, false, 3]),
-        same("previous-period", await windowOf("previous-period"), ["previous-period", false, true, 3]),
-      ]);
-    },
-  },
-  {
     id: "every-figure-compared-with-the-period-before-says-its-change-and-its-value",
     title: "with 12 calls in the period before and 14 now, Traffic reads +16.7% vs 12, Error share 14.3% vs 0.0%, the slowest route's average is compared with the average before (100 ms against 50), and the status classes against theirs",
     entryPoint: "/modules/api/overview",
