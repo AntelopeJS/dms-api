@@ -37,8 +37,8 @@ importers:
         specifier: ~1.24.5
         version: 1.24.5
       '@antelopejs/dms':
-        specifier: 0.21.4-next.939.g641c7fa
-        version: 0.21.4-next.939.g641c7fa(@antelopejs/core@1.24.5)(@playwright/test@1.65.1)(typescript@6.0.3)
+        specifier: 0.21.4-next.944.g3da5606
+        version: 0.21.4-next.944.g3da5606(@antelopejs/core@1.24.5)(@playwright/test@1.65.1)(typescript@6.0.3)
       '@antelopejs/dms-frontend':
         specifier: '>=0.11.8 <0.12.0'
         version: 0.11.8(@antelopejs/core@1.24.5)
@@ -118,8 +118,8 @@ packages:
     peerDependencies:
       '@antelopejs/core': ~1.24.0
 
-  '@antelopejs/dms@0.21.4-next.939.g641c7fa':
-    resolution: {integrity: sha512-wAF+SPGjEl4X8JM23HFXBLtTRjBQqx5OoWg3Cxm2Pm260UDdeLukgbZw0dw5ifNZoMv7wjV/uyTiqZ+WSeK7Rw==}
+  '@antelopejs/dms@0.21.4-next.944.g3da5606':
+    resolution: {integrity: sha512-Os2WiWC8f5cm4JBtLea0ZQxnx09Iwp4t9vb1pWBcrcR8HJI3EshGE2jqjmspY4BovEgI0yYGzmH73QFPC9/IUg==}
     engines: {node: ^20.19.0 || >=22.12.0}
     hasBin: true
     peerDependencies:
@@ -3589,7 +3589,7 @@ snapshots:
       '@oxc-parser/binding-linux-x64-gnu': 0.95.0
       '@oxc-parser/binding-win32-x64-msvc': 0.95.0
 
-  '@antelopejs/dms@0.21.4-next.939.g641c7fa(@antelopejs/core@1.24.5)(@playwright/test@1.65.1)(typescript@6.0.3)':
+  '@antelopejs/dms@0.21.4-next.944.g3da5606(@antelopejs/core@1.24.5)(@playwright/test@1.65.1)(typescript@6.0.3)':
     dependencies:
       2fa: 0.1.2
       '@antelopejs/interface-api': 0.3.3(@antelopejs/interface-core@0.5.1)

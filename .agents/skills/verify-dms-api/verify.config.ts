@@ -49,16 +49,14 @@ export interface VerifyConfig {
   formal: FormalCheck[];
 }
 
-const SKILL = ".agents/skills/verify-dms-api";
-
 const config: VerifyConfig = {
-  playground: `${SKILL}/playground`,
+  playground: "e2e/playground",
   prepare: [
     ["pnpm", "install", "--frozen-lockfile", "--prefer-offline", "--ignore-scripts"],
     ["pnpm", "run", "build"],
     ["pnpm", "--dir", "playground", "install", "--ignore-workspace", "--frozen-lockfile", "--prefer-offline", "--ignore-scripts"],
-    ["ln", "-sfn", "../../../../playground/node_modules", `${SKILL}/playground/node_modules`],
-    ["node_modules/.bin/tsc", "-p", `${SKILL}/playground/tsconfig.build.json`],
+    ["ln", "-sfn", "../../playground/node_modules", "e2e/playground/node_modules"],
+    ["node_modules/.bin/tsc", "-p", "e2e/playground/tsconfig.build.json"],
   ],
   userFacing: ["src/**", "frontend-vue/**", "skills/**", "package.json"],
   notUserFacing: ["frontend-vue/tests/**", "frontend-vue/.*", "frontend-vue/eslint.config.mjs", "frontend-vue/vitest.config.ts", "frontend-vue/pnpm-lock.yaml"],

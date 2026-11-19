@@ -14,7 +14,7 @@ export default async function setup(project: {
   provide: (key: "mongoUrl", value: string) => void;
 }): Promise<() => Promise<void>> {
   for (const built of [
-    join(PLAYGROUND, "../../../../dist/index.js"),
+    join(PLAYGROUND, "../../dist/index.js"),
     join(PLAYGROUND, "dist/index.js"),
   ]) {
     if (!existsSync(built))
