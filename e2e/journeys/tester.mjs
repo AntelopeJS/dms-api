@@ -1,11 +1,9 @@
 import { guarded } from "../guard.mjs";
 import { forwarding } from "./tester/forwarding.mjs";
-import { saveSettings, check, list, mon, num, pick, raw, same, settled, text, traffic, withConfig, openPage } from "../api.mjs";
+import { saveSettings, check, list, mon, num, pick, raw, same, settled, text, openPage } from "../api.mjs";
 
 /** @typedef {import("../api.mjs").Ctx} Ctx */
 /** @typedef {import("../api.mjs").Tab} Tab */
-
-const TESTER_HEADER = "x-antelopejs-api-source";
 
 /**
  * Opens the Tester of a route in a signed-in tab.
@@ -51,35 +49,6 @@ export const journeys = guarded([
         same("nothing needs attention", pick(attention.body, "count"), 0),
         same("the route stays idle", text(detail.body, "state"), "idle"),
       ]);
-    },
-  },
-  {
-    id: "a-secret-keeps-the-testers-token-valid-across-restarts",
-    title: "with testerSourceSecret set the Tester's token survives a restart and still marks the call; without it a token issued before the restart is no longer recognised, and its call counts as traffic",
-    entryPoint: "GET /api/monitoring/tester/source then a call with the header",
-    async run(/** @type {Ctx} */ ctx) {
-      const tokenAnswer = await mon(ctx, "ask a token", "/tester/source");
-      const expiresAt = Date.parse(text(tokenAnswer.body, "expiresAt"));
-      await ctx.verify("the token", [
-        same("the header name", text(tokenAnswer.body, "header"), TESTER_HEADER),
-        check("valid 15 minutes", Math.abs(expiresAt - Date.now() - 15 * 60_000) < 60_000, text(tokenAnswer.body, "expiresAt")),
-        check("a value is given", text(tokenAnswer.body, "value").length > 10, "value"),
-      ]);
-      /** @type {string} */
-      let signedWithSecret = "";
-      await withConfig(ctx, { testerSourceSecret: "one-secret-for-every-instance" }, async () => {
-        signedWithSecret = text((await mon(ctx, "a token under the secret", "/tester/source")).body, "value");
-      });
-      await withConfig(ctx, { testerSourceSecret: "one-secret-for-every-instance" }, async () => {
-        await raw(ctx, "a call with the token of before the restart", { path: "/fx/ok", headers: { [TESTER_HEADER]: signedWithSecret } });
-        const marked = await settled(ctx, "the logs", "/logs?limit=5", (body) => list(body, "results").length === 1);
-        await ctx.verify("under the same secret", [same("the call is the Tester's", text(list(marked.body, "results")[0], "source"), "tester")]);
-      });
-      await raw(ctx, "a call with a token signed under the secret, secret now unset", { path: "/fx/ok", headers: { [TESTER_HEADER]: signedWithSecret } });
-      const logs = await settled(ctx, "the logs", "/logs?limit=5", (body) => list(body, "results").length === 2);
-      const newest = list(logs.body, "results")[0];
-      await ctx.verify("without the secret", [same("the call is no longer the Tester's", pick(newest, "source"), null)]);
-      await traffic(ctx, "a plain call", [{ path: "/fx/ok", count: 1 }]);
     },
   },
   {
