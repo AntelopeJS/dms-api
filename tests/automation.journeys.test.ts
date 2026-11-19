@@ -26,8 +26,9 @@ import { seedLogs, seedStatistics } from "./helpers/seed";
 async function assertWithoutTheAutomationModuleTheRegistrationIsASilentNoOp(
   dms: Dms,
 ): Promise<void> {
+  await dms.backend.stop();
   const from = dms.backend.logSize();
-  await dms.restart();
+  await dms.backend.start();
   await dms.traffic([{ path: "/fx/ok", count: 1 }]);
   const lines = dms.backend.logSince(from).split("\n");
   const health = await dms.mon("/overview/health");

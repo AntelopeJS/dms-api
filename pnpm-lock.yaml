@@ -40,8 +40,8 @@ importers:
         specifier: 0.21.4-next.939.g641c7fa
         version: 0.21.4-next.939.g641c7fa(@antelopejs/core@1.24.5)(@playwright/test@1.65.1)(typescript@6.0.3)
       '@antelopejs/dms-frontend':
-        specifier: '>=0.11.4 <0.12.0'
-        version: 0.11.6(@antelopejs/core@1.24.5)
+        specifier: '>=0.11.8 <0.12.0'
+        version: 0.11.8(@antelopejs/core@1.24.5)
       '@antelopejs/interface-data-api':
         specifier: '>=0.8.0 <0.9.0'
         version: 0.8.0(@antelopejs/interface-api-util@0.3.0(@antelopejs/interface-api@0.3.3(@antelopejs/interface-core@0.5.1))(@antelopejs/interface-core@0.5.1))(@antelopejs/interface-api@0.3.3(@antelopejs/interface-core@0.5.1))(@antelopejs/interface-core@0.5.1)(@antelopejs/interface-database-decorators@0.5.2(@antelopejs/interface-api@0.3.3(@antelopejs/interface-core@0.5.1))(@antelopejs/interface-core@0.5.1)(@antelopejs/interface-database@0.4.1(@antelopejs/interface-core@0.5.1)))(@antelopejs/interface-database@0.4.1(@antelopejs/interface-core@0.5.1))
@@ -111,8 +111,8 @@ packages:
     engines: {node: ^20.19.0 || >=22.12.0}
     hasBin: true
 
-  '@antelopejs/dms-frontend@0.11.6':
-    resolution: {integrity: sha512-1ZBkTp94wUElsVWUjEL4YRVzg3AJpiPOd7ezp73JbiQ1LHjPYb7yvI5MWL7YGxBAaaP60nFLMD08fm+2QKHzEw==}
+  '@antelopejs/dms-frontend@0.11.8':
+    resolution: {integrity: sha512-owMawDaP66LA0j7OlBTJ4gebBC0TFpn8xveEpsv9kUyy8ltkPn1DPoJHyJ+7QNxq5iO56m1V49+sW0j2M/LpvQ==}
     engines: {node: '>=20.19.0'}
     hasBin: true
     peerDependencies:
@@ -3573,7 +3573,7 @@ snapshots:
       semver: 7.8.5
       typescript: 5.9.3
 
-  '@antelopejs/dms-frontend@0.11.6(@antelopejs/core@1.24.5)':
+  '@antelopejs/dms-frontend@0.11.8(@antelopejs/core@1.24.5)':
     dependencies:
       '@antelopejs/core': 1.24.5
       '@intlify/message-compiler': 11.4.20
