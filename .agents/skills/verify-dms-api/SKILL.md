@@ -89,11 +89,10 @@ State the verdict in your own reply. Start it with the result, then the doors, t
 
 List these as not verified in every verdict. The per-feature reasons are in [coverage/](coverage).
 
-- Copy, Copy cURL and Copy the URL buttons: they write to the clipboard.
+- The Tester's Copy cURL and the Copy buttons beside a value (the request's URL, ID and error message): no journey presses them yet. The clipboard can be read, as `copy-curl-copies-the-open-request-as-a-command` does.
 - The automation runtime: the playground does not load `@antelopejs/dms-automation`. The fixture module stands in for its provider, so the `automation` journeys drive the three nodes' `execute` and `activate`, and the election that runs `api.route-unhealthy` on one node is not driven.
 - A second instance behind one console sharing `testerSourceSecret`: the run has one backend.
-- Pointer drag of the drawer's edge and the persisted drawer width.
-- Keyboard shortcuts `L`, `/` and `?`, the Tester's History, Headers for all routes and the form's editors, and a Tester call's forwarding limits.
+- The Tester form's query and body editors, and the 30 s timeout of the Tester's forwarding route.
 
 ## Feature map
 
