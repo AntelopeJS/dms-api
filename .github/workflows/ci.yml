@@ -2,12 +2,14 @@ name: ci
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
+    types: [opened, synchronize, reopened, ready_for_review, labeled, unlabeled]
+  merge_group:
   push:
-    branches: [next]
+    branches: [main]
   schedule:
     - cron: "17 2 * * *"
   workflow_dispatch:
+
 permissions:
   contents: read
 
@@ -28,8 +30,11 @@ jobs:
       # the `@antelopejs/dms` devDependency: no running backend needed.
       extra-commands: pnpm test:frontend
       extra-commands-job: true
+      affected-tests: true
     permissions:
       contents: read
+    secrets:
+      NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
 
   select:
     runs-on: ubuntu-latest
