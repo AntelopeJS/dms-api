@@ -110,10 +110,36 @@ jobs:
       - run: pnpm install --frozen-lockfile --ignore-scripts
       - run: pnpm build
 
+  # The journeys that call the API or run commands, as Vitest integration
+  # tests against backends of the verification playground on one MongoDB.
+  journeys:
+    needs: select
+    if: needs.select.outputs.run == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      TZ: UTC
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/mongodb-binaries
+          key: journeys-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+      - run: pnpm e2e:build
+      - run: pnpm test:journeys
+
   # The journeys of e2e/ as a Playwright suite: the @smoke ones on a pull
   # request or a push, every journey in two shards in the merge queue, the
   # nightly run, a manual run and a pull request labelled ci:full, nothing on
-  # a draft. Its global setup prepares and starts one dms-control run.
+  # a draft. `pnpm e2e:build` builds the module and the playground, then the
+  # kit's global setup starts one run of them.
   e2e:
     needs: select
     if: needs.select.outputs.e2e != 'none'
@@ -125,6 +151,7 @@ jobs:
         shard: ${{ fromJSON(needs.select.outputs.e2e == 'all' && '[1, 2]' || '[1]') }}
     env:
       E2E: ${{ needs.select.outputs.e2e }}
+      DMS_E2E_PREBUILT: "1"
       TZ: UTC
     steps:
       - uses: actions/checkout@v4
@@ -154,6 +181,7 @@ jobs:
           fi
           echo "::warning::Chromium's system packages did not install: installing the browser alone"
           pnpm exec playwright install --only-shell chromium
+      - run: pnpm e2e:build
       - if: env.E2E == 'smoke'
         run: pnpm e2e --grep @smoke
       - if: env.E2E == 'all'
@@ -214,12 +242,12 @@ jobs:
   # it, so merge-when-green cannot merge on the draft run.
   ubuntu:
     if: always()
-    needs: [select, ci, build, formal-route-statistics, e2e]
+    needs: [select, ci, build, formal-route-statistics, journeys, e2e]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - if: >-
-          needs.select.result != 'success' || contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || needs.ci.result == 'skipped' || (needs.select.outputs.run == 'true' && (needs.build.result == 'skipped' || needs.formal-route-statistics.result == 'skipped')) || (needs.select.outputs.e2e != 'none' && needs.e2e.result == 'skipped')
+          needs.select.result != 'success' || contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || needs.ci.result == 'skipped' || (needs.select.outputs.run == 'true' && (needs.build.result == 'skipped' || needs.formal-route-statistics.result == 'skipped' || needs.journeys.result == 'skipped')) || (needs.select.outputs.e2e != 'none' && needs.e2e.result == 'skipped')
         run: exit 1
       - if: needs.select.outputs.tier == 'draft'
         run: |

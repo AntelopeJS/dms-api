@@ -62,6 +62,7 @@ export const histogramAndDrawer = [
   },
   {
     id: "a-request-opens-in-a-drawer-that-steps-through-the-list",
+    tag: "@smoke",
     title: "a row opens the request in a drawer titled with its method and path and its position over the whole result; Next, Previous, J and K step; ?record names it and a reload opens it again; Summary, Request and Response show what was captured; Replay in tester and Same error follow its links",
     entryPoint: "/modules/api/logs?record=<id>",
     async run(/** @type {Ctx} */ ctx) {
@@ -138,49 +139,6 @@ export const histogramAndDrawer = [
       ]);
       await openPage(tab, "/modules/api/logs");
       await ctx.verify("without the range", [tab.visible({ role: "button", name: "All 7" }), tab.visible({ role: "button", name: "5xx 2" })]);
-    },
-  },
-  {
-    id: "the-histogram-counts-past-days-by-class",
-    title: "the chart over 7D and 30D counts the requests of past days by status class, each in the bar of its time, as the database counts them",
-    entryPoint: "GET /api/monitoring/logs/live",
-    async run(/** @type {Ctx} */ ctx) {
-      await seedLogs(ctx, "4 good calls 3 days ago", { daysAgo: 3, count: 4, uri: "/fx/ok" });
-      await seedLogs(ctx, "2 client errors 3 days ago", { daysAgo: 3, count: 2, uri: "/fx/missing", statusCode: 404 });
-      await seedLogs(ctx, "1 server error 3 days ago", { daysAgo: 3, count: 1, uri: "/fx/boom", statusCode: 500 });
-      await seedLogs(ctx, "2 good calls 10 days ago", { daysAgo: 10, count: 2, uri: "/fx/ok" });
-      const at = Date.now() - 3 * 86_400_000;
-      const week = await mon(ctx, "histogram last-7-days", "/logs/live?preset=last-7-days");
-      const month = await mon(ctx, "histogram last-30-days", "/logs/live?preset=last-30-days");
-      /** @param {unknown} body */
-      const byClass = (body) => list(body, "buckets").reduce((all, bucket) => [all[0] + (num(bucket, "success") ?? 0), all[1] + (num(bucket, "clientErrors") ?? 0), all[2] + (num(bucket, "serverErrors") ?? 0)], [0, 0, 0]);
-      const near = list(week.body, "buckets").filter((bucket) => Math.abs((num(bucket, "start") ?? 0) - at) <= 2 * 7_200_000);
-      await ctx.verify("the past days", [
-        same("7D: the totals", [num(week.body, "total"), num(week.body, "clientErrors"), num(week.body, "serverErrors")], [7, 2, 1]),
-        same("7D: the bars by class", byClass(week.body), [4, 2, 1]),
-        same("7D: the bars around 3 days ago hold them", byClass({ buckets: near }), [4, 2, 1]),
-        same("30D: the totals, the calls of 10 days ago included", [num(month.body, "total"), num(month.body, "clientErrors"), num(month.body, "serverErrors")], [9, 2, 1]),
-        same("30D: the bars by class", byClass(month.body), [6, 2, 1]),
-      ]);
-    },
-  },
-  {
-    id: "a-past-range-draws-at-most-120-bars",
-    title: "the chart keeps between 50 and 120 bars for a past range, one that starts off a bar boundary included",
-    entryPoint: "GET /api/monitoring/logs/live?from=&to=",
-    async run(/** @type {Ctx} */ ctx) {
-      /** @type {[number, number][]} */
-      const ranges = [[3, 2], [6, 1], [20, 10], [50, 2], [0.1, 0.05]];
-      const answers = [];
-      for (const [startDays, endDays] of ranges) {
-        const from = new Date(Date.now() - startDays * 86_400_000).toISOString();
-        const to = new Date(Date.now() - endDays * 86_400_000).toISOString();
-        answers.push(await mon(ctx, `a past range from ${startDays} to ${endDays} days ago`, `/logs/live?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`));
-      }
-      await ctx.verify("the bar count the docs promise", answers.map((answer, index) => {
-        const bars = list(answer.body, "buckets").length;
-        return check(`${ranges[index]?.join(" to ")} days ago: 50 to 120 bars`, bars >= 50 && bars <= 120, bars);
-      }));
     },
   },
 ];

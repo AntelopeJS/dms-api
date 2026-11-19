@@ -380,3 +380,8 @@ e2e/playwright-report
 e2e/test-results
 e2e/blob-report
 e2e/blob-reports
+
+# What a backend of the verification playground writes when it starts
+.agents/skills/verify-dms-api/playground/antelope-lock
+.agents/skills/verify-dms-api/playground/.codex
+.agents/skills/verify-dms-api/playground/.mcp.json

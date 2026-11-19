@@ -2,7 +2,8 @@ import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 
 /**
- * Back-end unit tests. The front-end keeps its own config under frontend-vue/.
+ * Back-end unit tests. The front-end keeps its own config under frontend-vue/,
+ * and the journeys theirs in vitest.journeys.config.ts.
  */
 export default defineConfig({
   resolve: {
@@ -11,5 +12,6 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["tests/**/*.test.ts"],
+    exclude: ["tests/**/*.journeys.test.ts"],
   },
 });
