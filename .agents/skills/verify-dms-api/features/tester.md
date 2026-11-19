@@ -28,6 +28,7 @@ The Tester tab of a route: real calls through the frontend server, logged and ma
 - `a-history-entry-restores-its-call-and-a-typed-authorization-beats-the-session`
 - `headers-for-all-routes-are-kept-in-the-browser-but-credentials-are-not`
 - `a-replayed-call-needs-its-credentials-and-redacted-values-by-hand`
+- `the-forwarding-route-refuses-unsafe-paths-and-never-forwards-blocked-headers`
 - `a-secret-keeps-the-testers-token-valid-across-restarts`
 
 ## How to get to it (user POV)
