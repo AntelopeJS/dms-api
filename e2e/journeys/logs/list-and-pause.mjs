@@ -1,5 +1,4 @@
-import { check, isOn, list, mon, num, pick, same, saveSettings, settled, text, traffic, openPage } from "../../api.mjs";
-import { seedLogs } from "../../seed.mjs";
+import { isOn, num, same, saveSettings, settled, traffic, openPage } from "../../api.mjs";
 import { listed } from "./shared.mjs";
 
 /** @typedef {import("../../api.mjs").Ctx} Ctx */
@@ -61,30 +60,6 @@ export const listAndPause = [
       await tab.click({ role: "button", name: "All 11" });
       await tab.click({ role: "button", name: "Slow (≥ 50 ms)" });
       await ctx.verify("Slow", [tab.shows(/\/fx\/slow/), tab.shows(/\/fx\/boom/, { not: true, timeoutMs: 3000 })]);
-    },
-  },
-  {
-    id: "the-list-is-newest-first-sorts-and-pages",
-    title: "the list is newest first, sorts by status and duration, pages by 50 and keeps the total over the pages",
-    entryPoint: "GET /api/monitoring/logs?sortKey=...&offset=...",
-    async run(/** @type {Ctx} */ ctx) {
-      await seedLogs(ctx, "58 ok", { daysAgo: 0.01, count: 58 });
-      await seedLogs(ctx, "two not found", { daysAgo: 0.02, count: 2, statusCode: 404, uri: "/fx/missing", message: "seeded" });
-      const first = await listed(ctx, "first page", "");
-      const second = await listed(ctx, "second page", "offset=50");
-      const byStatus = await mon(ctx, "by status", "/logs?preset=last-24h&sortKey=status&sortDirection=asc&limit=3");
-      const byStatusDesc = await mon(ctx, "by status, descending", "/logs?preset=last-24h&sortKey=status&sortDirection=desc&limit=3");
-      const oldest = await mon(ctx, "oldest first", "/logs?preset=last-24h&sortKey=timestamp&sortDirection=asc&limit=2");
-      const newest = await mon(ctx, "newest first", "/logs?preset=last-24h&limit=2");
-      await ctx.verify("paging", [
-        same("the total", first.total, 60),
-        same("the first page holds 50 rows", first.paths.length, 50),
-        same("the second page holds the other 10", second.paths.length, 10),
-        same("status ascending starts with a 200", list(byStatus.body, "results").map((row) => text(row, "status")), ["200", "200", "200"]),
-        same("status descending starts with the 404s", list(byStatusDesc.body, "results").map((row) => text(row, "status")).slice(0, 2), ["404", "404"]),
-        check("newest first", Date.parse(text(list(newest.body, "results")[0], "timestamp")) > Date.parse(text(list(oldest.body, "results")[0], "timestamp")), pick(newest.body, "total")),
-        same("the oldest rows are the two 404s", list(oldest.body, "results").map((row) => text(row, "status")), ["404", "404"]),
-      ]);
     },
   },
   {

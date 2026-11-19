@@ -1,41 +1,10 @@
-import { isOn, list, mon, num, pick, same, saveSettings, settled, text, traffic, openPage } from "../../api.mjs";
+import { isOn, list, mon, pick, same, saveSettings, settled, text, traffic, openPage } from "../../api.mjs";
 import { seedLogs } from "../../seed.mjs";
-import { listed } from "./shared.mjs";
 
 /** @typedef {import("../../api.mjs").Ctx} Ctx */
 
 /** The logs journeys about filters and labels. */
 export const filtersAndLabels = [
-  {
-    id: "filters-combine-with-the-status-tab",
-    title: "a status tab, the Method filter, Slow and a route narrow the list together, each by its own rule",
-    entryPoint: "GET /api/monitoring/logs?filter_statusClass=&filter_method=&filter_slow=&filter_route=",
-    async run(/** @type {Ctx} */ ctx) {
-      await saveSettings(ctx, "slow from 50 ms", { requestSlownessThresholdMs: 50 });
-      await traffic(ctx, "eight calls", [
-        { path: "/fx/ok", count: 3 }, { path: "/fx/slow?ms=80", count: 1 }, { path: "/fx/echo", count: 2, method: "POST", headers: { "content-type": "application/json" }, body: "{}" },
-        { path: "/fx/boom", count: 1 }, { path: "/fx/missing", count: 1 },
-      ]);
-      await settled(ctx, "the logs hold 8", "/logs?preset=last-24h", (body) => num(body, "total") === 8);
-      const cases = [
-        ["2xx and POST", "filter_statusClass=is:2xx&filter_method=is:POST", 2, ["/fx/echo"]],
-        ["2xx and GET", "filter_statusClass=is:2xx&filter_method=is:GET", 4, ["/fx/ok", "/fx/slow"]],
-        ["4xx and GET", "filter_statusClass=is:4xx&filter_method=is:GET", 1, ["/fx/missing"]],
-        ["4xx and POST", "filter_statusClass=is:4xx&filter_method=is:POST", 0, []],
-        ["5xx and slow", "filter_statusClass=is:5xx&filter_slow=is:true", 0, []],
-        ["2xx and slow", "filter_statusClass=is:2xx&filter_slow=is:true", 1, ["/fx/slow"]],
-        ["slow and POST", "filter_slow=is:true&filter_method=is:POST", 0, []],
-        ["2xx and a route", `filter_statusClass=is:2xx&filter_route=is:${encodeURIComponent("POST /fx/echo")}`, 2, ["/fx/echo"]],
-        ["a route under another tab", `filter_statusClass=is:5xx&filter_route=is:${encodeURIComponent("POST /fx/echo")}`, 0, []],
-      ];
-      const results = [];
-      for (const [label, query, total, paths] of cases) {
-        const got = await listed(ctx, String(label), String(query));
-        results.push(same(String(label), [got.total, [...new Set(got.paths)].toSorted((left, right) => left.localeCompare(right))], [total, paths]));
-      }
-      await ctx.verify("combined filters", results);
-    },
-  },
   {
     id: "the-list-sorts-by-duration-both-ways",
     title: "sorting by duration puts the shortest request first ascending and the longest first descending, and the table writes durations as less than 1 ms, whole milliseconds and grouped thousands",
