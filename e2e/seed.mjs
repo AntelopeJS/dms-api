@@ -48,17 +48,6 @@ async function withDatabase(ctx, body) {
 }
 
 /**
- * The first millisecond of the local day `daysAgo` days back, how the module keys its per-day statistics.
- *
- * @param {number} daysAgo How many days back
- * @returns {number} The day
- */
-export function dayStart(daysAgo) {
-  const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate() - daysAgo).getTime();
-}
-
-/**
  * Inserts request logs aged `daysAgo` days, the way the capture stores them, and keeps what was written as evidence.
  *
  * @param {Ctx} ctx The journey
@@ -103,38 +92,3 @@ export async function seedLogs(ctx, label, batch) {
   await withDatabase(ctx, (db) => db.collection("dms-api__request_log").insertMany(rows));
 }
 
-/**
- * Adds a day of statistics to a route, `daysAgo` days back.
- *
- * @param {Ctx} ctx The journey
- * @param {string} label What the day is
- * @param {{ method: string, uri: string, daysAgo: number, requests: number, serverErrors?: number, clientErrors?: number, averageMs?: number }} day The day
- * @returns {Promise<void>}
- */
-export async function seedStatistics(ctx, label, day) {
-  const average = day.averageMs ?? 10;
-  const entry = {
-    day: dayStart(day.daysAgo),
-    requestsCount: day.requests,
-    averageResponseTime: average,
-    minResponseTime: average,
-    maxResponseTime: average,
-    totalResponseTime: average * day.requests,
-    clientErrorsCount: day.clientErrors ?? 0,
-    serverErrorsCount: day.serverErrors ?? 0,
-    timedRequestsCount: day.requests,
-    latencyHistogram: [day.requests, ...Array.from({ length: 17 }, () => 0)],
-  };
-  const folder = ctx.step(`seed statistics ${label}`);
-  mkdirSync(folder, { recursive: true });
-  writeFileSync(join(folder, "seed.json"), `${JSON.stringify({ day, entry }, null, 2)}\n`);
-  await withDatabase(ctx, (db) =>
-    db
-      .collection("dms-api__routes_statistics")
-      .updateOne(
-        { _id: `${day.method}:${day.uri}` },
-        { $push: { statistics: entry }, $setOnInsert: { method: day.method, uri: day.uri, revision: randomUUID(), _instance: null } },
-        { upsert: true },
-      ),
-  );
-}

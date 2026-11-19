@@ -260,18 +260,6 @@ export async function raw(ctx, label, request) {
 }
 
 /**
- * Records checks against the evidence folder `raw` made.
- *
- * @param {Ctx} ctx The journey
- * @param {Raw} answer The answer
- * @param {Check[]} checks The checks
- * @returns {boolean} Whether they all passed
- */
-export function recordRaw(ctx, answer, checks) {
-  return ctx.record(answer.folder, checks);
-}
-
-/**
  * @param {Uint8Array} bytes Some bytes
  * @returns {string} Their SHA-256, hex
  */
@@ -290,33 +278,6 @@ export function sha256(bytes) {
  */
 export function saveSettings(ctx, label, values, as) {
   return mon(ctx, `settings: ${label}`, "/settings", { method: "POST", body: values, as });
-}
-
-/**
- * Sends one call to the project's routes with the headers, query and body given, and reads the request log it made.
- *
- * @param {Ctx} ctx The journey
- * @param {string} label What the call is
- * @param {{ method?: string, path: string, headers?: Record<string, string>, body?: string }} request What to send
- * @returns {Promise<{ status: number, log: Row }>} The status answered and the captured request in full
- */
-export async function sendAndRead(ctx, label, request) {
-  const sent = await raw(ctx, label, request);
-  const marker = `${request.method ?? "GET"} ${request.path.split("?")[0]}`;
-  const deadline = Date.now() + 15_000;
-  /** @type {Row} */
-  let found = {};
-  while (Date.now() < deadline) {
-    const listed = await mon(ctx, `${label}: find it`, "/logs?limit=50");
-    const row = list(listed.body, "results").find((entry) => entry.requestId === request.headers?.["x-request-id"] || (text(entry, "path") === request.path.split("?")[0] && `${text(entry, "method")} ${text(entry, "path")}` === marker));
-    if (row) {
-      const detail = await mon(ctx, `${label}: open it`, `/logs/${text(row, "_id")}`);
-      found = isRow(detail.body) ? detail.body : {};
-      break;
-    }
-    await new Promise((resolve) => setTimeout(resolve, 300));
-  }
-  return { status: sent.status ?? 0, log: found };
 }
 
 /**
