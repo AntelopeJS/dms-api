@@ -222,4 +222,41 @@ export const journeys = guarded([
       ]);
     },
   },
+  {
+    id: "the-use-default-button-removes-an-override-on-the-page",
+    title: "Use default on the settings page puts the module's own value in the field, says what it was, and saving removes the override: the console reads the module option, and follows it when the option changes",
+    entryPoint: "/modules/api/settings",
+    async run(/** @type {Ctx} */ ctx) {
+      const SLOW = { role: "spinbutton", name: "Slow request (ms)" };
+      const USE_DEFAULT = { role: "button", name: "Use default" };
+      const slowOf = async (/** @type {string} */ label) => pick((await mon(ctx, label, "/settings")).body, "requestSlownessThresholdMs");
+      const tab = await ctx.tab("admin");
+      await tab.signIn("admin");
+      await withConfig(ctx, { requestSlownessThreshold: 500 }, async () => {
+        await saveSettings(ctx, "override the slow threshold", { requestSlownessThresholdMs: 250 });
+        await openPage(tab, "/modules/api/settings");
+        await ctx.verify("the override", [
+          same("the field holds it", await tab.value(SLOW), "250"),
+          tab.shows(/Module\s+default:\s*500/i),
+          tab.count(USE_DEFAULT, 1),
+        ]);
+        await tab.click(USE_DEFAULT);
+        await ctx.verify("Use default", [
+          same("the field holds the module's value", await tab.value(SLOW), "500"),
+          tab.shows(/Changed\s*·\s*was\s*250/),
+          tab.visible({ role: "button", name: "Save changes" }),
+          same("nothing is saved yet", await slowOf("the override is still stored"), 250),
+        ]);
+        await tab.click({ role: "button", name: "Save changes" });
+        await ctx.verify("saved", [tab.visible({ role: "button", name: "Save changes" }, { hidden: true, timeoutMs: 8000 }), same("the console reads the module option", await slowOf("after the save"), 500)]);
+        await openPage(tab, "/modules/api/settings");
+        await ctx.verify("a reload", [same("the field holds the module's value", await tab.value(SLOW), "500"), tab.count(USE_DEFAULT, 0)]);
+      });
+      await withConfig(ctx, { requestSlownessThreshold: 700 }, async () => {
+        await ctx.verify("the override is gone", [same("the console follows the module option again", await slowOf("under another module option"), 700)]);
+        await openPage(tab, "/modules/api/settings");
+        await ctx.verify("the page follows it", [same("the field holds it", await tab.value(SLOW), "700"), tab.count(USE_DEFAULT, 0)]);
+      });
+    },
+  },
 ]);
