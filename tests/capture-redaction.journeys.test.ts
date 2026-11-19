@@ -42,7 +42,7 @@ const REDACTED_WORDS = [
 
 const JSON_HEADERS = {
   "content-type": "application/json",
-  "user-agent": "verify-agent/1.0",
+  "user-agent": "fixture-agent/1.0",
   "x-request-id": "req-capture-1",
   "x-webhook-signature": "sig-1",
   authorization: "Bearer top-secret",

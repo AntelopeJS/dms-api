@@ -5,7 +5,7 @@ import { resultsOf } from "./helpers/json";
 
 const JSON_HEADERS = {
   "content-type": "application/json",
-  "user-agent": "verify-agent/1.0",
+  "user-agent": "fixture-agent/1.0",
   "x-request-id": "req-capture-1",
   "x-webhook-signature": "sig-1",
   authorization: "Bearer top-secret",
@@ -35,7 +35,7 @@ describe("capture", () => {
       pathParams: { id: "42" },
       query: { color: "red", size: "l" },
       statusCode: 200,
-      userAgent: "verify-agent/1.0",
+      userAgent: "fixture-agent/1.0",
       requestId: "req-capture-1",
       requestBody: '{"name":"chair"}',
       responseBody: '{"id":"42","body":{"name":"chair"}}',

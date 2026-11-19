@@ -13,7 +13,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { z } from "zod";
 
-/** The verification playground: the fixture app, dms-api from this checkout, the DMS, MongoDB and auth modules. */
+/** The e2e playground: the fixture app, dms-api from this checkout, the DMS, MongoDB and auth modules. */
 export const PLAYGROUND = resolve(__dirname, "../../e2e/playground");
 
 const READY_TIMEOUT_MS = 90_000;

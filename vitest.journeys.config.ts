@@ -3,7 +3,7 @@ import { defineConfig } from "vitest/config";
 
 /**
  * The journeys that call the API or run commands, against backends of the
- * verification playground on a shared MongoDB. `pnpm e2e:build` builds what
+ * e2e playground on a shared MongoDB. `pnpm e2e:build` builds what
  * they start.
  */
 export default defineConfig({

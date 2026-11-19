@@ -85,7 +85,7 @@ async function assertTheModuleRegistersItsThreeNodesWithTheirDocumentedInputs(
 ): Promise<void> {
   await dms.withEnv(WITH_NODES, async () => {
     const { actions, triggers } = apiNodes(
-      (await dms.api("GET", "/dms/verify-api/nodes", { as: "anon" })).body,
+      (await dms.api("GET", "/dms/fixture-api/nodes", { as: "anon" })).body,
     );
     const health = actions.find((node) => node.id === HEALTH);
     const logs = actions.find((node) => node.id === LOGS);

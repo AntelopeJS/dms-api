@@ -39,7 +39,7 @@ The lines that name a changed rule match `^(?:BROKEN|CHANGED|HOLDS) +(\w+)`. A r
 
 ## When to run it
 
-Run `--full` when a change touches a file in the coverage record below, or this folder. CI runs the CI configuration on every push (job `formal-route-statistics`, in the `ubuntu` gate). The `verify-dms-api` skill lists this check in its `verify.config.ts`, so `dms-control formal` runs the full configuration on a verdict whose diff touches a covered file or this folder.
+Run `--full` when a change touches a file in the coverage record below, or this folder. CI runs the CI configuration on every push (job `formal-route-statistics`, in the `ubuntu` gate).
 
 ## The rules
 

@@ -15,7 +15,7 @@ const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 /**
  * The routes a journey sends traffic to, so that every status class, a slow
  * answer, a thrown error, secrets in a body and a body of any size exist on
- * demand. Only the verification playground serves them.
+ * demand. Only the e2e playground serves them.
  */
 export class FixtureController extends Controller("/fx") {
   @Get("ok")

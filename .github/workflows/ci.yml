@@ -111,7 +111,7 @@ jobs:
       - run: pnpm build
 
   # The journeys that call the API or run commands, as Vitest integration
-  # tests against backends of the verification playground on one MongoDB.
+  # tests against backends of the e2e playground on one MongoDB.
   journeys:
     needs: select
     if: needs.select.outputs.run == 'true'

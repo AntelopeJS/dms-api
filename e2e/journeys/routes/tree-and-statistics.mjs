@@ -21,7 +21,7 @@ export const treeAndStatistics = [
         same("a quiet route", [num(byRef("GET /fx/ok"), "requests"), text(byRef("GET /fx/ok"), "state")], [3, "healthy"]),
         same("an uncalled route", [num(byRef("GET /fx/blob"), "requests"), text(byRef("GET /fx/blob"), "state")], [0, "idle"]),
         same("the window health reads", num(listed.body, "healthWindowMinutes"), 1440),
-        same("the folders: the first static segments up to a parameter, at most two", ["GET /fx/ok", "GET /fx/items/:id", "POST /fx/orders/:shop/lines", "GET /fx/guarded/secret", "POST /verify-api/member"].map((ref) => text(byRef(ref), "folder")), ["/fx/ok", "/fx/items", "/fx/orders", "/fx/guarded", "/verify-api/member"]),
+        same("the folders: the first static segments up to a parameter, at most two", ["GET /fx/ok", "GET /fx/items/:id", "POST /fx/orders/:shop/lines", "GET /fx/guarded/secret", "POST /fixture-api/member"].map((ref) => text(byRef(ref), "folder")), ["/fx/ok", "/fx/items", "/fx/orders", "/fx/guarded", "/fixture-api/member"]),
       ]);
       const tab = await ctx.tab("admin");
       await tab.signIn("admin");

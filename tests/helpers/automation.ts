@@ -6,7 +6,7 @@ export const WITH_NODES = { VERIFY_API_AUTOMATION: "1" };
 export const HEALTH = "api.get-api-health";
 export const LOGS = "api.query-request-logs";
 export const UNHEALTHY = "api.route-unhealthy";
-export const TRIGGER_PATH = "/dms/verify-api/nodes/trigger";
+export const TRIGGER_PATH = "/dms/fixture-api/nodes/trigger";
 export const INTERVAL_WAIT_MS = 12_000;
 
 const propertySchema = z.object({

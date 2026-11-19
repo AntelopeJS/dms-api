@@ -11,7 +11,7 @@ import { join } from "node:path";
  * @typedef {{ name: string, pass: boolean, detail: string }} Check
  */
 
-/** Routes the verification playground registers in the project's scope: 17 under /fx, the member route and the five node routes. */
+/** Routes the e2e playground registers in the project's scope: 17 under /fx, the member route and the five node routes. */
 export const FIXTURE_ROUTES = 23;
 
 /** The console's HTTP API, which the dashboard calls. */
@@ -331,7 +331,7 @@ export async function withConfig(ctx, config, body) {
  * @returns {Promise<void>}
  */
 export async function member(ctx, name, permissions) {
-  const invite = await ctx.api(`invite ${name}`, { method: "POST", path: "/verify-api/member", body: { name, permissions }, as: "anon" });
+  const invite = await ctx.api(`invite ${name}`, { method: "POST", path: "/fixture-api/member", body: { name, permissions }, as: "anon" });
   const email = text(invite.body, "email");
   const password = ctx.password();
   const signup = await ctx.api(`${name} signs up`, { method: "POST", path: "/api/auth/signup", body: { name, email, password, lang: "en", token: text(invite.body, "token") }, as: "anon" });
