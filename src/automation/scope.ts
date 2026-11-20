@@ -1,12 +1,26 @@
 import { GetModel } from "@antelopejs/interface-database-decorators";
-import { RouteModel } from "@/db";
-import { getScopedRouteKeys } from "@/services/scope";
-import { getActiveScope } from "@/services/settings";
+import { ApiSettingsModel, RouteModel } from "@/db";
+import { getScopedRouteKeys, type RouteScope } from "@/services/scope";
+import { getActiveScope, loadSettings } from "@/services/settings";
 
 /**
- * `METHOD:uri` keys visible under the active monitoring scope, or null when
- * the scope is "all" (no filtering) — same contract as the read endpoints.
+ * Reads the saved settings again. A node can run on an instance other than
+ * the one the Settings page saved on, which keeps the scope and the
+ * overrides it loaded at start: every poll and every action reads them
+ * first.
  */
-export async function activeScopeKeys(): Promise<Set<string> | null> {
-  return getScopedRouteKeys(GetModel(RouteModel), getActiveScope());
+export async function refreshSettings(): Promise<void> {
+  await loadSettings(GetModel(ApiSettingsModel));
+}
+
+/**
+ * `METHOD:uri` keys visible under `scope`, the saved one by default, or null
+ * when it is "all" (no filtering) — same contract as the read endpoints. The
+ * settings are read again first.
+ */
+export async function activeScopeKeys(
+  scope?: RouteScope,
+): Promise<Set<string> | null> {
+  await refreshSettings();
+  return getScopedRouteKeys(GetModel(RouteModel), scope ?? getActiveScope());
 }

@@ -13,12 +13,14 @@ import {
   GetModel,
   RegisterSchema,
 } from "@antelopejs/interface-database-decorators";
+import { GetClientBaseUrl } from "@antelopejs/interface-dms/client-base-url";
 import { AddFrontendModule } from "@antelopejs/interface-dms/page";
 import cron, { type ScheduledTask } from "node-cron";
 import {
   registerAutomationNodes,
   unregisterAutomationNodes,
 } from "./automation";
+import { setDashboardOrigin } from "./automation/console-link";
 import { type DmsApiConfig, getBaseConfig, setConfig } from "./config";
 import { registerLiveTopics } from "./realtime";
 import {
@@ -28,6 +30,7 @@ import {
   syncRoutes,
 } from "./services";
 import { isSensitiveHeader } from "./services/request-log/redaction";
+import { automationConfigErrors } from "./services/route-call";
 import { configErrors } from "./services/settings-form";
 import { SCHEMA_NAME } from "./types/constants";
 import { frontendModule } from "./frontend-module";
@@ -40,7 +43,10 @@ let pruneTask: ScheduledTask | null = null;
  */
 export async function construct(config?: Partial<DmsApiConfig>): Promise<void> {
   setConfig(config);
-  const errors = configErrors(getBaseConfig(), isSensitiveHeader);
+  const errors = [
+    ...configErrors(getBaseConfig(), isSensitiveHeader),
+    ...automationConfigErrors(getBaseConfig()),
+  ];
   if (errors.length) {
     throw new Error(`[dms-api] invalid configuration: ${errors.join("; ")}`);
   }
@@ -68,14 +74,17 @@ export async function start(): Promise<void> {
     void pruneRequestLogs(logModel);
   });
 
-  registerAutomationNodes();
+  void GetClientBaseUrl()
+    .then(setDashboardOrigin)
+    .catch(() => setDashboardOrigin(null));
+  await registerAutomationNodes();
   registerLiveTopics();
 }
 
 export function destroy(): void {}
 
 export async function stop(): Promise<void> {
-  unregisterAutomationNodes();
+  await unregisterAutomationNodes();
   if (pruneTask) {
     await pruneTask.stop();
     pruneTask = null;

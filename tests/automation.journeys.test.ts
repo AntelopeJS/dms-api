@@ -80,7 +80,7 @@ async function assertWithoutTheAutomationModuleTheRegistrationIsASilentNoOp(
     .not.toBe("");
 }
 
-async function assertTheModuleRegistersItsThreeNodesWithTheirDocumentedInputs(
+async function assertTheModuleRegistersItsNodesWithTheirDocumentedInputs(
   dms: Dms,
 ): Promise<void> {
   await dms.withEnv(WITH_NODES, async () => {
@@ -96,19 +96,38 @@ async function assertTheModuleRegistersItsThreeNodesWithTheirDocumentedInputs(
       node?.configSchema?.get(name);
     expect
       .soft(actions.map((node) => node.id).toSorted(byName), "actions")
-      .toEqual([HEALTH, LOGS]);
+      .toEqual(
+        [
+          LOGS,
+          HEALTH,
+          "api.call-route",
+          "api.list-unhealthy-routes",
+          "api.list-incidents",
+          "api.get-route-statistics",
+          "api.get-route-errors",
+          "api.get-request-log",
+          "api.get-route-detail",
+          "api.list-routes",
+        ].toSorted(byName),
+      );
     expect
       .soft(
         triggers.map((node) => node.id),
         "triggers",
       )
-      .toEqual([UNHEALTHY]);
+      .toEqual([
+        UNHEALTHY,
+        "api.health-changed",
+        "api.route-recovered",
+        "api.request-captured",
+        "api.route-registered",
+      ]);
     expect
       .soft(unhealthy?.cluster, "the trigger runs on one node of a cluster")
       .toBe("singleton");
     expect
       .soft(input(health, "days"), "days")
-      .toMatchObject({ type: "number", minimum: 1 });
+      .toMatchObject({ type: "integer", minimum: 1, maximum: 90 });
     expect
       .soft(input(logs, "limit"), "limit")
       .toMatchObject({ default: 50, maximum: 200 });
@@ -122,7 +141,7 @@ async function assertTheModuleRegistersItsThreeNodesWithTheirDocumentedInputs(
         ),
         "the other filters",
       )
-      .toEqual(["string", "string", "string", "number", "number"]);
+      .toEqual(["string", "string", "string", "integer", "integer"]);
     expect
       .soft(config(unhealthy, "intervalSeconds"), "intervalSeconds")
       .toMatchObject({ default: 60, minimum: 10 });
@@ -133,6 +152,7 @@ async function assertTheModuleRegistersItsThreeNodesWithTheirDocumentedInputs(
     expect
       .soft([...(unhealthy?.outputSchema.keys() ?? [])], "the trigger's output")
       .toEqual([
+        "deliveryId",
         "routeKey",
         "method",
         "uri",
@@ -154,6 +174,22 @@ async function assertTheModuleRegistersItsThreeNodesWithTheirDocumentedInputs(
         "callsToday",
         "errors24h",
         "statusBreakdown",
+        "verdict",
+        "verdictSince",
+        "incidentStart",
+        "incidentEnd",
+        "durationMs",
+        "serverErrorRate",
+        "clientErrorRate",
+        "p95Ms",
+        "requestsPerMinute",
+        "calls24h",
+        "serverErrors24h",
+        "recoveredRoutes",
+        "routesNeedingAttention",
+        "scope",
+        "logsPath",
+        "checkedAt",
       ]);
   });
 }
@@ -387,8 +423,8 @@ async function assertQueryRequestLogsNextCursorReadsTheNextPage(
     const first = await queryLogs(dms, { limit: 10 });
     const cursor = first.nextCursor ?? "";
     const second = await queryLogs(dms, { limit: 10, cursor });
-    const firstIds = first.results.map((row) => row._id);
-    const secondIds = second.results.map((row) => row._id);
+    const firstIds = first.results.map((row) => row.id);
+    const secondIds = second.results.map((row) => row.id);
     expect
       .soft(cursor !== "", "a cursor comes back while rows remain")
       .toBe(true);
@@ -396,7 +432,7 @@ async function assertQueryRequestLogsNextCursorReadsTheNextPage(
       .soft(
         secondIds.length === 10 &&
           secondIds.every((id) => !firstIds.includes(id)),
-        "api.query-request-logs returns a nextCursor but takes no cursor input, so a second call returns the first page again",
+        "the cursor of page 1 reads page 2, without overlap",
       )
       .toBe(true);
   });
@@ -406,9 +442,9 @@ describe("automation", () => {
   test("without-the-automation-module-the-registration-is-a-silent-no-op", ({
     dms,
   }) => assertWithoutTheAutomationModuleTheRegistrationIsASilentNoOp(dms));
-  test("the-module-registers-its-three-nodes-with-their-documented-inputs", ({
+  test("the-module-registers-its-nodes-with-their-documented-inputs", ({
     dms,
-  }) => assertTheModuleRegistersItsThreeNodesWithTheirDocumentedInputs(dms));
+  }) => assertTheModuleRegistersItsNodesWithTheirDocumentedInputs(dms));
   test("get-api-health-restricts-its-breakdown-to-the-last-days", ({ dms }) =>
     assertGetApiHealthRestrictsItsBreakdownToTheLastDays(dms));
   test("query-request-logs-pages-caps-and-filters", ({ dms }) =>
@@ -419,6 +455,6 @@ describe("automation", () => {
     assertRouteUnhealthyFiresOnTheFlagsItWatchesAndNeverFasterThanTenSeconds(
       dms,
     ));
-  test.fails("query-request-logs-next-cursor-reads-the-next-page", ({ dms }) =>
+  test("query-request-logs-next-cursor-reads-the-next-page", ({ dms }) =>
     assertQueryRequestLogsNextCursorReadsTheNextPage(dms));
 });
