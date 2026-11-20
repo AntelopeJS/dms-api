@@ -3,6 +3,7 @@ import { setConfig } from "@/config";
 import { pickHeaders } from "@/services/request-log/util";
 import {
   isTesterSourceToken,
+  issueSourceToken,
   issueTesterSourceToken,
   requestSource,
   TESTER_SOURCE_TOKEN_TTL_MS,
@@ -51,6 +52,19 @@ describe("Tester source token", () => {
     setConfig({ testerSourceSecret: "one" });
     expect(isTesterSourceToken(value, NOW)).toBe(true);
     setConfig();
+  });
+
+  it("marks a procedure's call as the automation's, never as the Tester's", () => {
+    const { value } = issueSourceToken("automation", NOW);
+    expect(requestSource({ [HEADER]: value }, NOW)).toBe("automation");
+    expect(isTesterSourceToken(value, NOW)).toBe(false);
+    const [, expiry, signature] = value.split(".");
+    expect(
+      requestSource({ [HEADER]: `tester.${expiry}.${signature}` }, NOW),
+    ).toBeUndefined();
+    expect(
+      requestSource({ [HEADER]: `admin.${expiry}.${signature}` }, NOW),
+    ).toBeUndefined();
   });
 
   it("is never stored with the captured headers", () => {

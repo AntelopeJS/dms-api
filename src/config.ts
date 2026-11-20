@@ -43,6 +43,22 @@ export interface DmsApiConfig {
    * instance draws its own at start.
    */
   testerSourceSecret?: string;
+  /**
+   * Credential profiles `api.call-route` may call a route with, by name:
+   * the headers each one sends. A procedure names the profile, never the
+   * secret, so the header values stay out of its runs.
+   */
+  automationCredentials?: Record<string, AutomationCredential>;
+  /**
+   * Origin `api.call-route` calls the API at, when the DMS `apiBaseUrl` is
+   * not reachable from the server itself (a proxy, TLS ended outside).
+   */
+  automationCallBaseUrl?: string;
+}
+
+/** One credential profile of `automationCredentials`. */
+export interface AutomationCredential {
+  headers: Record<string, string>;
 }
 
 const DEFAULT_CONFIG: DmsApiConfig = {

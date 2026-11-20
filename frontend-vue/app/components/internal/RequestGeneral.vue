@@ -1,7 +1,7 @@
 <script setup lang="ts">
 defineProps<{
   general: { key: string; label: string; value: string; copy?: boolean }[]
-  isTester: boolean
+  source: 'tester' | 'automation' | null
 }>()
 
 const { t } = useI18n()
@@ -22,9 +22,9 @@ const { t } = useI18n()
           <DmsCopyButton v-if="row.copy" :value="row.value" class="-my-1.5" />
         </dd>
       </template>
-      <template v-if="isTester">
+      <template v-if="source">
         <dt class="text-muted">{{ t('api.request.fields.source') }}</dt>
-        <dd class="text-default">{{ t('api.request.source_tester') }}</dd>
+        <dd class="text-default">{{ t(`api.request.source_${source}`) }}</dd>
       </template>
     </dl>
   </section>

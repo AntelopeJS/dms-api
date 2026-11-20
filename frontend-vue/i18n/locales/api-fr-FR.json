@@ -382,6 +382,8 @@
       },
       "tester": "Testeur",
       "source_tester": "Envoyée depuis le testeur de la console : gardée dans les journaux, hors des statistiques et de la santé.",
+      "automation": "Automatisation",
+      "source_automation": "Envoyée par une procédure d'automatisation : gardée dans les journaux, hors des statistiques et de la santé.",
       "timing": "Durée",
       "slow": "lente",
       "slow_ratio": "Lente · {ratio}× le seuil",
