@@ -104,6 +104,32 @@ export type RequestLogListItem = Pick<
   | "requestId"
 > & { errorMessage?: string | null };
 
+/**
+ * A request as the automation nodes hand it on: who called which route, how
+ * it was answered and how fast, the error message alone. Read without the
+ * headers, the bodies, the query, the client and the stack.
+ */
+export type RequestLogSummaryRow = Pick<
+  RequestLog,
+  | "_id"
+  | "timestamp"
+  | "method"
+  | "uri"
+  | "statusCode"
+  | "responseTimeMs"
+  | "routeId"
+  | "routeMethod"
+  | "source"
+  | "requestId"
+  | "responseBodySize"
+> & { errorMessage?: string | null };
+
+/** One page of summaries, newest first. */
+export interface RequestLogSummaryPage {
+  results: RequestLogSummaryRow[];
+  nextCursor: string | null;
+}
+
 /** One page of a filtered listing, with the number of matching rows. */
 export interface RequestLogListPage {
   results: RequestLogListItem[];
@@ -177,7 +203,10 @@ function logCursor(log: Pick<RequestLog, "_id" | "timestamp">): string {
   return `${log.timestamp.toISOString()}${CURSOR_SEPARATOR}${log._id}`;
 }
 
-function paginate(results: RequestLog[], limit: number): RequestLogPage {
+function paginate<Row extends Pick<RequestLog, "_id" | "timestamp">>(
+  results: Row[],
+  limit: number,
+) {
   if (results.length > limit) {
     const trimmed = results.slice(0, limit);
     return {
@@ -203,6 +232,33 @@ export class RequestLogModel extends BasicDataModel(
     );
     const results = await q.slice(0, limit + 1).run();
     return paginate(results, limit);
+  }
+
+  /**
+   * The page {@link query} returns, as summaries: the projection runs in the
+   * database, so headers and bodies never leave it.
+   */
+  async querySummary(
+    filters: RequestLogFilters,
+  ): Promise<RequestLogSummaryPage> {
+    const limit = Math.min(
+      filters.limit ?? DEFAULT_LIMIT,
+      REQUEST_LOG_MAX_LIMIT,
+    );
+    const ordered = this.applyFilters(
+      this.table.orderBy(REQUEST_LOG_ORDER_INDEX, "desc"),
+      filters,
+    );
+    const results = await this.summaryItems(ordered.slice(0, limit + 1));
+    return paginate(results, limit);
+  }
+
+  /** One request by its id, as a summary. */
+  async summaryById(id: string): Promise<RequestLogSummaryRow | undefined> {
+    const [row] = await this.summaryItems(
+      this.table.filter((doc) => doc.key("_id").eq(id)).slice(0, 1),
+    );
+    return row;
   }
 
   /**
@@ -279,6 +335,25 @@ export class RequestLogModel extends BasicDataModel(
       minute: call.minute * MS_PER_MINUTE,
       requests,
     }));
+  }
+
+  private summaryItems(rows: this["table"]): Promise<RequestLogSummaryRow[]> {
+    return rows
+      .map((doc) => ({
+        _id: doc.key("_id"),
+        timestamp: doc.key("timestamp"),
+        method: doc.key("method"),
+        uri: doc.key("uri"),
+        statusCode: doc.key("statusCode"),
+        responseTimeMs: doc.key("responseTimeMs"),
+        errorMessage: doc.key("error").default(null).key("message"),
+        routeId: doc.key("routeId"),
+        routeMethod: doc.key("routeMethod"),
+        source: doc.key("source"),
+        requestId: doc.key("requestId"),
+        responseBodySize: doc.key("responseBodySize"),
+      }))
+      .run();
   }
 
   private listItems(rows: this["table"]): Promise<RequestLogListItem[]> {

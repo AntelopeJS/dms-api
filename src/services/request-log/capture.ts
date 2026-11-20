@@ -24,6 +24,7 @@ import { addRequestStatistics } from "@/services/statistics-write";
 import { NS_TO_MS, REQUEST_ID_HEADER, REQUEST_ID_MAX_LENGTH } from "@/types";
 import { isStatusCarrier, isMessageBody, isString } from "@/guards";
 import { type BodyValue, bodyText, parseBody } from "./body";
+import { notifyCaptured } from "./captured";
 import {
   type CapturedBody,
   captureBody,
@@ -408,7 +409,22 @@ async function persistLog(context: CaptureContext): Promise<void> {
     query: queryToRecord(context.url),
     droppedHeaders,
   });
-  await GetModel(RequestLogModel).insert(log);
+  const [id] = await GetModel(RequestLogModel).insert(log);
+  if (id)
+    notifyCaptured(() => ({
+      _id: id,
+      timestamp: log.timestamp,
+      method: log.method,
+      uri: log.uri,
+      statusCode: log.statusCode,
+      responseTimeMs: log.responseTimeMs,
+      errorMessage: log.error?.message ?? null,
+      routeId: log.routeId,
+      routeMethod: log.routeMethod,
+      source: log.source,
+      requestId: log.requestId,
+      responseBodySize: log.responseBodySize,
+    }));
   recordLiveRequest({
     timestamp: log.timestamp,
     statusCode,

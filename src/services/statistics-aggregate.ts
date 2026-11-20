@@ -120,11 +120,21 @@ export async function getSummaryKpis(
   };
 }
 
-const WATCH_FLAGS: Partial<Record<RouteState, WatchListItem["flag"]>> = {
+/** A flag of the watch list: broken (failing), slow, or warn (many 4xx). */
+export type RouteFlag = WatchListItem["flag"];
+
+export const ROUTE_FLAGS: readonly RouteFlag[] = ["broken", "slow", "warn"];
+
+const WATCH_FLAGS: Partial<Record<RouteState, RouteFlag>> = {
   failing: "broken",
   slow: "slow",
   "client-errors": "warn",
 };
+
+/** The flag a route state carries on the watch list; null for a route in no bad state. */
+export function routeFlag(state: RouteState): RouteFlag | null {
+  return WATCH_FLAGS[state] ?? null;
+}
 
 const FLAG_PRIORITY: Record<WatchListItem["flag"], number> = {
   broken: 0,
@@ -145,7 +155,7 @@ export async function getWatchList(
   const { routes } = await loadRouteHealth({ logs });
   const items: WatchListItem[] = [];
   for (const route of routes.values()) {
-    const flag = WATCH_FLAGS[route.state];
+    const flag = routeFlag(route.state);
     if (!flag || (keys && !keys.has(route.key))) continue;
     items.push({
       routeKey: route.key,

@@ -25,8 +25,8 @@ import {
  * The list query a `TableView.fromSource` table sends its route: `offset` /
  * `limit`, `sortKey` / `sortDirection`, `search` and one
  * `filter_<column>=<mode>:<value>` per filtered column (the page's URL
- * filters `?method=`, `?slow=`, `?route=`, `?path=`, `?error=` and an
- * incident's `?since=` / `?until=` reach it that way, in the list and in the
+ * filters `?method=`, `?slow=`, `?route=`, `?path=`, `?error=`,
+ * `?requestId=` and an incident's `?since=` / `?until=` reach it that way, in the list and in the
  * tab counts alike). The page's period comes as the charts get it, from its
  * `periodScope`: `preset`, `from`, `to`. `requestId=` finds the request a
  * sender knows and `liveHeldAt` (ISO) bounds a held table to the rows it
@@ -59,7 +59,7 @@ export interface RequestLogRow {
   /** Tone of the error message: `error` when there is one. */
   errorTone: Tone | null;
   ip: string | null;
-  /** `tester` for a request sent from the console's Tester. */
+  /** `tester` or `automation` for a request the Tester or a procedure sent. */
   source: string | null;
   /** The request's own `x-request-id`. */
   requestId: string | null;
@@ -184,7 +184,9 @@ export function filtersFromQuery(
   if (until) filters.until = until;
   const search = query.search?.trim();
   if (search) filters.search = search;
-  const requestId = query.requestId?.trim();
+  const requestId =
+    query.requestId?.trim() ||
+    query.filter_requestId?.replace(/^[a-z_]+:/, "").trim();
   if (requestId) filters.requestId = requestId;
   return filters;
 }

@@ -1,7 +1,8 @@
 import type { ActivityFeedItem } from "@antelopejs/interface-dms/base/activity-feed";
 import type { TopListItem } from "@antelopejs/interface-dms/base/top-list-card";
+import { GetModel } from "@antelopejs/interface-database-decorators";
 import { getConfig } from "@/config";
-import type { RequestLogModel, RouteModel, RouteStatisticsModel } from "@/db";
+import { RequestLogModel, RouteModel, RouteStatisticsModel } from "@/db";
 import type { RequestLogSample } from "@/db/models/request_log.model";
 import { MS_PER_MINUTE } from "@/types";
 import { aggregateMemo } from "./aggregate-cache";
@@ -18,6 +19,9 @@ import {
   ruleWindowsInfo,
 } from "./health-rules";
 import { serverErrorsLink } from "./links";
+import { countRoutes } from "./route-catalog";
+import { getScopedRouteKeys } from "./scope";
+import { getActiveScope } from "./settings";
 import {
   type RouteHealthState,
   type RouteState,
@@ -359,6 +363,24 @@ export async function getHealth(
     serverErrorsLink: serverErrorsLink(),
     firstRun: traffic.requests === 0 && !(await hasAnyRequest(models)),
   };
+}
+
+/** The models the Overview reads, as the module bound them. */
+export function overviewModels(): OverviewModels {
+  return {
+    logs: GetModel(RequestLogModel),
+    stats: GetModel(RouteStatisticsModel),
+    routes: GetModel(RouteModel),
+  };
+}
+
+/** The health of the routes under the active scope, as the Overview shows it now. */
+export async function currentHealth(
+  now: Date = new Date(),
+): Promise<HealthPayload> {
+  const models = overviewModels();
+  const keys = await getScopedRouteKeys(models.routes, getActiveScope());
+  return getHealth(models, keys, countRoutes(keys), now);
 }
 
 /** The window's traffic in scope, and the previous period's if compared. */

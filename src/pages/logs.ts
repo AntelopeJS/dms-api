@@ -31,6 +31,7 @@ const LOGS_QUERY_FILTERS: QueryParamFilters = {
   method: { field: "method", mode: "is" },
   since: { field: "since", mode: "is" },
   until: { field: "until", mode: "is" },
+  requestId: { field: "requestId", mode: "is" },
 };
 
 /** Draws every empty state of the request table, naming its cause. */

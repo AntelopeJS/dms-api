@@ -16,7 +16,7 @@ import {
 } from "./comparison";
 import { count, percent, text } from "./composed-text";
 import { logsLink, testerLink } from "./links";
-import { computeRouteHealth } from "./route-health";
+import { computeRouteHealth, type ErrorGroup } from "./route-health";
 import { scopeRouteKey } from "./scope";
 import {
   averageLatency,
@@ -32,6 +32,7 @@ import {
 import {
   describeWindow,
   horizonOf,
+  type TimeRange,
   type TimeWindow,
   type WindowInfo,
 } from "./window";
@@ -551,6 +552,25 @@ function errorId(group: { status: number; message: string | null }): string {
 }
 
 /**
+ * A route's 4xx and 5xx over `range`, grouped by status and message, most
+ * frequent first (then the latest first).
+ */
+export async function routeErrorGroups(
+  models: Pick<TrafficModels, "logs">,
+  route: RouteKey,
+  range: TimeRange,
+): Promise<ErrorGroup[]> {
+  const key = scopeRouteKey(route.method, route.path);
+  const errors = await loadErrorSamples(
+    models.logs,
+    range,
+    new Set([key]),
+    400,
+  );
+  return computeRouteHealth(errors).get(key)?.errors ?? [];
+}
+
+/**
  * Why the route fails over the window: its errors grouped by status and
  * message, most frequent first, each linking to its requests in the logs
  * over the same window, and under a comparison its count then ("+200 % vs.
@@ -565,13 +585,7 @@ export async function routeTopErrors(
   const info = describeWindow(window);
   if (!route) return { items: [], window: info };
   const key = scopeRouteKey(route.method, route.path);
-  const errors = await loadErrorSamples(
-    models.logs,
-    window,
-    new Set([key]),
-    400,
-  );
-  const groups = computeRouteHealth(errors).get(key)?.errors ?? [];
+  const groups = await routeErrorGroups(models, route, window);
   const before = await previousErrorCounts(models, window, key);
   const comparison = shownComparison(window);
   return {

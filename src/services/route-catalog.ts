@@ -47,6 +47,8 @@ export interface RouteRow {
   folder: string;
   controller: string | null;
   handler: string;
+  /** Module that registered the handler, when interface-api could tell. */
+  module: string | null;
 }
 
 const FOLDER_DEPTH = 2;
@@ -98,6 +100,7 @@ export function listRoutes(keys: ScopeKeys): RouteRow[] {
         folder: folderOf(path),
         controller: handler.controller.name,
         handler: handler.callback.name || "anonymous",
+        module: handler.module ?? null,
       };
     })
     .sort(
@@ -118,7 +121,7 @@ export function parseRouteRef(
 }
 
 /** The registered handler a `METHOD /path` reference names. */
-function findHandler(
+export function findRouteHandler(
   ref: string | undefined,
 ): RegisteredRouteHandler | undefined {
   const parsed = parseRouteRef(ref);
@@ -133,13 +136,13 @@ function findHandler(
 
 /** Whether `ref` names a route the API registers (not a stray path). */
 export function isRegisteredRoute(ref: string | undefined): boolean {
-  return findHandler(ref) !== undefined;
+  return findRouteHandler(ref) !== undefined;
 }
 
 export function findRoute(
   ref: string | undefined,
 ): RouteInspection | undefined {
-  const found = findHandler(ref);
+  const found = findRouteHandler(ref);
   return found ? getRouteInspection(found.id) : undefined;
 }
 
@@ -230,6 +233,81 @@ export function authOf(
   if (guards.length > 0) status = "required";
   else if (unauthorized > 0) status = "probable";
   return { status, guards, unauthorized };
+}
+
+const UNAUTHORIZED_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+
+/** A parameter a handler declares, without any value seen in the traffic. */
+export type DeclaredParameter = {
+  name: string;
+  in: DocumentedParameter["in"];
+  type: string;
+  required: boolean;
+};
+
+/** What a route is, from its handler, its row and a count of its 401s: no traffic read. */
+export interface RouteFacts {
+  ref: string;
+  method: string;
+  path: string;
+  folder: string;
+  controller: string | null;
+  handler: string;
+  module: string | null;
+  own: boolean | null;
+  registeredAt: string | null;
+  auth: RouteAuth;
+  parameters: DeclaredParameter[];
+}
+
+/**
+ * A route's facts without its contract: its handler, its row in the routes
+ * table, its authentication with the 401s of the last 7 days counted by the
+ * database, and the parameters its handler declares.
+ */
+export async function getRouteFacts(
+  models: Pick<CatalogModels, "logs" | "routes">,
+  ref: string,
+  now: Date = new Date(),
+): Promise<RouteFacts | undefined> {
+  const inspection = findRoute(ref);
+  if (!inspection) return undefined;
+  const method = inspection.method.toUpperCase();
+  const path = normalizeRoutePath(inspection.location);
+  const [stored, unauthorized] = await Promise.all([
+    models.routes.getByRoute(method, inspection.location),
+    models.logs.list(
+      {
+        routeMethod: method,
+        uri: path,
+        statusMin: HTTP_UNAUTHORIZED,
+        statusMax: HTTP_UNAUTHORIZED,
+        since: new Date(now.getTime() - UNAUTHORIZED_WINDOW_MS),
+        apiTrafficOnly: true,
+      },
+      { limit: 0 },
+    ),
+  ]);
+  return {
+    ref: routeRef(method, path),
+    method,
+    path,
+    folder: folderOf(path),
+    controller: inspection.controllerName,
+    handler: inspection.callbackName,
+    module: inspection.module ?? stored?.module ?? null,
+    own: stored ? stored.own : null,
+    registeredAt: stored?.createdAt?.toISOString() ?? null,
+    auth: authOf(inspection, [
+      { status: HTTP_UNAUTHORIZED, count: unauthorized.total },
+    ]),
+    parameters: documentParameters(inspection, [], []).map((parameter) => ({
+      name: parameter.name,
+      in: parameter.in,
+      type: parameter.type,
+      required: parameter.required,
+    })),
+  };
 }
 
 /** Everything the Routes page shows about a route, around its tabs. */
