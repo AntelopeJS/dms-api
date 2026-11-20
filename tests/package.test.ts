@@ -83,14 +83,19 @@ describe("the ranges the docs name", () => {
 });
 
 describe("the skill", () => {
-  it("is named dms-api and names the three automation nodes", () => {
+  it("is named dms-api and names its automation triggers and its write", () => {
     const skill = readText("skills/dms-api/SKILL.md");
 
     expect(skill.startsWith("---\nname: dms-api\n")).toBe(true);
     for (const node of [
       "api.route-unhealthy",
+      "api.health-changed",
+      "api.route-recovered",
+      "api.request-captured",
+      "api.route-registered",
       "api.get-api-health",
       "api.query-request-logs",
+      "api.call-route",
     ]) {
       expect(skill).toContain(node);
     }

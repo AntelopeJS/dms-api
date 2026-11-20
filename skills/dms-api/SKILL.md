@@ -1,6 +1,6 @@
 ---
 name: dms-api
-description: Uses the @antelopejs/dms-api console of the AntelopeJS DMS (API health, request logs, per-route statistics, inferred route docs and a tester under /modules/api). Use when installing or configuring dms-api (retention, slow threshold, captured headers, testerSourceSecret), debugging a failing or slow route from its request logs, wiring its automation nodes (api.route-unhealthy, api.get-api-health, api.query-request-logs), or when a route is missing from the console.
+description: Uses the @antelopejs/dms-api console of the AntelopeJS DMS (API health, request logs, per-route statistics, inferred route docs and a tester under /modules/api). Use when installing or configuring dms-api (retention, slow threshold, captured headers, testerSourceSecret), debugging a failing or slow route from its request logs, wiring its automation nodes (api.route-unhealthy, api.health-changed, api.route-recovered, api.request-captured, api.route-registered, api.get-api-health, api.query-request-logs, api.call-route and the route reads), or when a route is missing from the console.
 icon: i-lucide-webhook
 category: monitoring
 tags: [api, monitoring, request-logs, routes, tester, automation]
@@ -13,7 +13,9 @@ Monitors the project's own HTTP API: it captures each request of the routes in s
 ## When to reach for it
 
 - Debug a route: read its failed requests in `/modules/api/logs` (its drawer holds the error, stack, headers and bodies) or replay one in the route's Tester.
-- Alert on a broken route: an automation procedure on `api.route-unhealthy` (`flags`: `broken`, `slow`, `warn`; default `broken` + `slow`).
+- Alert on a broken route: an automation procedure on `api.route-unhealthy` (`flags`: `broken`, `slow`, `warn`; default `broken` + `slow`), its end on `api.route-recovered`, the API verdict on `api.health-changed`.
+- Synthetic check: `api.call-route` calls a registered route (anonymous, or a named profile of `automationCredentials`); its calls carry an Automation badge and stay out of the statistics.
+- The nodes hand on request summaries only: never IPs, headers, bodies or stacks (docs/5.extending.md, "What the nodes record").
 
 ## Config (`antelope.config.ts`; the API settings page overrides it at runtime)
 
