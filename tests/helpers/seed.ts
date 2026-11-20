@@ -142,3 +142,24 @@ export async function readDocuments<T extends z.ZodTypeAny>(
   );
   return z.array(schema).parse(documents);
 }
+
+/** Stores `refs` as the routes the route watch saw last, under a revision no live set has. */
+export async function seedRouteWatch(dms: Dms, refs: string[]): Promise<void> {
+  await withDatabase(dms, (db) =>
+    db
+      .collection<{
+        _id: string;
+        routes: { ref: string; module: null; own: boolean }[];
+        revision: string;
+        updatedAt: Date;
+        _instance: null;
+      }>("dms-api__route_watch")
+      .insertOne({
+        _id: "registered",
+        routes: refs.map((ref) => ({ ref, module: null, own: false })),
+        revision: "seeded",
+        updatedAt: new Date(),
+        _instance: null,
+      }),
+  );
+}
