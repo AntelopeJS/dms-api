@@ -1,4 +1,9 @@
-import { applyConfigOverrides, type DmsApiConfig, getConfig } from "@/config";
+import {
+  applyConfigOverrides,
+  type DmsApiConfig,
+  getBaseConfig,
+  getConfig,
+} from "@/config";
 import type { ApiSettingsModel } from "@/db";
 import type { ApiSettings } from "@/db/tables/api_settings.table";
 import { isRouteScope, type RouteScope } from "./scope";
@@ -13,6 +18,9 @@ import { isRouteScope, type RouteScope } from "./scope";
  * call site — capture middleware, prune crons, aggregations — picks them up
  * without knowing about the DB. The scope is cached here for synchronous
  * access from the read endpoints.
+ *
+ * The body capture limit set in `antelope.config.ts` is a ceiling: a stored
+ * setting above it is capped to it.
  */
 
 export interface ApiSettingsPayload {
@@ -54,7 +62,10 @@ function overridesFrom(doc: SettingsDocument): Partial<DmsApiConfig> {
     overrides.requestSlownessThreshold = doc.requestSlownessThreshold;
   }
   if (doc.requestLogMaxBodySize != null) {
-    overrides.requestLogMaxBodySize = doc.requestLogMaxBodySize;
+    overrides.requestLogMaxBodySize = Math.min(
+      doc.requestLogMaxBodySize,
+      getBaseConfig().requestLogMaxBodySize,
+    );
   }
   if (doc.requestLogCaptureHeaders != null) {
     overrides.requestLogCaptureHeaders = doc.requestLogCaptureHeaders;
@@ -78,7 +89,9 @@ function applyDocument(doc: SettingsDocument | undefined): void {
 }
 
 /** Load persisted settings and apply them; called once at module start. */
-export async function loadSettings(model: ApiSettingsModel): Promise<void> {
+export async function loadSettings(
+  model: Pick<ApiSettingsModel, "getSingleton">,
+): Promise<void> {
   applyDocument(await model.getSingleton());
 }
 
