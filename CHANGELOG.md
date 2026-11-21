@@ -1,5 +1,39 @@
 # Changelog
 
+## v0.7.3
+
+[compare changes](https://github.com/AntelopeJS/dms-api/compare/v0.7.2...v0.7.3)
+
+### 🩹 Fixes
+
+- **settings:** Cap the stored body capture limit at the config value ([#156](https://github.com/AntelopeJS/dms-api/pull/156))
+
+### 📦 Build
+
+- **deps:** Depend on the interface-dms 0.15 preview for the release train ([#158](https://github.com/AntelopeJS/dms-api/pull/158))
+- **deps:** Move the dms previews to the released stable versions ([#160](https://github.com/AntelopeJS/dms-api/pull/160))
+
+### 🏡 Chore
+
+- Promote next to main ([#148](https://github.com/AntelopeJS/dms-api/pull/148))
+- Promote next to main ([#150](https://github.com/AntelopeJS/dms-api/pull/150))
+- Delete the verify-dms-api harness ([#154](https://github.com/AntelopeJS/dms-api/pull/154))
+
+### ✅ Tests
+
+- **e2e:** Drive the undriven flows and run every journey in the merge queue ([#151](https://github.com/AntelopeJS/dms-api/pull/151))
+- Port the dms-api inventory journeys off dms-control ([#152](https://github.com/AntelopeJS/dms-api/pull/152))
+- Run the e2e kit and the journeys off the verify skill folder ([#153](https://github.com/AntelopeJS/dms-api/pull/153))
+- Accept a 3 or 4 minute count in the monitor hero journey ([#157](https://github.com/AntelopeJS/dms-api/pull/157))
+
+### 🤖 CI
+
+- Cache and export both dms-control and dms-e2e e2e names ([#155](https://github.com/AntelopeJS/dms-api/pull/155))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli
+
 ## v0.7.2
 
 [compare changes](https://github.com/AntelopeJS/dms-api/compare/v0.7.1...v0.7.2)
