@@ -2,10 +2,9 @@ import { randomUUID } from "node:crypto";
 import { Controller, JSONBody, Post } from "@antelopejs/interface-api";
 import { GetModel } from "@antelopejs/interface-database-decorators";
 import { DEFAULT_TENANT_ID } from "@antelopejs/interface-dms/constants";
-import { RoleModel, UserInviteModel } from "@antelopejs/interface-dms/db";
+import { RoleModel } from "@antelopejs/interface-dms/db";
+import { createUserInviteToken } from "@antelopejs/interface-dms";
 import { z } from "zod";
-
-const INVITE_LIFETIME_MS = 3_600_000;
 
 const memberSchema = z.object({
   name: z.string(),
@@ -38,15 +37,13 @@ export class FixtureMembersController extends Controller("/fixture-api") {
       name: `${name} ${randomUUID()}`,
       permissions: withAncestors(permissions),
     });
-    const token = randomUUID();
     const email = `${name.toLowerCase()}-${randomUUID()}@verify.local`;
-    await GetModel(UserInviteModel, DEFAULT_TENANT_ID).insert({
+    const { token } = await createUserInviteToken({
+      tenantId: DEFAULT_TENANT_ID,
       email,
-      roles_ids: roleId === undefined ? [] : [roleId],
       language,
-      token,
+      roleIds: roleId === undefined ? [] : [roleId],
       asTenantOwner: false,
-      expiresAt: new Date(Date.now() + INVITE_LIFETIME_MS),
     });
     return { email, token, roleId };
   }
