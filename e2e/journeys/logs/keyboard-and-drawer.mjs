@@ -45,7 +45,7 @@ async function drawerWidth(tab) {
 export const keyboardAndDrawer = [
   {
     id: "slash-opens-the-request-search-and-question-mark-lists-the-shortcuts",
-    title: "the slash key focuses the search of the Request logs and what is typed narrows the table; the question mark opens the list of the page's shortcuts, which Escape closes",
+    title: "the slash key focuses the search of the Request logs and what is typed narrows the table; the Keyboard shortcuts button opens the list of the page's shortcuts, which Escape closes",
     entryPoint: "/modules/api/logs",
     async run(/** @type {Ctx} */ ctx) {
       await traffic(ctx, "two paths", [{ path: "/fx/ok", count: 2 }, { path: "/fx/missing", count: 1 }]);
@@ -54,8 +54,8 @@ export const keyboardAndDrawer = [
       await tab.signIn("admin");
       await openPage(tab, "/modules/api/logs");
       await ctx.verify("before any key", [tab.visible({ role: "button", name: "All 3" }), tab.visible({ role: "dialog", name: "Keyboard shortcuts" }, { hidden: true, timeoutMs: 1500 })]);
-      await tab.press("?");
-      await ctx.verify("the question mark", [
+      await tab.click({ role: "button", name: "Keyboard shortcuts" });
+      await ctx.verify("the shortcuts button", [
         tab.visible({ role: "dialog", name: "Keyboard shortcuts" }),
         tab.shows(/Search the requests/),
         tab.shows(/Next \/ previous request in the panel/),
@@ -143,10 +143,6 @@ export const keyboardAndDrawer = [
     id: "an-open-row-or-an-active-search-holds-the-table-and-says-why",
     title: "while a request is open the table says Table on hold · row open, while a search narrows it Table on hold · search active, and the notice goes with the row and the search",
     entryPoint: "/modules/api/logs",
-    knownFailures: {
-      "an open request says the table is on hold, row open":
-        "the request panel is a modal `drawer` target; the DMS names the `row open` hold only for a docked `sidePanel` target (useRowSidePanelContent), so an open request holds the table silently behind the '1 new request · Show' pill, and docs/4.usage/1.overview.md (Live mode) promises the notice",
-    },
     async run(/** @type {Ctx} */ ctx) {
       await traffic(ctx, "two calls", [{ path: "/fx/ok", count: 2 }]);
       await settled(ctx, "the logs hold 2", "/logs", (body) => num(body, "total") === 2);
