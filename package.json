@@ -70,7 +70,7 @@
     "@antelopejs/dms": ">=0.22.0 <0.23.0",
     "@antelopejs/dms-frontend": ">=0.11.8 <0.12.0",
     "@antelopejs/interface-data-api": ">=0.8.0 <0.9.0",
-    "@antelopejs/tooling-configs": ">=0.8.9 <0.9.0",
+    "@antelopejs/tooling-configs": ">=0.9.3 <0.10.0",
     "@playwright/test": "~1.65.0",
     "@types/node": "^24.0.0",
     "@types/semver": "^7.7.0",
