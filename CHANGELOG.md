@@ -1,5 +1,30 @@
 # Changelog
 
+## v0.7.4
+
+[compare changes](https://github.com/AntelopeJS/dms-api/compare/v0.7.3...v0.7.4)
+
+### 📦 Build
+
+- **deps:** Move to interface-dms 0.16, dms 0.23 and zod 4 ([#164](https://github.com/AntelopeJS/dms-api/pull/164))
+
+### 🏡 Chore
+
+- Adopt tooling-configs 0.10 and bring frontend-vue under the comment rule ([#165](https://github.com/AntelopeJS/dms-api/pull/165))
+
+### ✅ Tests
+
+- **e2e:** Drop the knownFailures entry dms 0.22 fixed and the dms-control CI names ([#161](https://github.com/AntelopeJS/dms-api/pull/161))
+
+### 🤖 CI
+
+- Re-sync the AntelopeJS pack for the release app ([#162](https://github.com/AntelopeJS/dms-api/pull/162))
+- Stop forwarding the retired RELEASE_GITHUB_TOKEN ([#163](https://github.com/AntelopeJS/dms-api/pull/163))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli
+
 ## v0.7.3
 
 [compare changes](https://github.com/AntelopeJS/dms-api/compare/v0.7.2...v0.7.3)
