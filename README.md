@@ -62,6 +62,8 @@ pnpm --dir playground traffic     # a few hundred demo requests
 
 <!-- antelopejs-docs-compat:end -->
 
+**Upgrading:** this release requires `@antelopejs/interface-dms` `>=0.16.0 <0.17.0` and a DMS backend `@antelopejs/dms` `>=0.23.0`; it no longer works with `@antelopejs/interface-dms` 0.15.
+
 The module also needs a DMS backend in a release that implements the `@antelopejs/interface-dms` range above, and the `@antelopejs/dms-frontend` renderer in the range its frontend module declares in `engines["@antelopejs/dms-frontend"]` of `frontend-vue/package.json`; the `ajs dms` CLI refuses to build it with a renderer outside that range. It runs on these providers:
 
 - API provider: `@antelopejs/api`.
