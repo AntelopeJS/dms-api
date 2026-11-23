@@ -63,7 +63,7 @@ export function queryRequestLogsScoped(
  * same scope, same floor, no headers or bodies read.
  */
 export function queryRequestSummariesScoped(
-  model: RequestLogModel,
+  model: Pick<RequestLogModel, "querySummary">,
   filters: RequestLogFilters,
   keys: Set<string> | null | undefined,
 ): Promise<RequestLogSummaryPage> {

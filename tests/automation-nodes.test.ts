@@ -12,6 +12,7 @@ import { healthOutput } from "@/automation/health-output";
 import { requestSummary, truncateMessage } from "@/automation/outputs";
 import { requestLogFilters } from "@/automation/query-request-logs";
 import type { RequestLogSummaryRow } from "@/db/models/request_log.model";
+import { queryRequestSummariesScoped } from "@/services/request-log/read";
 import type { HealthPayload } from "@/services/overview";
 
 const WRITES = new Set(["api.call-route"]);
@@ -335,6 +336,31 @@ describe("requestSummary", () => {
 });
 
 describe("the query of api.query-request-logs", () => {
+  it("refuses a page over 200 rows and reads 50 by default", () => {
+    const logs = API_ACTIONS.find(
+      (action) => action.id === "api.query-request-logs",
+    );
+    expect(logs?.inputSchema.properties?.limit).toMatchObject({
+      maximum: 200,
+      default: 50,
+    });
+    expect(requestLogFilters({}).limit).toBe(50);
+  });
+
+  it("answers an empty scope with no rows, without a query", async () => {
+    let queried = 0;
+    const model = {
+      querySummary: () => {
+        queried += 1;
+        return Promise.resolve({ results: [], nextCursor: null });
+      },
+    };
+    expect(
+      await queryRequestSummariesScoped(model, { limit: 10 }, new Set()),
+    ).toEqual({ results: [], nextCursor: null });
+    expect(queried).toBe(0);
+  });
+
   it("passes the cursor on, so a second call reads the next page", () => {
     expect(requestLogFilters({ cursor: "c1", limit: 10 })).toEqual({
       cursor: "c1",

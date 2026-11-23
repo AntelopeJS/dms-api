@@ -266,7 +266,10 @@ export interface RouteFacts {
  * database, and the parameters its handler declares.
  */
 export async function getRouteFacts(
-  models: Pick<CatalogModels, "logs" | "routes">,
+  models: {
+    logs: Pick<RequestLogModel, "list">;
+    routes: Pick<RouteModel, "getByRoute">;
+  },
   ref: string,
   now: Date = new Date(),
 ): Promise<RouteFacts | undefined> {

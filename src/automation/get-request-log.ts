@@ -52,59 +52,71 @@ export function requestLogAnswer(
   };
 }
 
-export const getRequestLogAction: ActionType<
-  GetRequestLogInput,
-  GetRequestLogOutput
-> = {
-  id: "api.get-request-log",
-  name: "Get request log",
-  description:
-    "One captured request by its log id or its x-request-id, as a summary (support flow)",
-  icon: "i-ph-receipt",
-  sideEffects: false,
-  inputSchema: {
-    type: "object",
-    properties: {
-      id: { type: "string", maxLength: 200, description: "Log id" },
-      requestId: {
-        type: "string",
-        maxLength: REQUEST_ID_MAX_LENGTH,
-        description: "x-request-id; the newest request when several share it",
-      },
-    },
-    additionalProperties: false,
-  },
-  outputSchema: objectSchema({
-    found: { type: "boolean" },
-    log: nullable(
-      "object",
-      objectSchema({
-        ...REQUEST_SUMMARY_PROPERTIES,
-        routeRegistered: {
-          type: "boolean",
-          description: "A route still answers it",
+/** The summary reads of the request logs. */
+export type RequestLogReader = Pick<
+  RequestLogModel,
+  "summaryById" | "querySummary"
+>;
+
+const SOURCES = (): RequestLogReader => GetModel(RequestLogModel);
+
+/** The action, reading through `sources`. */
+export function getRequestLogActionOf(
+  sources: () => RequestLogReader = SOURCES,
+): ActionType<GetRequestLogInput, GetRequestLogOutput> {
+  return {
+    id: "api.get-request-log",
+    name: "Get request log",
+    description:
+      "One captured request by its log id or its x-request-id, as a summary (support flow)",
+    icon: "i-ph-receipt",
+    sideEffects: false,
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: { type: "string", maxLength: 200, description: "Log id" },
+        requestId: {
+          type: "string",
+          maxLength: REQUEST_ID_MAX_LENGTH,
+          description: "x-request-id; the newest request when several share it",
         },
-        responseBodySize: nullable("integer"),
-      }),
-    ),
-    matches: {
-      type: "integer",
-      description: `Requests found, at most ${MAX_MATCHES}`,
+      },
+      additionalProperties: false,
     },
-  }),
-  async execute(input) {
-    const model = GetModel(RequestLogModel);
-    if (input.id) {
-      const row = await model.summaryById(input.id);
-      return requestLogAnswer(row ? [row] : []);
-    }
-    if (input.requestId) {
-      const page = await model.querySummary({
-        requestId: input.requestId,
-        limit: MAX_MATCHES,
-      });
-      return requestLogAnswer(page.results);
-    }
-    throw new Error("Give the request's log id or its x-request-id");
-  },
-};
+    outputSchema: objectSchema({
+      found: { type: "boolean" },
+      log: nullable(
+        "object",
+        objectSchema({
+          ...REQUEST_SUMMARY_PROPERTIES,
+          routeRegistered: {
+            type: "boolean",
+            description: "A route still answers it",
+          },
+          responseBodySize: nullable("integer"),
+        }),
+      ),
+      matches: {
+        type: "integer",
+        description: `Requests found, at most ${MAX_MATCHES}`,
+      },
+    }),
+    async execute(input) {
+      const model = sources();
+      if (input.id) {
+        const row = await model.summaryById(input.id);
+        return requestLogAnswer(row ? [row] : []);
+      }
+      if (input.requestId) {
+        const page = await model.querySummary({
+          requestId: input.requestId,
+          limit: MAX_MATCHES,
+        });
+        return requestLogAnswer(page.results);
+      }
+      throw new Error("Give the request's log id or its x-request-id");
+    },
+  };
+}
+
+export const getRequestLogAction = getRequestLogActionOf();

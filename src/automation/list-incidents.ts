@@ -1,6 +1,7 @@
 import { GetModel } from "@antelopejs/interface-database-decorators";
 import type { ActionType } from "@antelopejs/interface-dms-automation";
 import { RequestLogModel } from "@/db";
+import type { RequestLogSample } from "@/db/models/request_log.model";
 import { findIncidents, type Incident } from "@/services/activity";
 import { logsLink } from "@/services/links";
 import { scopeRouteKey } from "@/services/scope";
@@ -103,91 +104,109 @@ export function incidentOutput(incident: Incident): IncidentOutput {
   };
 }
 
-export const listIncidentsAction: ActionType<
-  ListIncidentsInput,
-  ListIncidentsOutput
-> = {
-  id: "api.list-incidents",
-  name: "List incidents",
-  description:
-    "Per-route incidents (runs of 5xx) over a period, newest first, each with its top error",
-  icon: "i-ph-siren",
-  sideEffects: false,
-  inputSchema: {
-    type: "object",
-    properties: {
-      period: {
-        ...PERIOD_INPUT,
-        default: DEFAULT_PERIOD,
-        description: "Ignored when since is set",
-      },
-      since: { ...DATE_TIME, description: "Custom start" },
-      until: {
-        ...DATE_TIME,
-        description: "Custom end, exclusive; now by default",
-      },
-      route: routeRefInput("One route only"),
-      ongoingOnly: { type: "boolean", default: false },
-      limit: {
-        type: "integer",
-        default: DEFAULT_LIMIT,
-        minimum: 1,
-        maximum: 100,
-      },
-    },
-    additionalProperties: false,
-  },
-  outputSchema: objectSchema({
-    incidents: {
-      type: "array",
-      items: objectSchema({
-        routeKey: { type: "string" },
-        route: { type: "string" },
-        start: { ...DATE_TIME, description: "First 5xx" },
-        end: { ...DATE_TIME, description: "Last 5xx" },
-        ongoing: {
-          type: "boolean",
-          description: "Last 5xx less than 15 minutes ago",
-        },
-        serverErrors: { type: "integer" },
-        peakPerMinute: { type: "integer" },
-        topErrorStatus: { type: "integer" },
-        topErrorMessage: nullable("string"),
-        topErrorCount: { type: "integer" },
-        logsPath: { type: "string" },
-      }),
-    },
-    total: { type: "integer", description: "Before the limit" },
-    from: DATE_TIME,
-    to: DATE_TIME,
-  }),
-  async execute(input) {
-    const route = input.route ? requireRouteRef(input.route) : undefined;
-    let keys: Set<string> | null;
-    if (route) {
-      await refreshSettings();
-      keys = new Set([scopeRouteKey(route.method, route.path)]);
-    } else {
-      keys = await activeScopeKeys();
-    }
-    const now = pinnedNow();
-    const range = readRange(input, DEFAULT_PERIOD, now);
-    const errors = await loadErrorSamples(
-      GetModel(RequestLogModel),
-      range,
-      keys,
-      SERVER_ERROR,
-    );
-    const incidents = findIncidents(errors, now.getTime()).filter(
-      (incident) => !input.ongoingOnly || incident.ongoing,
-    );
-    return {
-      incidents: incidents
-        .slice(0, input.limit ?? DEFAULT_LIMIT)
-        .map(incidentOutput),
-      total: incidents.length,
-      from: range.from.toISOString(),
-      to: range.to.toISOString(),
-    };
-  },
+/** What the action reads. */
+export interface IncidentsSources {
+  refresh: () => Promise<void>;
+  scopeKeys: () => Promise<Set<string> | null>;
+  errors: (
+    range: TimeRange,
+    keys: Set<string> | null,
+  ) => Promise<RequestLogSample[]>;
+  now: () => Date;
+}
+
+const SOURCES: IncidentsSources = {
+  refresh: refreshSettings,
+  scopeKeys: () => activeScopeKeys(),
+  errors: (range, keys) =>
+    loadErrorSamples(GetModel(RequestLogModel), range, keys, SERVER_ERROR),
+  now: () => pinnedNow(),
 };
+
+/** The action, reading through `sources`. */
+export function listIncidentsActionOf(
+  sources: IncidentsSources = SOURCES,
+): ActionType<ListIncidentsInput, ListIncidentsOutput> {
+  return {
+    id: "api.list-incidents",
+    name: "List incidents",
+    description:
+      "Per-route incidents (runs of 5xx) over a period, newest first, each with its top error",
+    icon: "i-ph-siren",
+    sideEffects: false,
+    inputSchema: {
+      type: "object",
+      properties: {
+        period: {
+          ...PERIOD_INPUT,
+          default: DEFAULT_PERIOD,
+          description: "Ignored when since is set",
+        },
+        since: { ...DATE_TIME, description: "Custom start" },
+        until: {
+          ...DATE_TIME,
+          description: "Custom end, exclusive; now by default",
+        },
+        route: routeRefInput("One route only"),
+        ongoingOnly: { type: "boolean", default: false },
+        limit: {
+          type: "integer",
+          default: DEFAULT_LIMIT,
+          minimum: 1,
+          maximum: 100,
+        },
+      },
+      additionalProperties: false,
+    },
+    outputSchema: objectSchema({
+      incidents: {
+        type: "array",
+        items: objectSchema({
+          routeKey: { type: "string" },
+          route: { type: "string" },
+          start: { ...DATE_TIME, description: "First 5xx" },
+          end: { ...DATE_TIME, description: "Last 5xx" },
+          ongoing: {
+            type: "boolean",
+            description: "Last 5xx less than 15 minutes ago",
+          },
+          serverErrors: { type: "integer" },
+          peakPerMinute: { type: "integer" },
+          topErrorStatus: { type: "integer" },
+          topErrorMessage: nullable("string"),
+          topErrorCount: { type: "integer" },
+          logsPath: { type: "string" },
+        }),
+      },
+      total: { type: "integer", description: "Before the limit" },
+      from: DATE_TIME,
+      to: DATE_TIME,
+    }),
+    async execute(input) {
+      const route = input.route ? requireRouteRef(input.route) : undefined;
+      let keys: Set<string> | null;
+      if (route) {
+        await sources.refresh();
+        keys = new Set([scopeRouteKey(route.method, route.path)]);
+      } else {
+        keys = await sources.scopeKeys();
+      }
+      const now = sources.now();
+      const range = readRange(input, DEFAULT_PERIOD, now);
+      const errors = await sources.errors(range, keys);
+      const incidents = findIncidents(errors, now.getTime()).filter(
+        (incident) => !input.ongoingOnly || incident.ongoing,
+      );
+      return {
+        incidents: incidents
+          .slice(0, input.limit ?? DEFAULT_LIMIT)
+          .map(incidentOutput),
+        total: incidents.length,
+        from: range.from.toISOString(),
+        to: range.to.toISOString(),
+      };
+    },
+  };
+}
+
+export const listIncidentsAction = listIncidentsActionOf();

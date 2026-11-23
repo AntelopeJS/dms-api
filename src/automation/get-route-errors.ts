@@ -3,11 +3,12 @@ import type { ActionType } from "@antelopejs/interface-dms-automation";
 import { RequestLogModel } from "@/db";
 import { logsLink } from "@/services/links";
 import type { ErrorGroup } from "@/services/route-health";
-import { routeErrorGroups } from "@/services/route-statistics";
+import { type RouteKey, routeErrorGroups } from "@/services/route-statistics";
 import type { TimeWindow, WindowPreset } from "@/services/window";
 import { inputWindow } from "./get-route-statistics";
 import {
   DATE_TIME,
+  MESSAGE_MAX_LENGTH,
   nullable,
   objectSchema,
   PERIOD_INPUT,
@@ -67,7 +68,7 @@ export function errorGroupOutput(
     last: group.last.toISOString(),
     logsPath: logsLink({
       route: ref,
-      error: group.message ?? undefined,
+      error: group.message?.slice(0, MESSAGE_MAX_LENGTH),
       tab: group.status >= SERVER_ERROR ? "5xx" : "4xx",
       period: window.preset,
       range: window.preset ? undefined : window,
@@ -75,72 +76,88 @@ export function errorGroupOutput(
   };
 }
 
-export const getRouteErrorsAction: ActionType<
-  GetRouteErrorsInput,
-  GetRouteErrorsOutput
-> = {
-  id: "api.get-route-errors",
-  name: "Get route errors",
-  description:
-    "A route's errors over a period, grouped by status and message, most frequent first",
-  icon: "i-ph-warning-diamond",
-  sideEffects: false,
-  inputSchema: {
-    type: "object",
-    properties: {
-      route: routeRefInput("METHOD /path of the route"),
-      period: {
-        ...PERIOD_INPUT,
-        default: DEFAULT_PERIOD,
-        description: "Ignored when since is set",
-      },
-      since: DATE_TIME,
-      until: { ...DATE_TIME, description: "Now by default" },
-      statusClass: {
-        type: "string",
-        enum: ["client-error", "server-error", "any"],
-        default: "any",
-      },
-      limit: {
-        type: "integer",
-        default: DEFAULT_LIMIT,
-        minimum: 1,
-        maximum: 50,
-      },
-    },
-    required: ["route"],
-    additionalProperties: false,
-  },
-  outputSchema: objectSchema({
-    errors: {
-      type: "array",
-      items: objectSchema({
-        status: { type: "integer" },
-        message: nullable("string"),
-        count: { type: "integer" },
-        first: DATE_TIME,
-        last: DATE_TIME,
-        logsPath: { type: "string" },
-      }),
-    },
-    totalGroups: { type: "integer", description: "Before the limit" },
-    from: DATE_TIME,
-    to: DATE_TIME,
-  }),
-  async execute(input) {
-    const route = requireRouteRef(input.route);
-    await refreshSettings();
-    const window = inputWindow({ ...input, compare: false }, DEFAULT_PERIOD);
-    const groups = (
-      await routeErrorGroups({ logs: GetModel(RequestLogModel) }, route, window)
-    ).filter((group) => inClass(group, input.statusClass ?? "any"));
-    return {
-      errors: groups
-        .slice(0, input.limit ?? DEFAULT_LIMIT)
-        .map((group) => errorGroupOutput(group, route.ref, window)),
-      totalGroups: groups.length,
-      from: window.from.toISOString(),
-      to: window.to.toISOString(),
-    };
-  },
+/** What the action reads. */
+export interface RouteErrorsSources {
+  refresh: () => Promise<void>;
+  groups: (route: RouteKey, window: TimeWindow) => Promise<ErrorGroup[]>;
+}
+
+const SOURCES: RouteErrorsSources = {
+  refresh: refreshSettings,
+  groups: (route, window) =>
+    routeErrorGroups({ logs: GetModel(RequestLogModel) }, route, window),
 };
+
+/** The action, reading through `sources`. */
+export function getRouteErrorsActionOf(
+  sources: RouteErrorsSources = SOURCES,
+): ActionType<GetRouteErrorsInput, GetRouteErrorsOutput> {
+  return {
+    id: "api.get-route-errors",
+    name: "Get route errors",
+    description:
+      "A route's errors over a period, grouped by status and message, most frequent first",
+    icon: "i-ph-warning-diamond",
+    sideEffects: false,
+    inputSchema: {
+      type: "object",
+      properties: {
+        route: routeRefInput("METHOD /path of the route"),
+        period: {
+          ...PERIOD_INPUT,
+          default: DEFAULT_PERIOD,
+          description: "Ignored when since is set",
+        },
+        since: DATE_TIME,
+        until: { ...DATE_TIME, description: "Now by default" },
+        statusClass: {
+          type: "string",
+          enum: ["client-error", "server-error", "any"],
+          default: "any",
+        },
+        limit: {
+          type: "integer",
+          default: DEFAULT_LIMIT,
+          minimum: 1,
+          maximum: 50,
+        },
+      },
+      required: ["route"],
+      additionalProperties: false,
+    },
+    outputSchema: objectSchema({
+      errors: {
+        type: "array",
+        items: objectSchema({
+          status: { type: "integer" },
+          message: nullable("string"),
+          count: { type: "integer" },
+          first: DATE_TIME,
+          last: DATE_TIME,
+          logsPath: { type: "string" },
+        }),
+      },
+      totalGroups: { type: "integer", description: "Before the limit" },
+      from: DATE_TIME,
+      to: DATE_TIME,
+    }),
+    async execute(input) {
+      const route = requireRouteRef(input.route);
+      await sources.refresh();
+      const window = inputWindow({ ...input, compare: false }, DEFAULT_PERIOD);
+      const groups = (await sources.groups(route, window)).filter((group) =>
+        inClass(group, input.statusClass ?? "any"),
+      );
+      return {
+        errors: groups
+          .slice(0, input.limit ?? DEFAULT_LIMIT)
+          .map((group) => errorGroupOutput(group, route.ref, window)),
+        totalGroups: groups.length,
+        from: window.from.toISOString(),
+        to: window.to.toISOString(),
+      };
+    },
+  };
+}
+
+export const getRouteErrorsAction = getRouteErrorsActionOf();

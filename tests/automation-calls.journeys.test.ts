@@ -31,6 +31,27 @@ const loggedSchema = z.object({
   uri: z.string(),
 });
 const watchSchema = z.object({ revision: z.string() });
+const statisticsSchema = z.object({
+  statistics: z.array(z.object({ requestsCount: z.number() })),
+});
+
+/** Calls of GET /fx/ok in its day statistics, once the capture wrote at least one, for 15 seconds at most. */
+async function countedCalls(dms: Dms): Promise<number> {
+  const deadline = Date.now() + 15_000;
+  for (;;) {
+    const rows = await readDocuments(
+      dms,
+      "dms-api__routes_statistics",
+      statisticsSchema,
+      { _id: "GET:/fx/ok" },
+    );
+    const total = rows
+      .flatMap((row) => row.statistics)
+      .reduce((sum, day) => sum + day.requestsCount, 0);
+    if (total > 0 || Date.now() > deadline) return total;
+    await new Promise((done) => setTimeout(done, 500));
+  }
+}
 
 async function activate(dms: Dms, id: string, config: Fields): Promise<string> {
   const answer = await dms.api("POST", `${TRIGGER_PATH}/${id}/activate`, {
@@ -66,6 +87,7 @@ async function assertACallRouteIsLoggedAsTheAutomationsAndNeverFeedsRequestCaptu
       loggedSchema,
       { requestId: call.requestId },
     );
+    const counted = await countedCalls(dms);
     const fired = (await emissions(dms, key))
       .map((row) => capturedSchema.parse(row))
       .filter((row) => row.uri === "/fx/ok");
@@ -78,6 +100,7 @@ async function assertACallRouteIsLoggedAsTheAutomationsAndNeverFeedsRequestCaptu
         "the call is logged as the automation's",
       )
       .toEqual([["/fx/ok", "automation"]]);
+    expect.soft(counted, "only the client's call is in the statistics").toBe(1);
     expect
       .soft(
         fired.map((row) => [row.uri, row.source]),

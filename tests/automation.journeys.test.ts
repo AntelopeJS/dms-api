@@ -438,6 +438,26 @@ async function assertQueryRequestLogsNextCursorReadsTheNextPage(
   });
 }
 
+async function assertQueryRequestLogsReadsSinceInclusiveAndUntilExclusive(
+  dms: Dms,
+): Promise<void> {
+  await seedLogs(dms, { minutesAgo: 100, count: 5, uri: "/fx/ok" });
+  await dms.withEnv(WITH_NODES, async () => {
+    const all = await queryLogs(dms, { limit: 10 });
+    const times = all.results.map((row) => row.timestamp);
+    const window = await queryLogs(dms, {
+      since: times[3] ?? "",
+      until: times[1] ?? "",
+    });
+    expect
+      .soft(
+        window.results.map((row) => row.timestamp),
+        "since is kept, until is not",
+      )
+      .toEqual([times[2], times[3]]);
+  });
+}
+
 describe("automation", () => {
   test("without-the-automation-module-the-registration-is-a-silent-no-op", ({
     dms,
@@ -455,6 +475,9 @@ describe("automation", () => {
     assertRouteUnhealthyFiresOnTheFlagsItWatchesAndNeverFasterThanTenSeconds(
       dms,
     ));
+  test("query-request-logs-reads-since-inclusive-and-until-exclusive", ({
+    dms,
+  }) => assertQueryRequestLogsReadsSinceInclusiveAndUntilExclusive(dms));
   test("query-request-logs-next-cursor-reads-the-next-page", ({ dms }) =>
     assertQueryRequestLogsNextCursorReadsTheNextPage(dms));
 });
