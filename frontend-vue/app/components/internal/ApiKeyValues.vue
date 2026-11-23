@@ -1,17 +1,17 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { isString } from './typeGuards'
 
-// Headers or parameters as a two-column list of names and values. A name
-// stays on one line; a long value wraps between words where it can.
+/** Headers or parameters as a two-column list of names and values. */
 const props = defineProps<{
-  values: Record<string, unknown> | undefined | null
+  values: Record<string, string | string[]> | undefined | null
   empty: string
 }>()
 
 const entries = computed(() =>
   Object.entries(props.values ?? {}).map(([name, value]) => [
     name,
-    typeof value === 'string' ? value : JSON.stringify(value),
+    isString(value) ? value : JSON.stringify(value),
   ]),
 )
 </script>

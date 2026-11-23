@@ -2,8 +2,7 @@
 import { computed } from 'vue'
 import { pathSegments } from '../../utils/http'
 
-// A route path in the mono font, `:params` highlighted. `prefix` dims the
-// folder the path sits in, so the part that differs reads first.
+/** A route path with its `:params` highlighted; `prefix` dims the folder it sits in. */
 const props = withDefaults(
   defineProps<{
     path: string

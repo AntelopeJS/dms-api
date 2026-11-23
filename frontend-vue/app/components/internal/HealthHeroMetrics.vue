@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { HeroMetric, MetricTone } from '../../utils/health'
 
-// The figures beside the verdict, each with its label and the line under it.
 defineProps<{ metrics: HeroMetric[] }>()
 
 const METRIC_TONE: Record<MetricTone, string> = {

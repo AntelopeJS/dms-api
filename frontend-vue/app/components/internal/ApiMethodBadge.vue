@@ -2,8 +2,7 @@
 import { computed } from 'vue'
 import { methodTone } from '../../utils/http'
 
-// The method of a request or a route. Outline everywhere; `solid` only marks
-// the request the tester is about to send.
+/** The method of a request or a route; `solid` marks the request the tester is about to send. */
 const props = withDefaults(
   defineProps<{
     method: string

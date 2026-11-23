@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { isNumber, isObject, isString } from './typeGuards'
 
-// A JSON value as a tree, as DevTools previews a payload: objects and arrays
-// fold, the first levels open; a folded branch renders nothing below it, so
-// a large body stays light.
+/** A JSON value as a foldable tree; a folded branch renders nothing below it. */
 const props = withDefaults(
   defineProps<{
     value: unknown
@@ -18,12 +17,10 @@ const OPEN_DEPTH = 2
 
 const { t } = useI18n()
 
-const isBranch = computed(
-  () => props.value !== null && typeof props.value === 'object',
-)
+const isBranch = computed(() => isObject(props.value))
 const isArray = computed(() => Array.isArray(props.value))
 const entries = computed(() =>
-  isBranch.value ? Object.entries(props.value as object) : [],
+  isObject(props.value) ? Object.entries(props.value) : [],
 )
 const open = ref(props.depth < OPEN_DEPTH)
 
@@ -37,8 +34,8 @@ const summary = computed(() => {
 const leaf = computed(() => JSON.stringify(props.value))
 const leafTone = computed(() => {
   if (props.value === null) return 'text-dimmed'
-  if (typeof props.value === 'string') return 'text-success'
-  if (typeof props.value === 'number') return 'text-info'
+  if (isString(props.value)) return 'text-success'
+  if (isNumber(props.value)) return 'text-info'
   return 'text-warning'
 })
 </script>

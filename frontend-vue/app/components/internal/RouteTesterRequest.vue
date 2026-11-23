@@ -2,7 +2,7 @@
 import { hasRedacted } from '../../utils/testerRequest'
 import type { TesterContext } from './routeTester/context'
 
-// The tester's request card: the body, the query, the headers and the auth, by tab.
+/** The tester's request card: the body, the query, the headers and the auth, by tab. */
 const props = defineProps<{ tester: TesterContext }>()
 
 const {

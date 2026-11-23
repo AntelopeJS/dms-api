@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import type { DurationScale, RequestLog } from '../../utils/requestDrawer'
 
-// How long the request took against the slow threshold, and how its route
-// does lately.
 defineProps<{
   log: RequestLog
   timing: DurationScale | null

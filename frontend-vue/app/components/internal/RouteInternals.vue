@@ -2,14 +2,11 @@
 import { computed } from 'vue'
 import type { RouteDetail } from '../../composables/useRouteDetail'
 
-// The documentation's last column: the pipeline a request meets, then the
-// controller's internals, folded.
+/** The documentation's last column: the pipeline a request meets, then the controller's internals. */
 const props = defineProps<{ route: RouteDetail }>()
 
 const { t } = useI18n()
 
-// Internals worth a row: a parameter the introspection could name or place,
-// a class member. An unnamed `unknown` row says nothing.
 const internalParameters = computed(() =>
   (props.route.inspection.parameters ?? []).filter(
     (parameter) => parameter.name || parameter.source !== 'unknown',
