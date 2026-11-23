@@ -15,7 +15,6 @@ export function useDateFormat() {
   })
   const { preferences } = useUserRegionalPreferences()
   return computed<DateFormat>(() => {
-    // Read so that a change of language or preferences makes the formats again.
     void formatLocale.value
     void preferences.value
     return cachedDateFormat((options) => dateTimeFormat(options))

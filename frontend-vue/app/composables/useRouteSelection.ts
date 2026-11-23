@@ -1,7 +1,11 @@
 import { computed } from 'vue'
 import { parseRouteRef } from '../utils/http'
 
-/** The request the tester replays (`?replay=<id>`, `RouteTester.vue`). */
+/**
+ * The request the tester replays (`?replay=<id>`, `RouteTester.vue`). It
+ * belongs to the route it was sent to: selecting another route drops it, so
+ * the tester opens blank.
+ */
 const REPLAY_QUERY_KEY = 'replay'
 
 export interface SelectOptions {
@@ -24,18 +28,17 @@ export function useRouteSelection(queryKey = 'route') {
 
   const ref = computed<string | null>(() => {
     const value = route.query[queryKey]
-    return typeof value === 'string' && value ? value : null
+    return value && !Array.isArray(value) ? value : null
   })
   const parsed = computed(() => parseRouteRef(ref.value))
 
   async function select(next: string | null, options: SelectOptions = {}) {
     if (next === ref.value) return
-    const query = { ...route.query } as Record<string, string | string[]>
-    // A replayed request belongs to the route it was sent to: another route
-    // opens its tester blank.
-    delete query[REPLAY_QUERY_KEY]
-    if (next) query[queryKey] = next
-    else delete query[queryKey]
+    const query = {
+      ...route.query,
+      [REPLAY_QUERY_KEY]: undefined,
+      [queryKey]: next || undefined,
+    }
     await (options.replace ? router.replace({ query }) : router.push({ query }))
   }
 
