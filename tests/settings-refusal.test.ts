@@ -27,7 +27,7 @@ describe("a refused settings save", () => {
       "application/json",
     ]);
     expect(answer.getBody()).toBe(
-      '[{"code":"too_small","minimum":1,"type":"number","inclusive":true,"exact":false,"message":"Number must be greater than or equal to 1","path":["requestLogRetentionDays"]},{"code":"invalid_type","expected":"number","received":"string","path":["requestSlownessThresholdMs"],"message":"Expected number, received string"}]',
+      '[{"origin":"number","code":"too_small","minimum":1,"inclusive":true,"path":["requestLogRetentionDays"],"message":"Too small: expected number to be >=1"},{"expected":"number","code":"invalid_type","path":["requestSlownessThresholdMs"],"message":"Invalid input: expected number, received string"}]',
     );
   });
 });
