@@ -9,17 +9,10 @@ import {
   routeMethod,
   windowPreset,
   withLogsFilters,
+  type LinkFilterKey,
   type LogsFiltersPatch,
 } from '../../utils/logsQuery'
 
-// The filters bar right above the request table: the method, the slow
-// requests, and the filters a link brought (route, path, error, an
-// incident's range), each removable. Every request kept is the toolbar
-// period's "All time"; an incident's range narrows that period, which stays
-// the one the user chose.
-// Everything here reads and writes the URL (`utils/logsQuery.ts`), as the
-// toolbar's period selector does: the table follows the URL, so what the bar
-// shows is what the table lists, and the tab counts with it.
 defineOptions({ inheritAttrs: false })
 
 const props = defineProps<{
@@ -40,7 +33,6 @@ function apply(patch: LogsFiltersPatch) {
   void router.push({ query: withLogsFilters(route.query, patch) })
 }
 
-// A route filter fixes the method: the control shows it, and is off.
 const methodLocked = computed(
   () => !!filters.value.route && isRouteRef(filters.value.route),
 )
@@ -48,8 +40,6 @@ const method = computed(() =>
   methodLocked.value ? routeMethod(filters.value.route) : filters.value.method,
 )
 
-// One method at a time: plain items, the chosen one checked, and the menu
-// closes on a choice (checkbox items would keep it open, as for several).
 function methodItem(label: string, value: string | null) {
   const chosen = (filters.value.method ?? null) === value
   return {
@@ -79,9 +69,13 @@ interface Chip {
   remove: LogsFiltersPatch
 }
 
-// A route as the module names it, without the trailing slash an older link
-// carries; one that names no route at all says so.
-function linkChip(key: (typeof LINK_FILTER_KEYS)[number], value: string): Chip {
+const LINK_REMOVALS: Record<LinkFilterKey, LogsFiltersPatch> = {
+  route: { route: null },
+  path: { path: null },
+  error: { error: null },
+}
+
+function linkChip(key: LinkFilterKey, value: string): Chip {
   if (key === 'route' && !isRouteRef(value))
     return {
       key,
@@ -94,15 +88,16 @@ function linkChip(key: (typeof LINK_FILTER_KEYS)[number], value: string): Chip {
     label: t(`api.logs.linked.${key}`, {
       value: value,
     }),
-    remove: { [key]: null } as LogsFiltersPatch,
+    remove: LINK_REMOVALS[key],
   }
 }
 
 const chips = computed<Chip[]>(() => {
   const current = filters.value
-  const list = LINK_FILTER_KEYS.filter((key) => !!current[key]).map((key) =>
-    linkChip(key, current[key]!),
-  )
+  const list = LINK_FILTER_KEYS.flatMap((key) => {
+    const value = current[key]
+    return value ? [linkChip(key, value)] : []
+  })
   const incident = current.incident
   if (incident)
     list.push({
@@ -116,8 +111,6 @@ const chips = computed<Chip[]>(() => {
   return list
 })
 
-// "Last 24 hours · from Overview": where the link came from, and the period
-// the page shows.
 const origin = computed(() => {
   const { from } = filters.value
   if (!from) return undefined
@@ -133,9 +126,6 @@ const origin = computed(() => {
 
 const shortcutsOpen = ref(false)
 
-// The table's search is the DMS table's own shortcut, set to "/" by the
-// page (`searchShortcut`); J / K, Esc and L are the DMS drawer's and
-// live toggle's.
 const SHORTCUTS = [
   { keys: ['/'], label: 'api.logs.shortcuts.search' },
   { keys: ['J', 'K'], label: 'api.logs.shortcuts.steps' },
@@ -144,7 +134,6 @@ const SHORTCUTS = [
   { keys: ['?'], label: 'api.logs.shortcuts.help' },
 ]
 
-// Listed on the DMS Shortcuts page (`app/config/shortcuts-registry.ts`).
 defineShortcuts({
   '?': () => {
     shortcutsOpen.value = true

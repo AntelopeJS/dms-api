@@ -13,19 +13,6 @@ import {
   useTesterState,
 } from '../internal/routeTester/useTesterState'
 
-// Call the selected route from the dashboard. The URL bar holds the method,
-// the path with its parameters to fill in, and Send; the body starts from
-// the last request the route accepted. A route keeps its draft for the
-// session (body, headers, query, path values, last answer), across tabs,
-// routes and pages. A call that writes data is confirmed first, and the
-// answer shows its status, the browser and server times and what the module
-// captured of it (`x-request-id`). `?replay=<request id>` loads a captured
-// request once, then leaves the URL.
-//
-// Typing in one of its fields holds the page's live mode ("Paused · typing in
-// the Tester"), so the route's figures do not move under the request being
-// written; leaving the Tester releases it.
-
 defineOptions({ inheritAttrs: false })
 
 const props = withDefaults(defineProps<RouteTesterProps>(), {

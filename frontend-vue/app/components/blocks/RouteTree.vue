@@ -23,9 +23,6 @@ import ApiMethodBadge from '../internal/ApiMethodBadge.vue'
 import ApiPath from '../internal/ApiPath.vue'
 import RouteTreeFooter from '../internal/RouteTreeFooter.vue'
 
-// Every route in scope, grouped by folder, with its traffic and health over
-// the health window the list states. The selection is the page's `?route=`,
-// so the rest of the page follows it and it survives a reload.
 defineOptions({ inheritAttrs: false })
 
 const props = withDefaults(
@@ -52,16 +49,16 @@ const { formatLocale: locale, formatNumber } = useRegionalFormat({
 })
 const selection = useRouteSelection(props.queryKey)
 const lastRoute = useLastRoute()
-const { data, error, pending, refresh } = useApiData<{
+const routesRead = useApiData<{
   routes: RouteRow[]
   /** Minutes of traffic each state is judged on. */
   healthWindowMinutes?: number
   /** Minutes of traffic each request count covers. */
   requestsWindowMinutes?: number
 }>(() => props.fetchUrl, { refreshOnPageRefresh: false })
+const { data, error, pending } = routesRead
+const refresh = () => routesRead.refresh()
 
-// Live, the states and counts are read again in place, at the page's pace:
-// the list keeps its order, its scroll and the focus.
 usePageLiveRefresh(() => void refresh(), { realtimeTopic: props.realtimeTopic })
 
 const search = ref('')
@@ -69,8 +66,6 @@ const method = ref('all')
 const onlyAttention = ref(false)
 const hideIdle = ref(false)
 const collapsed = ref<Set<string>>(new Set())
-// Open while nothing is selected; once a route is, the stacked layout folds
-// the list to its header so the detail comes first.
 const listOpen = ref(!selection.ref.value)
 /** The route the keyboard asked for, until the page has loaded it. */
 const cursor = ref<string | null>(null)
@@ -139,7 +134,6 @@ const visible = computed(() => {
   )
 })
 
-// Needing attention, the list is flat and worst first, like the Overview.
 const flatMode = computed(() => onlyAttention.value)
 const folders = computed(() => groupRoutes(visible.value, folderOf.value))
 const flat = computed(() =>
@@ -152,7 +146,7 @@ const flat = computed(() =>
 /** What the list draws: its folders, or one flat run worst first. */
 const sections = computed(() =>
   flatMode.value
-    ? [{ path: null, routes: flat.value, worst: 'idle' as RouteState }]
+    ? [{ path: null, routes: flat.value, worst: 'idle' as const }]
     : folders.value,
 )
 const allCollapsed = computed(
@@ -233,7 +227,6 @@ async function choose(route: RouteRow) {
   stopSettling()
   cursor.value = null
   await selection.select(route.ref)
-  // Beside the detail the list stays; stacked above it, it folds away.
   if (!foldToggle.value?.checkVisibility()) return
   listOpen.value = false
   if (!props.detailBlock) return
@@ -265,9 +258,6 @@ function clearFilters() {
   hideIdle.value = false
 }
 
-// "/" opens the filter, as the request logs open their search; listed on
-// the DMS Shortcuts page (`app/config/shortcuts-registry.ts`). Like every
-// `defineShortcuts` key, it does not fire while the user types in a field.
 defineShortcuts({
   '/': () => {
     listOpen.value = true
@@ -277,13 +267,13 @@ defineShortcuts({
 
 function onListKey(event: KeyboardEvent) {
   const length = flat.value.length
-  const steps: Record<string, number> = {
-    ArrowDown: 1,
-    ArrowUp: -1,
-    Home: -length,
-    End: length,
-  }
-  const step = steps[event.key]
+  const steps = new Map([
+    ['ArrowDown', 1],
+    ['ArrowUp', -1],
+    ['Home', -length],
+    ['End', length],
+  ])
+  const step = steps.get(event.key)
   if (step === undefined) return
   event.preventDefault()
   void move(step)
@@ -303,9 +293,6 @@ function onSearchKey(event: KeyboardEvent) {
 
 onBeforeUnmount(stopSettling)
 
-// A page opened without a route lands on one before it renders
-// (`middleware/defaultRoute.ts`). Should the list come in only now, the
-// route it opens on is picked here, without a history entry of its own.
 watch(
   routes,
   (all) => {
@@ -321,8 +308,6 @@ watch(selection.ref, (current) => {
   if (current) lastRoute.value = current
 })
 
-// The selected route is never hidden: its folder opens and the list
-// scrolls to it, on arrival as on a link followed.
 watch(
   [() => selected.value?.ref, () => routes.value.length],
   async ([current]) => {
@@ -337,7 +322,6 @@ watch(
 )
 onMounted(() => {
   if (selection.ref.value) lastRoute.value = selection.ref.value
-  // Once the list is laid out.
   void nextTick(() => revealActive(true))
 })
 
