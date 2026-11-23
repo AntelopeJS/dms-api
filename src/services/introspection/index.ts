@@ -1,17 +1,3 @@
-/**
- * Single swap-point for "data the AntelopeJS runtime doesn't yet expose".
- *
- * The Documentation, Configuration and Statistics tabs in the new Routes
- * page need parameter names, sources (Body/Query/Param/Header), middleware
- * lists scoped to a URL path, and the controller-class layout — none of
- * which are introspectable via `getRegisteredRoutes()`. This module
- * collects every workaround in one file so the abstraction can be replaced
- * wholesale when proper introspection lands.
- *
- * Public consumers should only depend on the types and functions exported
- * here.
- */
-
 import {
   type ComputedParameter,
   getRegisteredRouteHandlers,
@@ -383,6 +369,15 @@ function inspectHandler(id: string, handler: RouteHandler): RouteInspection {
   };
 }
 
+/**
+ * Single swap-point for "data the AntelopeJS runtime doesn't yet expose": the
+ * Documentation, Configuration and Statistics tabs of the Routes page need
+ * parameter names, sources (Body/Query/Param/Header), middleware lists scoped
+ * to a URL path and the controller-class layout, none of which
+ * `getRegisteredRoutes()` introspects. This module collects every workaround
+ * so the abstraction can be replaced wholesale when proper introspection
+ * lands. Public consumers depend only on what it exports.
+ */
 export function getRouteInspection(id: string): RouteInspection | undefined {
   const registered = getRegisteredRouteHandlers().find(
     (route) => route.id === id,
