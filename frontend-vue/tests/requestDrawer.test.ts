@@ -11,6 +11,8 @@ import {
   withParam,
 } from '../app/utils/requestDrawer'
 import { cachedDateFormat } from '../app/utils/format'
+import enGB from '../i18n/locales/api-en-GB.json'
+import frFR from '../i18n/locales/api-fr-FR.json'
 
 const formatIn = (locale: string) =>
   cachedDateFormat((options) => new Intl.DateTimeFormat(locale, options))
@@ -74,7 +76,9 @@ describe('reading a request', () => {
     expect(slow.ratio).toBeCloseTo(6.886)
     expect(durationScale(1010, 1000).share).toBeCloseTo(50.5)
   })
+})
 
+describe('a captured body and a link', () => {
   it('knows why a body is missing and how big it was', () => {
     expect(bodyOmission('too-large')).toBe('too-large')
     expect(bodyOmission('something')).toBeNull()
@@ -89,7 +93,6 @@ describe('reading a request', () => {
   })
 
   it('compares a whole body to nothing: masking changed its length only', () => {
-    // 5 values masked: 249 bytes stored of the 260 sent, nothing cut.
     expect(
       originalBodySize(249, false, null, { 'content-length': '260' }),
     ).toBeUndefined()
@@ -146,7 +149,6 @@ describe('reading a request', () => {
       const kinds = (value: Parameters<typeof requestPivots>[0]) =>
         requestPivots(value).map((pivot) => pivot.kind)
       const latency = { windowDays: 7, p50: 40, p95: 900 }
-      // Without the route's figures: the request itself tells.
       expect(kinds(log)).toEqual(['same_route'])
       expect(kinds({ ...log, responseTimeMs: 2189 })).toEqual([
         'same_route',
@@ -179,13 +181,11 @@ describe('reading a request', () => {
 })
 
 describe("the route's latency line", () => {
-  it('keeps each percentile with its value, in every locale', async () => {
-    for (const locale of ['en-GB', 'fr-FR']) {
-      const messages = (await import(`../i18n/locales/api-${locale}.json`))
-        .default as { api: { request: { route_latency: string } } }
+  it('keeps each percentile with its value, in every locale', () => {
+    for (const messages of [enGB, frFR]) {
       const line = messages.api.request.route_latency
-      expect(line).toMatch(/p50 \{p50\}/)
-      expect(line).toMatch(/p95 \{p95\}/)
+      expect(line).toMatch(/p50\u00A0\{p50\}/)
+      expect(line).toMatch(/p95\u00A0\{p95\}/)
       expect(line).not.toMatch(/p(50|95) \{/)
     }
   })

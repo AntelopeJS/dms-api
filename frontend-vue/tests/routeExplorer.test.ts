@@ -40,7 +40,6 @@ describe('route list', () => {
     expect(folders.get('POST /auth/2fa/verify')).toBe('/auth')
     expect(folders.get('POST /auth/login')).toBe('/auth')
     expect(folders.get('GET /api/orders/:id')).toBe('/api/orders')
-    // A top-level folder has nowhere to fold into.
     expect(folders.get('GET /health')).toBe('/health')
   })
 
@@ -51,14 +50,14 @@ describe('route list', () => {
       '/auth',
       '/health',
     ])
-    expect(groups[1]!.routes.map((entry) => entry.ref)).toEqual([
+    expect(groups[1]?.routes.map((entry) => entry.ref)).toEqual([
       'POST /auth/2fa/verify',
       'POST /auth/login',
       'GET /auth/me',
     ])
-    expect(groups[0]!.worst).toBe('failing')
-    expect(groups[1]!.worst).toBe('slow')
-    expect(groups[2]!.worst).toBe('healthy')
+    expect(groups[0]?.worst).toBe('failing')
+    expect(groups[1]?.worst).toBe('slow')
+    expect(groups[2]?.worst).toBe('healthy')
   })
 
   it('keeps a route in its folder whatever the filter', () => {

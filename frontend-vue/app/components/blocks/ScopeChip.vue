@@ -1,15 +1,6 @@
 <script setup lang="ts">
 import { computed, onActivated, onBeforeUnmount, onMounted } from 'vue'
 
-// "Own routes · 42": the route scope every page of the console is filtered
-// by, linking to where it is changed. The backend fills it per request, and
-// the chip reads it again as it mounts or comes back from the page cache
-// (back from Settings, where the scope changes), when its tab is shown again
-// (changed in another tab), and at most once a minute when the page's blocks
-// refresh: a page restored from the history keeps the layout it was first
-// served with. The scope rarely changes, so the chip does not follow the live
-// feed. Present in the toolbar of every live page, it also tells the page's
-// live toggle the server errors missed while paused (`useLiveMissedErrors`).
 defineOptions({ inheritAttrs: false })
 
 type Scope = 'own' | 'modules' | 'all'
@@ -45,8 +36,6 @@ const label = computed(() =>
  */
 const REFRESH_INTERVAL_MS = 60_000
 
-// When the chip last asked (the mount reads it), so that a failing read is
-// not retried each tick.
 let lastAskedAt = Date.now()
 
 function read() {
@@ -65,7 +54,6 @@ function refreshWhenShown() {
   if (document.visibilityState === 'visible') read()
 }
 
-// The first activation follows the mount, which already read the scope.
 let activated = false
 onActivated(() => {
   if (activated) read()

@@ -4,9 +4,8 @@ import {
   antelopePreset,
 } from "@antelopejs/tooling-configs/oxc/lint";
 
-/** The Vue layer keeps its own ESLint setup until the front end migrates. */
 export default defineConfig({
   extends: [antelopePreset({ importSorting: false })],
-  ignorePatterns: [...ANTELOPE_IGNORE_PATTERNS, "frontend-vue/**"],
+  ignorePatterns: ANTELOPE_IGNORE_PATTERNS,
   options: { typeAware: true, maxWarnings: 0 },
 });

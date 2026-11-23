@@ -7,11 +7,6 @@ import { routeSnippetRequest, toCurl, toFetch } from '../../utils/snippets'
 import ApiStatusBadge from '../internal/ApiStatusBadge.vue'
 import RouteInternals from '../internal/RouteInternals.vue'
 
-// The contract of a route, read first: how to call it, who may, what it
-// expects and what it answers. Everything is inferred, and the block says so:
-// statuses, fields and examples from the last days of captured requests (the
-// tester's left out), guards and error codes from the handler's code. The
-// controller's internals stay folded at the end.
 defineOptions({ inheritAttrs: false })
 
 const props = withDefaults(

@@ -58,7 +58,6 @@ describe('minuteBars', () => {
     expect(
       heights.success + heights.clientErrors + heights.serverErrors,
     ).toBeCloseTo(100)
-    // Each class keeps its share of the cut bar.
     expect(heights.serverErrors).toBeCloseTo(20)
   })
 

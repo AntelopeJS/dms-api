@@ -1,16 +1,21 @@
-/**
- * The cURL and fetch snippets the console hands out: the Documentation, the
- * request panel and the Tester all write them here, against the API origin
- * `useApiOrigin` gives. What the console cannot fill becomes a shell
- * variable (`$TOKEN`, `$PASSWORD`, `$ID`…) explained by a comment above the
- * command, never a value that would silently fail: a `[REDACTED]` sent as is,
- * a literal `:id`, the frontend's own address.
- */
+import {
+  isJsonValue,
+  isString,
+  type JsonObject,
+  type JsonValue,
+} from './guards'
 
 /** The value capture puts in place of a secret. */
 export const REDACTED = '[REDACTED]'
 
-/** A request the docs, the panel and the tester turn into a snippet. */
+/**
+ * A request the docs, the panel and the tester turn into a cURL or fetch
+ * snippet, against the API origin `useApiOrigin` gives. What the console
+ * cannot fill becomes a shell variable (`$TOKEN`, `$PASSWORD`, `$ID`…)
+ * explained by a comment above the command, never a value that would
+ * silently fail: a `[REDACTED]` sent as is, a literal `:id`, the frontend's
+ * own address.
+ */
 export interface SnippetRequest {
   method: string
   /** A route pattern (`/api/orders/:id`) or a captured path, encoded. */
@@ -60,22 +65,33 @@ const DROPPED_HEADERS = new Set([
   'connection',
   'transfer-encoding',
   'accept-encoding',
-  // A call of its own: not the Tester's, not the captured call again.
   'x-antelopejs-api-source',
   'x-request-id',
 ])
 const REDACTED_TEXT = /\[REDACTED\]|%5BREDACTED%5D/gi
 const COMPRESSED = /\b(?:gzip|deflate|br)\b/i
 const METHODS_WITHOUT_BODY = new Set(['GET', 'HEAD'])
-const PATH_PARAM = /^:[A-Za-z_]\w*$/
+const PATH_PARAM = /^:[a-z_]\w*$/i
 
 const API_URL = 'API_URL'
 const TOKEN = 'TOKEN'
 /** Where the DMS signs a user in and hands out an access token. */
 const LOGIN_PATH = '/api/auth/login'
 
+interface VariablePart {
+  variable: string
+}
+
 /** Literal text, or a variable the reader fills. */
-type Part = string | { variable: string }
+type Part = string | VariablePart
+
+function isLiteral(part: Part | undefined): part is string {
+  return typeof part === 'string'
+}
+
+function isVariablePart(part: Part | undefined): part is VariablePart {
+  return typeof part === 'object'
+}
 
 interface Variable {
   name: string
@@ -101,7 +117,7 @@ interface Prepared {
 function variableName(raw: string): string {
   const name = raw
     .replace(/([a-z0-9])([A-Z])/g, '$1_$2')
-    .replace(/[^A-Za-z0-9]+/g, '_')
+    .replace(/[^a-z0-9]+/gi, '_')
     .replace(/^_+|_+$/g, '')
     .toUpperCase()
   if (!name) return 'VALUE'
@@ -152,7 +168,7 @@ function unmask(
 
 function encodeParts(parts: Part[]): Part[] {
   return parts.map((part) =>
-    typeof part === 'string' ? encodeURIComponent(part) : part,
+    isLiteral(part) ? encodeURIComponent(part) : part,
   )
 }
 
@@ -210,25 +226,28 @@ function headersOf(
 /** A masked value in the JSON text: a whole string, or a part of one. */
 const MARK = /"\uE000(\d+)\uE001"|\uE002(\d+)\uE003/g
 
+interface JsonBody {
+  parts: Part[]
+  inline: boolean
+}
+
+function isJsonObject(value: JsonValue): value is JsonObject {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
 /**
  * A JSON body, its masked values turned into variables named after their
  * key. A value masked inside a text (a card number in a note) is a variable
  * of its own within the string: `inline`, it is no JavaScript literal.
  */
-function jsonBody(
-  json: unknown,
-  variables: Variables,
-): { parts: Part[]; inline: boolean } {
+function jsonBody(json: JsonValue, variables: Variables): JsonBody {
   const marked: Part[] = []
   let inline = false
-  const text = JSON.stringify(json, function (key, value) {
-    if (typeof value !== 'string' || !value.includes(REDACTED)) return value
-    const path = Array.isArray(this) ? 'item' : key
+  const mark = (value: string, path: string): string => {
     if (value === REDACTED) {
       marked.push(variables.add(path, redactedNote(`body field ${path}`)))
       return `\uE000${marked.length - 1}\uE001`
     }
-    // Only card numbers are masked by their look, whatever the key.
     inline = true
     return value.replaceAll(REDACTED, () => {
       marked.push(
@@ -239,12 +258,27 @@ function jsonBody(
       )
       return `\uE002${marked.length - 1}\uE003`
     })
-  })
+  }
+  const walk = (value: JsonValue, key: string, inArray: boolean): JsonValue => {
+    if (isString(value))
+      return value.includes(REDACTED)
+        ? mark(value, inArray ? 'item' : key)
+        : value
+    if (Array.isArray(value)) return value.map((item) => walk(item, key, true))
+    if (isJsonObject(value))
+      return Object.fromEntries(
+        Object.entries(value).map(([name, item]) => [
+          name,
+          walk(item, name, false),
+        ]),
+      )
+    return value
+  }
+  const text = JSON.stringify(walk(json, '', false))
   const parts: Part[] = []
   let from = 0
   for (const match of text.matchAll(MARK)) {
     const at = match.index ?? 0
-    // A whole value keeps its quotes around the variable.
     const quote = match[1] === undefined ? 0 : 1
     parts.push(text.slice(from, at + quote))
     parts.push(marked[Number(match[1] ?? match[2])])
@@ -252,6 +286,12 @@ function jsonBody(
   }
   parts.push(text.slice(from))
   return { parts: parts.filter((part) => part !== ''), inline }
+}
+
+function parseJson(text: string): JsonValue {
+  const parsed: unknown = JSON.parse(text)
+  if (!isJsonValue(parsed)) throw new SyntaxError('Not JSON')
+  return parsed
 }
 
 function bodyOf(
@@ -262,15 +302,11 @@ function bodyOf(
   if (!body || METHODS_WITHOUT_BODY.has(request.method.toUpperCase()))
     return undefined
   try {
-    const json: unknown = JSON.parse(body)
-    // Written again only to name its masked values: otherwise the body stays
-    // as sent, its spacing and its large numbers untouched.
+    const json = parseJson(body)
     if (!body.includes(REDACTED)) return { kind: 'json', parts: [body] }
     const { parts, inline } = jsonBody(json, variables)
     return { kind: inline ? 'text' : 'json', parts }
   } catch {
-    // A form, plain text, or JSON cut at capture: sent as written, its masked
-    // values named after the `key=` before them.
     const formKey = (before: string) =>
       before.match(/([^=&\s]+)=$/)?.[1] ?? 'value'
     return {
@@ -318,21 +354,20 @@ const TRUNCATED_WARNING =
   'Warning: the body was truncated when captured: it is incomplete and will not replay as sent'
 
 /** Why a body was not stored, as `requestBodyOmitted` names it. */
-const OMISSIONS: Record<string, string> = {
-  disabled: 'body capture is off',
-  'too-large': 'it was larger than the maximum body size',
-  'not-json': 'only JSON bodies are captured',
-  malformed: 'its JSON was invalid',
-  'not-read': 'no handler read it',
-}
+const OMISSIONS = new Map([
+  ['disabled', 'body capture is off'],
+  ['too-large', 'it was larger than the maximum body size'],
+  ['not-json', 'only JSON bodies are captured'],
+  ['malformed', 'its JSON was invalid'],
+  ['not-read', 'no handler read it'],
+])
 
 function warningsOf(request: SnippetRequest, body: Body | undefined): string[] {
   if (body) return request.bodyTruncated ? [TRUNCATED_WARNING] : []
   const omitted = request.bodyOmitted
-  // An empty body was sent empty: the command replays it as it was.
   if (!omitted || omitted === 'empty') return []
   if (METHODS_WITHOUT_BODY.has(request.method.toUpperCase())) return []
-  const reason = OMISSIONS[omitted]
+  const reason = OMISSIONS.get(omitted)
   return [
     `Warning: the body was not captured${reason ? ` (${reason})` : ''}: add it before running`,
   ]
@@ -357,26 +392,20 @@ function shellVariable(name: string, next: string | undefined): string {
  */
 function shellWord(parts: Part[]): string {
   const single = (text: string) => `'${text.replace(/'/g, `'\\''`)}'`
-  if (parts.every((part) => typeof part === 'string'))
-    return single(parts.join(''))
-  const literals = parts.filter((part) => typeof part === 'string').join('')
+  if (parts.every(isLiteral)) return single(parts.join(''))
+  const literals = parts.filter(isLiteral).join('')
   if (!/["\\$`!]/.test(literals)) {
     const text = parts
       .map((part, index) => {
-        if (typeof part === 'string') return part
+        if (isLiteral(part)) return part
         const next = parts[index + 1]
-        return shellVariable(
-          part.variable,
-          typeof next === 'string' ? next : undefined,
-        )
+        return shellVariable(part.variable, isLiteral(next) ? next : undefined)
       })
       .join('')
     return `"${text}"`
   }
   return parts
-    .map((part) =>
-      typeof part === 'string' ? single(part) : `"$${part.variable}"`,
-    )
+    .map((part) => (isLiteral(part) ? single(part) : `"$${part.variable}"`))
     .join('')
 }
 
@@ -394,11 +423,10 @@ export function toCurl(request: SnippetRequest): string {
 
 /** A JavaScript string: a template literal when it holds variables. */
 function jsString(parts: Part[]): string {
-  if (parts.every((part) => typeof part === 'string'))
-    return JSON.stringify(parts.join(''))
+  if (parts.every(isLiteral)) return JSON.stringify(parts.join(''))
   const text = parts
     .map((part) =>
-      typeof part === 'string'
+      isLiteral(part)
         ? part.replace(/[`\\]|\$\{/g, (match) => `\\${match}`)
         : `\${${part.variable}}`,
     )
@@ -422,13 +450,12 @@ export function toFetch(request: SnippetRequest): string {
   }
   const body = prepared.body
   if (body?.kind === 'json') {
-    // JSON is a JavaScript literal; a masked value is the variable itself.
     const literal = body.parts
       .map((part, index) => {
-        if (typeof part !== 'string') return part.variable
+        if (!isLiteral(part)) return part.variable
         let text = part
-        if (typeof body.parts[index + 1] === 'object') text = text.slice(0, -1)
-        if (typeof body.parts[index - 1] === 'object') text = text.slice(1)
+        if (isVariablePart(body.parts[index + 1])) text = text.slice(0, -1)
+        if (isVariablePart(body.parts[index - 1])) text = text.slice(1)
         return text
       })
       .join('')
@@ -486,8 +513,8 @@ export function routeSnippetRequest(
 
 /** Put the values of `params` in the `:name` segments of `path`. */
 export function fillPath(path: string, params: Record<string, string>): string {
-  return path.replace(/:([A-Za-z_][\w]*)/g, (segment, name: string) => {
-    const value = params[name]
+  return path.replace(/:([a-z_]\w*)/gi, (segment, name: string) => {
+    const value = Object.entries(params).find(([key]) => key === name)?.[1]
     return value ? encodeURIComponent(value) : segment
   })
 }

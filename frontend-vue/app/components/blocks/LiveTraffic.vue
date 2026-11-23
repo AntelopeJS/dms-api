@@ -13,17 +13,6 @@ import {
   type MinuteBucket,
 } from '../../utils/minuteHistogram'
 
-// The shape of the page's period above the request table: requests per bar
-// by status class, for all traffic whatever the table's filters. The bars
-// follow the toolbar's period (a minute over the last hour, 15 minutes over
-// 24 hours, 2 hours over 7 days, 6 hours over 30 days and all time: the
-// server picks the length). A period reaching now follows the page's
-// Direct / Pause state (`usePageLive`): read again on the live feed and
-// every minute in Direct, still while paused, and it says which; a past
-// range is read once and says it is not live. A read that fails says so at
-// once, with the time of the data still shown; the next refresh retries.
-// A change of period keeps the bars shown until the new ones arrive, in a
-// block of one height whatever the period, loading or not.
 defineOptions({ inheritAttrs: false })
 
 const props = defineProps<{
@@ -62,9 +51,6 @@ const { formatLocale: locale, formatNumber } = useRegionalFormat({
 })
 const dateFormat = useDateFormat()
 
-// The page's period: a preset is sent by its name, which the server rolls up
-// to now, so the server render and the browser ask for the same URL; a
-// custom range by its bounds, known once mounted (`useApiPeriod`).
 const periodPreset = usePeriodScopePreset('api')
 const period = useApiPeriod()
 const url = computed(() => {
@@ -81,13 +67,12 @@ const url = computed(() => {
   return `${props.fetchUrl}${separator}${params.toString()}`
 })
 
-const { data, error, pending, refresh } = useApiData<LivePayload>(url, {
+const liveRead = useApiData<LivePayload>(url, {
   refreshOnPageRefresh: false,
 })
+const { data, error, pending } = liveRead
+const refresh = () => liveRead.refresh()
 
-// The paused state is the browser's (the DMS remembers it per page), the
-// server renders Direct: the card says it is paused once mounted, so the
-// hydration finds the markup the server sent.
 const live = usePageLive()
 const mounted = ref(false)
 onMounted(() => (mounted.value = true))
@@ -99,12 +84,8 @@ async function poll() {
   failures.value = error.value ? failures.value + 1 : 0
 }
 
-// Whether the bars follow now: a past range is read once, not on the feed.
-// Before the first read answers (or when it failed), the block keeps polling.
 const followsNow = computed(() => !data.value || data.value.live)
 
-// The current minute moves without traffic too: read again after a quiet
-// minute.
 usePageLiveRefresh(
   () => {
     if (followsNow.value) void poll()
@@ -115,8 +96,6 @@ usePageLiveRefresh(
   },
 )
 
-// A first load that failed counts as a failed poll: the graph says it is
-// reconnecting at once, not after the next poll.
 watch(pending, (loading) => {
   if (!loading && error.value && failures.value === 0) failures.value = 1
 })
@@ -137,7 +116,6 @@ const TIME_FORMATS: Record<BarTimeFormat, Intl.DateTimeFormatOptions> = {
   date: { month: 'short', day: 'numeric' },
 }
 const MINUTE_MS = 60_000
-// A minute until the first read answers: the block draws no bar before it.
 const bucketMs = computed(() => (data.value ? data.value.bucketMs : MINUTE_MS))
 const spanMs = computed(() =>
   data.value
@@ -213,7 +191,6 @@ const chart = computed(() =>
 )
 const ticks = computed(() => axisTicks(chart.value.bars))
 
-// The chart's text alternative: the totals and the busiest minute.
 const summary = computed(() => {
   const payload = data.value
   if (!payload || payload.total === 0) return t('api.live.summary_empty')
@@ -248,7 +225,6 @@ const tooltip = computed(() => {
   return parts.join(' · ')
 })
 
-// Kept inside the card: anchored left near the start, right near the end.
 const TOOLTIP_EDGE_BARS = 8
 const tooltipStyle = computed(() => {
   const index = hovered.value ?? 0
@@ -273,7 +249,6 @@ const tickStyle = (index: number) => {
   }
 }
 
-// A segment's share of its bar, the bar being its segments' sum.
 const share = (part: number, bar: { heights: Record<string, number> }) => {
   const sum =
     bar.heights.success + bar.heights.clientErrors + bar.heights.serverErrors
@@ -352,8 +327,6 @@ const share = (part: number, bar: { heights: Record<string, number> }) => {
       </div>
     </template>
 
-    <!-- One height whatever the state (the scale line, the bars and the
-         axis), so nothing below moves while it loads or changes period. -->
     <div class="h-[160px] px-3 pb-2 pt-1">
       <div v-if="data">
         <div class="text-dimmed leading-3.5 mb-1 h-3.5 font-mono text-[10px]">
@@ -466,7 +439,6 @@ const share = (part: number, bar: { heights: Record<string, number> }) => {
 </template>
 
 <style scoped>
-/* The minute still running: a hatched track, and its bar hatched over. */
 .dms-api-live-current {
   background-image: repeating-linear-gradient(
     135deg,

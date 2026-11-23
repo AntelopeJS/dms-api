@@ -1,6 +1,3 @@
-// When a save of the Settings form waits for the user to confirm a lowered
-// retention. Pure, so it is tested without a form.
-
 /** What the next hourly prune deletes (`GET …/settings/retention-impact`). */
 export interface RetentionImpact {
   days: number

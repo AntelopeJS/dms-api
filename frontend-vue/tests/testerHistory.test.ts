@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { JsonValue } from '../app/utils/guards'
 import {
   type DraftRequest,
   exampleRequest,
@@ -34,11 +35,9 @@ function memoryStorage(store: Map<string, string>) {
 
 const local = new Map<string, string>()
 const session = new Map<string, string>()
-Object.assign(globalThis, {
-  window: {
-    localStorage: memoryStorage(local),
-    sessionStorage: memoryStorage(session),
-  },
+vi.stubGlobal('window', {
+  localStorage: memoryStorage(local),
+  sessionStorage: memoryStorage(session),
 })
 
 function request(overrides: Partial<DraftRequest> = {}): DraftRequest {
@@ -219,7 +218,7 @@ describe('tester drafts', () => {
     const route = (
       method: string,
       authStatus: 'required' | 'probable' | 'unknown',
-      exampleBody: unknown = null,
+      exampleBody: JsonValue = null,
     ) => ({ method, pathParams: ['id'], exampleBody, authStatus })
     expect(exampleRequest(route('DELETE', 'required'), history)).toMatchObject({
       bodyMode: 'none',

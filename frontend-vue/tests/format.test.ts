@@ -14,7 +14,6 @@ import {
   unbreakable,
 } from '../app/utils/format'
 
-// What the blocks pass, the DMS's regional formatter, without preferences.
 const formatIn = (locale: string, extra: Intl.DateTimeFormatOptions = {}) =>
   cachedDateFormat(
     (options) => new Intl.DateTimeFormat(locale, { ...options, ...extra }),
@@ -22,8 +21,7 @@ const formatIn = (locale: string, extra: Intl.DateTimeFormatOptions = {}) =>
 const en: DateFormat = formatIn('en-GB')
 const fr: DateFormat = formatIn('fr-FR')
 
-// Intl writes French spaces as narrow no-break ones: compare on plain spaces.
-const plain = (text: string) => text.replace(/[ \u00A0]/g, ' ')
+const plain = (text: string) => text.replace(/[\u202F\u00A0]/g, ' ')
 
 describe('formatPercent', () => {
   it('writes a percentage the way the locale does', () => {
@@ -70,7 +68,6 @@ describe('formatRelativeDay', () => {
   })
 
   it('names the weekday within the week', () => {
-    // 10 October 2026 is a Saturday.
     expect(formatRelativeDay(new Date(2026, 9, 5, 9, 5), en, now)).toBe(
       'Mon 09:05',
     )
@@ -166,7 +163,6 @@ describe('one clock for the console', () => {
     expect(
       formatRelativeDay(new Date(2026, 9, 10, 0, 5), british, evening),
     ).toBe('00:05')
-    // A 12-hour clock chosen in Language & region.
     const twelve = formatIn('en-GB', { hourCycle: 'h12' })
     expect(formatClock(evening, twelve, false, evening)).toMatch(/pm/i)
   })
@@ -175,13 +171,11 @@ describe('one clock for the console', () => {
     const utc = formatIn('en-GB', { timeZone: 'UTC' })
     const tokyo = formatIn('en-GB', { timeZone: 'Asia/Tokyo' })
     const now = new Date('2026-10-10T12:00:00Z')
-    // 20:00 UTC on the 10th is already the 11th in Tokyo, 05:00.
     const late = new Date('2026-10-10T20:00:00Z')
     expect(formatRelativeDay(late, utc, now)).toBe('20:00')
     expect(
       formatRelativeDay(late, tokyo, new Date('2026-10-11T03:00:00Z')),
     ).toBe('05:00')
-    // 20:00 UTC on the 8th: the day before in Tokyo, two days in UTC.
     const earlier = new Date('2026-10-08T20:00:00Z')
     expect(formatRelativeDay(earlier, tokyo, now)).toBe('yesterday 05:00')
     expect(formatRelativeDay(earlier, utc, now)).toBe('Thu 20:00')

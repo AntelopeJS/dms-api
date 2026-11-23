@@ -2,8 +2,7 @@
 import { computed } from 'vue'
 import { statusText, statusTone } from '../../utils/http'
 
-// A status code, tinted by its class (2xx, 3xx, 4xx, 5xx). With `text`, the
-// reason phrase follows the code ("201 Created").
+/** A status code tinted by its class; with `text`, the reason phrase follows it. */
 const props = withDefaults(
   defineProps<{
     status: number | string

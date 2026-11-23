@@ -1,8 +1,3 @@
-// The live histogram above the request logs: one bar per stretch of the
-// page's period (a minute over the last hour, 15 minutes over 24 hours, up
-// to 6 hours over 30 days: the server picks it), stacked by status class, on
-// a scale a single spike cannot flatten.
-
 const MS_PER_MINUTE = 60_000
 const MS_PER_HOUR = 60 * MS_PER_MINUTE
 const MS_PER_DAY = 24 * MS_PER_HOUR
@@ -51,16 +46,24 @@ export function scaleCeiling(totals: number[]): number {
     : peak
 }
 
+export interface MinuteBars {
+  bars: MinuteBar[]
+  ceiling: number
+  clipped: boolean
+}
+
 /**
- * The bars of `buckets`, each `bucketMs` long, on their scale. The bar
- * holding `refreshedAt` is the one still running (none over a past range:
- * leave `refreshedAt` out). An empty bar has no segment: nothing is drawn.
+ * The bars of the live histogram above the request logs: one per bucket of
+ * `buckets`, each `bucketMs` long, stacked by status class, on a scale a
+ * single spike cannot flatten. The bar holding `refreshedAt` is the one still
+ * running (none over a past range: leave `refreshedAt` out). An empty bar has
+ * no segment: nothing is drawn.
  */
 export function minuteBars(
   buckets: MinuteBucket[],
   refreshedAt?: string | number,
   bucketMs: number = MS_PER_MINUTE,
-): { bars: MinuteBar[]; ceiling: number; clipped: boolean } {
+): MinuteBars {
   const totals = buckets.map(
     (bucket) => bucket.success + bucket.clientErrors + bucket.serverErrors,
   )
@@ -69,7 +72,6 @@ export function minuteBars(
   const bars = buckets.map((bucket, index) => {
     const total = totals[index]
     const shown = Math.min(total, ceiling)
-    // Each segment keeps its share of the bar when the bar is cut.
     const percent = (value: number) =>
       total === 0 ? 0 : ((value / total) * shown * 100) / ceiling
     return {

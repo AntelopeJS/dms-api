@@ -3,11 +3,6 @@ import { createRenderer, createSSRApp, defineComponent, h, nextTick } from 'vue'
 import { renderToString } from 'vue/server-renderer'
 import { useClientValue } from '../app/composables/useClientValue'
 
-// A value the server and the browser may write differently (a weekday
-// written by two ICU versions: "Thursday, 15 October" in Node, "Thursday 15
-// October" in a recent Chrome) must not reach the server's HTML, or the
-// hydration of every page showing it reports a mismatch.
-
 const Tooltip = (read: () => string) =>
   defineComponent({
     setup() {
@@ -18,12 +13,11 @@ const Tooltip = (read: () => string) =>
 
 interface TestNode {
   tag: string
-  props: Record<string, unknown>
+  props: Record<string, string>
   children: TestNode[]
   text?: string
 }
 
-// A renderer without a DOM: enough to mount a component in Node.
 const { createApp } = createRenderer<TestNode, TestNode>({
   createElement: (tag) => ({ tag, props: {}, children: [] }),
   createText: (text) => ({ tag: '#text', props: {}, children: [], text }),
@@ -41,7 +35,7 @@ const { createApp } = createRenderer<TestNode, TestNode>({
   parentNode: () => null,
   nextSibling: () => null,
   patchProp: (node, key, _previous, next) => {
-    node.props[key] = next
+    node.props[key] = String(next)
   },
 })
 

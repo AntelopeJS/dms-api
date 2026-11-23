@@ -20,16 +20,6 @@ import type {
 } from '../../utils/health'
 import HealthHeroMetrics from '../internal/HealthHeroMetrics.vue'
 
-// The verdict leads the Overview: is the API healthy, since when, why not,
-// and the one action that starts the investigation. The verdict and its
-// figures cover a short window (the last `thresholds.windowMinutes`), so the
-// hero says what is happening now and comes back to Healthy once an incident
-// is over. With no request captured yet, the same place explains how to get
-// the first one in. It follows the page's Direct / Pause state (`usePageLive`,
-// the DMS `LiveToggle`): read again on the live feed and every minute in
-// Direct, still while paused. A change
-// of verdict seen live is told in a toast, and an unhealthy verdict shows in
-// the browser tab.
 defineOptions({ inheritAttrs: false })
 
 const props = defineProps<{
@@ -86,13 +76,12 @@ const { formatLocale: locale } = useRegionalFormat({ locale: 'format' })
 const dateFormat = useDateFormat()
 const toast = useToast()
 const { isLive } = usePageLive()
-const { data, error, pending, refresh } = useApiData<HealthPayload>(
-  () => props.fetchUrl,
-  { refreshOnPageRefresh: false },
-)
+const healthRead = useApiData<HealthPayload>(() => props.fetchUrl, {
+  refreshOnPageRefresh: false,
+})
+const { data, error, pending } = healthRead
+const refresh = () => healthRead.refresh()
 
-// Read again on the live feed at the page's pace, and after a quiet minute:
-// the verdict judges time too. Never while paused.
 usePageLiveRefresh(() => void refresh(), {
   realtimeTopic: props.realtimeTopic,
   idleRefresh: 60,
@@ -100,7 +89,7 @@ usePageLiveRefresh(() => void refresh(), {
 
 /** Refresh reads the whole page again, not this block alone. */
 function refreshPage() {
-  refreshPageBlocks()
+  void refreshPageBlocks()
 }
 
 const UNHEALTHY: Verdict[] = ['degraded', 'down']
@@ -115,7 +104,6 @@ const TOAST_COLORS: Record<Verdict, 'error' | 'warning' | 'success' | 'info'> =
 
 const verdictLabel = (verdict: Verdict) => t(`api.health.verdict.${verdict}`)
 
-// A verdict that changes under the user's eyes: said once, in a toast.
 watch(
   () => data.value?.verdict,
   (next, previous) => {
@@ -131,7 +119,6 @@ watch(
   },
 )
 
-// "● Degraded · Overview" in the browser tab while the API is unhealthy.
 useHead({
   title: computed(() => {
     const verdict = data.value?.verdict
@@ -169,7 +156,6 @@ function heldFor(health: HealthPayload): string {
   })
 }
 
-// A failed refresh keeps the last figures on screen: they are no longer live.
 const stale = computed(() => !!error.value && !!data.value)
 const staleSince = computed(() =>
   data.value ? formatClock(data.value.checkedAt, dateFormat.value) : '',
@@ -265,11 +251,8 @@ const incident = computed(() => {
   }
 })
 
-// The tooltip of the duration waits for the browser: it writes a weekday,
-// which the server's ICU may punctuate otherwise.
 const incidentTitle = useClientValue(() => incident.value?.title)
 
-// One time only: once stale, the banner says when the figures date from.
 const checked = computed(() =>
   data.value && !stale.value
     ? t('api.health.checked', {
@@ -313,8 +296,6 @@ function serverMetric(health: HealthPayload): HeroMetric {
   }
 }
 
-// The 5xx rate and the p95 lead: they depend on the server. The 4xx rate,
-// often business refusals, stays a grey figure of context.
 const metrics = computed<HeroMetric[]>(() => {
   const health = data.value
   if (!health) return []
@@ -363,9 +344,6 @@ const metrics = computed<HeroMetric[]>(() => {
     :aria-busy="pending"
     :aria-label="t('api.health.label')"
   >
-    <!-- The loaded hero's boxes: the card (its padding, and its content's
-         82.5 px on a wide screen) and the row of reasons under it, so
-         nothing below moves when the verdict arrives. -->
     <template v-if="pending && !data">
       <DmsCardPanel :padded="false" class="px-4 py-[22px] sm:px-[26px]">
         <div class="flex min-h-[82.5px] items-center gap-6">
@@ -449,8 +427,6 @@ const metrics = computed<HeroMetric[]>(() => {
     </DmsCardPanel>
 
     <template v-else>
-      <!-- The DMS status hero, drawn here: its "since" line takes a tooltip
-           and the 4xx figure stays grey, which DmsStatusSummary cannot do. -->
       <DmsCardPanel
         :padded="false"
         class="px-4 py-[22px] sm:px-[26px]"

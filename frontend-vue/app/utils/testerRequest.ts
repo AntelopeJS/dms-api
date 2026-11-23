@@ -1,22 +1,26 @@
 import { prettyBody } from './format'
 import { acceptsRequestBody } from './http'
+import {
+  PROXY_BODY_LIMIT,
+  type TesterErrorCode,
+  type TesterRequest,
+} from './testerProxy'
 
+export {
+  neverSent,
+  PROXY_BODY_LIMIT,
+  PROXY_RESPONSE_LIMIT,
+  PROXY_TIMEOUT_MS,
+  proxyFailure,
+  sendTesterRequest,
+  TESTER_ERROR_CODES,
+  TESTER_ROUTE,
+  TesterError,
+  type TesterErrorCode,
+  type TesterRequest,
+  type TesterResponse,
+} from './testerProxy'
 export { countRedacted, hasRedacted, redactedFields } from './testerMasks'
-
-/** Editable request data; stored session credentials stay on the server. */
-export interface TesterRequest {
-  method: string
-  headers: Record<string, string>
-  body?: string
-  useSession: boolean
-}
-
-/** Raw upstream response, including unsuccessful HTTP statuses. */
-export interface TesterResponse {
-  status: number
-  headers: Record<string, string>
-  body: string
-}
 
 /** One header, query parameter or form field of the tester, in order. */
 export interface KeyValue {
@@ -24,40 +28,15 @@ export interface KeyValue {
   value: string
 }
 
+export const BODY_MODES = ['json', 'text', 'form', 'none'] as const
+
 /** How the body is written, and the content type it implies. */
-export type BodyMode = 'json' | 'text' | 'form' | 'none'
+export type BodyMode = (typeof BODY_MODES)[number]
+
+export const AUTH_MODES = ['session', 'manual', 'none'] as const
 
 /** Who the call is authenticated as, as the DMS proxy sends it. */
-export type AuthMode = 'session' | 'manual' | 'none'
-
-// --- The tester's server route (`/api/_dms-api/tester`) ---
-// `server/tester.ts`, in this module's `dms.server.ts`: the limits it applies,
-// and what it answers when it does not forward a call. Its error bodies hold one
-// generic text per status, so the status, the elapsed time and the checks
-// below are what tell the causes apart.
-
-/** Where the tester's server route answers. */
-export const TESTER_ROUTE = '/api/_dms-api/tester'
-/** The proxy reads at most this much of the request (the JSON envelope). */
-export const PROXY_BODY_LIMIT = 64 * 1024
-/**
- * The proxy fails (502) when the API answers more than this, and returns
- * neither the status nor the start of the body: `limitedText()` throws
- * "Backend response too large" past `RESPONSE_LIMIT` (`server/tester.ts`),
- * and `testerRoute()` turns every error into the same 502 "DMS tester request
- * failed", as for an API down. Only the
- * capture of the call tells the two apart. For the DMS: return the status,
- * the headers and the first 64 KiB with a `truncated: true` flag instead of
- * throwing, and give the 502 a `reason` (`too_large`, `timeout`,
- * `unreachable`).
- */
-export const PROXY_RESPONSE_LIMIT = 64 * 1024
-/** The proxy gives up on the API after this long, with a 502 as well. */
-export const PROXY_TIMEOUT_MS = 30_000
-/** Our own limit, should the proxy never answer. */
-const CLIENT_TIMEOUT_MS = PROXY_TIMEOUT_MS + 5_000
-/** A 502 this late is the proxy's timeout. */
-const TIMEOUT_MARGIN_MS = 1_000
+export type AuthMode = (typeof AUTH_MODES)[number]
 
 /**
  * Marks of a call sent by the tester, which the module reads to keep it out
@@ -87,6 +66,10 @@ export const SIZE_PROBE_SOURCE = `tester.${'0'.repeat(13)}.${'0'.repeat(43)}`
 /** A token is asked again this long before it expires. */
 const SOURCE_RENEW_MARGIN_MS = 60_000
 
+interface SourceTokens {
+  get: () => Promise<TesterSourceToken>
+}
+
 /**
  * The tokens of the Tester's calls: one asked for, then reused until a
  * minute before it expires.
@@ -94,7 +77,7 @@ const SOURCE_RENEW_MARGIN_MS = 60_000
 export function createSourceTokens(
   ask: () => Promise<TesterSourceToken>,
   now: () => number = Date.now,
-): { get: () => Promise<TesterSourceToken> } {
+): SourceTokens {
   let current: TesterSourceToken | null = null
   return {
     async get() {
@@ -114,64 +97,6 @@ const CONTENT_TYPES: Record<BodyMode, string | undefined> = {
   text: 'text/plain',
   form: 'application/x-www-form-urlencoded',
   none: undefined,
-}
-
-/** Why the tester could not get an answer from the API. */
-export type TesterErrorCode =
-  /** The proxy refused the path, a header or the body (400). */
-  | 'invalid_input'
-  /** The request is over the proxy's 64 KiB (413). */
-  | 'body_too_large'
-  /** The console session is gone (401 from the proxy). */
-  | 'not_authenticated'
-  /** The tester is for owners only (403). */
-  | 'not_owner'
-  /** The call did not come from the console's origin (403). */
-  | 'cross_origin'
-  /** The proxy got nothing it could return (502): API down, or an answer over 64 KiB. */
-  | 'proxy_failed'
-  /** Seen in the logs after a 502: the API answered more than 64 KiB. */
-  | 'response_too_large'
-  /** No answer within 30 s. */
-  | 'timeout'
-  /** Cancelled before the answer. */
-  | 'aborted'
-  /** The console's server could not be reached. */
-  | 'network'
-  /** Any other answer of the proxy. */
-  | 'unexpected'
-
-/** Codes after which the API was never called: nothing to find in the logs. */
-const NOT_SENT: ReadonlySet<TesterErrorCode> = new Set([
-  'invalid_input',
-  'body_too_large',
-  'not_authenticated',
-  'not_owner',
-  'cross_origin',
-])
-
-export function neverSent(code: TesterErrorCode | undefined): boolean {
-  return code !== undefined && NOT_SENT.has(code)
-}
-
-export class TesterError extends Error {
-  readonly code: TesterErrorCode
-  readonly status?: number
-  readonly response?: Response
-  readonly data?: unknown
-
-  constructor(
-    code: TesterErrorCode,
-    message: string,
-    status?: number,
-    failure?: { response: Response; data: unknown },
-  ) {
-    super(message)
-    this.code = code
-    this.status = status
-    this.response = failure?.response
-    this.data = failure?.data
-  }
 }
 
 /** What the tester shows of one call, and keeps in its draft and history. */
@@ -219,8 +144,6 @@ export function capturedSummary(log: CapturedRequest): CapturedSummary {
   }
 }
 
-// --- Building the request ---
-
 /** The query of `rows`, every value kept: repeated names, empty values. */
 export function queryString(rows: KeyValue[]): string {
   const params = new URLSearchParams()
@@ -263,7 +186,7 @@ export function jsonProblem(text: string): string | null {
     JSON.parse(text)
     return null
   } catch (cause) {
-    return (cause as Error).message
+    return cause instanceof Error ? cause.message : String(cause)
   }
 }
 
@@ -276,36 +199,33 @@ export function formatJson(text: string): string | null {
   }
 }
 
-function headerKey(record: Record<string, string>, name: string) {
-  const lower = name.toLowerCase()
-  return Object.keys(record).find((key) => key.toLowerCase() === lower)
-}
-
 export function headerValue(
   record: Record<string, string>,
   name: string,
 ): string | undefined {
-  const key = headerKey(record, name)
-  return key === undefined ? undefined : record[key]
+  const lower = name.toLowerCase()
+  return Object.entries(record).find(
+    ([key]) => key.toLowerCase() === lower,
+  )?.[1]
 }
 
 /** Header layers merged in order, a later name replacing an earlier one whatever its case. */
 export function mergeHeaders(
   ...layers: Array<Record<string, string> | KeyValue[]>
-): Record<string, string> {
-  const merged: Record<string, string> = {}
+) {
+  const merged = new Map<string, [string, string]>()
   for (const layer of layers) {
     const entries = Array.isArray(layer)
       ? layer.map((entry) => [entry.name, entry.value] as const)
       : Object.entries(layer)
     for (const [name, value] of entries) {
       if (!name) continue
-      const existing = headerKey(merged, name)
-      if (existing !== undefined) delete merged[existing]
-      merged[name] = value
+      const lower = name.toLowerCase()
+      merged.delete(lower)
+      merged.set(lower, [name, value])
     }
   }
-  return merged
+  return Object.fromEntries(merged.values())
 }
 
 /**
@@ -322,7 +242,7 @@ export function authModeOf(
 
 /** A version 4 UUID, outside secure contexts too. */
 export function newRequestId(): string {
-  if (typeof crypto.randomUUID === 'function') return crypto.randomUUID()
+  if (crypto.randomUUID) return crypto.randomUUID()
   const bytes = crypto.getRandomValues(new Uint8Array(16))
   bytes[6] = (bytes[6] & 0x0f) | 0x40
   bytes[8] = (bytes[8] & 0x3f) | 0x80
@@ -353,10 +273,21 @@ export function markedHeaders(
   })
 }
 
-// --- What the proxy would refuse, said before sending ---
+const UNSAFE_SEGMENT_CHARS = new Set(['\\', '/', '#'])
+const LAST_CONTROL_OR_SPACE = 0x20
+const DELETE_CONTROL = 0x7f
 
-/** Characters a decoded path segment may not hold, as the proxy checks it. */
-const UNSAFE_SEGMENT = /[\\/#\u0000-\u0020\u007f]/
+/** Whether a decoded path segment holds a character the proxy refuses. */
+function hasUnsafeSegmentChar(decoded: string): boolean {
+  return Array.from(decoded).some((char) => {
+    const code = char.charCodeAt(0)
+    return (
+      UNSAFE_SEGMENT_CHARS.has(char) ||
+      code <= LAST_CONTROL_OR_SPACE ||
+      code === DELETE_CONTROL
+    )
+  })
+}
 
 export type TesterInputProblem =
   | { code: 'path_value'; name: string }
@@ -397,7 +328,7 @@ export function inputProblem(
     const decoded = decodedFully(value)
     if (decoded === null || ['.', '..'].includes(decoded))
       return { code: 'path_value', name }
-    if (UNSAFE_SEGMENT.test(decoded)) return { code: 'path_value', name }
+    if (hasUnsafeSegmentChar(decoded)) return { code: 'path_value', name }
   }
   for (const [name, value] of Object.entries(request.headers)) {
     try {
@@ -411,133 +342,17 @@ export function inputProblem(
   return null
 }
 
-// --- Sending ---
-
-function resolvePath(target: string, origin: string): string {
-  const url = new URL(target, origin)
-  if (
-    (!target.startsWith('/') && !/^https?:\/\//.test(target)) ||
-    target.startsWith('//') ||
-    target.includes('\\') ||
-    url.origin !== origin ||
-    url.username ||
-    url.password ||
-    url.hash
-  ) {
-    throw new TesterError(
-      'invalid_input',
-      'API Tester requires a same-origin URL without credentials or fragments',
-    )
-  }
-  return `${url.pathname}${url.search}`
-}
-
-/** The cause of an answer of the proxy that is not the API's. */
-export function proxyFailure(
-  status: number,
-  payload: unknown,
-  elapsedMs: number,
-): TesterErrorCode {
-  const reason =
-    payload && typeof payload === 'object' && 'reason' in payload
-      ? (payload as { reason?: unknown }).reason
-      : undefined
-  switch (status) {
-    case 400:
-      return 'invalid_input'
-    case 401:
-      return 'not_authenticated'
-    case 403:
-      return reason ? 'cross_origin' : 'not_owner'
-    case 413:
-      return 'body_too_large'
-    case 502:
-      return elapsedMs >= PROXY_TIMEOUT_MS - TIMEOUT_MARGIN_MS
-        ? 'timeout'
-        : 'proxy_failed'
-    default:
-      return 'unexpected'
-  }
-}
-
-async function readPayload(response: Response): Promise<unknown> {
-  try {
-    return await response.json()
-  } catch {
-    return null
-  }
-}
-
-/**
- * Sends a same-origin request through the authenticated owner-only Tester
- * BFF. Fails with a {@link TesterError} naming the cause when the API's
- * answer does not come back: refused by the proxy, cancelled through
- * `signal`, timed out, or unreachable.
- */
-export async function sendTesterRequest(
-  target: string,
-  origin: string,
-  request: TesterRequest,
-  signal?: AbortSignal,
-): Promise<TesterResponse> {
-  const path = resolvePath(target, origin)
-  const controller = new AbortController()
-  let timedOut = false
-  const timer = setTimeout(() => {
-    timedOut = true
-    controller.abort()
-  }, CLIENT_TIMEOUT_MS)
-  const cancel = () => controller.abort()
-  signal?.addEventListener('abort', cancel)
-  const started = Date.now()
-  try {
-    let response: Response
-    try {
-      response = await fetch(TESTER_ROUTE, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        credentials: 'same-origin',
-        body: JSON.stringify({ ...request, path }),
-        signal: controller.signal,
-      })
-    } catch (cause) {
-      if (timedOut) throw new TesterError('timeout', 'Timed out')
-      if (signal?.aborted) throw new TesterError('aborted', 'Cancelled')
-      throw new TesterError(
-        'network',
-        cause instanceof Error ? cause.message : String(cause),
-      )
-    }
-    if (!response.ok) {
-      const payload = await readPayload(response)
-      const code = proxyFailure(response.status, payload, Date.now() - started)
-      throw new TesterError(
-        code,
-        `API Tester request failed (${response.status})`,
-        response.status,
-        { response, data: payload },
-      )
-    }
-    return (await response.json()) as TesterResponse
-  } finally {
-    clearTimeout(timer)
-    signal?.removeEventListener('abort', cancel)
-  }
-}
-
 /**
  * `text` with its bidirectional controls shown as `⟨U+202E⟩`: invisible, they
  * would turn the text around on screen without saying so.
  */
 export function revealBidi(text: string): string {
   return text.replace(
-    /[‎‏‪-‮⁦-⁩]/g,
+    /[\u200E\u200F\u202A-\u202E\u2066-\u2069]/g,
     (char) =>
       `⟨U+${char.charCodeAt(0).toString(16).toUpperCase().padStart(4, '0')}⟩`,
   )
 }
-
-// --- Replaying a captured request ---
 
 /** A request as the logs' detail route returns it. */
 export interface CapturedRequest {
@@ -595,13 +410,7 @@ export function decodedValue(value: string): string {
   }
 }
 
-/**
- * The tester's fields for a captured request: every query value (repeated
- * names, empty values), path values decoded (they are encoded again on
- * sending), and its own body or none. A form or a cut body is replayed as
- * text, as it was received.
- */
-export function replayFrom(captured: CapturedRequest): ReplayedRequest {
+function replayHeaders(captured: CapturedRequest) {
   const headers: KeyValue[] = []
   const skippedHeaders: string[] = []
   for (const [name, value] of Object.entries(captured.requestHeaders ?? {})) {
@@ -609,12 +418,37 @@ export function replayFrom(captured: CapturedRequest): ReplayedRequest {
       skippedHeaders.push(name)
     else headers.push({ name, value })
   }
-  const query = Object.entries(captured.query ?? {}).flatMap(([name, value]) =>
+  return { headers, skippedHeaders }
+}
+
+function replayQuery(captured: CapturedRequest): KeyValue[] {
+  return Object.entries(captured.query ?? {}).flatMap(([name, value]) =>
     (Array.isArray(value) ? value : [value]).map((item) => ({
       name,
       value: String(item ?? ''),
     })),
   )
+}
+
+function replayBodyMode(
+  captured: CapturedRequest,
+  bodyMissing: boolean,
+  truncated: boolean,
+): BodyMode {
+  if (!acceptsRequestBody(captured.method)) return 'none'
+  const contentType = headerValue(captured.requestHeaders ?? {}, 'content-type')
+  const mode = bodyMissing && !contentType ? 'json' : bodyModeFor(contentType)
+  return truncated || mode === 'form' ? 'text' : mode
+}
+
+/**
+ * The tester's fields for a captured request: every query value (repeated
+ * names, empty values), path values decoded (they are encoded again on
+ * sending), and its own body or none. A form or a cut body is replayed as
+ * text, as it was received.
+ */
+export function replayFrom(captured: CapturedRequest): ReplayedRequest {
+  const { headers, skippedHeaders } = replayHeaders(captured)
   const pathValues = Object.fromEntries(
     Object.entries(captured.pathParams ?? {}).map(([name, value]) => [
       name,
@@ -624,16 +458,11 @@ export function replayFrom(captured: CapturedRequest): ReplayedRequest {
   const stored = captured.requestBody
   const bodyMissing = stored === undefined || stored === null || stored === ''
   const truncated = !bodyMissing && captured.requestBodyTruncated === true
-  const contentType = headerValue(captured.requestHeaders ?? {}, 'content-type')
-  let bodyMode: BodyMode = 'none'
-  if (acceptsRequestBody(captured.method)) {
-    const mode = bodyMissing && !contentType ? 'json' : bodyModeFor(contentType)
-    bodyMode = truncated || mode === 'form' ? 'text' : mode
-  }
+  const bodyMode = replayBodyMode(captured, bodyMissing, truncated)
   return {
     headers,
     skippedHeaders,
-    query,
+    query: replayQuery(captured),
     pathValues,
     bodyMode,
     body:

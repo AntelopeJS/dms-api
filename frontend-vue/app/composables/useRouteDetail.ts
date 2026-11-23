@@ -145,8 +145,6 @@ export interface RouteDetail {
  */
 export function useRouteDetail(fetchUrl: string, queryKey = 'route') {
   const selection = useRouteSelection(queryKey)
-  // The header reads it again, on the Statistics tab only: the
-  // documentation and the tester must not move with the page's refreshes.
   const detail = useApiData<RouteDetail>(
     () =>
       selection.ref.value

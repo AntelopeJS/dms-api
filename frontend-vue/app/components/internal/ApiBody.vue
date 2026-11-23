@@ -4,9 +4,7 @@ import { byteLength, formatBytes } from '../../utils/format'
 import { bodyOmission } from '../../utils/requestDrawer'
 import ApiJsonTree from './ApiJsonTree.vue'
 
-// A captured body: a JSON one as a tree (or as text, on demand), anything
-// else as text. Its label says how much was kept of how much was sent; no
-// body says why none was stored.
+/** A captured body: a JSON one as a tree or as text, anything else as text. */
 const props = withDefaults(
   defineProps<{
     body?: string | null
@@ -78,7 +76,6 @@ const reason = computed(() => {
     })
   return t('api.request.no_body')
 })
-// What the settings change: whether bodies are captured, and up to what size.
 const toSettings = computed(
   () =>
     !bodiless.value &&

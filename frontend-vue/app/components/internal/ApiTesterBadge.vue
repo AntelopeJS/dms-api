@@ -1,6 +1,4 @@
 <script setup lang="ts">
-// Marks a request the console's tester sent: it is kept in the logs, out of
-// the statistics and the health.
 const { t } = useI18n()
 </script>
 

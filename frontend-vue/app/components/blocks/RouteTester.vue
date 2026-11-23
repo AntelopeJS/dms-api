@@ -13,19 +13,6 @@ import {
   useTesterState,
 } from '../internal/routeTester/useTesterState'
 
-// Call the selected route from the dashboard. The URL bar holds the method,
-// the path with its parameters to fill in, and Send; the body starts from
-// the last request the route accepted. A route keeps its draft for the
-// session (body, headers, query, path values, last answer), across tabs,
-// routes and pages. A call that writes data is confirmed first, and the
-// answer shows its status, the browser and server times and what the module
-// captured of it (`x-request-id`). `?replay=<request id>` loads a captured
-// request once, then leaves the URL.
-//
-// Typing in one of its fields holds the page's live mode ("Paused · typing in
-// the Tester"), so the route's figures do not move under the request being
-// written; leaving the Tester releases it.
-
 defineOptions({ inheritAttrs: false })
 
 const props = withDefaults(defineProps<RouteTesterProps>(), {
@@ -90,8 +77,6 @@ const {
     @focusout="onFocusOut"
   >
     <DmsCardPanel :padded="false">
-      <!-- The method and the path keep a line of their own when the card is
-           narrow: the buttons go under them, and a long path wraps. -->
       <div class="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
         <div class="flex min-w-0 grow basis-80 items-center gap-3">
           <ApiMethodBadge :method="route.method" solid class="shrink-0" />
@@ -192,10 +177,6 @@ const {
           <UIcon name="i-ph-warning-circle" class="size-3.5 shrink-0" />
           {{ blocker }}
         </span>
-        <!-- The trigger is a plain element: the DMS components load
-             asynchronously, and a tooltip anchored on one still loading
-             reads an element it does not have yet (a direct load of the
-             tab crashed on it). -->
         <UTooltip v-if="writes" :text="t('api.tester.writes_hint')">
           <span class="inline-flex rounded-full" tabindex="0">
             <DmsStatusPill

@@ -273,18 +273,18 @@ describe("the last day, as the clock moves", () => {
   });
 });
 
-describe("one p95 per route and window", () => {
-  /** 100 calls over the last 20 hours, from 2,000 to 2,313 ms. */
-  function slowRoute(now: number): RequestLogSample[] {
-    return Array.from({ length: 100 }, (_, index) => ({
-      timestamp: new Date(now - (index + 1) * 12 * 60_000),
-      method: "GET",
-      uri: "/pdf",
-      statusCode: 200,
-      responseTimeMs: 2000 + Math.round((index * 313) / 99),
-    }));
-  }
+/** 100 calls over the last 20 hours, from 2,000 to 2,313 ms. */
+function slowRoute(now: number): RequestLogSample[] {
+  return Array.from({ length: 100 }, (_, index) => ({
+    timestamp: new Date(now - (index + 1) * 12 * 60_000),
+    method: "GET",
+    uri: "/pdf",
+    statusCode: 200,
+    responseTimeMs: 2000 + Math.round((index * 313) / 99),
+  }));
+}
 
+describe("one p95 per route and window", () => {
   it("is exact over the logs, the same as the health rules', never above the max", async () => {
     const now = pinnedNow();
     const rows = slowRoute(now.getTime());

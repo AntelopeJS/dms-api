@@ -234,19 +234,22 @@ export function formatFullDateTime(
 
 export type DurationUnit = 's' | 'min' | 'h' | 'd'
 
+export interface DurationPart {
+  amount: number
+  unit: DurationUnit
+}
+
 /**
  * A length of time in its two largest units, rounded down: "45 s",
  * "38 min", "2 h 5 min", "3 d 4 h". The caller words each part.
  */
-export function durationParts(
-  ms: number,
-): Array<{ amount: number; unit: DurationUnit }> {
+export function durationParts(ms: number): DurationPart[] {
   const seconds = Math.max(0, Math.floor(ms / MS_PER_SECOND))
   if (seconds < SECONDS_PER_MINUTE) return [{ amount: seconds, unit: 's' }]
   const minutes = Math.floor(seconds / SECONDS_PER_MINUTE)
   if (minutes < MINUTES_PER_HOUR) return [{ amount: minutes, unit: 'min' }]
   const hours = Math.floor(minutes / MINUTES_PER_HOUR)
-  const parts: Array<{ amount: number; unit: DurationUnit }> =
+  const parts: DurationPart[] =
     hours < HOURS_PER_DAY
       ? [
           { amount: hours, unit: 'h' },
@@ -263,7 +266,7 @@ export function durationParts(
  * The length of a window in one unit, the way a card names it: "15 min",
  * "24 h", "7 d". Hours up to two days, so the last day reads "24 h".
  */
-export function spanPart(ms: number): { amount: number; unit: DurationUnit } {
+export function spanPart(ms: number): DurationPart {
   const minutes = Math.round(ms / MS_PER_MINUTE)
   if (minutes < MINUTES_PER_HOUR) return { amount: minutes, unit: 'min' }
   const hours = Math.round(minutes / MINUTES_PER_HOUR)
@@ -271,11 +274,13 @@ export function spanPart(ms: number): { amount: number; unit: DurationUnit } {
   return { amount: Math.round(hours / HOURS_PER_DAY), unit: 'd' }
 }
 
-/** Pretty JSON when the text parses, the text itself otherwise. */
-export function prettyBody(text: string | undefined | null): {
+export interface PrettyBody {
   text: string
   json: boolean
-} {
+}
+
+/** Pretty JSON when the text parses, the text itself otherwise. */
+export function prettyBody(text: string | undefined | null): PrettyBody {
   if (!text) return { text: '', json: false }
   try {
     return { text: JSON.stringify(JSON.parse(text), null, 2), json: true }

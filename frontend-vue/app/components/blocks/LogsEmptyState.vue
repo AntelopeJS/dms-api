@@ -11,12 +11,6 @@ import {
   type LogsFilters,
 } from '../../utils/logsQuery'
 
-// The request table's empty body, which names what empties it: the search,
-// a link's filters, the period and the other filters of the URL (the DMS
-// table does not count those as filters), else nothing captured yet. Each
-// cause comes with its way out. The table hands it `state`, `search`,
-// `refresh` and `clearSearch`, which empties its search and folds its field
-// like its own "Clear search"; its tab is its own.
 defineOptions({ inheritAttrs: false })
 
 const props = defineProps<{
@@ -32,7 +26,6 @@ const route = useDmsRoute()
 const router = useDmsRouter()
 
 const filters = computed(() => readLogsFilters(route.query))
-// The period the selector applies, whatever source it took it from.
 const period = useApiPeriod()
 const cause = computed(() =>
   logsEmptyCause(props.state, props.search, filters.value, period.value),
@@ -91,7 +84,6 @@ function clearSearchAction() {
   ]
 }
 
-// "All time", while a narrower period may hide the requests.
 function widen() {
   if (isAllTime(period.value)) return []
   return [
@@ -188,7 +180,6 @@ const content = computed(() => {
         ]
           .filter(Boolean)
           .join(' '),
-        // The period alone is the selector's, nothing to clear.
         actions: [
           ...widen(),
           ...(hasLogsFilters(current) ? [clearFilters()] : []),

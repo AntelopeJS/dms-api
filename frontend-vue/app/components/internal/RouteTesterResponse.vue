@@ -11,7 +11,7 @@ import ApiKeyValues from './ApiKeyValues.vue'
 import ApiStatusBadge from './ApiStatusBadge.vue'
 import type { TesterContext } from './routeTester/context'
 
-// The tester's answer card: the response, its headers and what the module captured of it.
+/** The tester's answer card: the response, its headers and what the module captured of it. */
 const props = defineProps<{ tester: TesterContext }>()
 
 const {

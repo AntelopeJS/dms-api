@@ -2,7 +2,7 @@
 import { hasRedacted } from '../../utils/testerRequest'
 import type { TesterContext } from './routeTester/context'
 
-// The tester's request card: the body, the query, the headers and the auth, by tab.
+/** The tester's request card: the body, the query, the headers and the auth, by tab. */
 const props = defineProps<{ tester: TesterContext }>()
 
 const {
@@ -34,8 +34,6 @@ const {
     <div
       class="border-default flex flex-wrap items-center gap-x-2 border-b px-3"
     >
-      <!-- overflow-x-auto alone turns overflow-y to auto: the active
-               tab's underline would show a scrollbar. -->
       <UTabs
         v-model="tab"
         :items="tabs"
@@ -128,8 +126,6 @@ const {
           >
             {{ editor.title }}
           </p>
-          <!-- In a narrow card the name takes a line of its own, the
-                   value and its button the next: a name is never cut. -->
           <div
             v-for="(entry, index) in editor.list"
             :key="entry.id"
