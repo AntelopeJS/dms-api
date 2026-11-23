@@ -364,10 +364,13 @@ export interface RouteActivityPayload {
   emptyState?: GuardFallback;
 }
 
+/**
+ * The Statistics tab's activity payload of a route.
+ * `lastCallAt` is when the route was last called (ISO), null when never.
+ */
 export function routeActivity(
   traffic: RouteTraffic,
   route: string | undefined,
-  /** When it was last called (ISO), null when never. */
   lastCallAt: string | null,
 ): RouteActivityPayload {
   const calls = traffic.total.requests;

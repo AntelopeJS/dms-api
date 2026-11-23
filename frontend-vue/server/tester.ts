@@ -1,9 +1,11 @@
 import type { DmsServerEvent, DmsSession } from '#dms/server'
 
-// The API tester's server half: forwards one call the owner composes to the
-// backend, with the session's credential when asked, and returns the answer
-// without the session's tokens. Owner-only: the session must belong to the
-// instance owner, which the backend confirms on every call.
+/** What the route reads of the event the frontend server hands it. */
+export interface TesterEvent {
+  session: Pick<DmsServerEvent['session'], 'read'>
+  readJson: DmsServerEvent['readJson']
+  backendUrl: DmsServerEvent['backendUrl']
+}
 
 const RESPONSE_LIMIT = 64 * 1024
 const REQUEST_TIMEOUT_MS = 30_000
@@ -40,16 +42,39 @@ const BLOCKED_HEADERS = new Set([
 ])
 const CONTROL_HEADER =
   /^(?:sec-|proxy-|x-forwarded-|x-dms-|x-inertia|x-http-method|x-method-override|x-original-|x-rewrite-)/i
-// URL paths must reject literal control characters before forwarding.
-const UNSAFE_PATH = /[\\#\u0000- \u007f]/
-// Decoded path segments need the same boundary after every decoding pass.
-const UNSAFE_DECODED_SEGMENT = /[\\/#\u0000- \u007f]/
+const UNSAFE_PATH_CHARACTERS = '\\#'
+const UNSAFE_SEGMENT_CHARACTERS = '\\/#'
+const SPACE = 0x20
+const DELETE = 0x7f
 
 interface ValidInput {
   method: string
   headers: Record<string, string>
   body?: string
   useSession: boolean
+}
+
+interface TesterInput extends ValidInput {
+  path: string
+}
+
+interface ValidatedRequest {
+  target: URL
+  input: ValidInput
+}
+
+/**
+ * Whether `text` holds a control character, a space, DEL or one of
+ * `forbidden`. A path is checked before forwarding, and a decoded segment
+ * after every decoding pass.
+ */
+function hasUnsafeCharacter(text: string, forbidden: string): boolean {
+  for (const character of text) {
+    const code = character.codePointAt(0) ?? 0
+    if (code <= SPACE || code === DELETE || forbidden.includes(character))
+      return true
+  }
+  return false
 }
 
 class InvalidInput extends Error {
@@ -63,7 +88,10 @@ function invalidInput(): never {
 function validatePathSegment(segment: string) {
   let decoded = segment
   for (;;) {
-    if (['.', '..'].includes(decoded) || UNSAFE_DECODED_SEGMENT.test(decoded))
+    if (
+      ['.', '..'].includes(decoded) ||
+      hasUnsafeCharacter(decoded, UNSAFE_SEGMENT_CHARACTERS)
+    )
       invalidInput()
     let next: string
     try {
@@ -76,12 +104,11 @@ function validatePathSegment(segment: string) {
   }
 }
 
-function targetUrl(event: DmsServerEvent, path: unknown): URL {
+function targetUrl(event: TesterEvent, path: string): URL {
   if (
-    typeof path !== 'string' ||
     !path.startsWith('/') ||
     path.startsWith('//') ||
-    UNSAFE_PATH.test(path)
+    hasUnsafeCharacter(path, UNSAFE_PATH_CHARACTERS)
   )
     invalidInput()
   path.split('?', 1)[0].split('/').forEach(validatePathSegment)
@@ -113,43 +140,39 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-function stringRecord(value: unknown): Record<string, string> {
-  if (!isRecord(value)) invalidInput()
-  return Object.fromEntries(
-    Object.entries(value).map(([name, entry]): [string, string] => {
-      if (typeof entry !== 'string') invalidInput()
-      return [name, entry]
-    }),
+function isStringRecord(value: unknown): value is Record<string, string> {
+  return (
+    isRecord(value) &&
+    Object.values(value).every(
+      (entry): entry is string => typeof entry === 'string',
+    )
+  )
+}
+
+function isTesterInput(value: unknown): value is TesterInput {
+  if (!isRecord(value)) return false
+  const { method, useSession, body, path, headers } = value
+  return (
+    typeof method === 'string' &&
+    METHODS.has(method) &&
+    typeof useSession === 'boolean' &&
+    typeof path === 'string' &&
+    isStringRecord(headers) &&
+    (body === undefined ||
+      (typeof body === 'string' && !['GET', 'HEAD'].includes(method)))
   )
 }
 
 function validateInput(
-  event: DmsServerEvent,
-  input: unknown,
-): { target: URL; input: ValidInput } {
-  if (!isRecord(input)) invalidInput()
-  const { method, useSession, body } = input
-  if (
-    typeof method !== 'string' ||
-    !METHODS.has(method) ||
-    typeof useSession !== 'boolean'
-  )
-    invalidInput()
-  const headers = stringRecord(input.headers)
-  if (
-    body !== undefined &&
-    (typeof body !== 'string' || ['GET', 'HEAD'].includes(method))
-  )
-    invalidInput()
+  event: TesterEvent,
+  input: TesterInput,
+): ValidatedRequest {
   try {
-    new Headers(headers)
+    new Headers(input.headers)
   } catch {
     invalidInput()
   }
-  return {
-    target: targetUrl(event, input.path),
-    input: { method, headers, body, useSession },
-  }
+  return { target: targetUrl(event, input.path), input }
 }
 
 async function limitedText(response: Response): Promise<string> {
@@ -171,7 +194,7 @@ async function limitedText(response: Response): Promise<string> {
 }
 
 async function isOwner(
-  event: DmsServerEvent,
+  event: TesterEvent,
   session: DmsSession,
   signal: AbortSignal,
 ) {
@@ -247,14 +270,18 @@ function inputFailureStatus(error: unknown): number | undefined {
 }
 
 /**
- * `POST /api/_dms-api/tester`: forwards an owner's tester call without
- * returning the session's credentials.
+ * `POST /api/_dms-api/tester`, the API tester's server half: forwards one call
+ * the owner composes to the backend, with the session's credential when asked,
+ * and returns the answer without the session's tokens. Owner-only: the session
+ * must belong to the instance owner, which the backend confirms on every call.
  */
-export async function testerRoute(event: DmsServerEvent): Promise<Response> {
+export async function testerRoute(event: TesterEvent): Promise<Response> {
   try {
     const session = event.session.read()
     if (!session?.accessToken) return failure(401, 'Not authenticated')
-    const { input, target } = validateInput(event, await event.readJson())
+    const payload = await event.readJson()
+    if (!isTesterInput(payload)) invalidInput()
+    const { input, target } = validateInput(event, payload)
     const signal = AbortSignal.timeout(REQUEST_TIMEOUT_MS)
     if (!(await isOwner(event, session, signal)))
       return failure(403, 'Forbidden')

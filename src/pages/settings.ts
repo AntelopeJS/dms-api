@@ -233,13 +233,18 @@ function patchFields(
  * The module defaults depend on the module config, not on the page: they are
  * filled in for each request.
  */
-settingsForm.onFilter((_permissions, options: FormPropsSerialized) => {
+function fillModuleDefaults(
+  _permissions: Set<string>,
+  options: FormPropsSerialized,
+): FormPropsSerialized {
   const context = getSettingsFormContext();
   return {
     ...options,
     fields: patchFields(options.fields, context.patches),
   };
-});
+}
+
+settingsForm.onFilter(fillModuleDefaults);
 
 /**
  * Settings: which routes the console watches, how long it keeps what it

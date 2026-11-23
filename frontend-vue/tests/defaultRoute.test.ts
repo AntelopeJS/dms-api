@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { defaultRouteLocation } from '../app/utils/routeExplorer'
 
 type Middleware = (to: {
   path: string
   query: Record<string, string>
-}) => unknown
+}) => Promise<ReturnType<typeof defaultRouteLocation>>
 
 const ROUTES = [
   {
@@ -25,16 +26,30 @@ const ROUTES = [
 ]
 
 const authFetch = vi.fn()
-const cookie = { value: null as string | null }
+interface CookieBox {
+  value: string | null
+}
+
+const cookie: CookieBox = { value: null }
 const session = { loggedIn: { value: true } }
+
+interface LoadedMiddleware {
+  middleware?: Middleware
+}
 
 async function load(): Promise<Middleware> {
   vi.resetModules()
-  vi.stubGlobal('defineDmsMiddleware', (handler: Middleware) => handler)
+  const loaded: LoadedMiddleware = {}
+  vi.stubGlobal('defineDmsMiddleware', (handler: Middleware) => {
+    loaded.middleware = handler
+    return handler
+  })
   vi.stubGlobal('useDmsUserSession', () => session)
   vi.stubGlobal('useAuthFetch', () => ({ $authFetch: authFetch }))
   vi.stubGlobal('useDmsCookie', () => cookie)
-  return (await import('../app/middleware/defaultRoute')).default as Middleware
+  await import('../app/middleware/defaultRoute')
+  if (!loaded.middleware) throw new Error('the middleware was not defined')
+  return loaded.middleware
 }
 
 describe('the Routes page opened without a route', () => {

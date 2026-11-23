@@ -3,17 +3,37 @@ import ApiTesterBadge from '../components/internal/ApiTesterBadge.vue'
 import { cachedDateFormat, type DateFormat } from '../utils/format'
 import { fullDateTime, requestClock } from '../utils/requestDrawer'
 
-interface TimeDisplayOptions {
-  milliseconds?: boolean
+type Timestamp = string | number | Date
+
+function isTimestamp(value: unknown): value is Timestamp {
+  return (
+    typeof value === 'string' ||
+    typeof value === 'number' ||
+    value instanceof Date
+  )
+}
+
+function wantsMilliseconds(
+  options: unknown,
+): options is { milliseconds: true } {
+  return (
+    typeof options === 'object' &&
+    options !== null &&
+    'milliseconds' in options &&
+    options.milliseconds === true
+  )
 }
 
 const EMPTY = '—'
 
-// The date formats of a cell, per interface language. A plugin runs outside
-// any component's setup, where the i18n composables behind useDateFormat()
-// throw: the cell formats with the locale its formatter receives, through the
-// DMS's regional formatter (the user's Language & region preferences).
 const cellDateFormats = new Map<string, DateFormat>()
+
+/**
+ * The date formats of a cell, per interface language. A plugin runs outside
+ * any component's setup, where the i18n composables behind useDateFormat()
+ * throw: the cell formats with the locale its formatter receives, through the
+ * DMS's regional formatter (the user's Language & region preferences).
+ */
 function cellDateFormat(locale: string): DateFormat {
   let format = cellDateFormats.get(locale)
   if (!format) {
@@ -29,16 +49,18 @@ function cellDateFormat(locale: string): DateFormat {
 /** `source` of a request the console's Tester sent. */
 const TESTER_SOURCE = 'tester'
 
-// The cell displays the backend names with `@RegisterDisplay("api:…")`:
-// methods and statuses are the DMS status pills, ids its mono display,
-// durations its duration display.
+/**
+ * The cell displays the backend names with `@RegisterDisplay("api:…")`:
+ * `api:time` draws "Yesterday, 23:42:10.120" rather than a bare time once the
+ * day changed, with the whole date and its time zone on hover, written when
+ * hovered (every cell is drawn again on each "Load more", and formatting a
+ * full date costs more than the cell itself: about 0.1 ms, 200 ms over 2,000
+ * rows). `api:path` draws the path in the mono font, as the DMS mono cell
+ * does, and "Tester" beside it when the console's Tester sent the request.
+ */
 export default defineDmsPlugin(() => {
   const { registerDataType } = useDataTypes()
 
-  // "Yesterday, 23:42:10.120" rather than a bare time once the day changed;
-  // the whole date and its time zone on hover, written when hovered: every
-  // cell is drawn again on each "Load more", and formatting a full date costs
-  // more than the cell itself (about 0.1 ms, 200 ms over 2,000 rows).
   registerDataType({
     id: 'api:time',
     formatter: {
@@ -49,23 +71,23 @@ export default defineDmsPlugin(() => {
           {
             class: 'text-muted font-mono text-[12px] tabular-nums',
             onMouseenter: (event: MouseEvent) => {
-              const cell = event.currentTarget as HTMLElement
-              if (!cell.title)
-                cell.title = fullDateTime(value as string, dateFormat)
+              const cell = event.currentTarget
+              if (
+                cell instanceof HTMLElement &&
+                !cell.title &&
+                isTimestamp(value)
+              )
+                cell.title = fullDateTime(value, dateFormat)
             },
           },
-          requestClock(
-            value as string,
-            dateFormat,
-            (options as TimeDisplayOptions | undefined)?.milliseconds ?? false,
-          ) || EMPTY,
+          (isTimestamp(value)
+            ? requestClock(value, dateFormat, wantsMilliseconds(options))
+            : '') || EMPTY,
         )
       },
     },
   })
 
-  // The path in the mono font, as the DMS mono cell draws it, and "Tester"
-  // beside it when the console's Tester sent the request.
   registerDataType({
     id: 'api:path',
     formatter: {

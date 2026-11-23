@@ -1,15 +1,3 @@
-/**
- * Auth-middleware classification.
- *
- * AntelopeJS has no first-class notion of an "auth" middleware — anything
- * registered with @Prefix is just a function. To surface authentication
- * meaningfully on the Routes page we flag middleware whose callbackName
- * matches a configurable set of patterns (default: `auth_*`, `requireAuth*`,
- * `session_*`) or appears verbatim in an explicit allow-list. Both come
- * from {@link DmsApiConfig}, so projects can extend the defaults without
- * touching this module.
- */
-
 import { getConfig } from "@/config";
 
 interface CompiledMatcher {
@@ -49,6 +37,14 @@ function matcher(): CompiledMatcher {
   return cached;
 }
 
+/**
+ * Whether a middleware is an auth middleware. AntelopeJS has no first-class
+ * notion of one: anything registered with @Prefix is just a function. The
+ * Routes page flags a middleware whose callbackName matches a configurable set
+ * of patterns (default: `auth_*`, `requireAuth*`, `session_*`) or appears
+ * verbatim in an explicit allow-list. Both come from {@link DmsApiConfig}, so
+ * projects extend the defaults without touching this module.
+ */
 export function isAuthMiddleware(m: AuthMiddlewareInput): boolean {
   const { patterns, callbacks } = matcher();
   if (callbacks.has(m.callbackName)) return true;

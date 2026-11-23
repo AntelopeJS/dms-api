@@ -214,21 +214,21 @@ describe("evaluateRoutes and routesNeedingAttention", () => {
   });
 });
 
-describe("a route called a few times an hour", () => {
-  /**
-   * One call every 20 minutes over the day, a burst of 60 × 500 ending
-   * `quietMinutes` ago, then the same trickle of 2xx: the window reaches
-   * back hours for its 20 calls and holds the burst all along.
-   */
-  function trickleAfterBurst(quietMinutes: number): RequestLogSample[] {
-    return [
-      ...steady("/refund", 70, 0, 20),
-      ...Array.from({ length: 60 }, (_, index) =>
-        sample("/refund", 500, ago(quietMinutes + index * 0.01)),
-      ),
-    ];
-  }
+/**
+ * One call every 20 minutes over the day, a burst of 60 × 500 ending
+ * `quietMinutes` ago, then the same trickle of 2xx: the window reaches
+ * back hours for its 20 calls and holds the burst all along.
+ */
+function trickleAfterBurst(quietMinutes: number): RequestLogSample[] {
+  return [
+    ...steady("/refund", 70, 0, 20),
+    ...Array.from({ length: 60 }, (_, index) =>
+      sample("/refund", 500, ago(quietMinutes + index * 0.01)),
+    ),
+  ];
+}
 
+describe("a route called a few times an hour", () => {
   it("is recovered 15 minutes after its last 5xx, then healthy, like the API", () => {
     const failing = evaluateRoutes(trickleAfterBurst(10), LOOKBACK, SLOW_MS);
     expect(failing.get("GET:/refund")?.state).toBe("failing");

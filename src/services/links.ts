@@ -1,9 +1,3 @@
-/**
- * Links between the console's pages. Every drill-down the design asks for
- * ("View 14 server errors", "Open route", "Same error") is a URL, so it can be
- * shared, reloaded and opened in a new tab.
- */
-
 import { normalizeRoutePath } from "@/db/tables/routes_statistics.table";
 import { PERIOD_QUERY_KEY, type TimeRange, type WindowPreset } from "./window";
 
@@ -65,7 +59,9 @@ export function settingsLink(): string {
 }
 
 /**
- * A link to the request logs. One that narrows the rows (a route, a path, an
+ * A link to the request logs. Every drill-down the console's pages offer
+ * ("View 14 server errors", "Open route", "Same error") is a URL like this,
+ * so it can be shared, reloaded and opened in a new tab. One that narrows the rows (a route, a path, an
  * error, an incident's range) opens the "All" tab unless it names another:
  * the table would open on the tab kept from the last visit and hide most of
  * what the link names. The table reads its tab from the URL when it mounts,
