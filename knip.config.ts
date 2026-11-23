@@ -22,6 +22,10 @@ export default {
       ],
       project: ["*.ts", "app/**/*.{ts,vue}"],
       ignoreUnresolved: ["^#dms", "^vite/client$"],
+      vitest: {
+        config: [],
+        entry: ["vitest.config.ts", "tests/**/*.test.ts"],
+      },
     },
   },
 };

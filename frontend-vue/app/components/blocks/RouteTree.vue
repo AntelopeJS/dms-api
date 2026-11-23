@@ -511,8 +511,8 @@ const count = (value: number) =>
               <span class="truncate">{{ section.path }}</span>
               <UIcon
                 v-if="STATE_ICON[section.worst]"
-                :name="STATE_ICON[section.worst]!.name"
-                :class="STATE_ICON[section.worst]!.class"
+                :name="STATE_ICON[section.worst]?.name"
+                :class="STATE_ICON[section.worst]?.class"
                 class="size-3 shrink-0"
                 role="img"
                 :aria-label="stateLabel(section.worst)"
@@ -561,8 +561,8 @@ const count = (value: number) =>
                 </span>
                 <UIcon
                   v-if="STATE_ICON[route.state]"
-                  :name="STATE_ICON[route.state]!.name"
-                  :class="STATE_ICON[route.state]!.class"
+                  :name="STATE_ICON[route.state]?.name"
+                  :class="STATE_ICON[route.state]?.class"
                   class="size-3.5 shrink-0"
                   role="img"
                   :aria-label="stateLabel(route.state)"

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { isString } from './typeGuards'
+import { isString } from '../../utils/guards'
 
 /** Headers or parameters as a two-column list of names and values. */
 const props = defineProps<{

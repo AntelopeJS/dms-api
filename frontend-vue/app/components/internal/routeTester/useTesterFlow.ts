@@ -6,7 +6,7 @@ import { useTesterReplay } from './useTesterReplay'
 import { useTesterReplayBanner } from './useTesterReplayBanner'
 import { useTesterSend } from './useTesterSend'
 import type { TesterState } from './useTesterState'
-import { isString } from '../typeGuards'
+import { isString } from '../../../utils/guards'
 
 /**
  * The tester's flows, as `RouteTester` sets them up after its state: the

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { isNumber, isObject, isString } from './typeGuards'
+import { isNumber, isObject, isString } from '../../utils/guards'
 
 /** A JSON value as a foldable tree; a folded branch renders nothing below it. */
 const props = withDefaults(

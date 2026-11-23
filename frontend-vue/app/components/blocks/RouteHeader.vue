@@ -70,6 +70,9 @@ const {
   refresh,
   error,
 } = useRouteDetail(props.fetchUrl, props.queryKey)
+const errorMessage = computed(() =>
+  error.value instanceof Error ? error.value.message : '',
+)
 const apiOrigin = useApiOrigin(() => route.value?.apiOrigin)
 const period = useApiPeriod()
 const auth = computed(() =>
@@ -202,9 +205,7 @@ async function copyCurl() {
             : t('api.routes.header.error_title')
         "
         :description="
-          missing
-            ? t('api.routes.header.missing_description')
-            : String((error as Error)?.message ?? '')
+          missing ? t('api.routes.header.missing_description') : errorMessage
         "
         :actions="
           missing
