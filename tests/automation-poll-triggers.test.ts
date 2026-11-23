@@ -88,6 +88,18 @@ describe("api.health-changed", () => {
     ]);
   });
 
+  it("gives degraded, down, then degraded again three distinct deliveryIds", async () => {
+    const health = sequence(OPERATIONAL, DEGRADED, DOWN, DEGRADED_AGAIN);
+    const trigger = healthChangedTriggerOf(health.read);
+    const { emitted, emit } = recorder<HealthEmission>();
+    const handle = await trigger.activate({ intervalSeconds: 10 }, emit);
+    await settle(30_000);
+    await trigger.deactivate(handle);
+    const ids = emitted.map((payload) => payload.deliveryId);
+    expect(ids).toHaveLength(3);
+    expect(new Set(ids).size).toBe(3);
+  });
+
   it("moves its baseline on a verdict it does not watch, without emitting", async () => {
     const health = sequence(OPERATIONAL, DEGRADED, DOWN);
     const trigger = healthChangedTriggerOf(health.read);
@@ -202,6 +214,25 @@ describe("recoveryOf", () => {
       deliveryId:
         "api.route-recovered:GET:/api/orders:slow:2026-11-20T10:00:00.000Z",
     });
+  });
+
+  it("keys a slow route's recoveries on the poll's minute, never on an older 5xx incident", () => {
+    const olderIncident = routeState("healthy", {
+      incident: {
+        start: new Date("2026-11-20T02:00:00.000Z"),
+        end: new Date("2026-11-20T02:20:00.000Z"),
+      },
+    });
+    const slow = { ...BROKEN, flag: "slow" as const };
+    const first = recoveryOf(slow, "GET:/api/orders", olderIncident, NOW);
+    const later = recoveryOf(
+      slow,
+      "GET:/api/orders",
+      olderIncident,
+      new Date(NOW.getTime() + 3 * 60_000),
+    );
+    expect(first).toMatchObject({ incidentStart: null, incidentEnd: null });
+    expect(first?.deliveryId).not.toBe(later?.deliveryId);
   });
 
   it("reads a route gone from the lookback as idle, and a route moving to another flag as no recovery", () => {

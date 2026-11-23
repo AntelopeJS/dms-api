@@ -79,7 +79,8 @@ export function recoveryOf(
   if (route && routeFlag(route.state)) return null;
   const state = recoveredState(route);
   const ref = routeRef(previous.method, previous.uri);
-  const incidentEnd = route?.incident?.end?.toISOString() ?? null;
+  const incident = previous.flag === "broken" ? route?.incident : null;
+  const incidentEnd = incident?.end?.toISOString() ?? null;
   return {
     deliveryId: `api.route-recovered:${key}:${previous.flag}:${incidentEnd ?? pollMinute(checkedAt)}`,
     routeKey: key,
@@ -88,7 +89,7 @@ export function recoveryOf(
     uri: previous.uri,
     previousFlag: previous.flag,
     state,
-    incidentStart: route?.incident?.start?.toISOString() ?? null,
+    incidentStart: incident?.start?.toISOString() ?? null,
     incidentEnd,
     requestsLast24h: route?.traffic.requests ?? 0,
     errorRate: route ? errorShare(route.traffic) : 0,
