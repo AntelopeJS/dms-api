@@ -7,7 +7,7 @@ import { z } from "zod";
 
 const ROOT = join(__dirname, "..", "..");
 
-const dependencies = z.record(z.string()).default({});
+const dependencies = z.record(z.string(), z.string()).default({});
 
 const manifestSchema = z.object({
   version: z.string(),
@@ -39,18 +39,17 @@ const casesSchema = z.object({
 });
 
 /** A locale tree read as the dotted keys of its leaves, the empty key standing for a leaf itself. */
-const localeKeysSchema: z.ZodType<string[], z.ZodTypeDef, unknown> = z.lazy(
-  () =>
-    z.union([
-      z.string().transform(() => [""]),
-      z
-        .record(localeKeysSchema)
-        .transform((entries) =>
-          Object.entries(entries).flatMap(([key, inner]) =>
-            inner.map((rest) => (rest ? `${key}.${rest}` : key)),
-          ),
+const localeKeysSchema: z.ZodType<string[], unknown> = z.lazy(() =>
+  z.union([
+    z.string().transform(() => [""]),
+    z
+      .record(z.string(), localeKeysSchema)
+      .transform((entries) =>
+        Object.entries(entries).flatMap(([key, inner]) =>
+          inner.map((rest) => (rest ? `${key}.${rest}` : key)),
         ),
-    ]),
+      ),
+  ]),
 );
 
 /** A file of the checkout as text, line endings normalised. */

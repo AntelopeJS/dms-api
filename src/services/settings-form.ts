@@ -175,7 +175,7 @@ export type SettingsFieldError = {
 
 export type SettingsValidation =
   | { ok: true; data: SettingsBody }
-  | { ok: false; error: SettingsFieldError | z.ZodIssue[] };
+  | { ok: false; error: SettingsFieldError | z.core.$ZodIssue[] };
 
 /**
  * Validates the form's body. A header name HTTP does not allow, or one the

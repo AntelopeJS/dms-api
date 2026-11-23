@@ -84,7 +84,7 @@ interface Depth {
   leaf: string;
 }
 
-const depthSchema: z.ZodType<Depth, z.ZodTypeDef, Json> = z.lazy(() =>
+const depthSchema: z.ZodType<Depth, Json> = z.lazy(() =>
   z.union([
     z.string().transform((leaf) => ({ levels: 0, leaf })),
     z
@@ -101,7 +101,7 @@ function storedBody(log: Json, field: "requestBody" | "responseBody"): Json {
 
 function storedHeaders(log: Json): string[] {
   return Object.keys(
-    z.object({ requestHeaders: z.record(z.string()) }).parse(log)
+    z.object({ requestHeaders: z.record(z.string(), z.string()) }).parse(log)
       .requestHeaders,
   ).sort();
 }
