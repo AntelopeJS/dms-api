@@ -1,17 +1,25 @@
 import { byteLength } from './format'
+import {
+  isBoolean,
+  isList,
+  isNumber,
+  isObject,
+  isOneOf,
+  isString,
+  isStringList,
+  isStringRecord,
+} from './guards'
 import { startsWithRequestBody } from './http'
 import {
+  AUTH_MODES,
   type BodyMode,
+  BODY_MODES,
+  type CapturedSummary,
   decodedValue,
   type KeyValue,
+  TESTER_ERROR_CODES,
   type TesterResult,
 } from './testerRequest'
-
-// What the tester keeps between two visits: a draft per route for the
-// session (sessionStorage), the calls made per route and the headers sent to
-// every route in this browser (localStorage), and the routes a write was
-// confirmed on. A credential typed in a header (Authorization, Cookie,
-// X-Api-Key) is never written to storage: it stays in memory until reload.
 
 /** The editable part of the tester: what is sent. */
 export interface DraftRequest {
@@ -24,8 +32,10 @@ export interface DraftRequest {
   useSession: boolean
 }
 
+const BODY_ORIGINS = ['example', 'replay', 'history', 'edited'] as const
+
 /** Where the body in the editor comes from, for the line under it. */
-export type BodyOrigin = 'example' | 'replay' | 'history' | 'edited'
+export type BodyOrigin = (typeof BODY_ORIGINS)[number]
 
 /** The captured request a draft was replayed from, and what it could not restore. */
 export interface ReplayInfo {
@@ -76,35 +86,222 @@ const secrets = new Map<string, KeyValue[]>()
 
 type StorageName = 'localStorage' | 'sessionStorage'
 
-function read<T>(storage: StorageName, key: string): T | null {
+type Storable = TesterDraft | HistoryEntry[] | KeyValue[] | string[]
+
+function read<T>(
+  storage: StorageName,
+  key: string,
+  isStored: (stored: unknown) => stored is T,
+): T | null {
   if (typeof window === 'undefined') return null
   try {
     const raw = window[storage].getItem(key)
-    return raw ? (JSON.parse(raw) as T) : null
+    const stored: unknown = raw ? JSON.parse(raw) : null
+    return isStored(stored) ? stored : null
   } catch {
     return null
   }
 }
 
-function write(storage: StorageName, key: string, value: unknown): void {
+/** Storage full or disabled: the tester's memory is a convenience, never a blocker. */
+function write(
+  storage: StorageName,
+  key: string,
+  value: Storable | null,
+): void {
   if (typeof window === 'undefined') return
   try {
     if (value === null) window[storage].removeItem(key)
     else window[storage].setItem(key, JSON.stringify(value))
   } catch {
-    // Storage full or disabled: the tester's memory is a convenience, never a blocker.
+    return
   }
+}
+
+function isKeyValue(value: unknown): value is KeyValue {
+  return (
+    isObject(value) &&
+    'name' in value &&
+    typeof value.name === 'string' &&
+    'value' in value &&
+    typeof value.value === 'string'
+  )
+}
+
+function isKeyValues(value: unknown): value is KeyValue[] {
+  return Array.isArray(value) && value.every(isKeyValue)
+}
+
+function isCapturedSummary(value: unknown): value is CapturedSummary {
+  return (
+    isObject(value) &&
+    'id' in value &&
+    typeof value.id === 'string' &&
+    'status' in value &&
+    typeof value.status === 'number' &&
+    'responseTimeMs' in value &&
+    (value.responseTimeMs === null ||
+      typeof value.responseTimeMs === 'number') &&
+    'slow' in value &&
+    typeof value.slow === 'boolean'
+  )
+}
+
+type ResultAnswer = Pick<
+  TesterResult,
+  'status' | 'durationMs' | 'headers' | 'body' | 'auth' | 'at'
+>
+
+function isResultAnswer(value: unknown): value is ResultAnswer {
+  return (
+    isObject(value) &&
+    'status' in value &&
+    typeof value.status === 'number' &&
+    'durationMs' in value &&
+    typeof value.durationMs === 'number' &&
+    'headers' in value &&
+    isStringRecord(value.headers) &&
+    'body' in value &&
+    typeof value.body === 'string' &&
+    'auth' in value &&
+    isOneOf(AUTH_MODES, value.auth) &&
+    'at' in value &&
+    typeof value.at === 'number'
+  )
+}
+
+type ResultCounts = Pick<
+  TesterResult,
+  'bodySize' | 'bodyTruncated' | 'abandoned' | 'requestId'
+>
+
+function isResultCounts(value: unknown): value is ResultCounts {
+  return (
+    isObject(value) &&
+    (!('bodySize' in value) ||
+      value.bodySize === undefined ||
+      isNumber(value.bodySize)) &&
+    (!('bodyTruncated' in value) ||
+      value.bodyTruncated === undefined ||
+      isBoolean(value.bodyTruncated)) &&
+    (!('abandoned' in value) ||
+      value.abandoned === undefined ||
+      isBoolean(value.abandoned)) &&
+    (!('requestId' in value) ||
+      value.requestId === undefined ||
+      isString(value.requestId))
+  )
+}
+
+type ResultNotes = Pick<
+  TesterResult,
+  'error' | 'message' | 'secrets' | 'captured'
+>
+
+function isResultNotes(value: unknown): value is ResultNotes {
+  return (
+    isObject(value) &&
+    (!('error' in value) ||
+      value.error === undefined ||
+      isOneOf(TESTER_ERROR_CODES, value.error)) &&
+    (!('message' in value) ||
+      value.message === undefined ||
+      isString(value.message)) &&
+    (!('secrets' in value) ||
+      value.secrets === undefined ||
+      isStringList(value.secrets)) &&
+    (!('captured' in value) ||
+      value.captured === undefined ||
+      isCapturedSummary(value.captured))
+  )
+}
+
+function isTesterResult(value: unknown): value is TesterResult {
+  return isResultAnswer(value) && isResultCounts(value) && isResultNotes(value)
+}
+
+function isDraftRequest(value: unknown): value is DraftRequest {
+  return (
+    isObject(value) &&
+    'bodyMode' in value &&
+    isOneOf(BODY_MODES, value.bodyMode) &&
+    'body' in value &&
+    typeof value.body === 'string' &&
+    'form' in value &&
+    isKeyValues(value.form) &&
+    'headers' in value &&
+    isKeyValues(value.headers) &&
+    'query' in value &&
+    isKeyValues(value.query) &&
+    'pathValues' in value &&
+    isStringRecord(value.pathValues) &&
+    'useSession' in value &&
+    typeof value.useSession === 'boolean'
+  )
+}
+
+function isReplayInfo(value: unknown): value is ReplayInfo {
+  return (
+    isObject(value) &&
+    'id' in value &&
+    typeof value.id === 'string' &&
+    'at' in value &&
+    typeof value.at === 'string' &&
+    'skippedHeaders' in value &&
+    isStringList(value.skippedHeaders) &&
+    'bodyMissing' in value &&
+    typeof value.bodyMissing === 'boolean' &&
+    'bodyOmitted' in value &&
+    (value.bodyOmitted === null || typeof value.bodyOmitted === 'string') &&
+    'bodyTruncated' in value &&
+    typeof value.bodyTruncated === 'boolean'
+  )
+}
+
+function isTesterDraft(value: unknown): value is TesterDraft {
+  return (
+    isObject(value) &&
+    'request' in value &&
+    isDraftRequest(value.request) &&
+    'origin' in value &&
+    isOneOf(BODY_ORIGINS, value.origin) &&
+    'replay' in value &&
+    (value.replay === null || isReplayInfo(value.replay)) &&
+    'result' in value &&
+    (value.result === null || isTesterResult(value.result))
+  )
+}
+
+function isEntry(value: unknown): value is HistoryEntry {
+  return (
+    isObject(value) &&
+    'at' in value &&
+    typeof value.at === 'number' &&
+    'method' in value &&
+    typeof value.method === 'string' &&
+    'path' in value &&
+    typeof value.path === 'string' &&
+    'request' in value &&
+    isDraftRequest(value.request) &&
+    (!('secretsRemoved' in value) ||
+      value.secretsRemoved === undefined ||
+      isStringList(value.secretsRemoved)) &&
+    'result' in value &&
+    isTesterResult(value.result)
+  )
 }
 
 export function isSecretHeader(name: string): boolean {
   return SECRET_HEADERS.has(name.toLowerCase())
 }
 
-/** `headers` split into what may be stored and the credentials. */
-export function splitSecrets(headers: KeyValue[]): {
+interface SplitHeaders {
   kept: KeyValue[]
   removed: KeyValue[]
-} {
+}
+
+/** `headers` split into what may be stored and the credentials. */
+export function splitSecrets(headers: KeyValue[]): SplitHeaders {
   return {
     kept: headers.filter((entry) => !isSecretHeader(entry.name)),
     removed: headers.filter((entry) => isSecretHeader(entry.name)),
@@ -134,19 +331,10 @@ export function lostSecrets(sent: string[], headers: KeyValue[]): string[] {
   return [...lost.values()]
 }
 
-// --- History ---
-
-function isEntry(value: unknown): value is HistoryEntry {
-  const entry = value as HistoryEntry | null
-  return (
-    !!entry && typeof entry.at === 'number' && !!entry.result && !!entry.request
-  )
-}
-
 /** The calls made to `route` from this browser, newest first. */
 export function loadHistory(route: string): HistoryEntry[] {
-  const parsed = read<unknown>('localStorage', `${HISTORY_PREFIX}${route}`)
-  return Array.isArray(parsed) ? parsed.filter(isEntry) : []
+  const stored = read('localStorage', `${HISTORY_PREFIX}${route}`, isList)
+  return stored ? stored.filter(isEntry) : []
 }
 
 /** `entries` with the result of the call sent as `requestId` patched. */
@@ -200,16 +388,15 @@ export function historyEntry(
   result: TesterResult,
 ): HistoryEntry {
   const { kept, removed } = splitSecrets(request.headers)
-  return {
+  const entry: HistoryEntry = {
     at: result.at,
     method,
     path,
     request: { ...request, headers: kept },
-    ...(removed.length
-      ? { secretsRemoved: removed.map((entry) => entry.name) }
-      : {}),
     result,
   }
+  if (removed.length) entry.secretsRemoved = removed.map((item) => item.name)
+  return entry
 }
 
 /** The path values of the last call that succeeded with all of them set. */
@@ -231,12 +418,10 @@ export function lastSuccessfulPathValues(
     : {}
 }
 
-// --- Drafts ---
-
 /** A route's draft, its credentials put back. */
 export function loadDraft(route: string): TesterDraft | null {
-  const draft = read<TesterDraft>('sessionStorage', `${DRAFT_PREFIX}${route}`)
-  if (!draft?.request) return null
+  const draft = read('sessionStorage', `${DRAFT_PREFIX}${route}`, isTesterDraft)
+  if (!draft) return null
   const kept = secrets.get(`${DRAFT_PREFIX}${route}`) ?? []
   return {
     ...draft,
@@ -265,17 +450,19 @@ export function sameRequest(a: DraftRequest, b: DraftRequest): boolean {
     list
       .filter((entry) => entry.name || entry.value)
       .map((entry) => [entry.name, entry.value])
-  const shape = (request: DraftRequest) =>
+  const fingerprint = (request: DraftRequest) =>
     JSON.stringify([
       request.bodyMode,
       request.bodyMode === 'none' ? '' : request.body,
       rows(request.form),
       rows(request.headers),
       rows(request.query),
-      Object.entries(request.pathValues).sort(),
+      Object.entries(request.pathValues).sort(([left], [right]) =>
+        left.localeCompare(right),
+      ),
       request.useSession,
     ])
-  return shape(a) === shape(b)
+  return fingerprint(a) === fingerprint(b)
 }
 
 /**
@@ -321,12 +508,9 @@ export function exampleRequest(
   }
 }
 
-// --- Headers sent to every route ---
-
 export function loadCommonHeaders(): KeyValue[] {
-  const stored = read<KeyValue[]>('localStorage', COMMON_HEADERS_KEY)
   return [
-    ...(Array.isArray(stored) ? stored : []),
+    ...(read('localStorage', COMMON_HEADERS_KEY, isKeyValues) ?? []),
     ...(secrets.get(COMMON_HEADERS_KEY) ?? []),
   ]
 }
@@ -339,16 +523,16 @@ export function saveCommonHeaders(headers: KeyValue[]): void {
   write('localStorage', COMMON_HEADERS_KEY, kept.length ? kept : null)
 }
 
-// --- Writes confirmed this session ---
-
 export function hasConfirmedWrite(route: string): boolean {
-  const confirmed = read<string[]>('sessionStorage', CONFIRMED_WRITES_KEY)
-  return Array.isArray(confirmed) && confirmed.includes(route)
+  return (
+    read('sessionStorage', CONFIRMED_WRITES_KEY, isStringList)?.includes(
+      route,
+    ) ?? false
+  )
 }
 
 export function rememberConfirmedWrite(route: string): void {
-  const confirmed = read<string[]>('sessionStorage', CONFIRMED_WRITES_KEY)
-  const list = Array.isArray(confirmed) ? confirmed : []
+  const list = read('sessionStorage', CONFIRMED_WRITES_KEY, isStringList) ?? []
   if (!list.includes(route))
     write('sessionStorage', CONFIRMED_WRITES_KEY, [...list, route])
 }

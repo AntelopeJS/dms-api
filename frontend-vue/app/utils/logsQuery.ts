@@ -1,23 +1,11 @@
-// The request logs page keeps its filters in its URL.
-//
-// `?method=`, `?slow=`, `?route=`, `?path=`, `?error=` and an incident's
-// `?since=` / `?until=` are the request table's arrival filters
-// (`queryParamFilters`, `src/pages/logs.ts`): the table reads them from the
-// URL whatever wrote them (a link of another page, the filters bar), counts
-// its tabs with them, and follows them as they change. So the page has one
-// filter state, which a reload, Back and a shared link all keep. `?from=`
-// names the page a link came from, for the band that says so.
-//
-// The period is the toolbar's DMS `PeriodSelector`'s, which the table
-// follows through its period scope and the blocks read with
-// `usePeriodScope` (`useApiPeriod`): its "All time" is every request kept.
-// An incident's range narrows that period without replacing it, so the
-// page stays on the period the user chose. A change to the period is
-// written in its URL key, which the selector follows.
-
 import { parseRouteRef } from './http'
 
-type Query = Record<string, unknown>
+type QueryValue = string | null | undefined | Array<string | null>
+
+type Query = Record<string, QueryValue>
+
+/** A URL query of plain strings, the filters' output. */
+export type LogsQuery = Record<string, string>
 
 /** What the filters read of the page's period, `null` until it is known. */
 export type LogsPeriod = Pick<PeriodState, 'preset' | 'range'> | null
@@ -56,7 +44,13 @@ interface IncidentRange {
   to: Date
 }
 
-/** The filters of the request logs, as the URL holds them. */
+/**
+ * The filters of the request logs, as the URL holds them: `?method=`,
+ * `?slow=`, `?route=`, `?path=`, `?error=` and an incident's `?since=` and
+ * `?until=` are the request table's arrival filters, which keep a reload,
+ * Back and a shared link on one filter state. `?from=` names the page a link
+ * came from.
+ */
 export interface LogsFilters {
   method?: string
   slow: boolean
@@ -81,9 +75,9 @@ export interface LogsFiltersPatch {
   incident?: null
 }
 
-function single(value: unknown): string | undefined {
+function single(value: QueryValue): string | undefined {
   const first = Array.isArray(value) ? value[0] : value
-  return typeof first === 'string' && first !== '' ? first : undefined
+  return first || undefined
 }
 
 function oneOf<T extends string>(
@@ -110,7 +104,6 @@ function readIncident(query: Query): IncidentRange | undefined {
 export function readLogsFilters(query: Query): LogsFilters {
   return {
     method: oneOf(LOG_METHODS, single(query.method)),
-    // The table sends the value as it is, and the server reads "true" only.
     slow: single(query.slow) === 'true',
     route: single(query.route),
     path: single(query.path),
@@ -136,7 +129,7 @@ export function windowPreset(period: LogsPeriod): string | undefined {
  * The period a link to the request logs carries, for their selector to open
  * on: the preset the period follows, if any.
  */
-export function linkedPeriod(period: LogsPeriod): Record<string, string> {
+export function linkedPeriod(period: LogsPeriod): LogsQuery {
   const preset = windowPreset(period)
   return preset ? { [PERIOD_KEY]: preset } : {}
 }
@@ -166,18 +159,15 @@ export function routeMethod(route: string | undefined): string | undefined {
  * filter, forgets the page the link came from: the band would name an
  * origin the filters no longer come from.
  */
-export function withLogsFilters(
-  query: Query,
-  patch: LogsFiltersPatch,
-): Record<string, string> {
-  const next: Record<string, string> = {}
+export function withLogsFilters(query: Query, patch: LogsFiltersPatch) {
+  const next = new Map<string, string>()
   for (const [key, value] of Object.entries(query)) {
     const text = single(value)
-    if (text !== undefined) next[key] = text
+    if (text !== undefined) next.set(key, text)
   }
   const set = (key: string, value: string | null | undefined) => {
-    if (value) next[key] = value
-    else delete next[key]
+    if (value) next.set(key, value)
+    else next.delete(key)
   }
   if (patch.allTime) set(PERIOD_KEY, ALL_TIME)
   if ('method' in patch) set('method', patch.method)
@@ -189,16 +179,17 @@ export function withLogsFilters(
     set('since', null)
     set('until', null)
   }
-  const linked = LINK_FILTER_KEYS.some((key) => !!next[key]) || !!next.since
-  if (patch.allTime || !linked) delete next.from
-  return next
+  const linked =
+    LINK_FILTER_KEYS.some((key) => next.has(key)) || next.has('since')
+  if (patch.allTime || !linked) next.delete('from')
+  return Object.fromEntries(next)
 }
 
 /**
  * The filters' part of the URL, cleared: method, slowness and links, an
  * incident's range among them. The period stays the selector's.
  */
-export function clearedLogsFilters(query: Query): Record<string, string> {
+export function clearedLogsFilters(query: Query): LogsQuery {
   return withLogsFilters(query, {
     method: null,
     slow: false,
@@ -240,21 +231,22 @@ export function logsEmptyCause(
   if (state === 'error') return 'error'
   if (search?.trim()) return 'search'
   if (hasLinkFilters(filters)) return 'link'
-  // A period frames the rows unless it is "All time".
   if (hasLogsFilters(filters) || !isAllTime(period)) return 'filters'
   return 'first-run'
 }
 
 const BYTES_PER_KB = 1024
 
+export interface BodyLimit {
+  unit: 'none' | 'b' | 'kb'
+  amount: number
+}
+
 /**
  * The body size limit in the unit that reads best: `none` when bodies are
  * not captured, bytes under 1 KB (a 300 B limit is not "0 KB").
  */
-export function bodyLimit(bytes: number): {
-  unit: 'none' | 'b' | 'kb'
-  amount: number
-} {
+export function bodyLimit(bytes: number): BodyLimit {
   if (bytes <= 0) return { unit: 'none', amount: 0 }
   if (bytes < BYTES_PER_KB) return { unit: 'b', amount: Math.round(bytes) }
   return { unit: 'kb', amount: Math.round((bytes / BYTES_PER_KB) * 10) / 10 }

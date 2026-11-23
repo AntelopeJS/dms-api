@@ -7,20 +7,20 @@ export type ApiTone =
   | 'error'
   | 'info'
 
+const METHOD_TONES = new Map<string, ApiTone>([
+  ['GET', 'info'],
+  ['POST', 'success'],
+  ['PUT', 'warning'],
+  ['PATCH', 'warning'],
+  ['DELETE', 'error'],
+])
+
 /**
  * One colour per method, the same in every screen and theme: reads cyan,
  * creates green, changes amber, deletes red.
  */
-const METHOD_TONES: Record<string, ApiTone> = {
-  GET: 'info',
-  POST: 'success',
-  PUT: 'warning',
-  PATCH: 'warning',
-  DELETE: 'error',
-}
-
 export function methodTone(method: string | undefined): ApiTone {
-  return METHOD_TONES[(method ?? '').toUpperCase()] ?? 'neutral'
+  return METHOD_TONES.get((method ?? '').toUpperCase()) ?? 'neutral'
 }
 
 /** Methods that change data: the tester warns before sending them. */
@@ -69,34 +69,34 @@ export function statusTone(status: number | string | undefined): ApiTone {
   return STATUS_CLASS_TONES[statusClassOf(code)]
 }
 
-const STATUS_TEXTS: Record<number, string> = {
-  200: 'OK',
-  201: 'Created',
-  202: 'Accepted',
-  204: 'No Content',
-  301: 'Moved Permanently',
-  302: 'Found',
-  304: 'Not Modified',
-  400: 'Bad Request',
-  401: 'Unauthorized',
-  403: 'Forbidden',
-  404: 'Not Found',
-  405: 'Method Not Allowed',
-  409: 'Conflict',
-  410: 'Gone',
-  413: 'Payload Too Large',
-  415: 'Unsupported Media Type',
-  422: 'Unprocessable Entity',
-  429: 'Too Many Requests',
-  500: 'Internal Server Error',
-  502: 'Bad Gateway',
-  503: 'Service Unavailable',
-  504: 'Gateway Timeout',
-}
+const STATUS_TEXTS = new Map<number, string>([
+  [200, 'OK'],
+  [201, 'Created'],
+  [202, 'Accepted'],
+  [204, 'No Content'],
+  [301, 'Moved Permanently'],
+  [302, 'Found'],
+  [304, 'Not Modified'],
+  [400, 'Bad Request'],
+  [401, 'Unauthorized'],
+  [403, 'Forbidden'],
+  [404, 'Not Found'],
+  [405, 'Method Not Allowed'],
+  [409, 'Conflict'],
+  [410, 'Gone'],
+  [413, 'Payload Too Large'],
+  [415, 'Unsupported Media Type'],
+  [422, 'Unprocessable Entity'],
+  [429, 'Too Many Requests'],
+  [500, 'Internal Server Error'],
+  [502, 'Bad Gateway'],
+  [503, 'Service Unavailable'],
+  [504, 'Gateway Timeout'],
+])
 
 /** The reason phrase of a status code, when it is a common one. */
 export function statusText(status: number): string {
-  return STATUS_TEXTS[status] ?? ''
+  return STATUS_TEXTS.get(status) ?? ''
 }
 
 /** Segments of a route path, each flagged when it is a `:param`. */
@@ -107,9 +107,9 @@ export interface PathSegment {
 
 export function pathSegments(path: string): PathSegment[] {
   return path
-    .split(/(:[A-Za-z_][\w]*)/)
+    .split(/(:[a-z_]\w*)/i)
     .filter(Boolean)
-    .map((text) => ({ text, param: /^:[A-Za-z_]/.test(text) }))
+    .map((text) => ({ text, param: /^:[a-z_]/i.test(text) }))
 }
 
 /** `:id` names of a route path. */
@@ -122,16 +122,44 @@ export function pathParams(path: string): string[] {
 export function parseRouteRef(
   ref: string | null | undefined,
 ): { method: string; path: string } | null {
-  const match = ref?.trim().match(/^([A-Za-z]+)\s+(\/\S*)$/)
+  const match = ref?.trim().match(/^([a-z]+)\s+(\/\S*)$/i)
   return match ? { method: match[1].toUpperCase(), path: match[2] } : null
+}
+
+interface StatusField {
+  status?: number
+}
+
+interface StatusCarrier extends StatusField {
+  statusCode?: number
+  response?: StatusField
+}
+
+function isOptionalNumber(value: unknown): value is number | undefined {
+  return value === undefined || typeof value === 'number'
+}
+
+function isStatusField(value: unknown): value is StatusField {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    (!('status' in value) || isOptionalNumber(value.status))
+  )
+}
+
+function isStatusCarrier(value: unknown): value is StatusCarrier {
+  return (
+    isStatusField(value) &&
+    (!('statusCode' in value) || isOptionalNumber(value.statusCode)) &&
+    (!('response' in value) ||
+      value.response === undefined ||
+      isStatusField(value.response))
+  )
 }
 
 /** The HTTP status of a failed request, when it has one. */
 export function errorStatus(error: unknown): number | undefined {
-  const value = error as {
-    statusCode?: number
-    status?: number
-    response?: { status?: number }
-  }
-  return value?.statusCode ?? value?.status ?? value?.response?.status
+  return isStatusCarrier(error)
+    ? (error.statusCode ?? error.status ?? error.response?.status)
+    : undefined
 }

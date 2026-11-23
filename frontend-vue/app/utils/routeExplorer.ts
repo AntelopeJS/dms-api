@@ -180,19 +180,31 @@ export function initialRoute<T extends ExplorerRoute>(
   )
 }
 
+interface MessageCount {
+  message: string
+  count: number
+}
+
+interface ObservedMessages {
+  messages: MessageCount[]
+  /** Distinct messages in all, the listed ones included. */
+  messageCount: number
+}
+
+interface ListedMessages {
+  messages: MessageCount[]
+  more: number
+}
+
 /**
  * The messages listed under a status of the documentation, each with its own
  * count, and how many distinct ones are left out: the status's volume is the
  * status's, never its first message's.
  */
 export function listedMessages(
-  observed: {
-    messages: Array<{ message: string; count: number }>
-    /** Distinct messages in all, the listed ones included. */
-    messageCount: number
-  },
+  observed: ObservedMessages,
   limit: number,
-): { messages: Array<{ message: string; count: number }>; more: number } {
+): ListedMessages {
   const messages = observed.messages.slice(0, limit)
   return {
     messages,
@@ -208,11 +220,13 @@ export function optionId(index: number): string {
 const MINUTES_PER_HOUR = 60
 const MINUTES_PER_DAY = 1440
 
-/** A health window in minutes, as its unit and amount: 15 → min 15, 1440 → h 24. */
-export function windowParts(minutes: number): {
+interface WindowPart {
   unit: 'min' | 'h' | 'd'
   amount: number
-} {
+}
+
+/** A health window in minutes, as its unit and amount: 15 → min 15, 1440 → h 24. */
+export function windowParts(minutes: number): WindowPart {
   if (minutes >= MINUTES_PER_DAY * 2 && minutes % MINUTES_PER_DAY === 0)
     return { unit: 'd', amount: minutes / MINUTES_PER_DAY }
   if (minutes >= MINUTES_PER_HOUR && minutes % MINUTES_PER_HOUR === 0)
@@ -226,6 +240,16 @@ export const ROUTES_PAGE_PATH = '/modules/api/routes'
 /** Query parameter holding the selected route, as `METHOD /path`. */
 export const ROUTE_QUERY_KEY = 'route'
 
+type RouteQuery = Record<
+  string,
+  string | null | undefined | Array<string | null>
+>
+
+interface RouteLocation {
+  path: string
+  query: RouteQuery
+}
+
 /**
  * The address a visit of the Routes page naming no route is sent to: the
  * same page with `?route=` the route `initialRoute` picks, the rest of its
@@ -233,12 +257,12 @@ export const ROUTE_QUERY_KEY = 'route'
  * no route to pick.
  */
 export function defaultRouteLocation(
-  to: { path: string; query: Record<string, unknown> },
+  to: RouteLocation,
   routes: ExplorerRoute[],
   last: string | null,
-): { path: string; query: Record<string, unknown> } | undefined {
+): RouteLocation | undefined {
   const named = to.query[ROUTE_QUERY_KEY]
-  if (typeof named === 'string' && named) return undefined
+  if (named && !Array.isArray(named)) return undefined
   const first = initialRoute(routes, last)
   if (!first) return undefined
   return {

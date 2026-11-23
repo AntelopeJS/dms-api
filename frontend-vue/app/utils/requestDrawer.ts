@@ -1,7 +1,3 @@
-// Reading a captured request, for the request tables' cells and the side
-// panel a row opens (`RequestDetail`): its URL, its time, its duration
-// against the slow threshold, its bodies and the lists it leads to.
-
 import { daysBefore, type DateFormat } from './format'
 
 const CLOCK_TIME: Intl.DateTimeFormatOptions = {
@@ -144,8 +140,14 @@ export const BODY_OMISSIONS = [
 ] as const
 export type BodyOmission = (typeof BODY_OMISSIONS)[number]
 
+const KNOWN_OMISSIONS: ReadonlySet<unknown> = new Set(BODY_OMISSIONS)
+
+function isBodyOmission(value: unknown): value is BodyOmission {
+  return KNOWN_OMISSIONS.has(value)
+}
+
 export function bodyOmission(value: unknown): BodyOmission | null {
-  return BODY_OMISSIONS.find((reason) => reason === value) ?? null
+  return isBodyOmission(value) ? value : null
 }
 
 /**
@@ -168,7 +170,7 @@ export function originalBodySize(
     )?.[1],
   )
   const size =
-    typeof recorded === 'number' && Number.isFinite(recorded)
+    recorded !== null && recorded !== undefined && Number.isFinite(recorded)
       ? recorded
       : declared
   return Number.isFinite(size) && size > kept ? size : undefined
