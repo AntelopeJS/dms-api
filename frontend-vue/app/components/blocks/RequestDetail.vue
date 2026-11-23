@@ -23,20 +23,6 @@ import ApiTesterBadge from '../internal/ApiTesterBadge.vue'
 import RequestGeneral from '../internal/RequestGeneral.vue'
 import RequestTiming from '../internal/RequestTiming.vue'
 
-// One captured request, in the DMS drawer on the right, which a request
-// table's row opens (a `drawer` row action, `src/pages/request-table.ts`).
-// The DMS draws the drawer's header: the request's method and path
-// ("POST /api/orders", its `rowTitle`), its position over the whole table
-// ("3 of 26,120"), the previous / next buttons, J / K and close, and the
-// not-found state of a `?record=` that names no stored request. Here, the top stays put: where the request
-// went, how it ended, what to do with it. Below, the summary puts
-// the error first, then what the request was and how long it took against
-// the slow threshold; then what was sent and what came back. Every action
-// leads somewhere: the tester, the route, the requests alike.
-// The drawer's body scrolls and pads, as for every row drawer (dms#375):
-// the top sticks under the drawer's header, both at its 16px inset with an
-// inset divider, and the content lays out by the drawer's width.
-
 /** Where the console's pages are: the page on screen names its own links. */
 const MODULE_BASE = '/modules/api'
 /** Pages a link to the request logs may name as its origin (`?from=`). */
@@ -70,14 +56,10 @@ const {
   formatRelativeTime,
 } = useRegionalFormat({ locale: 'format' })
 const toast = useToast()
-// Read through the router, not `useDmsRoute()`: each call of it reassigns
-// the route's query, which the request tables watch for their filters.
 const router = useDmsRouter()
 
 const requestId = computed(() => props.rowData?._id ?? null)
 
-// The page the panel is open on: a link to the logs says where it came from,
-// and the route on screen is not offered again.
 const page = computed(() => {
   const current = router.currentRoute.value.path
   return current.startsWith(`${MODULE_BASE}/`)
@@ -90,11 +72,10 @@ const logRead = useApiData<RequestLog>(
     requestId.value && isRequestId(requestId.value)
       ? `${props.detailUrl}/${encodeURIComponent(requestId.value)}`
       : null,
-  // A request's log never changes once captured.
   { refreshOnPageRefresh: false },
 )
-const { error, refresh } = logRead
-// Another request shows nothing until its log is in.
+const { error } = logRead
+const refresh = () => logRead.refresh()
 const log = computed(() =>
   logRead.placeholder.value ? null : logRead.data.value,
 )
@@ -108,8 +89,6 @@ const tabs = computed(() => [
   { label: t('api.request.tabs.response'), value: 'response' },
 ])
 
-// Why nothing shows: a link naming no request, a request pruned, a role that
-// lists requests but may not read them, the console not answering.
 const failure = computed<'invalid' | 'not_found' | 'forbidden' | 'error'>(
   () => {
     if (requestId.value && !isRequestId(requestId.value)) return 'invalid'
@@ -120,7 +99,6 @@ const failure = computed<'invalid' | 'not_found' | 'forbidden' | 'error'>(
   },
 )
 
-// Closing is the DMS header's: only a failed read offers something here.
 const failureActions = computed(() =>
   failure.value === 'error'
     ? [
@@ -133,7 +111,6 @@ const failureActions = computed(() =>
     : [],
 )
 
-// --- the header ---
 const url = computed(() =>
   log.value
     ? requestUrl(apiOrigin.value ?? '', log.value.rawPath, log.value.query)
@@ -151,7 +128,6 @@ const ratio = computed(() =>
 /** A duration that never wraps between its number and its unit. */
 const ms = (value: number) => unbreakable(formatMs(value, locale.value))
 
-// --- the error, folded to six lines ---
 const message = ref<HTMLElement | null>(null)
 const messageOpen = ref(false)
 const messageClamped = ref(false)
@@ -163,7 +139,6 @@ watch([message, () => log.value?.error?.message], async ([element]) => {
   messageClamped.value = element.scrollHeight > element.clientHeight + 1
 })
 
-// --- the summary ---
 const general = computed(() => {
   const value = log.value
   if (!value) return []
@@ -207,7 +182,6 @@ const general = computed(() => {
   return rows
 })
 
-// --- actions ---
 const curl = computed(() =>
   log.value ? toCurl(capturedSnippetRequest(log.value, apiOrigin.value)) : '',
 )
@@ -228,7 +202,6 @@ async function copyCurl() {
   }
 }
 
-// The tester takes over with `?replay=<id>`: it reads the request itself.
 const testerLink = computed(() =>
   log.value?.links.tester
     ? `${log.value.links.tester}&replay=${encodeURIComponent(log.value._id)}`
@@ -269,9 +242,6 @@ const seeAlso = computed(() => {
   ]
 })
 
-// A log stored without the reason of a missing body: the body capture turned
-// off says it. Read once per session, only then, in the browser, and by an
-// owner only: a refusal leaves the generic reason.
 const settingsSummary = useApiData<{ requestLogMaxBodyKb?: number }>(
   SETTINGS_SUMMARY_API,
   { immediate: false, server: false, refreshOnPageRefresh: false },

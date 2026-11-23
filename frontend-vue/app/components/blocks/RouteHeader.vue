@@ -7,10 +7,6 @@ import { linkedPeriod } from '../../utils/logsQuery'
 import ApiMethodBadge from '../internal/ApiMethodBadge.vue'
 import ApiPath from '../internal/ApiPath.vue'
 
-// The selected route, above its tabs: what it is, who may call it, where it
-// comes from, and the two ways out — its requests over the page's period and
-// a cURL to replay it. It names the route in the tab title and the
-// breadcrumb, so two open routes can be told apart.
 defineOptions({ inheritAttrs: false })
 
 const props = withDefaults(
@@ -82,7 +78,6 @@ const auth = computed(() =>
 
 const requestsLink = computed(() => {
   if (!route.value) return ''
-  // The page's period, which the request logs' selector reads the same.
   const query = new URLSearchParams({
     route: route.value.ref,
     ...linkedPeriod(period.value),
@@ -103,8 +98,6 @@ const stateLabel = computed(() => {
   })
 })
 
-// The breadcrumb label is held with the page's path: it never shows on
-// another page, so it needs no clearing when the page goes.
 const opened = computed(() => route.value?.ref ?? null)
 useHead({
   title: computed(() =>
@@ -140,12 +133,8 @@ const firstSeen = computed(() => {
   })
 })
 
-// The tester copies the cURL of the request it is building: a second one,
-// of the bare route, would be a different command under the same name.
 const onTester = computed(() => page.query[props.tabKey] === props.testerTab)
 
-// Live, the route's state is read again on the Statistics tab only: the
-// documentation and the tester read the same detail, and must not move.
 usePageLiveRefresh(
   () => {
     const tab = page.query[props.tabKey]

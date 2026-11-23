@@ -16,12 +16,6 @@ import {
 } from '../../utils/settingsForm'
 import SettingNumberInput from './SettingNumberInput.vue'
 
-// A retention of the Settings form, in days: a few choices (statistics) or a
-// number (request logs, `SettingNumberInput`), drawn by the DMS inputs. Lowering it deletes the
-// data older than the new value at the next hourly prune, so a lowered value
-// says what it deletes, and the save asks to confirm it first (one dialog for
-// both fields): a validator of the enclosing DMS form, which submits it again
-// once confirmed.
 defineOptions({ inheritAttrs: false })
 
 type RetentionKind = 'logs' | 'statistics'
@@ -74,8 +68,6 @@ function impactUrlOf(field: string, days: number): string {
   })}`
 }
 
-// The impact under the field follows the value once it settles: not on
-// every keystroke.
 const impactDays = ref<number | null>(null)
 let impactTimer: ReturnType<typeof setTimeout> | undefined
 watch(
@@ -108,14 +100,15 @@ const impact = computed(() =>
 )
 
 const impactText = computed(() => {
-  if (!lowered.value) return ''
+  const days = model.value
+  if (!isLowered(days, props.initialValue)) return ''
   const value = impact.value
   if (!value) return t('api.settings.retention.impact_pending')
   if (value.requests === 0)
     return t(
       'api.settings.retention.impact_none',
-      { days: formatNumber(model.value as number) },
-      model.value as number,
+      { days: formatNumber(days) },
+      days,
     )
   return t(
     `api.settings.retention.impact_${props.kind}`,
@@ -129,20 +122,22 @@ const impactText = computed(() => {
 
 /** The lowered value, as the save's confirmation lists it; null if not. */
 function pendingChange(): RetentionChange | null {
-  if (!props.id || !isLowered(model.value, props.initialValue)) return null
+  const to = model.value
+  const from = props.initialValue
+  if (!props.id || from == null || !isLowered(to, from)) return null
   return {
     field: props.id,
     label: t(
       'api.settings.retention.confirm_change',
       {
         field: t(`api.settings.retention.${props.kind}_name`),
-        from: formatNumber(props.initialValue as number),
-        to: formatNumber(model.value),
+        from: formatNumber(from),
+        to: formatNumber(to),
       },
-      model.value,
+      to,
     ),
-    from: props.initialValue as number,
-    to: model.value,
+    from,
+    to,
   }
 }
 
@@ -203,8 +198,6 @@ async function askToConfirm(changes: RetentionChange[]): Promise<boolean> {
   })
 }
 
-// The form's two retention fields share one guard, so one dialog lists both
-// (browser only: a server render never saves).
 let release: (() => void) | undefined
 onMounted(() => {
   const field = props.id

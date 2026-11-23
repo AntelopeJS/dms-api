@@ -1,6 +1,4 @@
 <script setup lang="ts">
-// The console is still in beta: a pill at the head of the page's toolbar,
-// its explanation in a tooltip, rather than a banner across the page.
 defineOptions({ inheritAttrs: false })
 
 const { t } = useI18n()
