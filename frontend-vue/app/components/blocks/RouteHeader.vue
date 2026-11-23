@@ -181,7 +181,6 @@ async function copyCurl() {
       />
     </DmsCardPanel>
 
-    <!-- The lines of the header below, at their heights. -->
     <DmsCardPanel v-else-if="pending" :padded="false" class="px-5 py-4">
       <div class="flex h-7 items-center">
         <USkeleton class="h-3 w-40 max-w-full" />
@@ -222,9 +221,6 @@ async function copyCurl() {
       />
     </DmsCardPanel>
 
-    <!-- Each line keeps one height whatever its width and the font drawing
-         it: the actions sit on the folder's line, the path is cut rather
-         than wrapped (whole in its tooltip). -->
     <DmsCardPanel v-else :padded="false" class="px-5 py-4">
       <div class="flex h-7 items-center gap-3">
         <p

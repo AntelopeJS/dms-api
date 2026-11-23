@@ -77,8 +77,6 @@ const {
     @focusout="onFocusOut"
   >
     <DmsCardPanel :padded="false">
-      <!-- The method and the path keep a line of their own when the card is
-           narrow: the buttons go under them, and a long path wraps. -->
       <div class="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
         <div class="flex min-w-0 grow basis-80 items-center gap-3">
           <ApiMethodBadge :method="route.method" solid class="shrink-0" />
@@ -179,10 +177,6 @@ const {
           <UIcon name="i-ph-warning-circle" class="size-3.5 shrink-0" />
           {{ blocker }}
         </span>
-        <!-- The trigger is a plain element: the DMS components load
-             asynchronously, and a tooltip anchored on one still loading
-             reads an element it does not have yet (a direct load of the
-             tab crashed on it). -->
         <UTooltip v-if="writes" :text="t('api.tester.writes_hint')">
           <span class="inline-flex rounded-full" tabindex="0">
             <DmsStatusPill

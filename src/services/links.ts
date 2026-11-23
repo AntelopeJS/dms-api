@@ -61,11 +61,12 @@ export function settingsLink(): string {
 /**
  * A link to the request logs. Every drill-down the console's pages offer
  * ("View 14 server errors", "Open route", "Same error") is a URL like this,
- * so it can be shared, reloaded and opened in a new tab. One that narrows the rows (a route, a path, an
- * error, an incident's range) opens the "All" tab unless it names another:
- * the table would open on the tab kept from the last visit and hide most of
- * what the link names. The table reads its tab from the URL when it mounts,
- * which a link followed in the browser does: the tab has to be in the link.
+ * so it can be shared, reloaded and opened in a new tab. One that narrows the
+ * rows (a route, a path, an error, an incident's range) opens the "All" tab
+ * unless it names another: the table would open on the tab kept from the last
+ * visit and hide most of what the link names. The table reads its tab from the
+ * URL when it mounts, which a link followed in the browser does: the tab has
+ * to be in the link.
  */
 export function logsLink(options: LogsLinkOptions = {}): string {
   const query: Record<string, string> = {};

@@ -334,7 +334,6 @@ const count = (value: number) =>
     :padded="false"
     class="@5xl:max-h-[calc(100dvh-2rem)] @5xl:min-h-[24rem] flex flex-col overflow-hidden"
   >
-    <!-- Stacked above the detail, the list folds to the route it shows. -->
     <button
       ref="foldToggle"
       type="button"
@@ -472,8 +471,6 @@ const count = (value: number) =>
           </p>
         </DmsEmptyState>
 
-        <!-- One focus stop: ↑ / ↓ move the active route
-             (aria-activedescendant), a click opens it. -->
         <div
           v-else
           ref="tree"

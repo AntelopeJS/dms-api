@@ -344,9 +344,6 @@ const metrics = computed<HeroMetric[]>(() => {
     :aria-busy="pending"
     :aria-label="t('api.health.label')"
   >
-    <!-- The loaded hero's boxes: the card (its padding, and its content's
-         82.5 px on a wide screen) and the row of reasons under it, so
-         nothing below moves when the verdict arrives. -->
     <template v-if="pending && !data">
       <DmsCardPanel :padded="false" class="px-4 py-[22px] sm:px-[26px]">
         <div class="flex min-h-[82.5px] items-center gap-6">
@@ -430,8 +427,6 @@ const metrics = computed<HeroMetric[]>(() => {
     </DmsCardPanel>
 
     <template v-else>
-      <!-- The DMS status hero, drawn here: its "since" line takes a tooltip
-           and the 4xx figure stays grey, which DmsStatusSummary cannot do. -->
       <DmsCardPanel
         :padded="false"
         class="px-4 py-[22px] sm:px-[26px]"

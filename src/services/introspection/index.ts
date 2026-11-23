@@ -370,13 +370,11 @@ function inspectHandler(id: string, handler: RouteHandler): RouteInspection {
 }
 
 /**
- * Single swap-point for "data the AntelopeJS runtime doesn't yet expose": the
- * Documentation, Configuration and Statistics tabs of the Routes page need
- * parameter names, sources (Body/Query/Param/Header), middleware lists scoped
- * to a URL path and the controller-class layout, none of which
- * `getRegisteredRoutes()` introspects. This module collects every workaround
- * so the abstraction can be replaced wholesale when proper introspection
- * lands. Public consumers depend only on what it exports.
+ * What the Routes page knows of the route `id` beyond `getRegisteredRoutes()`:
+ * its parameter names and sources (Body/Query/Param/Header), the middleware
+ * scoped to its path and its controller layout, read from runtime internals
+ * the AntelopeJS runtime does not expose yet. `undefined` when no registered
+ * route has that id.
  */
 export function getRouteInspection(id: string): RouteInspection | undefined {
   const registered = getRegisteredRouteHandlers().find(

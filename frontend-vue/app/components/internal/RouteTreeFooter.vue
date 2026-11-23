@@ -19,8 +19,6 @@ const { t } = useI18n()
   <div
     class="border-default text-dimmed flex items-center gap-2 border-t px-3 py-2 font-mono text-[11px]"
   >
-    <!-- The count wraps rather than being cut: the toggle beside it is an
-             icon, its name in a tooltip, so the line usually holds it all. -->
     <span class="min-w-0">
       {{
         t(flatMode ? 'api.routes.tree.footer_flat' : 'api.routes.tree.footer', {

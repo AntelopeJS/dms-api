@@ -51,8 +51,6 @@ const { t } = useI18n()
           aria-hidden="true"
         />
       </div>
-      <!-- The threshold, then how the route does lately: each its own
-              line, at every width. -->
       <div class="text-dimmed flex flex-col gap-1 text-xs">
         <p>
           {{

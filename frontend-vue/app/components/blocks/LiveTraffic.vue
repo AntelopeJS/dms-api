@@ -327,8 +327,6 @@ const share = (part: number, bar: { heights: Record<string, number> }) => {
       </div>
     </template>
 
-    <!-- One height whatever the state (the scale line, the bars and the
-         axis), so nothing below moves while it loads or changes period. -->
     <div class="h-[160px] px-3 pb-2 pt-1">
       <div v-if="data">
         <div class="text-dimmed leading-3.5 mb-1 h-3.5 font-mono text-[10px]">
@@ -441,7 +439,6 @@ const share = (part: number, bar: { heights: Record<string, number> }) => {
 </template>
 
 <style scoped>
-/* The minute still running: a hatched track, and its bar hatched over. */
 .dms-api-live-current {
   background-image: repeating-linear-gradient(
     135deg,
