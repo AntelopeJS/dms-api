@@ -2,8 +2,6 @@
 import { formatCount } from '../../utils/format'
 import type { ExplorerRoute, RouteFolder } from '../../utils/routeExplorer'
 
-// The route list's last line: what it shows of how many, and the folders'
-// expand / collapse toggle.
 defineProps<{
   visible: ExplorerRoute[]
   routes: ExplorerRoute[]

@@ -1,5 +1,4 @@
 <script setup lang="ts">
-// What the request was: its URL, date, route and where it came from.
 defineProps<{
   general: { key: string; label: string; value: string; copy?: boolean }[]
   isTester: boolean
