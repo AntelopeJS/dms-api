@@ -159,7 +159,6 @@ describe('logsEmptyCause', () => {
         lastDay,
       ),
     ).toBe('search')
-    // The DMS says first run: the URL's filters are not its own.
     expect(
       logsEmptyCause(
         'firstRun',
@@ -168,7 +167,6 @@ describe('logsEmptyCause', () => {
         allTime,
       ),
     ).toBe('link')
-    // A period frames the rows, the one the selector applies included.
     expect(logsEmptyCause('firstRun', ' ', none, lastDay)).toBe('filters')
     expect(logsEmptyCause('firstRun', undefined, none, allTime)).toBe(
       'first-run',

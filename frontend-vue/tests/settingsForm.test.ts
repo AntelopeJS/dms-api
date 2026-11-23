@@ -24,7 +24,6 @@ describe('createRetentionGuard', () => {
     to,
   })
 
-  /** Confirms the changes the guard holds, then lets the resubmit through. */
   async function confirmAndResubmit(
     guard: ReturnType<typeof createRetentionGuard>,
     resubmit: ReturnType<typeof vi.fn>,
@@ -50,13 +49,11 @@ describe('createRetentionGuard', () => {
     guard.set('requestLogRetentionDays', change('requestLogRetentionDays', 7))
 
     expect(guard.allowSubmit()).toBe(false)
-    // A second field's validator in the same pass does not ask again.
     expect(guard.allowSubmit()).toBe(false)
     await vi.waitFor(() => expect(resubmit).toHaveBeenCalledOnce())
     expect(ask).toHaveBeenCalledOnce()
-    expect(ask.mock.calls[0]![0]).toHaveLength(2)
+    expect(ask.mock.calls[0]?.[0]).toHaveLength(2)
 
-    // Both fields' validators let the resubmit through.
     expect(guard.allowSubmit()).toBe(true)
     expect(guard.allowSubmit()).toBe(true)
   })
@@ -97,13 +94,10 @@ describe('createRetentionGuard', () => {
     guard.set(field, change(field, 30, 90))
     await confirmAndResubmit(guard, resubmit)
     expect(ask).toHaveBeenCalledTimes(1)
-    // Saved: 30 is the value in force, nothing lowered.
     guard.set(field, null)
 
-    // 30 → 60 raises it: no question.
     expect(guard.allowSubmit()).toBe(true)
 
-    // Saved again at 60, then lowered to 30: asked again.
     guard.set(field, change(field, 30, 60))
     await confirmAndResubmit(guard, resubmit)
     expect(ask).toHaveBeenCalledTimes(2)
@@ -132,7 +126,6 @@ describe('shareRetentionGuard', () => {
     expect(second.guard).toBe(first.guard)
     expect(create).toHaveBeenCalledOnce()
 
-    // A field letting go twice counts once: the other still holds it.
     first.release()
     first.release()
     const third = shareRetentionGuard(create)

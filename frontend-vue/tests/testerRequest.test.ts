@@ -34,6 +34,9 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
+type SentInit = RequestInit & { body: string; signal: AbortSignal }
+type ProxyFetch = (url: string, init: SentInit) => Promise<Response>
+
 const GET: TesterRequest = { method: 'GET', headers: {}, useSession: true }
 
 describe('sending through the proxy', () => {
@@ -43,7 +46,9 @@ describe('sending through the proxy', () => {
       headers: { 'content-type': 'application/json' },
       body: '{"invalid":true}',
     }
-    const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify(reply)))
+    const fetch = vi
+      .fn<ProxyFetch>()
+      .mockResolvedValue(new Response(JSON.stringify(reply)))
     vi.stubGlobal('fetch', fetch)
     const result = await sendTesterRequest(
       '/playground/notes/abc%2Fdef?view=raw',
@@ -56,15 +61,15 @@ describe('sending through the proxy', () => {
       },
     )
     expect(result).toEqual(reply)
-    const [url, init] = fetch.mock.calls[0]
+    const [url, init] = fetch.mock.calls[0] ?? []
     expect(url).toBe('/api/_dms-api/tester')
     expect(init).toMatchObject({
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       credentials: 'same-origin',
     })
-    expect(init.signal).toBeInstanceOf(AbortSignal)
-    expect(JSON.parse(init.body)).toEqual({
+    expect(init?.signal).toBeInstanceOf(AbortSignal)
+    expect(JSON.parse(init?.body ?? '')).toEqual({
       method: 'PATCH',
       headers: { Authorization: 'Bearer explicit', 'X-Fixture': 'custom' },
       body: 'raw body',
@@ -75,7 +80,7 @@ describe('sending through the proxy', () => {
 
   it('normalizes a same-origin absolute URL and retains session mode', async () => {
     const fetch = vi
-      .fn()
+      .fn<ProxyFetch>()
       .mockResolvedValue(
         new Response(JSON.stringify({ status: 200, headers: {}, body: 'ok' })),
       )
@@ -85,7 +90,7 @@ describe('sending through the proxy', () => {
       'https://dms.example',
       GET,
     )
-    expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({
+    expect(JSON.parse(fetch.mock.calls[0]?.[1].body ?? '')).toEqual({
       method: 'GET',
       headers: {},
       useSession: true,
@@ -108,7 +113,9 @@ describe('sending through the proxy', () => {
     ).rejects.toThrow()
     expect(fetch).not.toHaveBeenCalled()
   })
+})
 
+describe('failures of the proxy', () => {
   it('reports BFF authorization failures rather than pretending they are upstream responses', async () => {
     vi.stubGlobal(
       'fetch',
@@ -340,12 +347,14 @@ describe('building the request', () => {
 })
 
 describe('what the proxy would refuse', () => {
-  const request = (headers: Record<string, string> = {}, body?: string) => ({
-    method: 'POST',
-    headers,
-    useSession: true,
-    ...(body === undefined ? {} : { body }),
-  })
+  const request = (
+    headers: Record<string, string> = {},
+    body?: string,
+  ): TesterRequest => {
+    const built: TesterRequest = { method: 'POST', headers, useSession: true }
+    if (body !== undefined) built.body = body
+    return built
+  }
 
   it('names the path value it would read as a separator', () => {
     for (const value of ['A/B', 'a b', '..', 'a%2Fb', 'x#y'])

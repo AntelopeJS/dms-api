@@ -9,12 +9,18 @@ afterEach(() => {
   vi.unstubAllEnvs()
 })
 
+interface Notice {
+  title?: string
+  color?: string
+  icon?: string
+}
+
 describe('tester error presentation', () => {
   it.each(['send', 'source', 'replay'])(
     'shows one translated warning for a JSON 403 during %s',
     async (failureAt) => {
       vi.stubEnv('SSR', false)
-      const notices: unknown[] = []
+      const notices: Notice[] = []
       const response = new Response(
         JSON.stringify({
           message: 'error.read_only_demo',
@@ -22,10 +28,8 @@ describe('tester error presentation', () => {
         }),
         { status: 403, headers: { 'content-type': 'application/json' } },
       )
-      const failure = Object.assign(new Error('Forbidden'), {
-        response,
-        data: await response.clone().json(),
-      })
+      const data: unknown = await response.clone().json()
+      const failure = Object.assign(new Error('Forbidden'), { response, data })
       const messages = {
         'error.read_only_demo': 'Read-only demo, changes are not saved',
         'error.500.description': 'Something went wrong',
@@ -33,7 +37,7 @@ describe('tester error presentation', () => {
       vi.stubGlobal('getPluginI18n', () => ({
         i18n: {
           tm: (key: string) =>
-            Object.hasOwn(messages, key) ? Reflect.get(messages, key) : {},
+            Object.entries(messages).find(([name]) => name === key)?.[1] ?? {},
           rt: (message: string) => message,
         },
       }))
@@ -46,7 +50,7 @@ describe('tester error presentation', () => {
       vi.stubGlobal('useRegionalFormat', () => ({ formatLocale: ref('en') }))
       vi.stubGlobal('useDateFormat', () => ref('en'))
       vi.stubGlobal('useToast', () => ({
-        add: (notice: unknown) => {
+        add: (notice: Notice) => {
           notices.push(notice)
           return { id: notices.length }
         },

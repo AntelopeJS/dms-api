@@ -86,7 +86,9 @@ describe('snippets', () => {
       "curl -X GET 'http://127.0.0.1:5011/api/customers/C-00988?expand=orders&expand=notes'",
     )
   })
+})
 
+describe('masked values in snippets', () => {
   it('turns masked values into variables, never sends [REDACTED]', () => {
     const snippet = capturedSnippetRequest(
       {
@@ -174,7 +176,6 @@ describe('snippets', () => {
     expect(omitted('POST', 'not-json')).toContain(
       '(only JSON bodies are captured)',
     )
-    // Sent empty, or a method that sends none: nothing is missing.
     expect(omitted('POST', 'empty')).not.toContain('Warning')
     expect(omitted('GET', 'not-read')).not.toContain('Warning')
     expect(
@@ -188,7 +189,9 @@ describe('snippets', () => {
       '// Warning: the body was not captured (it was larger than the maximum body size)',
     )
   })
+})
 
+describe('snippets of a route and a text', () => {
   it('turns a card number masked in a text into a variable of its own', () => {
     const snippet = capturedSnippetRequest(
       {
