@@ -6,7 +6,8 @@ import { REQUEST_ID_HEADER, REQUEST_ID_MAX_LENGTH } from "@/types";
 import type { JsonBody } from "@/types/json";
 import { apiOrigin } from "./api-origin";
 import { logsLink, routeRef } from "./links";
-import { isDmsConsoleCall, isInternalTraffic } from "./request-log/capture";
+import { getRegisteredRouteHandlers } from "@antelopejs/interface-api";
+import { isRefusedHandler, reachesRefusedRoute } from "./route-call-reach";
 import { findRouteHandler, parseRouteRef } from "./route-catalog";
 import { issueSourceToken } from "./tester-source";
 
@@ -16,7 +17,7 @@ export interface RouteCallInput {
   pathParams?: Record<string, string>;
   query?: Record<string, string | string[]>;
   body?: JsonBody;
-  credential?: string;
+  credential?: string | null;
   timeoutMs?: number;
   includeBody?: boolean;
 }
@@ -51,8 +52,6 @@ export const ROUTE_CALL_LIMITS = {
   defaultTimeoutMs: 10_000,
 } as const;
 
-/** The automation builder's own API, which a procedure may not call. */
-const AUTOMATION_API_PREFIX = "/api/automation";
 const BODYLESS_METHODS = new Set(["GET", "HEAD"]);
 const DOT_SEGMENTS = new Set([".", ".."]);
 const HEADER_NAME = /^[A-Za-z0-9!#$%&'*+.^_`|~-]+$/;
@@ -61,17 +60,28 @@ function fail(message: string): never {
   throw new Error(message);
 }
 
-function isAutomationApi(path: string): boolean {
-  return (
-    path === AUTOMATION_API_PREFIX ||
-    path.startsWith(`${AUTOMATION_API_PREFIX}/`)
+function registeredOwners() {
+  return getRegisteredRouteHandlers()
+    .filter(({ handler }) => handler.mode === "handler")
+    .map(({ handler }) => ({
+      location: handler.location,
+      module: handler.module,
+    }));
+}
+
+const SIMPLE_PARAMETER = /^:[A-Za-z0-9_$-]+$/;
+
+function refuseInternal(method: string, path: string): never {
+  fail(
+    `${method} ${path} reaches an internal route of the console, the DMS or the automation module: a procedure cannot call it`,
   );
 }
 
 /**
  * The registered handler a ref names, when a procedure may call it: not the
- * console's or the DMS's own endpoints, not a page layout, not the
- * automation API. Anything else fails the step.
+ * console's endpoints, not the DMS's own console, account or onboarding
+ * endpoints, not a page layout, not the automation API. Anything else fails
+ * the step. The filled path is checked again by {@link prepareRouteCall}.
  */
 export function callableRoute(ref: string) {
   const parsed = parseRouteRef(ref);
@@ -82,18 +92,21 @@ export function callableRoute(ref: string) {
   const { handler } = found;
   const path = normalizeRoutePath(handler.location);
   if (
-    isInternalTraffic(path, handler.location) ||
-    isDmsConsoleCall({ location: handler.location, module: handler.module }) ||
-    isAutomationApi(path)
+    isRefusedHandler(
+      { location: handler.location, module: handler.module },
+      registeredOwners,
+    )
   ) {
-    fail(
-      `${parsed.method} ${path} is an internal route of the console, the DMS or the automation module: a procedure cannot call it`,
-    );
+    refuseInternal(parsed.method, path);
   }
   return { method: parsed.method, path, ref: routeRef(parsed.method, path) };
 }
 
-/** `path` with each `:name` segment replaced by its encoded value. */
+/**
+ * `path` with each `:name` segment replaced by its encoded value. A route
+ * with a composite (`file.:ext`) or catch-all (`::rest`) segment cannot be
+ * filled and fails the step.
+ */
 export function fillPath(
   path: string,
   params: Record<string, string> = {},
@@ -101,7 +114,12 @@ export function fillPath(
   return path
     .split("/")
     .map((segment) => {
-      if (!segment.startsWith(":")) return segment;
+      if (!segment.includes(":")) return segment;
+      if (!SIMPLE_PARAMETER.test(segment)) {
+        fail(
+          `The segment "${segment}" of ${path} cannot be filled: only whole :name segments can`,
+        );
+      }
       const name = segment.slice(1);
       const value = Object.hasOwn(params, name) ? params[name] : undefined;
       if (value === undefined || value === "") {
@@ -126,9 +144,9 @@ function queryString(query: RouteCallInput["query"] = {}): string {
   return text ? `?${text}` : "";
 }
 
-function credentialHeaders(name: string | undefined) {
+function credentialHeaders(name: string | null | undefined) {
   const headers = new Headers();
-  if (name === undefined) return headers;
+  if (!name) return headers;
   const profiles = getConfig().automationCredentials ?? {};
   const profile = Object.hasOwn(profiles, name) ? profiles[name] : undefined;
   if (!profile) {
@@ -157,7 +175,7 @@ async function baseUrl(origin: OriginReader): Promise<string> {
 }
 
 function serializedBody(method: string, body: JsonBody): string | undefined {
-  if (body === undefined) return undefined;
+  if (body === undefined || body === null) return undefined;
   if (BODYLESS_METHODS.has(method)) fail(`A ${method} call takes no body`);
   const text = JSON.stringify(body);
   if (Buffer.byteLength(text) > ROUTE_CALL_LIMITS.bodyBytes) {
@@ -184,6 +202,7 @@ export async function prepareRouteCall(
 ): Promise<PreparedRouteCall> {
   const route = callableRoute(input.route);
   const path = fillPath(route.path, input.pathParams);
+  if (reachesRefusedRoute(path)) refuseInternal(route.method, path);
   const body = serializedBody(route.method, input.body);
   const headers = credentialHeaders(input.credential);
   const url = `${await baseUrl(origin)}${path}${queryString(input.query)}`;
@@ -211,6 +230,35 @@ function isJson(contentType: string | null): boolean {
   return contentType !== null && /[/+]json\b/i.test(contentType);
 }
 
+/**
+ * The response body as text, read until `limit` characters and no further:
+ * the rest of the stream is cancelled.
+ */
+export async function readCapped(
+  response: Response,
+  limit: number,
+): Promise<{ text: string; truncated: boolean }> {
+  const reader = response.body?.getReader();
+  if (!reader) return { text: "", truncated: false };
+  const decoder = new TextDecoder();
+  let text = "";
+  for (;;) {
+    const chunk = await reader.read();
+    if (chunk.done) {
+      text += decoder.decode();
+      break;
+    }
+    text += decoder.decode(chunk.value, { stream: true });
+    if (text.length > limit) {
+      await reader.cancel();
+      return { text: text.slice(0, limit), truncated: true };
+    }
+  }
+  return text.length > limit
+    ? { text: text.slice(0, limit), truncated: true }
+    : { text, truncated: false };
+}
+
 async function responseBody(
   response: Response,
   contentType: string | null,
@@ -220,13 +268,11 @@ async function responseBody(
     await response.body?.cancel();
     return { body: null, bodyTruncated: false };
   }
-  const text = await response.text();
-  if (text.length > ROUTE_CALL_LIMITS.responseChars) {
-    return {
-      body: text.slice(0, ROUTE_CALL_LIMITS.responseChars),
-      bodyTruncated: true,
-    };
-  }
+  const { text, truncated } = await readCapped(
+    response,
+    ROUTE_CALL_LIMITS.responseChars,
+  );
+  if (truncated) return { body: text, bodyTruncated: true };
   if (isJson(contentType) && text) {
     try {
       return { body: JSON.parse(text), bodyTruncated: false };

@@ -98,7 +98,7 @@ export function callRouteActionOf(
           description: `At most ${ROUTE_CALL_LIMITS.bodyBytes} bytes; refused on GET and HEAD`,
         },
         credential: {
-          type: "string",
+          type: ["string", "null"],
           title: "Credential profile",
           description:
             "A profile of the dms-api automationCredentials configuration; anonymous when empty",
