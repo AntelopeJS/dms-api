@@ -1,13 +1,9 @@
 {
+  "extends": "./.dms-types/tsconfig.json",
   "compilerOptions": {
-    "target": "ESNext",
-    "module": "ESNext",
-    "moduleResolution": "Bundler",
-    "strict": true,
-    "noEmit": true,
-    "types": ["vite/client"],
-    "resolveJsonModule": true,
-    "skipLibCheck": true
+    "types": ["node", "vite/client"],
+    "allowJs": true,
+    "checkJs": true
   },
-  "include": ["**/*.ts", "**/*.vue"]
+  "files": [".dms-types/types.d.ts", "vitest.config.ts", "eslint.config.mjs"]
 }

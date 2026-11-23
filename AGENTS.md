@@ -5,7 +5,7 @@
 | Path            | What it is                                                                                              |
 | --------------- | ------------------------------------------------------------------------------------------------------- |
 | `src`, `tests`  | `@antelopejs/dms-api`, the back-end DMS module, and its Vitest suite                                    |
-| `frontend-vue`  | The Vue layer, shipped as source and built by the DMS loader. ESLint and Prettier own it, not oxlint and oxfmt |
+| `frontend-vue`  | The Vue layer, shipped as source and built by the DMS loader. oxlint lints its `.ts` files, ESLint (`antelopeNuxtConfig`) its `.vue` files, and Prettier formats it. Its type-aware lint reads the types `ajs dms prepare-types` writes to `.dms-types` on install |
 | `playground`    | An AntelopeJS project that runs the module against MongoDB. It is not a workspace package: install it with `--ignore-workspace` |
 | `skills`        | Agent skills published with the package                                                                 |
 
