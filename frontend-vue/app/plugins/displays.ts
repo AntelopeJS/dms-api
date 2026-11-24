@@ -47,9 +47,7 @@ function cellDateFormat(locale: string): DateFormat {
 }
 
 /** `source` of a request the console's Tester or an automation procedure sent. */
-function markedSource(source: unknown): 'tester' | 'automation' | null {
-  return source === 'tester' || source === 'automation' ? source : null
-}
+const MARKED_SOURCES = ['tester', 'automation'] as const
 
 /**
  * The cell displays the backend names with `@RegisterDisplay("api:…")`:
@@ -96,7 +94,8 @@ export default defineDmsPlugin(() => {
     formatter: {
       default: (value, _locale, _options, row) => {
         const path = value === null || value === undefined ? '' : String(value)
-        const source = markedSource(row?.source)
+        const source =
+          MARKED_SOURCES.find((name) => name === row?.source) ?? null
         return h(
           'span',
           { class: 'flex min-w-0 max-w-full items-center gap-1.5' },
