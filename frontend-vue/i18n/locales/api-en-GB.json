@@ -890,6 +890,13 @@
       "change_percent": "{sign}{value}",
       "change_points": "{sign}{value} pt",
       "with": "{detail} · {versus}"
+    },
+    "refusals": {
+      "log_not_found": "This request was not found.",
+      "route_not_found": "This route was not found.",
+      "request_id_required": "A request id is required.",
+      "unknown_retention_field": "This retention setting does not exist.",
+      "invalid_retention_days": "Enter a whole number of days between {min} and {max}."
     }
   }
 }

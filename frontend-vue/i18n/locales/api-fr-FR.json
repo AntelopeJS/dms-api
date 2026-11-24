@@ -890,6 +890,13 @@
       "change_percent": "{sign}{value}",
       "change_points": "{sign}{value} pt",
       "with": "{detail} · {versus}"
+    },
+    "refusals": {
+      "log_not_found": "Cette requête est introuvable.",
+      "route_not_found": "Cette route est introuvable.",
+      "request_id_required": "Un identifiant de requête est requis.",
+      "unknown_retention_field": "Ce paramètre de rétention n'existe pas.",
+      "invalid_retention_days": "Saisissez un nombre entier de jours entre {min} et {max}."
     }
   }
 }
