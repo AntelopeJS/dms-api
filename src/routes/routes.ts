@@ -5,7 +5,6 @@ import {
   Parameter,
   type RequestContext,
 } from "@antelopejs/interface-api";
-import { assert } from "@antelopejs/interface-api-util";
 import { GetModel } from "@antelopejs/interface-database-decorators";
 import type { User } from "@antelopejs/interface-dms/auth/db";
 import { AuthUserWithPermission } from "@antelopejs/interface-dms/guards";
@@ -39,6 +38,7 @@ import {
   routeTopErrors,
 } from "@/services/route-statistics";
 import { getScopedRouteKeys, scopeRouteKey } from "@/services/scope";
+import { REFUSALS, ensure } from "@/services/refusals";
 import { getActiveScope } from "@/services/settings";
 import { loadRollups } from "@/services/traffic";
 import {
@@ -47,8 +47,6 @@ import {
   type TimeWindow,
   windowQueryFrom,
 } from "@/services/window";
-
-const ROUTE_NOT_FOUND = "Route not found";
 
 function models(): CatalogModels {
   return {
@@ -200,7 +198,7 @@ export class RoutesController extends Controller("/api/monitoring/routes") {
       routeHealth(),
       getScopedRouteKeys(GetModel(RouteModel), getActiveScope()),
     ]);
-    assert(detail, 404, ROUTE_NOT_FOUND);
+    ensure(detail, 404, REFUSALS.routeNotFound);
     const { requests, ...state } = health.of(detail.method, detail.path);
     return {
       ...detail,

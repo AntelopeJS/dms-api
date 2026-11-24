@@ -6,7 +6,6 @@ import {
   Parameter,
   Post,
 } from "@antelopejs/interface-api";
-import { assert } from "@antelopejs/interface-api-util";
 import { GetModel } from "@antelopejs/interface-database-decorators";
 import { AuthOwnerOnly } from "@antelopejs/interface-dms/auth";
 import type { User } from "@antelopejs/interface-dms/auth/db";
@@ -37,6 +36,7 @@ import {
   toSettingsUpdate,
   validateSettings,
 } from "@/services/settings-form";
+import { REFUSALS, ensure } from "@/services/refusals";
 import { zodIssuesJson } from "@/services/zod-json";
 import {
   CRITICAL_ERROR_RATE,
@@ -112,13 +112,21 @@ export class SettingsController extends Controller("/api/monitoring/settings") {
     @Parameter("days", "query") rawDays: string | true | undefined,
   ) {
     const days = Number(rawDays === true ? undefined : rawDays);
-    assert(isRetentionField(field), HTTP_BAD_REQUEST, "Unknown field");
-    assert(
+    ensure(
+      isRetentionField(field),
+      HTTP_BAD_REQUEST,
+      REFUSALS.unknownRetentionField,
+    );
+    ensure(
       Number.isInteger(days) &&
         days >= SETTINGS_BOUNDS.logRetentionDays.min &&
         days <= SETTINGS_BOUNDS.logRetentionDays.max,
       HTTP_BAD_REQUEST,
-      "Invalid days",
+      REFUSALS.invalidRetentionDays,
+      {
+        min: SETTINGS_BOUNDS.logRetentionDays.min,
+        max: SETTINGS_BOUNDS.logRetentionDays.max,
+      },
     );
     return field === SETTINGS_FIELDS.statsRetention
       ? statisticsRetentionImpact(GetModel(RouteStatisticsModel), days)

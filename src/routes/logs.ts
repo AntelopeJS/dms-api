@@ -5,7 +5,6 @@ import {
   Parameter,
   type RequestContext,
 } from "@antelopejs/interface-api";
-import { assert } from "@antelopejs/interface-api-util";
 import { GetModel } from "@antelopejs/interface-database-decorators";
 import type { User } from "@antelopejs/interface-dms/auth/db";
 import { AuthUserWithPermission } from "@antelopejs/interface-dms/guards";
@@ -27,6 +26,7 @@ import {
   type SourceQuery,
 } from "@/services/request-log/list";
 import { getScopedRouteKeys } from "@/services/scope";
+import { REFUSALS, ensure } from "@/services/refusals";
 import { getActiveScope } from "@/services/settings";
 import { testerBlock as tester } from "./tester";
 import { getLiveTraffic } from "@/services/live";
@@ -88,15 +88,15 @@ const routesTable = RoutesPage.explorer.targetChild(
 async function logDetail(id: string, table: LogTable) {
   const model = GetModel(RequestLogModel);
   const log = await getRequestLog(model, id);
-  assert(log, 404, "Log not found");
+  ensure(log, 404, REFUSALS.logNotFound);
   const method = log.routeMethod ?? log.method;
   const ref = routeRef(method, log.uri);
   const route = findRoute(ref);
   const keys = table === "logs" ? null : await scopeKeys();
-  assert(
+  ensure(
     canReadLog(table, log, route !== undefined, keys),
     404,
-    "Log not found",
+    REFUSALS.logNotFound,
   );
   const slowThresholdMs = getConfig().requestSlownessThreshold;
   return {
@@ -224,7 +224,7 @@ export class LogsController extends Controller("/api/monitoring/logs") {
     @Context() context: RequestContext,
   ) {
     const { requestId } = sourceQuery(context);
-    assert(requestId?.trim(), 400, "requestId is required");
+    ensure(requestId?.trim(), 400, REFUSALS.requestIdRequired);
     return listRequestLogs(GetModel(RequestLogModel), { requestId }, null, {
       testerOnly: true,
     });
