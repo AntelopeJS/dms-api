@@ -6,9 +6,12 @@ import {
   getWatchList,
   type WatchListItem,
 } from "@/services/statistics-aggregate";
+import { pollMinute } from "./outputs";
 import { activeScopeKeys } from "./scope";
 
 type Flag = WatchListItem["flag"];
+
+type RouteUnhealthyOutput = WatchListItem & { deliveryId: string };
 
 interface RouteUnhealthyConfig {
   intervalSeconds?: number;
@@ -30,7 +33,7 @@ const DEFAULT_FLAGS: Flag[] = ["broken", "slow"];
 
 export const routeUnhealthyTrigger: TriggerType<
   RouteUnhealthyConfig,
-  WatchListItem,
+  RouteUnhealthyOutput,
   RouteUnhealthyHandle
 > = {
   id: "api.route-unhealthy",
@@ -60,6 +63,11 @@ export const routeUnhealthyTrigger: TriggerType<
   outputSchema: {
     type: "object",
     properties: {
+      deliveryId: {
+        type: "string",
+        description:
+          "Same for one transition seen by two instances in the same minute",
+      },
       routeKey: { type: "string" },
       method: { type: "string" },
       uri: { type: "string" },
@@ -99,6 +107,7 @@ export const routeUnhealthyTrigger: TriggerType<
       polling = true;
       try {
         const keys = await activeScopeKeys();
+        const minute = pollMinute(new Date());
         const items = await getWatchList(
           GetModel(RequestLogModel),
           Number.POSITIVE_INFINITY,
@@ -115,7 +124,10 @@ export const routeUnhealthyTrigger: TriggerType<
             previous !== item.flag &&
             monitored.has(item.flag)
           ) {
-            emit(item);
+            emit({
+              ...item,
+              deliveryId: `api.route-unhealthy:${item.routeKey}:${item.flag}:${minute}`,
+            });
           }
         }
         for (const key of previousFlags.keys()) {

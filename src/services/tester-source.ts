@@ -5,17 +5,18 @@ import type { RequestLogSource } from "@/db/tables/request_log.table";
 import { MS_PER_MINUTE, TESTER_SOURCE_HEADER } from "@/types/constants";
 
 /**
- * How the capture tells the Tester's calls apart. A request is the Tester's
- * only when its {@link TESTER_SOURCE_HEADER} holds a token this server signed
- * and handed to someone allowed to use the Tester: a client cannot declare
- * itself the Tester to keep its calls out of the statistics and the health.
+ * How the capture tells the Tester's and the automation procedures' calls
+ * apart. A request has a source only when its {@link TESTER_SOURCE_HEADER}
+ * holds a token this server signed, for the Tester or for a procedure's
+ * `api.call-route`: a client cannot declare itself either to keep its calls
+ * out of the statistics and the health.
  *
- * The token is `tester.<expiry ms>.<HMAC-SHA256 of the first two parts>`,
+ * The token is `<source>.<expiry ms>.<HMAC-SHA256 of the first two parts>`,
  * signed with `testerSourceSecret` (shared by every instance of the API) or,
  * unset, with a key drawn at start. It holds no identity: it only says "the
- * console's Tester sent this", until it expires.
+ * console's Tester sent this", or "a procedure sent this", until it expires.
  */
-const TOKEN_PREFIX = "tester";
+const SOURCES: readonly RequestLogSource[] = ["tester", "automation"];
 const TOKEN_SEPARATOR = ".";
 
 /** How long a token is accepted. The Tester asks for one before each call. */
@@ -39,11 +40,13 @@ export interface TesterSourceToken {
   expiresAt: string;
 }
 
-export function issueTesterSourceToken(
+/** A token marking the next calls as sent by `source`. */
+export function issueSourceToken(
+  source: RequestLogSource,
   now: Date = new Date(),
 ): TesterSourceToken {
   const expiresAt = now.getTime() + TESTER_SOURCE_TOKEN_TTL_MS;
-  const payload = `${TOKEN_PREFIX}${TOKEN_SEPARATOR}${expiresAt}`;
+  const payload = `${source}${TOKEN_SEPARATOR}${expiresAt}`;
   return {
     header: TESTER_SOURCE_HEADER,
     value: `${payload}${TOKEN_SEPARATOR}${signature(payload).toString("base64url")}`,
@@ -51,28 +54,46 @@ export function issueTesterSourceToken(
   };
 }
 
-/** Whether `value` is a token this server signed and that has not expired. */
+export function issueTesterSourceToken(
+  now: Date = new Date(),
+): TesterSourceToken {
+  return issueSourceToken("tester", now);
+}
+
+/** The source a token this server signed names, while it has not expired. */
+export function sourceOfToken(
+  value: string,
+  now: Date = new Date(),
+): RequestLogSource | undefined {
+  const parts = value.split(TOKEN_SEPARATOR);
+  if (parts.length !== 3) return undefined;
+  const source = SOURCES.find((name) => name === parts[0]);
+  if (!source) return undefined;
+  const expiresAt = Number(parts[1]);
+  if (!Number.isSafeInteger(expiresAt)) return undefined;
+  const left = expiresAt - now.getTime();
+  if (left <= 0 || left > TESTER_SOURCE_TOKEN_TTL_MS) return undefined;
+  const given = Buffer.from(parts[2], "base64url");
+  const expected = signature(`${parts[0]}${TOKEN_SEPARATOR}${parts[1]}`);
+  return given.length === expected.length && timingSafeEqual(given, expected)
+    ? source
+    : undefined;
+}
+
+/** Whether `value` is a Tester token this server signed and that has not expired. */
 export function isTesterSourceToken(
   value: string,
   now: Date = new Date(),
 ): boolean {
-  const parts = value.split(TOKEN_SEPARATOR);
-  if (parts.length !== 3 || parts[0] !== TOKEN_PREFIX) return false;
-  const expiresAt = Number(parts[1]);
-  if (!Number.isSafeInteger(expiresAt)) return false;
-  const left = expiresAt - now.getTime();
-  if (left <= 0 || left > TESTER_SOURCE_TOKEN_TTL_MS) return false;
-  const given = Buffer.from(parts[2], "base64url");
-  const expected = signature(`${parts[0]}${TOKEN_SEPARATOR}${parts[1]}`);
-  return given.length === expected.length && timingSafeEqual(given, expected);
+  return sourceOfToken(value, now) === "tester";
 }
 
-/** `tester` when the request carries a valid Tester token. */
+/** `tester` or `automation` when the request carries a valid token of either. */
 export function requestSource(
   headers: IncomingHttpHeaders,
   now: Date = new Date(),
 ): RequestLogSource | undefined {
   const raw = headers[TESTER_SOURCE_HEADER];
   const value = (Array.isArray(raw) ? raw[0] : raw)?.trim();
-  return value && isTesterSourceToken(value, now) ? "tester" : undefined;
+  return value ? sourceOfToken(value, now) : undefined;
 }

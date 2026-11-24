@@ -3,34 +3,71 @@ import type { ActionType } from "@antelopejs/interface-dms-automation";
 import { RequestLogModel } from "@/db";
 import {
   REQUEST_LOG_MAX_LIMIT,
+  type RequestLogFilters,
   type RequestLogStatusClass,
 } from "@/db/models/request_log.model";
-import type { RequestLog } from "@/db/tables/request_log.table";
-import { queryRequestLogsScoped } from "@/services/request-log/read";
+import { queryRequestSummariesScoped } from "@/services/request-log/read";
+import { REQUEST_ID_MAX_LENGTH } from "@/types";
+import {
+  DATE_TIME,
+  dateInput,
+  HTTP_METHODS,
+  nullable,
+  objectSchema,
+  REQUEST_SUMMARY_SCHEMA,
+  type RequestSummary,
+  requestSummary,
+  requireRouteRef,
+  routeRefInput,
+} from "./outputs";
 import { activeScopeKeys } from "./scope";
 
 interface QueryRequestLogsInput {
   routeId?: string;
+  route?: string;
   uri?: string;
   method?: string;
   statusClass?: RequestLogStatusClass;
   statusMin?: number;
   statusMax?: number;
+  since?: string;
+  until?: string;
+  requestId?: string;
+  errorMessage?: string;
+  cursor?: string;
   limit?: number;
 }
 
-/** A stored request log as the action hands it on: JSON, its timestamp an ISO string. */
-type RequestLogEntry = Omit<RequestLog, "timestamp"> & { timestamp: string };
-
 type QueryRequestLogsOutput = {
-  results: RequestLogEntry[];
-  nextCursor?: string;
+  results: RequestSummary[];
+  nextCursor: string | null;
 };
 
-/** A stored request log as JSON: its `timestamp` as an ISO string, as the logs list serves it. */
-export function requestLogEntry(log: RequestLog): RequestLogEntry {
-  const { timestamp, ...fields } = log;
-  return { ...fields, timestamp: timestamp.toISOString() };
+const DEFAULT_LIMIT = 50;
+
+/** The log filters an input names, unset ones left out. */
+export function requestLogFilters(
+  input: QueryRequestLogsInput,
+): RequestLogFilters {
+  const route = input.route ? requireRouteRef(input.route) : undefined;
+  const filters: RequestLogFilters = {
+    routeId: input.routeId,
+    uri: route?.path ?? input.uri,
+    routeMethod: route?.method,
+    method: input.method,
+    statusClass: input.statusClass,
+    statusMin: input.statusMin,
+    statusMax: input.statusMax,
+    since: dateInput("since", input.since),
+    until: dateInput("until", input.until),
+    requestId: input.requestId,
+    errorMessage: input.errorMessage,
+    cursor: input.cursor,
+    limit: input.limit ?? DEFAULT_LIMIT,
+  };
+  return Object.fromEntries(
+    Object.entries(filters).filter(([, value]) => value !== undefined),
+  );
 }
 
 export const queryRequestLogsAction: ActionType<
@@ -39,52 +76,71 @@ export const queryRequestLogsAction: ActionType<
 > = {
   id: "api.query-request-logs",
   name: "Query request logs",
-  description: "Query captured API request logs under the active route scope",
+  description:
+    "Search captured API requests under the active route scope; returns summary rows, never headers or bodies",
   icon: "i-ph-list-magnifying-glass",
+  sideEffects: false,
   inputSchema: {
     type: "object",
     properties: {
-      routeId: { type: "string" },
-      uri: { type: "string" },
-      method: { type: "string" },
+      routeId: {
+        type: "string",
+        maxLength: 200,
+        description: "Runtime route id (changes on every start; prefer route)",
+      },
+      route: routeRefInput("METHOD /path of the route the requests reached"),
+      uri: { type: "string", maxLength: 2048, description: "Route pattern" },
+      method: { type: "string", enum: [...HTTP_METHODS] },
       statusClass: {
         type: "string",
         enum: ["success", "client-error", "server-error"],
       },
-      statusMin: { type: "number" },
-      statusMax: { type: "number" },
-      /**
-       * Declared, not silent: the model clamps a page to MAX_LIMIT. Ask for
-       * more rows than that by following `nextCursor`.
-       */
-      limit: { type: "number", default: 50, maximum: REQUEST_LOG_MAX_LIMIT },
-    },
-  },
-  outputSchema: {
-    type: "object",
-    properties: {
-      results: { type: "array", items: { type: "object" } },
-      nextCursor: { type: "string" },
-    },
-  },
-  async execute(input) {
-    const keys = await activeScopeKeys();
-    const page = await queryRequestLogsScoped(
-      GetModel(RequestLogModel),
-      {
-        routeId: input.routeId,
-        uri: input.uri,
-        method: input.method,
-        statusClass: input.statusClass,
-        statusMin: input.statusMin,
-        statusMax: input.statusMax,
-        limit: input.limit,
+      statusMin: { type: "integer", minimum: 100, maximum: 599 },
+      statusMax: { type: "integer", minimum: 100, maximum: 599 },
+      since: {
+        ...DATE_TIME,
+        description: "Inclusive; 30 days back by default under a scope",
       },
+      until: { ...DATE_TIME, description: "Exclusive; now by default" },
+      requestId: {
+        type: "string",
+        maxLength: REQUEST_ID_MAX_LENGTH,
+        description: "x-request-id",
+      },
+      errorMessage: {
+        type: "string",
+        maxLength: 200,
+        description: "Part of the error message, any case",
+      },
+      cursor: {
+        type: "string",
+        maxLength: 200,
+        description: "nextCursor of the previous page",
+      },
+      limit: {
+        type: "integer",
+        default: DEFAULT_LIMIT,
+        minimum: 1,
+        maximum: REQUEST_LOG_MAX_LIMIT,
+      },
+    },
+    additionalProperties: false,
+  },
+  outputSchema: objectSchema({
+    results: { type: "array", items: REQUEST_SUMMARY_SCHEMA },
+    nextCursor: nullable("string"),
+  }),
+  async execute(input) {
+    const filters = requestLogFilters(input);
+    const keys = await activeScopeKeys();
+    const page = await queryRequestSummariesScoped(
+      GetModel(RequestLogModel),
+      filters,
       keys,
     );
     return {
-      results: page.results.map(requestLogEntry),
-      nextCursor: page.nextCursor ?? undefined,
+      results: page.results.map(requestSummary),
+      nextCursor: page.nextCursor,
     };
   },
 };

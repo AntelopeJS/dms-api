@@ -23,6 +23,8 @@ export interface LogsLinkOptions {
   tab?: StatusTab;
   /** An error message the requests must carry. */
   error?: string;
+  /** The `x-request-id` the request was sent with. */
+  requestId?: string;
   slow?: boolean;
   /**
    * The period the figure that links here was computed over, so the logs
@@ -34,9 +36,9 @@ export interface LogsLinkOptions {
    * A range the requests must fall in, `[from, to)`: an incident's requests,
    * not the whole window's. A linked filter (`?since=` / `?until=`, ISO
    * timestamps) within the page's period, which stays the one the user
-   * chose: the link names none of its own.
+   * chose: the link names none of its own. Either bound may be left open.
    */
-  range?: TimeRange;
+  range?: Partial<TimeRange>;
   /** Where the link leaves from: "Last 24 hours · from Overview". */
   from?: LinkOrigin;
 }
@@ -58,6 +60,19 @@ export function settingsLink(): string {
   return `${MODULE_BASE}/settings`;
 }
 
+/** The Overview, on a period when one is named. */
+export function overviewLink(period?: WindowPreset | null): string {
+  return withQuery(
+    `${MODULE_BASE}/overview`,
+    period ? { [PERIOD_QUERY_KEY]: period } : {},
+  );
+}
+
+/** One captured request, open in the drawer of the request logs. */
+export function requestLink(id: string): string {
+  return withQuery(`${MODULE_BASE}/logs`, { record: id });
+}
+
 /**
  * A link to the request logs. Every drill-down the console's pages offer
  * ("View 14 server errors", "Open route", "Same error") is a URL like this,
@@ -69,19 +84,22 @@ export function settingsLink(): string {
  * to be in the link.
  */
 export function logsLink(options: LogsLinkOptions = {}): string {
+  const filters = {
+    route: options.route,
+    path: options.path,
+    error: options.error,
+    requestId: options.requestId,
+    since: options.range?.from?.toISOString(),
+    until: options.range?.to?.toISOString(),
+  };
   const query: Record<string, string> = {};
-  if (options.route) query.route = options.route;
-  if (options.path) query.path = options.path;
-  if (options.error) query.error = options.error;
-  if (options.slow) query.slow = "true";
-  if (options.range) {
-    query.since = options.range.from.toISOString();
-    query.until = options.range.to.toISOString();
+  for (const [key, value] of Object.entries(filters)) {
+    if (value) query[key] = value;
   }
+  const narrows = Object.keys(query).length > 0;
+  if (options.slow) query.slow = "true";
   if (options.period) query[PERIOD_QUERY_KEY] = options.period;
   if (options.from) query.from = options.from;
-  const narrows =
-    options.route || options.path || options.error || options.range;
   const tab = options.tab ?? (narrows ? ALL_TAB : undefined);
   if (tab) query[`${LOGS_TABLE_KEY}.tab`] = tab;
   return withQuery(`${MODULE_BASE}/logs`, query);

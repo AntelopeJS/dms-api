@@ -382,6 +382,8 @@
       },
       "tester": "Tester",
       "source_tester": "Sent from the console's tester: kept in the logs, left out of the statistics and the health.",
+      "automation": "Automation",
+      "source_automation": "Sent by an automation procedure: kept in the logs, left out of the statistics and the health.",
       "timing": "Timing",
       "slow": "slow",
       "slow_ratio": "Slow · {ratio}× the threshold",

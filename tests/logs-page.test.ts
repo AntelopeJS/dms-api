@@ -46,6 +46,7 @@ describe("LogsPage", () => {
       "error",
       "method",
       "path",
+      "requestId",
       "route",
       "since",
       "slow",

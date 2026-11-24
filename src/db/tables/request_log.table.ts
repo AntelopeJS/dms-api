@@ -37,10 +37,11 @@ export type RequestLogBodyOmission =
 
 /**
  * Who sent a request, when it is not the API's own traffic: `tester` for a
- * request sent from the console's Tester. Such requests stay in the logs but
+ * request sent from the console's Tester, `automation` for one an automation
+ * procedure sent with `api.call-route`. Such requests stay in the logs but
  * are kept out of the statistics, the health and Needs attention.
  */
-export type RequestLogSource = "tester";
+export type RequestLogSource = "tester" | "automation";
 
 /** What the capture redacted from a request, section by section. */
 export type RequestLogRedactions = {

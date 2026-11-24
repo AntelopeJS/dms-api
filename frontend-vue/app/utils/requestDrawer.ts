@@ -277,7 +277,7 @@ export interface RequestLog {
   routeMethod?: string | null
   /** What the capture masked, section by section. */
   redactions: Redactions
-  /** `tester` for a request the console's tester sent. */
+  /** `tester` or `automation` for a request the tester or a procedure sent. */
   source?: string | null
   /** Where the API answers, for the URL and the cURL; null while unknown. */
   apiOrigin?: string | null

@@ -145,11 +145,11 @@ function isRecord(value: JsonValue | undefined): value is JsonObject {
 }
 
 /**
- * Traffic the Tester sent: the console's own calls, kept in the logs but not
- * read as what clients do (contract: the log carries `source: "tester"`).
+ * Traffic the Tester or an automation procedure sent: kept in the logs but
+ * not read as what clients do (contract: the log carries a `source`).
  */
-function fromTester(entry: RequestLog | RequestLogSample): boolean {
-  return "source" in entry && entry.source === "tester";
+function fromMarkedSource(entry: RequestLog | RequestLogSample): boolean {
+  return "source" in entry && Boolean(entry.source);
 }
 
 /** The statuses of a window of samples, each with all its messages. */
@@ -279,12 +279,12 @@ export async function loadContractTraffic(
     model
       .query({ ...filters, statusClass, limit: CONTRACT_SAMPLE })
       .then(({ results }) =>
-        results.filter((log) => !fromTester(log)).sort(newestFirst),
+        results.filter((log) => !fromMarkedSource(log)).sort(newestFirst),
       );
   const [samples, successful, latest] = await Promise.all([
     model
       .samples(filters)
-      .then((rows) => rows.filter((row) => !fromTester(row))),
+      .then((rows) => rows.filter((row) => !fromMarkedSource(row))),
     recent("success"),
     recent(),
   ]);

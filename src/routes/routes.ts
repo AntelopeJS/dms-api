@@ -16,7 +16,6 @@ import { RoutesPage } from "@/pages/routes";
 import { apiOrigin } from "@/services/api-origin";
 import { routeRef } from "@/services/links";
 import { isInternalTraffic } from "@/services/request-log/capture";
-import { loadRouteHealth } from "@/services/overview";
 import {
   type CatalogModels,
   findRoute,
@@ -39,8 +38,8 @@ import {
   routeTopErrors,
 } from "@/services/route-statistics";
 import { getScopedRouteKeys, scopeRouteKey } from "@/services/scope";
+import { routeStates } from "@/services/route-state";
 import { getActiveScope } from "@/services/settings";
-import { loadRollups } from "@/services/traffic";
 import {
   DEFAULT_WINDOW,
   resolveWindow,
@@ -85,62 +84,6 @@ function trafficOf(context: RequestContext): Promise<RouteTraffic> {
 }
 
 /**
- * The first day each route was called, from the day rollups: the oldest
- * kept, so never further back than the statistics retention.
- */
-async function firstCalls(): Promise<Map<string, string>> {
-  const first = new Map<string, string>();
-  for (const route of await loadRollups(GetModel(RouteStatisticsModel))) {
-    const days = route.statistics
-      .filter((day) => day.requestsCount > 0)
-      .map((day) => day.day);
-    if (days.length > 0) {
-      first.set(
-        scopeRouteKey(route.method, route.uri),
-        new Date(Math.min(...days)).toISOString(),
-      );
-    }
-  }
-  return first;
-}
-
-/**
- * Every route's health by the rules the Overview applies, over the same last
- * 24 h, with the first day it was called: what the tree and the header show
- * next to a route.
- */
-async function routeHealth() {
-  const [{ lookback, routes }, first] = await Promise.all([
-    loadRouteHealth(models()),
-    firstCalls(),
-  ]);
-  const healthWindow = {
-    from: lookback.from.toISOString(),
-    to: lookback.to.toISOString(),
-    minutes: HEALTH_THRESHOLDS.lookbackMinutes,
-  };
-  const of = (method: string, path: string) => {
-    const key = scopeRouteKey(method, path);
-    const health = routes.get(key);
-    return {
-      requests: health?.traffic.requests ?? 0,
-      state: health?.state ?? ("idle" as const),
-      verdict: health?.verdict ?? ("idle" as const),
-      incident: health?.incident
-        ? {
-            start: health.incident.start?.toISOString() ?? null,
-            end: health.incident.end?.toISOString() ?? null,
-          }
-        : null,
-      p95Ms: health?.p95Ms ?? null,
-      firstCallAt: first.get(key) ?? null,
-      lastCallAt: health?.lastCall.toISOString() ?? null,
-    };
-  };
-  return { healthWindow, of };
-}
-
-/**
  * The latest call of a route older than the health lookback, the Tester's
  * aside. By the route's method: a HEAD its GET handler served counts.
  */
@@ -170,7 +113,7 @@ export class RoutesController extends Controller("/api/monitoring/routes") {
       GetModel(RouteModel),
       getActiveScope(),
     );
-    const health = await routeHealth();
+    const health = await routeStates();
     return {
       routes: listRoutes(keys).map((row) => ({
         ...row,
@@ -197,7 +140,7 @@ export class RoutesController extends Controller("/api/monitoring/routes") {
       route !== true && route
         ? apiOrigin().then((origin) => getRouteDetail(models(), route, origin))
         : undefined,
-      routeHealth(),
+      routeStates(),
       getScopedRouteKeys(GetModel(RouteModel), getActiveScope()),
     ]);
     assert(detail, 404, ROUTE_NOT_FOUND);

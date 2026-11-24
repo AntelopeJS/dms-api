@@ -13,9 +13,9 @@ const propertySchema = z.object({
   type: z.union([z.string(), z.array(z.string())]).optional(),
   minimum: z.number().optional(),
   maximum: z.number().optional(),
-  default: z.union([z.number(), z.array(z.string())]).optional(),
-  enum: z.array(z.string()).optional(),
-  items: z.object({ enum: z.array(z.string()).optional() }).optional(),
+  default: z.unknown().optional(),
+  enum: z.array(z.unknown()).optional(),
+  items: z.object({ enum: z.array(z.unknown()).optional() }).optional(),
 });
 const propertiesSchema = z
   .object({
@@ -63,7 +63,7 @@ export const healthSchema = z.object({
 export const logPageSchema = z.object({
   results: z.array(
     z.object({
-      _id: z.string(),
+      id: z.string(),
       uri: z.string(),
       statusCode: z.number(),
       timestamp: z.string(),

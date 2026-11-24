@@ -2,6 +2,7 @@ import type { RequestLogModel, RouteStatisticsModel } from "@/db";
 import type {
   RequestLogFilters,
   RequestLogPage,
+  RequestLogSummaryPage,
 } from "@/db/models/request_log.model";
 import type { RequestLog } from "@/db/tables/request_log.table";
 import { type DayStatistics, MS_PER_DAY } from "@/types";
@@ -51,6 +52,25 @@ export function queryRequestLogsScoped(
      * "the last 10", which on a sparse scope means every row. The floor keeps
      * that proportional to recent traffic; callers wanting more say so.
      */
+    since: new Date(Date.now() - UNBOUNDED_SCAN_FLOOR_MS),
+    ...filters,
+    routeKeys: [...keys],
+  });
+}
+
+/**
+ * {@link queryRequestLogsScoped} as summaries, for the automation nodes:
+ * same scope, same floor, no headers or bodies read.
+ */
+export function queryRequestSummariesScoped(
+  model: Pick<RequestLogModel, "querySummary">,
+  filters: RequestLogFilters,
+  keys: Set<string> | null | undefined,
+): Promise<RequestLogSummaryPage> {
+  if (!keys) return model.querySummary(filters);
+  if (keys.size === 0)
+    return Promise.resolve({ results: [], nextCursor: null });
+  return model.querySummary({
     since: new Date(Date.now() - UNBOUNDED_SCAN_FLOOR_MS),
     ...filters,
     routeKeys: [...keys],

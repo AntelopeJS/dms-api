@@ -19,7 +19,7 @@ import { capturedSnippetRequest, toCurl } from '../../utils/snippets'
 import ApiBody from '../internal/ApiBody.vue'
 import ApiKeyValues from '../internal/ApiKeyValues.vue'
 import ApiStatusBadge from '../internal/ApiStatusBadge.vue'
-import ApiTesterBadge from '../internal/ApiTesterBadge.vue'
+import ApiSourceBadge from '../internal/ApiSourceBadge.vue'
 import RequestGeneral from '../internal/RequestGeneral.vue'
 import RequestTiming from '../internal/RequestTiming.vue'
 
@@ -31,7 +31,6 @@ const LINK_ORIGINS = ['overview', 'routes']
 const SETTINGS_SUMMARY_API = '/api/monitoring/settings/summary'
 /** Where the captured headers are listed. */
 const HEADERS_SETTINGS_LINK = '/modules/api/settings#requestLogCaptureHeaders'
-const TESTER_SOURCE = 'tester'
 /** The icon of each list of related requests in "See also". */
 const PIVOT_ICONS: Record<RequestPivot['kind'], string> = {
   same_route: 'i-ph-list-magnifying-glass',
@@ -116,7 +115,10 @@ const url = computed(() =>
     ? requestUrl(apiOrigin.value ?? '', log.value.rawPath, log.value.query)
     : '',
 )
-const isTester = computed(() => log.value?.source === TESTER_SOURCE)
+const markedSource = computed(() => {
+  const source = log.value?.source
+  return source === 'tester' || source === 'automation' ? source : null
+})
 const timing = computed(() =>
   log.value && log.value.responseTimeMs !== null
     ? durationScale(log.value.responseTimeMs, log.value.slowThresholdMs)
@@ -326,7 +328,7 @@ const dateFormat = useDateFormat()
           icon="i-ph-timer"
           :label="t('api.request.slow_ratio', { ratio })"
         />
-        <ApiTesterBadge v-if="isTester" />
+        <ApiSourceBadge v-if="markedSource" :source="markedSource" />
         <span
           class="text-dimmed font-mono text-[11.5px]"
           :title="fullDateTime(log.timestamp, dateFormat)"
@@ -435,7 +437,7 @@ const dateFormat = useDateFormat()
           />
         </section>
 
-        <RequestGeneral :general="general" :is-tester="isTester" />
+        <RequestGeneral :general="general" :source="markedSource" />
 
         <RequestTiming
           :log="log"

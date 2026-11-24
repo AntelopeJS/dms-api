@@ -7,18 +7,17 @@ import {
 import { GetModel } from "@antelopejs/interface-database-decorators";
 import type { User } from "@antelopejs/interface-dms/auth/db";
 import { AuthUserWithPermission } from "@antelopejs/interface-dms/guards";
-import { RequestLogModel, RouteModel, RouteStatisticsModel } from "@/db";
+import { RouteModel } from "@/db";
 import { OverviewPage } from "@/pages/overview";
 import { getActivity } from "@/services/activity";
 import { ATTENTION_LIMIT, getAttention } from "@/services/attention";
 import {
+  currentHealth,
   getErrorShareChart,
-  getHealth,
   getTrafficChart,
-  type OverviewModels,
+  overviewModels,
 } from "@/services/overview";
 import { getSlowestRoutes, getStatusClasses } from "@/services/overview-lists";
-import { countRoutes } from "@/services/route-catalog";
 import { getScopedRouteKeys } from "@/services/scope";
 import { getActiveScope } from "@/services/settings";
 import {
@@ -31,21 +30,10 @@ import {
 /** Most "Needs attention" rows one call returns (`?limit=`). */
 const MAX_ATTENTION_LIMIT = 100;
 
-function models(): OverviewModels {
-  return {
-    logs: GetModel(RequestLogModel),
-    stats: GetModel(RouteStatisticsModel),
-    routes: GetModel(RouteModel),
-  };
-}
+const models = overviewModels;
 
 function scopeKeys() {
   return getScopedRouteKeys(GetModel(RouteModel), getActiveScope());
-}
-
-async function currentHealth() {
-  const keys = await scopeKeys();
-  return getHealth(models(), keys, countRoutes(keys));
 }
 
 function windowOf(context: RequestContext): TimeWindow {

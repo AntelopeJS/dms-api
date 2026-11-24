@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { logsLink } from "@/services/links";
+import { logsLink, overviewLink, requestLink } from "@/services/links";
 
 function query(link: string) {
   return new URL(link, "http://console.local").searchParams;
@@ -44,5 +44,30 @@ describe("logsLink", () => {
     expect(link.get("since")).toBe("1970-01-01T00:00:00.000Z");
     expect(link.get("until")).toBe("1970-01-01T00:01:00.000Z");
     expect(link.get("api.period")).toBe("last-24h");
+  });
+});
+
+describe("the links the automation nodes hand on", () => {
+  it("opens a request in the logs' drawer by its log id", () => {
+    expect(requestLink("a b")).toBe("/modules/api/logs?record=a+b");
+  });
+
+  it("finds a call by its request id on the All tab", () => {
+    const link = query(logsLink({ requestId: "auto-1" }));
+    expect(link.get("requestId")).toBe("auto-1");
+    expect(link.get("requests.tab")).toBe("all");
+  });
+
+  it("writes an open-ended range with its one bound", () => {
+    const link = query(logsLink({ range: { from: new Date(0) } }));
+    expect(link.get("since")).toBe("1970-01-01T00:00:00.000Z");
+    expect(link.has("until")).toBe(false);
+  });
+
+  it("opens the Overview on a period", () => {
+    expect(overviewLink("last-hour")).toBe(
+      "/modules/api/overview?api.period=last-hour",
+    );
+    expect(overviewLink()).toBe("/modules/api/overview");
   });
 });

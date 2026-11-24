@@ -72,6 +72,12 @@ describe("filtersFromQuery", () => {
     );
   });
 
+  it("reads a request id a link filters the logs page on", () => {
+    expect(
+      filtersFromQuery({ filter_requestId: "is:auto-run-node" }, NOW).requestId,
+    ).toBe("auto-run-node");
+  });
+
   it("reads several methods", () => {
     const filters = filtersFromQuery({ filter_method: "is:GET,POST" }, NOW);
     expect(filters.method).toBeUndefined();

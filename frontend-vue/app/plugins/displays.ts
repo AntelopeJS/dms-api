@@ -1,5 +1,5 @@
 import { h } from 'vue'
-import ApiTesterBadge from '../components/internal/ApiTesterBadge.vue'
+import ApiSourceBadge from '../components/internal/ApiSourceBadge.vue'
 import { cachedDateFormat, type DateFormat } from '../utils/format'
 import { fullDateTime, requestClock } from '../utils/requestDrawer'
 
@@ -46,8 +46,8 @@ function cellDateFormat(locale: string): DateFormat {
   return format
 }
 
-/** `source` of a request the console's Tester sent. */
-const TESTER_SOURCE = 'tester'
+/** `source` of a request the console's Tester or an automation procedure sent. */
+const MARKED_SOURCES = ['tester', 'automation'] as const
 
 /**
  * The cell displays the backend names with `@RegisterDisplay("api:…")`:
@@ -56,7 +56,8 @@ const TESTER_SOURCE = 'tester'
  * hovered (every cell is drawn again on each "Load more", and formatting a
  * full date costs more than the cell itself: about 0.1 ms, 200 ms over 2,000
  * rows). `api:path` draws the path in the mono font, as the DMS mono cell
- * does, and "Tester" beside it when the console's Tester sent the request.
+ * does, and "Tester" or "Automation" beside it when the console's Tester or
+ * an automation procedure sent the request.
  */
 export default defineDmsPlugin(() => {
   const { registerDataType } = useDataTypes()
@@ -93,6 +94,8 @@ export default defineDmsPlugin(() => {
     formatter: {
       default: (value, _locale, _options, row) => {
         const path = value === null || value === undefined ? '' : String(value)
+        const source =
+          MARKED_SOURCES.find((name) => name === row?.source) ?? null
         return h(
           'span',
           { class: 'flex min-w-0 max-w-full items-center gap-1.5' },
@@ -105,7 +108,7 @@ export default defineDmsPlugin(() => {
               },
               path || EMPTY,
             ),
-            row?.source === TESTER_SOURCE ? h(ApiTesterBadge) : null,
+            source ? h(ApiSourceBadge, { source }) : null,
           ],
         )
       },

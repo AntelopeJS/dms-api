@@ -46,6 +46,16 @@ export async function getOwnModuleIds(): Promise<Set<string>> {
   return own;
 }
 
+/**
+ * The modules whose routes are the project's own, as the scope reads them:
+ * {@link getOwnModuleIds} without the console's module.
+ */
+export async function getOwnRouteModules(
+  registeredRoutes: RegisteredRoute[] = getRegisteredRoutes(),
+): Promise<ReadonlySet<string>> {
+  return withoutConsole(await getOwnModuleIds(), registeredRoutes);
+}
+
 interface Ownership {
   module: string | null;
   own: boolean;
