@@ -42,7 +42,7 @@ describe('createRetentionGuard', () => {
   })
 
   it('asks once for every lowered field, then submits again', async () => {
-    const ask = vi.fn(async () => true)
+    const ask = vi.fn(async (_changes: RetentionChange[]) => true)
     const resubmit = vi.fn()
     const guard = createRetentionGuard(ask, resubmit)
     guard.set('statisticsLifetimeDays', change('statisticsLifetimeDays', 30))

@@ -103,6 +103,7 @@ export class LogsPage extends PageController(
      * 2 in 5xx", the breakdown `useLiveMissedErrors` gives the page).
      */
     liveHold: {
+      whileOnScreen: false,
       whileRowOpen: true,
       whileScrolled: true,
       whileSearching: true,

@@ -31,6 +31,7 @@ it('registers the blocks the backend pages name, and nothing else', async () => 
     registerErrorPage: vi.fn(),
     registerPlugin,
     registerMiddleware,
+    registerAccessRedirect: vi.fn(),
     provide: vi.fn(),
     use: vi.fn(),
   })
