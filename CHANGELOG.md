@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.7.5
+
+[compare changes](https://github.com/AntelopeJS/dms-api/compare/v0.7.4...v0.7.5)
+
+### 🩹 Fixes
+
+- **api:** Answer 4xx refusals with translation keys ([#168](https://github.com/AntelopeJS/dms-api/pull/168))
+
+### 🏡 Chore
+
+- **deps:** Update dependency @antelopejs/core to v1.24.7 ([#170](https://github.com/AntelopeJS/dms-api/pull/170))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli
+
 ## v0.7.4
 
 [compare changes](https://github.com/AntelopeJS/dms-api/compare/v0.7.3...v0.7.4)
