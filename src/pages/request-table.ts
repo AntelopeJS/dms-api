@@ -296,6 +296,7 @@ export function requestTable(
      */
     realtimeTopic: LIVE_REQUESTS_TOPIC,
     liveHold: liveHold ?? {
+      whileOnScreen: false,
       whileRowOpen: true,
       missedLabel: "$api.live_mode.new_requests",
     },

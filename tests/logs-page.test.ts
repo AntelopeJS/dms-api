@@ -68,6 +68,7 @@ describe("LogsPage", () => {
   it("holds its rows while a request is open, scrolled, searched or sorted", () => {
     const options = tableOptions();
     expect(options.liveHold).toEqual({
+      whileOnScreen: false,
       whileRowOpen: true,
       whileScrolled: true,
       whileSearching: true,
