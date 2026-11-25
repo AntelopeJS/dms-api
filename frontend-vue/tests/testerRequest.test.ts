@@ -407,6 +407,7 @@ describe('replaying a captured request', () => {
   const base = {
     _id: '86a7f226-99dd-402c-b727-52f15aea930a',
     timestamp: '2026-10-09T20:18:00.000Z',
+    route: '/api/orders/:id',
     statusCode: 500,
     responseTimeMs: 12,
   }

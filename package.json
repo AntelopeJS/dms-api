@@ -37,7 +37,7 @@
     "e2e:build": "pnpm run build && pnpm --dir playground install --ignore-workspace --frozen-lockfile --prefer-offline --ignore-scripts && ln -sfn ../../playground/node_modules e2e/playground/node_modules && tsc -p e2e/playground/tsconfig.build.json",
     "lint:fix": "oxlint --fix --max-warnings=1000000 && oxfmt . && pnpm --dir frontend-vue lint:fix",
     "lint": "oxlint && pnpm --dir frontend-vue lint",
-    "typecheck": "tsc -p tests",
+    "typecheck": "tsc -p tests && tsc -p frontend-vue/tests",
     "test": "vitest run && pnpm --dir frontend-vue test",
     "test:journeys": "vitest run -c vitest.journeys.config.ts",
     "test:frontend": "ajs dms verify-source --layer node_modules/@antelopejs/dms/frontend-vue --module frontend-vue",
