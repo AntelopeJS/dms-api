@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.7.6
+
+[compare changes](https://github.com/AntelopeJS/dms-api/compare/v0.7.5...v0.7.6)
+
+### 🤖 CI
+
+- Typecheck the frontend tests in pnpm run typecheck ([#171](https://github.com/AntelopeJS/dms-api/pull/171))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli
+
 ## v0.7.5
 
 [compare changes](https://github.com/AntelopeJS/dms-api/compare/v0.7.4...v0.7.5)
