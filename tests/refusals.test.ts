@@ -10,6 +10,7 @@ import { requestLogTableName } from "@/db/tables/request_log.table";
 import { LogsController } from "@/routes/logs";
 import { SettingsController } from "@/routes/settings";
 import { REFUSALS } from "@/services/refusals";
+import { isHttpResult } from "./helpers/http-result";
 import { serveTable } from "./helpers/database";
 import en from "../frontend-vue/i18n/locales/api-en-GB.json";
 import fr from "../frontend-vue/i18n/locales/api-fr-FR.json";
@@ -31,7 +32,7 @@ async function refused<T>(call: () => Promise<T>) {
   try {
     await call();
   } catch (thrown) {
-    if (thrown instanceof HTTPResult) {
+    if (isHttpResult(thrown)) {
       const body = refusalBody.parse(JSON.parse(String(thrown.getBody())));
       return { status: thrown.getStatus(), body };
     }

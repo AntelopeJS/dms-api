@@ -24,9 +24,9 @@ import type { TimeRange } from "./window";
  * Every route judged by the health rules (`health-rules.ts`), the same rules
  * the API verdict follows, so the Overview, the routes tree and a route's
  * header always agree.
+ *
+ * Lower bound of each bucket of a latency histogram.
  */
-
-/** Lower bound of each bucket of a latency histogram. */
 const BUCKET_LOWER_BOUNDS = [0, ...LATENCY_BUCKETS_MS];
 
 /**

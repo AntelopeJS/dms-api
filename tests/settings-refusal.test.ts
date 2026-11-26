@@ -1,7 +1,7 @@
-import { HTTPResult } from "@antelopejs/interface-api";
 import { User } from "@antelopejs/interface-dms/auth/db";
 import { describe, expect, it } from "vitest";
 import { SettingsController } from "@/routes/settings";
+import { isHttpResult } from "./helpers/http-result";
 import { SETTINGS_FIELDS } from "@/services/settings-form";
 
 async function refusal(body: Record<string, number | string>) {
@@ -20,8 +20,8 @@ describe("a refused settings save", () => {
       [SETTINGS_FIELDS.slowThreshold]: "fast",
     });
 
-    expect(answer).toBeInstanceOf(HTTPResult);
-    if (!(answer instanceof HTTPResult)) return;
+    expect(isHttpResult(answer)).toBe(true);
+    if (!isHttpResult(answer)) return;
     expect([answer.getStatus(), answer.getContentType()]).toEqual([
       400,
       "application/json",

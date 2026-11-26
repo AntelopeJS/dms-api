@@ -1,5 +1,4 @@
 /** The status classes of the request logs, as the table's tabs filter them. */
-
 export type RequestLogStatusClass = "success" | "client-error" | "server-error";
 
 /** Inclusive-min / exclusive-max HTTP status ranges per status class. */

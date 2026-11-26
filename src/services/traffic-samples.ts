@@ -12,9 +12,9 @@ import { CACHE_QUANTUM_MS, pinnedNow, type TimeRange } from "./window";
  * The logged requests the traffic aggregates are built from: one scan of the
  * last day shared by every reader, and rolling scans extended by their new
  * rows rather than read again on each live tick.
+ *
+ * What the traffic reads of the logs: the reduced rows of a range.
  */
-
-/** What the traffic reads of the logs: the reduced rows of a range. */
 export type SampleSource = Pick<RequestLogModel, "samples">;
 
 /** Route scope: `METHOD:uri` keys, or null for every route. */

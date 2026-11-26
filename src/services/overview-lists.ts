@@ -23,7 +23,6 @@ import { describeWindow, type TimeWindow, type WindowInfo } from "./window";
  * The Overview's top lists over the page's period: the responses by status
  * class and the slowest routes, each row against the period compared with.
  */
-
 type StatusClass = "2xx" | "4xx" | "5xx";
 
 interface StatusClassRow {

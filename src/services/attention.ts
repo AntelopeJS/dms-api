@@ -38,7 +38,6 @@ import {
  * worst first, capped, each a DMS `ActivityFeed` entry whose details are
  * composed in the reader's language, with its numbers beside.
  */
-
 const ATTENTION_FEED: Record<
   Exclude<RouteState, "healthy" | "idle">,
   Pick<FeedItemPayload, "icon" | "tone">

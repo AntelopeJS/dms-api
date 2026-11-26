@@ -21,7 +21,6 @@ import type {
  * runtime gains a proper introspection facility — the public shape
  * of {@link probeProvider} should remain stable.
  */
-
 export type ParameterSource =
   | "auth"
   | "body"

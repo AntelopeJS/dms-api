@@ -11,15 +11,14 @@ import type { TimeWindow, WindowComparison } from "./window";
  * and a "+12 % vs. 1,020 previous period" line under its figure. Without a
  * comparison ("none") or without the period compared with still stored,
  * neither: the blocks show the period alone.
+ *
+ * The comparisons a window can carry, as their locale keys name them.
  */
-
-/** The comparisons a window can carry, as their locale keys name them. */
 type Compared = Exclude<WindowComparison, "none">;
 
-const COMPARISON_KEYS: Record<Compared, string> = {
-  "previous-period": "previous_period",
-  custom: "custom",
-};
+function comparisonKey(comparison: Compared): string {
+  return comparison === "custom" ? "custom" : "previous_period";
+}
 
 /** The comparison a window shows; null without one or without its data. */
 export function shownComparison(window: TimeWindow): Compared | null {
@@ -32,12 +31,12 @@ export function shownComparison(window: TimeWindow): Compared | null {
  * year"): what its legend and its tooltip say.
  */
 export function comparisonSeriesName(comparison: Compared): string {
-  return `$api.compare.series.${COMPARISON_KEYS[comparison]}`;
+  return `$api.compare.series.${comparisonKey(comparison)}`;
 }
 
 /** What is said in place of the "vs" line when the period is not stored. */
 export function noBaselineText(comparison: Compared): string {
-  return `$api.compare.no_baseline.${COMPARISON_KEYS[comparison]}`;
+  return `$api.compare.no_baseline.${comparisonKey(comparison)}`;
 }
 
 /**
@@ -87,7 +86,7 @@ export function versusText(
   format: (value: number) => ComposedTextParam,
   unit: ChangeUnit = "percent",
 ): ComposedText {
-  const key = COMPARISON_KEYS[comparison];
+  const key = comparisonKey(comparison);
   if (unit === "percent" && previous === 0 && current !== 0) {
     return text(`compare.from_zero.${key}`);
   }

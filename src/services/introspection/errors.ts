@@ -11,7 +11,6 @@
  * Replace this whole file when an `@ApiError(...)` decorator or a similar
  * declarative point lands; the public `probeHandlerErrors` shape can stay.
  */
-
 export interface InferredErrorCode {
   status: number;
   reason: string | null;

@@ -6,9 +6,9 @@ import type {
 /**
  * Texts the DMS blocks write in the reader's language (`ComposedText`): the
  * server sends the key and the values, the dashboard writes them.
+ *
+ * `api.<key>`, with its values.
  */
-
-/** `api.<key>`, with its values. */
 export function text(
   key: string,
   params?: Record<string, ComposedTextParam>,
