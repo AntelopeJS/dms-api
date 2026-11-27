@@ -1,5 +1,5 @@
 packages:
-  - "."
+  - '.'
 minimumReleaseAge: 1440
 minimumReleaseAgeExclude:
-  - "@antelopejs/*"
+  - '@antelopejs/*'
