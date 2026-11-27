@@ -33,7 +33,7 @@ importers:
         specifier: '>=0.5.4 <0.6.0'
         version: 0.5.4(@antelopejs/interface-api@0.3.5(@antelopejs/interface-core@0.5.2))(@antelopejs/interface-core@0.5.2)(@antelopejs/interface-database@0.4.4(@antelopejs/interface-core@0.5.2))
       '@antelopejs/interface-dms':
-        specifier: '>=0.17.0 <0.18.0'
+        specifier: '>=0.17.2 <0.18.0'
         version: 0.17.2(584dba5bee919781e7281dde675f406b)
     devDependencies:
       '@antelopejs/core':
