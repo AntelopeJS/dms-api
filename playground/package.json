@@ -28,7 +28,7 @@
   "packageManager": "pnpm@10.34.9",
   "pnpm": {
     "overrides": {
-      "@antelopejs/interface-dms-automation": "0.7.0"
+      "@antelopejs/interface-dms-automation": "0.7.3"
     }
   },
   "antelopeJs": {

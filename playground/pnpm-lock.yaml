@@ -5,7 +5,7 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  '@antelopejs/interface-dms-automation': 0.7.0
+  '@antelopejs/interface-dms-automation': 0.7.3
 
 importers:
 
@@ -124,8 +124,8 @@ packages:
     peerDependencies:
       '@antelopejs/interface-core': '>=0.5.1 <0.6.0'
 
-  '@antelopejs/interface-dms-automation@0.7.0':
-    resolution: {integrity: sha512-huGVCIDoJVkpT939wo4yWNYtyuy887QvcuXI9XjwuvYiWXdwNWiDLgs1lIulvkNGc+cf0ZUHYEpERuhhWPcHcQ==}
+  '@antelopejs/interface-dms-automation@0.7.3':
+    resolution: {integrity: sha512-alQ6gykmTBH7O2bY0j26emHkcAAJXSX+lqRldPkKQZZM4pnEm2VHALt4qPnHteDhRDIBY9nmo/Z+8eHJSBlUyg==}
     peerDependencies:
       '@antelopejs/interface-core': '>=0.5.1 <0.6.0'
 
@@ -1307,7 +1307,7 @@ snapshots:
     optionalDependencies:
       '@antelopejs/core': 1.24.8
       '@antelopejs/interface-database-catalog': 0.1.1(@antelopejs/interface-core@0.5.2)
-      '@antelopejs/interface-dms-automation': 0.7.0(@antelopejs/interface-core@0.5.2)
+      '@antelopejs/interface-dms-automation': 0.7.3(@antelopejs/interface-core@0.5.2)
       '@antelopejs/interface-redis': 0.0.9(@antelopejs/interface-core@0.5.2)
       playwright-core: 1.65.1
       typescript: 6.0.3
@@ -1357,7 +1357,7 @@ snapshots:
     dependencies:
       '@antelopejs/interface-core': 0.5.2
 
-  '@antelopejs/interface-dms-automation@0.7.0(@antelopejs/interface-core@0.5.2)':
+  '@antelopejs/interface-dms-automation@0.7.3(@antelopejs/interface-core@0.5.2)':
     dependencies:
       '@antelopejs/interface-core': 0.5.2
     optional: true
