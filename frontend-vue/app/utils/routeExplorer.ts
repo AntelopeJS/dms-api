@@ -2,9 +2,9 @@
  * The Routes page's pure logic: how the list groups, orders and walks its
  * routes, and how the page names a period in its links. Kept out of the
  * components so it can be tested without a DMS around it.
+ *
+ * A route's health, in the words of the API verdict (`route-health.ts`).
  */
-
-/** A route's health, in the words of the API verdict (`route-health.ts`). */
 export type RouteState =
   | 'failing'
   | 'slow'

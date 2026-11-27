@@ -2,7 +2,6 @@
  * Short-lived memos: the first caller of a key starts the computation, the
  * others wait for the same promise, then read the result until it expires.
  */
-
 interface Slot {
   expires: number;
   drop(): void;

@@ -7,9 +7,7 @@ import { MS_PER_DAY, REQUEST_LOG_RETENTION_MS } from "@/types";
  * ever yields empty buckets, and the retention is configurable from the
  * Settings page, so the ceiling is read from the config rather than
  * hard-coded per endpoint.
- */
-
-/**
+ *
  * Longest day window the rollups can answer. The prune cron drops
  * `statistics[]` entries older than `statisticsLifetime`, so that setting is
  * the horizon.

@@ -9,9 +9,7 @@ import { getMaxLogDays, getMaxStatsDays } from "./period";
  * before now, the same span the logs page filters on. The previous period has
  * the same length and ends where the window starts, so no request is counted
  * in both.
- */
-
-/**
+ *
  * The presets every page's DMS `PeriodSelector` offers, by their DMS names:
  * what its period scope sends (`preset`) and what its URL holds
  * (`?api.period=last-24h`).

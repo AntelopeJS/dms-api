@@ -13,7 +13,6 @@ import { averageLatency, errorShare } from "./traffic";
  * states come from the health rules (see `route-health.ts`), the same the
  * Overview and the routes tree show; the volumes from the day rollups.
  */
-
 export type SummaryKpis = {
   totalRoutes: number;
   /** Routes failing now, by the health rules. */

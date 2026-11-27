@@ -22,7 +22,6 @@ import { isRouteScope, type RouteScope } from "./scope";
  * The body capture limit set in `antelope.config.ts` is a ceiling: a stored
  * setting above it is capped to it.
  */
-
 export interface ApiSettingsPayload {
   scope: RouteScope;
   statisticsLifetime: number;

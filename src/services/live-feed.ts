@@ -12,9 +12,9 @@ import { LIVE_REQUESTS_EVENT, LIVE_REQUESTS_TOPIC } from "@/types";
  * missed ("40 new · Show"), so a message standing for several requests
  * would under-count them. The DMS gate of a live page (`live: { maxRate }`)
  * keeps a burst from refreshing the blocks more than once per `maxRate`.
+ *
+ * One logged request, as the feed tells it.
  */
-
-/** One logged request, as the feed tells it. */
 export interface LiveEntry {
   timestamp: Date;
   statusCode: number;

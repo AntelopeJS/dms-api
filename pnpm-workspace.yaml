@@ -3,4 +3,7 @@ packages:
 allowBuilds:
   lefthook: false
 minimumReleaseAgeExclude:
-  - "@antelopejs/interface-*"
+  - "@antelopejs/*"
+minimumReleaseAge: 1440
+overrides:
+  vite: ">=8.3.4 <8.4.0"

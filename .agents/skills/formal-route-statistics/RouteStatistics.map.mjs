@@ -1,9 +1,7 @@
 /**
  * Reader's view of RouteStatistics.tla for /statechart: one region for the
  * stored row, one per request and one per prune.
- */
-
-/**
+ *
  * The variables of RouteStatistics.tla this view reads, as /statechart
  * passes them: a function is an object keyed by its domain, a model value
  * is its name.

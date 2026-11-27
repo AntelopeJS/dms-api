@@ -3,7 +3,6 @@
  * looked up on the `_id` index, or as text matched in paths and error
  * messages. Pure, apart from the model that runs the queries.
  */
-
 export function escapeRegex(input: string): string {
   return input.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

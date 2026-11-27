@@ -24,7 +24,6 @@ import { isFunction, isObject } from "@/guards";
  * controller its module does not export) yields nothing, and the provider
  * probes stay the only source.
  */
-
 export interface DecoratedParameter {
   index: number;
   /** Decorator name, e.g. `Parameter` or `AuthUserWithPermission`. */

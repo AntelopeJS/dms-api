@@ -181,7 +181,7 @@ function urlOf(request: SnippetRequest, variables: Variables): Part[] {
       return
     }
     const name = segment.slice(1)
-    const value = request.pathParams?.[name]
+    const value = request.pathParams && Object.hasOwn(request.pathParams, name) ? request.pathParams[name] : undefined
     url.push(
       value
         ? encodeURIComponent(value)

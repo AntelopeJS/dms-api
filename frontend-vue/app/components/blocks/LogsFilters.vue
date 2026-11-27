@@ -69,10 +69,10 @@ interface Chip {
   remove: LogsFiltersPatch
 }
 
-const LINK_REMOVALS: Record<LinkFilterKey, LogsFiltersPatch> = {
-  route: { route: null },
-  path: { path: null },
-  error: { error: null },
+function linkRemoval(key: LinkFilterKey): LogsFiltersPatch {
+  if (key === 'route') return { route: null }
+  if (key === 'path') return { path: null }
+  return { error: null }
 }
 
 function linkChip(key: LinkFilterKey, value: string): Chip {
@@ -88,7 +88,7 @@ function linkChip(key: LinkFilterKey, value: string): Chip {
     label: t(`api.logs.linked.${key}`, {
       value: value,
     }),
-    remove: LINK_REMOVALS[key],
+    remove: linkRemoval(key),
   }
 }
 
