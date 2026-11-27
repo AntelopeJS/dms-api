@@ -12,7 +12,7 @@ export const journeys = guarded([
     async run(/** @type {Ctx} */ ctx) {
       const statuses = await traffic(ctx, "25 ok and one boom", [{ path: "/fx/ok", count: 25 }, { path: "/fx/boom", count: 1 }]);
       const logs = await settled(ctx, "the logs hold the 26 calls", "/logs", (body) => num(body, "total") === 26);
-      const health = await settled(ctx, "health", "/overview/health", (body) => text(body, "verdict") !== "idle");
+      const health = await settled(ctx, "health", "/overview/health", (body) => num(body, "metrics", "requests") === 26);
       await ctx.verify("the API", [
         same("the statuses sent", statuses, { 200: 25, 500: 1 }),
         same("26 requests are captured", num(logs.body, "total"), 26),

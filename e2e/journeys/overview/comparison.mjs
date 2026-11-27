@@ -4,6 +4,24 @@ import { named } from "./shared.mjs";
 
 /** @typedef {import("../../api.mjs").Ctx} Ctx */
 
+const MS_PER_MINUTE = 60_000;
+
+/** How far into a clock minute calls seeded 3 minutes back still read 3 whole minutes once the page has loaded. */
+const LATEST_SEED_IN_MINUTE_MS = 30_000;
+
+/**
+ * Resolves in the first half of a clock minute. The health rules judge minute by minute and count a verdict from the start of
+ * its first minute, so what calls seeded "3 minutes ago" read depends on where in the minute they are seeded: in its last ten
+ * seconds, a burst of ten calls one second apart falls into two minutes and the verdict starts at the second one, less than
+ * 3 minutes back.
+ *
+ * @returns {Promise<void>}
+ */
+async function earlyInTheMinute() {
+  const elapsed = Date.now() % MS_PER_MINUTE;
+  if (elapsed >= LATEST_SEED_IN_MINUTE_MS) await new Promise((resolve) => setTimeout(resolve, MS_PER_MINUTE - elapsed));
+}
+
 /** The overview journeys about comparison. */
 export const comparison = [
   {
@@ -83,6 +101,7 @@ export const comparison = [
     title: "10 failing calls out of 20 three minutes ago read Down for 3 min with the tooltip Down since the minute the incident started, and the hero says when it was checked",
     entryPoint: "/modules/api/overview",
     async run(/** @type {Ctx} */ ctx) {
+      await earlyInTheMinute();
       await seedLogs(ctx, "100 good calls 10 minutes ago", { minutesAgo: 10, count: 100 });
       await seedLogs(ctx, "10 good calls 3 minutes ago", { minutesAgo: 3, count: 10 });
       await seedLogs(ctx, "10 failing calls 3 minutes ago", { minutesAgo: 3, count: 10, uri: "/fx/boom", statusCode: 500, message: "seeded" });
