@@ -22,7 +22,7 @@ const METRIC_TONE: Record<MetricTone, string> = {
       :class="index > 0 && 'sm:border-muted sm:-ml-6 sm:border-l sm:pl-6'"
     >
       <dt
-        class="text-dimmed font-mono text-[10px] font-semibold uppercase tracking-[0.12em]"
+        class="text-dimmed font-mono text-[10px] font-semibold tracking-[0.12em] uppercase"
       >
         {{ metric.label }}
       </dt>
@@ -31,7 +31,7 @@ const METRIC_TONE: Record<MetricTone, string> = {
           METRIC_TONE[metric.tone],
           metric.secondary ? 'text-base' : 'text-xl',
         ]"
-        class="mt-[7px] whitespace-nowrap font-mono font-semibold tabular-nums leading-[1.1] tracking-[-0.03em]"
+        class="mt-[7px] font-mono leading-[1.1] font-semibold tracking-[-0.03em] whitespace-nowrap tabular-nums"
       >
         {{ metric.value }}
         <span

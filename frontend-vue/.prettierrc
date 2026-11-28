@@ -7,6 +7,5 @@
   "tabWidth": 2,
   "plugins": ["prettier-plugin-tailwindcss"],
 
-  "htmlWhitespaceSensitivity": "ignore",
-  "tailwindStylesheet": "~/assets/css/main.css"
+  "htmlWhitespaceSensitivity": "ignore"
 }

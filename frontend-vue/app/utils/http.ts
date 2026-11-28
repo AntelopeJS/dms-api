@@ -1,11 +1,6 @@
 /** Tones of the DMS design system a badge can take. */
 export type ApiTone =
-  | 'neutral'
-  | 'primary'
-  | 'success'
-  | 'warning'
-  | 'error'
-  | 'info'
+  'neutral' | 'primary' | 'success' | 'warning' | 'error' | 'info'
 
 const METHOD_TONES = new Map<string, ApiTone>([
   ['GET', 'info'],

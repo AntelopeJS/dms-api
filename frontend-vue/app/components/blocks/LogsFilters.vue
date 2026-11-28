@@ -197,7 +197,7 @@ defineShortcuts({
     </UTooltip>
 
     <template v-if="origin || chips.length">
-      <span class="bg-(--ui-border) mx-1 h-4 w-px" aria-hidden="true" />
+      <span class="mx-1 h-4 w-px bg-(--ui-border)" aria-hidden="true" />
       <span class="text-muted">
         {{ origin ?? t('api.logs.linked.title') }}
       </span>

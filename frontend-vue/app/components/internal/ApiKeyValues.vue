@@ -26,7 +26,7 @@ const entries = computed(() =>
       <tr v-for="[name, value] in entries" :key="name">
         <th
           scope="row"
-          class="text-muted border-default w-px whitespace-nowrap border-b px-3 py-1.5 text-left align-top font-normal"
+          class="text-muted border-default w-px border-b px-3 py-1.5 text-left align-top font-normal whitespace-nowrap"
         >
           <bdi>{{ name }}</bdi>
         </th>

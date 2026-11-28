@@ -6,12 +6,7 @@
  * A route's health, in the words of the API verdict (`route-health.ts`).
  */
 export type RouteState =
-  | 'failing'
-  | 'slow'
-  | 'client-errors'
-  | 'recovered'
-  | 'healthy'
-  | 'idle'
+  'failing' | 'slow' | 'client-errors' | 'recovered' | 'healthy' | 'idle'
 
 /** What the list needs of a route row of `/routes/list`. */
 export interface ExplorerRoute {

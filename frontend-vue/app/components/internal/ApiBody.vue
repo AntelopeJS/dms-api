@@ -91,7 +91,7 @@ const toSettings = computed(
     class="border-default bg-elevated/40 overflow-hidden rounded-md border"
   >
     <div
-      class="border-default text-dimmed flex items-center gap-2 border-b px-3 py-1 font-mono text-[10.5px] uppercase tracking-[0.08em]"
+      class="border-default text-dimmed flex items-center gap-2 border-b px-3 py-1 font-mono text-[10.5px] tracking-[0.08em] uppercase"
     >
       <span class="min-w-0 grow truncate">{{ label }}</span>
       <UButton
@@ -110,7 +110,7 @@ const toSettings = computed(
     </div>
     <pre
       v-else
-      class="text-default max-h-[60vh] overflow-auto whitespace-pre-wrap px-3 py-2.5 font-mono text-[12px] leading-relaxed [overflow-wrap:anywhere]"
+      class="text-default max-h-[60vh] overflow-auto px-3 py-2.5 font-mono text-[12px] leading-relaxed [overflow-wrap:anywhere] whitespace-pre-wrap"
     ><code>{{ text }}</code></pre>
   </div>
   <p v-else class="text-dimmed text-sm">

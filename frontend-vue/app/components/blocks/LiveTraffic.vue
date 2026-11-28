@@ -271,7 +271,7 @@ const share = (part: number, bar: { heights: Record<string, number> }) => {
             {{ t('api.live.total', { count: count(data.total) }, data.total) }}
           </span>
           <span class="inline-flex items-center gap-1">
-            <span class="bg-(--dms-chart-1) size-2 rounded-[2px]" />
+            <span class="size-2 rounded-[2px] bg-(--dms-chart-1)" />
             {{ t('api.live.legend_success') }}
           </span>
           <span class="inline-flex items-center gap-1">
@@ -327,9 +327,9 @@ const share = (part: number, bar: { heights: Record<string, number> }) => {
       </div>
     </template>
 
-    <div class="h-[160px] px-3 pb-2 pt-1">
+    <div class="h-[160px] px-3 pt-1 pb-2">
       <div v-if="data">
-        <div class="text-dimmed leading-3.5 mb-1 h-3.5 font-mono text-[10px]">
+        <div class="text-dimmed mb-1 h-3.5 font-mono text-[10px] leading-3.5">
           <template v-if="chart.ceiling">
             {{
               t('api.live.scale', {
@@ -369,7 +369,7 @@ const share = (part: number, bar: { heights: Record<string, number> }) => {
               >
                 <span
                   v-if="bar.success"
-                  class="bg-(--dms-chart-1) block shrink-0"
+                  class="block shrink-0 bg-(--dms-chart-1)"
                   :style="{ height: share(bar.heights.success, bar) }"
                 />
                 <span
@@ -395,14 +395,14 @@ const share = (part: number, bar: { heights: Record<string, number> }) => {
           </div>
           <div
             v-if="hoveredBar"
-            class="bg-inverted text-inverted pointer-events-none absolute top-0 z-10 -translate-y-[calc(100%+4px)] whitespace-nowrap rounded px-2 py-1 font-mono text-[11px] shadow-sm"
+            class="bg-inverted text-inverted pointer-events-none absolute top-0 z-10 -translate-y-[calc(100%+4px)] rounded px-2 py-1 font-mono text-[11px] whitespace-nowrap shadow-sm"
             :style="tooltipStyle"
           >
             {{ tooltip }}
           </div>
         </div>
         <div
-          class="text-dimmed leading-3.5 relative mt-1 h-3.5 font-mono text-[10px]"
+          class="text-dimmed relative mt-1 h-3.5 font-mono text-[10px] leading-3.5"
         >
           <span
             v-for="index in ticks"

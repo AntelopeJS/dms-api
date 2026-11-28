@@ -402,7 +402,7 @@ const dateFormat = useDateFormat()
             <div class="flex items-start gap-2">
               <p
                 ref="message"
-                class="text-error min-w-0 grow whitespace-pre-wrap text-sm font-semibold [overflow-wrap:anywhere]"
+                class="text-error min-w-0 grow text-sm font-semibold [overflow-wrap:anywhere] whitespace-pre-wrap"
                 :class="messageOpen ? '' : 'line-clamp-6'"
               >
                 <bdi>{{ log.error.message }}</bdi>
