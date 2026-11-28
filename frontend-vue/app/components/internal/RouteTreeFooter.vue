@@ -52,7 +52,7 @@ const { t } = useI18n()
         @click="toggleAll"
       />
     </UTooltip>
-    <UKbd value="↑" size="sm" class="@max-5xl:hidden shrink-0" />
-    <UKbd value="↓" size="sm" class="@max-5xl:hidden shrink-0" />
+    <UKbd value="↑" size="sm" class="shrink-0 @max-5xl:hidden" />
+    <UKbd value="↓" size="sm" class="shrink-0 @max-5xl:hidden" />
   </div>
 </template>

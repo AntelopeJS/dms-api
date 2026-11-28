@@ -332,12 +332,12 @@ const count = (value: number) =>
 <template>
   <DmsCardPanel
     :padded="false"
-    class="@5xl:max-h-[calc(100dvh-2rem)] @5xl:min-h-[24rem] flex flex-col overflow-hidden"
+    class="flex flex-col overflow-hidden @5xl:max-h-[calc(100dvh-2rem)] @5xl:min-h-[24rem]"
   >
     <button
       ref="foldToggle"
       type="button"
-      class="hover:bg-elevated @5xl:hidden flex items-center gap-2 px-3 py-2.5 text-left text-[13px]"
+      class="hover:bg-elevated flex items-center gap-2 px-3 py-2.5 text-left text-[13px] @5xl:hidden"
       :aria-expanded="listOpen"
       aria-controls="api-route-list"
       @click="listOpen = !listOpen"
@@ -361,7 +361,7 @@ const count = (value: number) =>
 
     <div
       id="api-route-list"
-      class="border-default @max-5xl:border-t flex min-h-0 flex-1 flex-col"
+      class="border-default flex min-h-0 flex-1 flex-col @max-5xl:border-t"
       :class="!listOpen && '@max-5xl:hidden'"
     >
       <div class="border-default flex flex-col gap-2.5 border-b p-3">
@@ -415,11 +415,11 @@ const count = (value: number) =>
 
       <div
         ref="scroller"
-        class="@max-5xl:max-h-[50vh] relative min-h-0 flex-1 overflow-y-auto py-1.5"
+        class="relative min-h-0 flex-1 overflow-y-auto py-1.5 @max-5xl:max-h-[50vh]"
       >
         <p
           v-if="healthWindow && routes.length"
-          class="text-dimmed px-3 pb-1.5 pt-0.5 font-mono text-[11px]"
+          class="text-dimmed px-3 pt-0.5 pb-1.5 font-mono text-[11px]"
         >
           {{ t('api.routes.tree.window', { window: healthWindow }) }}
         </p>
@@ -494,7 +494,7 @@ const count = (value: number) =>
           >
             <div
               v-if="section.path"
-              class="text-muted hover:text-default flex w-full cursor-pointer select-none items-center gap-1.5 px-3 py-1.5 font-mono text-[12px]"
+              class="text-muted hover:text-default flex w-full cursor-pointer items-center gap-1.5 px-3 py-1.5 font-mono text-[12px] select-none"
               @click="toggleFolder(section.path)"
             >
               <UIcon

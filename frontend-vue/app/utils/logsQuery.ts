@@ -210,11 +210,7 @@ export function hasLogsFilters(filters: LogsFilters): boolean {
 
 /** Why the request table is empty, to word its empty state. */
 export type LogsEmptyCause =
-  | 'error'
-  | 'search'
-  | 'link'
-  | 'filters'
-  | 'first-run'
+  'error' | 'search' | 'link' | 'filters' | 'first-run'
 
 /**
  * What the empty table owes its emptiness to, the most specific first: a

@@ -118,7 +118,7 @@ const {
         <div
           v-for="editor in editors"
           :key="editor.key"
-          class="@sm:gap-2 flex flex-col gap-3"
+          class="flex flex-col gap-3 @sm:gap-2"
         >
           <p
             v-if="editor.title"
@@ -129,12 +129,12 @@ const {
           <div
             v-for="(entry, index) in editor.list"
             :key="entry.id"
-            class="@sm:flex-nowrap flex flex-wrap gap-2"
+            class="flex flex-wrap gap-2 @sm:flex-nowrap"
           >
             <UInput
               v-model="entry.name"
               size="sm"
-              class="@sm:w-2/5 w-full font-mono"
+              class="w-full font-mono @sm:w-2/5"
               :placeholder="t('dms.form.key_value.key')"
               :aria-label="t('dms.form.key_value.key')"
             />

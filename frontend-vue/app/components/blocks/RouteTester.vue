@@ -98,7 +98,7 @@ const {
                     ? t('api.tester.redacted_value')
                     : undefined
                 "
-                class="bg-elevated focus:ring-primary mx-0.5 min-w-[4ch] max-w-full rounded px-1 py-0.5 outline-none focus:ring-2"
+                class="bg-elevated focus:ring-primary mx-0.5 max-w-full min-w-[4ch] rounded px-1 py-0.5 outline-none focus:ring-2"
                 :class="
                   !pathValues[segment.name]
                     ? 'ring-error/60 placeholder:text-error/70 ring-1'

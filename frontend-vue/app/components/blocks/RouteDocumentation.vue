@@ -290,7 +290,7 @@ function exampleOf(value: string | number | boolean | null | undefined) {
           <dl v-else class="grid gap-3 text-sm">
             <div v-for="group in parameterGroups" :key="group.where">
               <dt
-                class="text-dimmed font-mono text-[10.5px] uppercase tracking-[0.08em]"
+                class="text-dimmed font-mono text-[10.5px] tracking-[0.08em] uppercase"
               >
                 {{ t(`api.routes.docs.in_${group.where}`) }}
               </dt>

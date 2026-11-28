@@ -438,7 +438,7 @@ const metrics = computed<HeroMetric[]>(() => {
           <div class="flex shrink-0 items-center gap-4">
             <div
               :class="RING_TEXT[data.verdict]"
-              class="border-(--dms-status-line) bg-(--dms-status-tint) relative grid size-16 shrink-0 place-items-center rounded-full border-[1.5px] shadow-[0_0_0_6px_color-mix(in_srgb,var(--dms-status-tint)_50%,transparent)]"
+              class="relative grid size-16 shrink-0 place-items-center rounded-full border-[1.5px] border-(--dms-status-line) bg-(--dms-status-tint) shadow-[0_0_0_6px_color-mix(in_srgb,var(--dms-status-tint)_50%,transparent)]"
             >
               <UIcon
                 :name="LOOKS[data.verdict].icon"
@@ -446,7 +446,7 @@ const metrics = computed<HeroMetric[]>(() => {
                 aria-hidden="true"
               />
               <span
-                class="ring-(--ui-bg) absolute right-[3px] top-[3px] size-[11px] rounded-full shadow-[0_0_12px_currentColor] ring-[2.5px]"
+                class="absolute top-[3px] right-[3px] size-[11px] rounded-full shadow-[0_0_12px_currentColor] ring-[2.5px] ring-(--ui-bg)"
                 :class="LOOKS[data.verdict].dot"
                 aria-hidden="true"
               >
@@ -461,7 +461,7 @@ const metrics = computed<HeroMetric[]>(() => {
               <DmsEyebrowLabel as="h2" :label="heading" />
               <p
                 :class="LOOKS[data.verdict].text"
-                class="mt-1.5 text-[28px] font-[650] leading-none tracking-[-0.035em]"
+                class="mt-1.5 text-[28px] leading-none font-[650] tracking-[-0.035em]"
               >
                 {{ t(`api.health.verdict.${data.verdict}`) }}
               </p>
