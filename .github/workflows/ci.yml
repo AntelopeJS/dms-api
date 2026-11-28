@@ -180,13 +180,18 @@ jobs:
             ~/.cache/dms-e2e/frontend
           key: dms-e2e-frontend-${{ github.sha }}
           restore-keys: dms-e2e-frontend-
-      - name: Install Chromium and its system packages
+      - name: Install Chromium, and its system packages when the runner lacks one
         run: |
-          if timeout 240 pnpm exec playwright install --with-deps --only-shell chromium; then
+          pnpm exec playwright install --only-shell chromium
+          shell=$(find ~/.cache/ms-playwright -type f -name chrome-headless-shell | head -n 1)
+          missing=$(ldd "$shell" | grep "not found" || true)
+          if [ -z "$missing" ]; then
             exit 0
           fi
-          echo "::warning::Chromium's system packages did not install: installing the browser alone"
-          pnpm exec playwright install --only-shell chromium
+          echo "$missing"
+          if ! timeout 240 pnpm exec playwright install-deps chromium; then
+            echo "::warning::Chromium's system packages did not install"
+          fi
       - run: pnpm e2e:build
       - if: env.E2E == 'smoke'
         run: pnpm e2e --grep @smoke
