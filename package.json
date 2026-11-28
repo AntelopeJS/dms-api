@@ -76,7 +76,7 @@
     "@types/semver": "^7.7.0",
     "knip": "^6.34.0",
     "lefthook": "^2.2.2",
-    "mongodb": "~7.5.0",
+    "mongodb": "~7.9.0",
     "mongodb-memory-server-core": "^11.0.1",
     "oxfmt": "^0.80.0",
     "oxlint": "1.95.0",
