@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { setTimeout as sleep } from "node:timers/promises";
 
 /**
  * @typedef {import("@antelopejs/dms/e2e").Ctx} Ctx
@@ -185,8 +186,13 @@ export async function tokenOf(ctx, account) {
   return ctx.state.tokens?.[account];
 }
 
+/** Milliseconds between two calls of {@link traffic}, so their logs never share a timestamp. */
+const CALL_SPACING_MS = 2;
+
 /**
  * Sends the project's own routes (`/fx/*`) a batch of calls, one after the other, and keeps one step with the statuses.
+ * Each call waits {@link CALL_SPACING_MS} after the last answer: the logs list newest first by a timestamp in milliseconds,
+ * then by a random id, so two calls in one millisecond would list in either order.
  *
  * @param {Ctx} ctx The journey
  * @param {string} label What the batch is
@@ -202,6 +208,7 @@ export async function traffic(ctx, label, batches) {
       const response = await fetch(`${ctx.state.apiUrl}${batch.path}`, { method: batch.method ?? "GET", headers: batch.headers, body: batch.body });
       await response.arrayBuffer();
       statuses[response.status] = (statuses[response.status] ?? 0) + 1;
+      await sleep(CALL_SPACING_MS);
     }
   }
   mkdirSync(folder, { recursive: true });
