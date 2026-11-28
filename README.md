@@ -62,7 +62,7 @@ pnpm --dir playground traffic     # a few hundred demo requests
 
 <!-- antelopejs-docs-compat:end -->
 
-The module also needs a DMS backend in a release that implements the `@antelopejs/interface-dms` range above, and the `@antelopejs/dms-frontend` renderer in the range its frontend module declares in `engines["@antelopejs/dms-frontend"]` of `frontend-vue/package.json`; the `ajs dms` CLI refuses to build it with a renderer outside that range. It runs on these providers:
+The module also needs a DMS backend in a release that implements the `@antelopejs/interface-dms` range above, `@antelopejs/dms` 0.25.0 or later, and the `@antelopejs/dms-frontend` renderer in the range its frontend module declares in `engines["@antelopejs/dms-frontend"]` of `frontend-vue/package.json`, 0.11.11 or later; the `ajs dms` CLI refuses to build it with a renderer outside that range. It runs on these providers:
 
 - API provider: `@antelopejs/api`.
 - Database: an `@antelopejs/interface-database` implementation, such as `@antelopejs/mongodb`.
