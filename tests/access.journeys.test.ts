@@ -111,19 +111,28 @@ const BLOCK_OF = new Map([
   ["GET /tester/source", "modules.api.explore.routes.explorer.tabs.tester"],
 ]);
 
+const NO_REFUSAL = { message: "", permission: "" };
+
 const refusalSchema = z
   .union([
-    z.string(),
+    z.string().transform((message) => ({ message, permission: "" })),
     z
-      .object({ message: z.string().optional(), error: z.string().optional() })
-      .transform((body) => body.message || body.error || ""),
+      .object({
+        message: z.string().optional(),
+        error: z.string().optional(),
+        params: z.object({ permissionId: z.string() }).partial().optional(),
+      })
+      .transform((body) => ({
+        message: body.message || body.error || "",
+        permission: body.params?.permissionId ?? "",
+      })),
   ])
-  .catch("");
+  .catch(NO_REFUSAL);
 
 interface Sweep {
   route: string;
   status: number;
-  message: string;
+  refusal: { message: string; permission: string };
 }
 
 /** Calls every route of the console as an account. */
@@ -138,15 +147,16 @@ async function sweep(dms: Dms, as: string): Promise<Sweep[]> {
     seen.push({
       route: `${method} ${path.split("?")[0]}`,
       status: answer.status,
-      message: refusalSchema.parse(answer.body),
+      refusal: refusalSchema.parse(answer.body),
     });
   }
   return seen;
 }
 
 function permissionNamedFor(refused: Sweep[], route: string): string {
-  const message = refused.find((entry) => entry.route === route)?.message;
-  return /missing permission ([\w.-]+)/.exec(message ?? "")?.[1] ?? "";
+  return (
+    refused.find((entry) => entry.route === route)?.refusal.permission ?? ""
+  );
 }
 
 describe("access", () => {
@@ -164,13 +174,16 @@ describe("access", () => {
     for (const entry of plain)
       expect
         .soft(
-          entry.message,
+          entry.refusal,
           `${entry.route} refuses with its own block's permission`,
         )
-        .toBe(
+        .toEqual(
           entry.route === "GET /settings/summary"
-            ? "Owner-only"
-            : `Forbidden: missing permission ${BLOCK_OF.get(entry.route)}`,
+            ? { message: "$dms.refusals.auth.owner_only", permission: "" }
+            : {
+                message: "$dms.refusals.permissions.missing_permission",
+                permission: BLOCK_OF.get(entry.route),
+              },
         );
     for (const entry of owner)
       expect

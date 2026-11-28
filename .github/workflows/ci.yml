@@ -249,7 +249,13 @@ jobs:
   ubuntu:
     if: always()
     needs:
-      [select, ci, build, formal-route-statistics, journeys, e2e, e2e-report]
+      - select
+      - ci
+      - build
+      - formal-route-statistics
+      - journeys
+      - e2e
+      - e2e-report
     runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 5
     steps:
@@ -268,6 +274,9 @@ jobs:
       actions: write
       statuses: write
     uses: AntelopeJS/.github/.github/workflows/ci-renovate-sync.yml@v2
+    secrets:
+      RELEASE_APP_ID: ${{ secrets.RELEASE_APP_ID }}
+      RELEASE_APP_PRIVATE_KEY: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
   verdict:
     needs:
       - ci
