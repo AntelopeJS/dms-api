@@ -86,7 +86,7 @@ jobs:
         with:
           distribution: temurin
           java-version: "21"
-      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: ~/.cache/antelopejs-formal
           key: tla2tools-1.7.4
@@ -126,7 +126,7 @@ jobs:
           node-version-file: .nvmrc
       - run: corepack enable
       - run: pnpm install --frozen-lockfile --ignore-scripts
-      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: ~/.cache/mongodb-binaries
           key: journeys-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
@@ -162,13 +162,13 @@ jobs:
           node-version-file: .nvmrc
       - run: corepack enable
       - run: pnpm install --frozen-lockfile --ignore-scripts
-      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: |
             ~/.cache/mongodb-binaries
             ~/.cache/ms-playwright
           key: e2e-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml', 'playground/pnpm-lock.yaml') }}
-      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: |
             ~/.cache/dms-e2e/frontend
