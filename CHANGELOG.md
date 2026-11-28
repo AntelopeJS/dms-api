@@ -1,5 +1,46 @@
 # Changelog
 
+## v0.8.0
+
+[compare changes](https://github.com/AntelopeJS/dms-api/compare/v0.7.6...v0.8.0)
+
+### 📦 Build
+
+- Adopt tooling-configs 0.10.7 and a 24-hour minimum release age ([#172](https://github.com/AntelopeJS/dms-api/pull/172))
+- **deps:** Update @vitejs/plugin-vue to 6.0.11 keeping the vite override ([#180](https://github.com/AntelopeJS/dms-api/pull/180))
+- **deps:** Move to @antelopejs/dms 0.24.3 and dms-frontend 0.11.12 ([#181](https://github.com/AntelopeJS/dms-api/pull/181))
+- **ci:** Move to tooling-configs 0.10.11 and run sync ([#182](https://github.com/AntelopeJS/dms-api/pull/182))
+- **deps:** Move to @antelopejs/dms 0.25.0 and tooling-configs 0.10.14 ([#187](https://github.com/AntelopeJS/dms-api/pull/187))
+- **deps:** Require @antelopejs/dms-frontend 0.11.11 and @antelopejs/dms 0.25 ([#189](https://github.com/AntelopeJS/dms-api/pull/189))
+
+### 🏡 Chore
+
+- **deps:** Update dependency oxlint-tsgolint to v7.0.2008 ([#177](https://github.com/AntelopeJS/dms-api/pull/177))
+- **deps:** Update dependency rimraf to v6.1.4 ([#178](https://github.com/AntelopeJS/dms-api/pull/178))
+- **deps:** Update dependency @antelopejs/core to v1.24.8 ([#173](https://github.com/AntelopeJS/dms-api/pull/173))
+- **deps:** Pin dependencies ([#169](https://github.com/AntelopeJS/dms-api/pull/169))
+- **deps:** Update dependency @antelopejs/interface-dms-automation to v0.7.3 ([#175](https://github.com/AntelopeJS/dms-api/pull/175))
+- **deps:** Update antelopejs tooling configs ([#184](https://github.com/AntelopeJS/dms-api/pull/184))
+- **deps:** Update dependency @antelopejs/core to v1.24.9 ([#183](https://github.com/AntelopeJS/dms-api/pull/183))
+
+### ✅ Tests
+
+- Keep the monitor hero and smoke journeys off clock boundaries ([#179](https://github.com/AntelopeJS/dms-api/pull/179))
+- **e2e:** Send the journeys' traffic one call per millisecond ([#188](https://github.com/AntelopeJS/dms-api/pull/188))
+
+### 🤖 CI
+
+- **e2e:** Install Chromium's system packages only when the runner lacks one ([#190](https://github.com/AntelopeJS/dms-api/pull/190))
+
+#### ⚠️ Breaking Changes
+
+- **deps:** Require @antelopejs/dms-frontend 0.11.11 and @antelopejs/dms 0.25 ([#189](https://github.com/AntelopeJS/dms-api/pull/189))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli
+- dada-sudo
+
 ## v0.7.6
 
 [compare changes](https://github.com/AntelopeJS/dms-api/compare/v0.7.5...v0.7.6)
