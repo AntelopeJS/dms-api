@@ -16,8 +16,8 @@ importers:
         version: 3.5.22(typescript@6.0.3)
     devDependencies:
       '@antelopejs/tooling-configs':
-        specifier: ^0.10.13
-        version: 0.10.13(@nuxt/eslint-config@1.17.0(@typescript-eslint/utils@8.73.0(eslint@9.39.5(jiti@2.7.0))(typescript@6.0.3))(@vue/compiler-sfc@3.5.22)(eslint@9.39.5(jiti@2.7.0))(typescript@6.0.3))
+        specifier: ^0.10.14
+        version: 0.10.14(@nuxt/eslint-config@1.17.0(@typescript-eslint/utils@8.73.0(eslint@9.39.5(jiti@2.7.0))(typescript@6.0.3))(@vue/compiler-sfc@3.5.22)(eslint@9.39.5(jiti@2.7.0))(typescript@6.0.3))
       '@nuxt/eslint-config':
         specifier: ^1.17.0
         version: 1.17.0(@typescript-eslint/utils@8.73.0(eslint@9.39.5(jiti@2.7.0))(typescript@6.0.3))(@vue/compiler-sfc@3.5.22)(eslint@9.39.5(jiti@2.7.0))(typescript@6.0.3)
@@ -45,8 +45,8 @@ importers:
 
 packages:
 
-  '@antelopejs/tooling-configs@0.10.13':
-    resolution: {integrity: sha512-lQ4lYQA83Co4O+/6TBMGwmHL4E0QJoRhcWNYqTnolX9XQxaeAbdLnF4ajY7eh2t2piDWDyUZfi7JkFZGob545g==}
+  '@antelopejs/tooling-configs@0.10.14':
+    resolution: {integrity: sha512-jSEmmtT7P11Ur9uSJ9oVFTUYRgzgLVpwiOdjp1Xo49y3zwcbV1nu/TCnqRcdPOMeZbRlJtnW0B0iYEi7m0dqGw==}
     engines: {node: '>=22.18.0'}
     hasBin: true
     peerDependencies:
@@ -1909,7 +1909,7 @@ packages:
 
 snapshots:
 
-  '@antelopejs/tooling-configs@0.10.13(@nuxt/eslint-config@1.17.0(@typescript-eslint/utils@8.73.0(eslint@9.39.5(jiti@2.7.0))(typescript@6.0.3))(@vue/compiler-sfc@3.5.22)(eslint@9.39.5(jiti@2.7.0))(typescript@6.0.3))':
+  '@antelopejs/tooling-configs@0.10.14(@nuxt/eslint-config@1.17.0(@typescript-eslint/utils@8.73.0(eslint@9.39.5(jiti@2.7.0))(typescript@6.0.3))(@vue/compiler-sfc@3.5.22)(eslint@9.39.5(jiti@2.7.0))(typescript@6.0.3))':
     dependencies:
       '@oxlint/plugins': 1.95.0
       dts-bundle-generator: 9.5.1
